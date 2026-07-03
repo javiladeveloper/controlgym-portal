@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { FitControlLogo } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
@@ -63,6 +64,64 @@ function DashboardMockup() {
   )
 }
 
+// ── Mockup de la página web de un gym (navegador con landing en miniatura) ──
+function GymPageMockup() {
+  return (
+    <div className="w-full max-w-[460px] overflow-hidden"
+      style={{ background: C.surface, border: C.border, borderRadius: 14, boxShadow: '0 40px 100px rgba(0,0,0,0.5)' }}>
+      {/* barra del navegador */}
+      <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: C.border }}>
+        <span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+        <span className="ml-2 rounded-md px-3 py-1 text-[10px] font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: C.muted }}>
+          🔒 powergym.{ROOT_DOMAIN}
+        </span>
+      </div>
+      {/* landing del gym en miniatura */}
+      <div className="bg-white">
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-4 w-4 rounded" style={{ background: '#D32F2F' }} />
+            <span className="text-[9px] font-extrabold text-slate-900">POWERGYM</span>
+          </div>
+          <span className="rounded-full px-2.5 py-1 text-[8px] font-extrabold text-white" style={{ background: '#D32F2F' }}>INSCRÍBETE</span>
+        </div>
+        <div className="relative flex h-[110px] flex-col items-center justify-center px-6 text-center" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #3a0d0d 100%)' }}>
+          <div className="text-[13px] font-extrabold tracking-tight text-white">ENTRENA SIN EXCUSAS</div>
+          <div className="mt-1 text-[8px] font-semibold text-white/70">3 sedes en Lima · Desde S/ 79 al mes</div>
+          <span className="mt-2 rounded-full px-3 py-1 text-[8px] font-extrabold text-white" style={{ background: '#D32F2F' }}>Empieza hoy →</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 p-3">
+          {[['Mensual', 'S/ 79'], ['Trimestral', 'S/ 210'], ['Anual', 'S/ 750']].map(([n, p]) => (
+            <div key={n} className="rounded-lg border border-slate-200 p-2 text-center">
+              <div className="text-[7.5px] font-extrabold text-slate-500">{n}</div>
+              <div className="text-[11px] font-extrabold text-slate-900">{p}</div>
+              <div className="mx-auto mt-1.5 h-[10px] w-12 rounded-full" style={{ background: '#D32F2F' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SEGMENTOS = ['🏋️ Gimnasios fitness', '🧘 Yoga y pilates', '💃 Academias de baile', '🥋 Artes marciales', '👦 Academias para niños', '🔥 Entrenamiento funcional']
+
+const ANTES_DESPUES = [
+  ['Cuaderno de asistencias en recepción', 'Check-in en un clic, listo para torniquete y huella'],
+  ['"¿Quién no ha pagado?" buscando en Excel', 'Vencimientos y cobros a la vista, renovación en segundos'],
+  ['Interesados que se pierden en el WhatsApp', 'CRM con cada prospecto y desde qué red social llegó'],
+  ['Sin página web o pagando una carísima', 'Tu web con tu marca, gratis, lista en minutos'],
+]
+
+const FAQS = [
+  ['¿Necesito instalar algo o comprar equipos?', 'No. FitControl funciona desde el navegador de tu compu, tablet o celular. Los torniquetes y lectores de huella son opcionales y se integran cuando los necesites.'],
+  ['¿Cómo funciona la página web de mi gimnasio?', 'Al registrarte eliges tu dirección (tugym.' + ROOT_DOMAIN + ') y tu página se genera sola con tus planes, horario, fotos y colores. Eliges entre 8 diseños y todo lo editas desde el panel, sin programadores.'],
+  ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitControl registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
+  ['¿Sirve si solo doy clases (yoga, baile, funcional)?', 'Sí. Al crear tu cuenta eliges tu tipo de negocio y el sistema se adapta: si no usas máquinas ni rutinas de pesas, esos módulos no te estorban.'],
+  ['¿Qué pasa cuando termina mi mes de prueba?', 'Eliges el plan que te acomode y sigues donde quedaste. Tus datos nunca se borran ni se bloquean de un día para otro.'],
+  ['¿Puedo cambiar de plan o cancelar?', 'Cuando quieras, sin permanencia ni penalidades. Subes o bajas de plan según crece tu gimnasio.'],
+]
+
 const VALORES = [
   { icon: '🚪', t: 'Check-ins sin fricción', d: 'Acceso validado al segundo en recepción — y listo para torniquetes con huella. Cero colas, cero cuadernos.' },
   { icon: '📈', t: 'Capta y retén con datos', d: 'Cada interesado de tus redes cae a tu CRM con su origen. Sabes qué red te trae clientes y a quién renovar antes de que se vaya.' },
@@ -106,8 +165,28 @@ const PLANES = [
 ]
 
 export default function PlataformaLanding() {
+  // Aparición suave de secciones al hacer scroll
+  useEffect(() => {
+    const els = document.querySelectorAll('.lp-rev')
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add('lp-rev-in'); io.unobserve(e.target) }
+      }),
+      { threshold: 0.12 },
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+
   return (
     <div className="min-h-screen text-white" style={{ background: C.bg, fontFamily: "'Manrope', system-ui, sans-serif" }}>
+      <style>{`
+        html { scroll-behavior: smooth; }
+        .lp-rev { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+        .lp-rev-in { opacity: 1; transform: none; }
+        details.lp-faq summary::-webkit-details-marker { display: none; }
+        details.lp-faq[open] .lp-faq-chevron { transform: rotate(180deg); }
+      `}</style>
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: 'rgba(20,27,46,0.85)', borderBottom: C.border }}>
         <div className="mx-auto flex max-w-[1100px] items-center justify-between px-6 py-3.5">
@@ -115,6 +194,11 @@ export default function PlataformaLanding() {
             <FitControlLogo size={36} />
             <span className="text-[17px] font-extrabold tracking-[-0.3px]">FitControl</span>
           </div>
+          <nav className="hidden items-center gap-1 md:flex">
+            {[['Funciones', '#funciones'], ['Tu página web', '#pagina-web'], ['Precios', '#precios'], ['Preguntas', '#faq']].map(([l, h]) => (
+              <a key={h} href={h} className="px-3 py-2 text-[13px] font-bold transition-colors hover:text-white" style={{ color: C.muted }}>{l}</a>
+            ))}
+          </nav>
           <div className="flex items-center gap-2">
             <a href={`${APP_URL}/login`} className="px-3 py-2 text-[13.5px] font-extrabold transition-colors hover:text-white" style={{ color: C.muted }}>Entrar</a>
             <a href={`${APP_URL}/registro`} className="rounded-lg px-4 py-2.5 text-[13.5px] font-extrabold text-white transition-transform hover:scale-[1.03]" style={{ background: C.primary }}>
@@ -163,8 +247,17 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
+      {/* Para todo tipo de gimnasio */}
+      <section className="lp-rev mx-auto max-w-[1100px] px-6 pb-2 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          {SEGMENTOS.map((s) => (
+            <span key={s} className="rounded-full px-4 py-2 text-[12.5px] font-bold" style={{ border: C.border, color: C.muted }}>{s}</span>
+          ))}
+        </div>
+      </section>
+
       {/* 3 propuestas de valor */}
-      <section className="mx-auto max-w-[1100px] px-6 pb-6 pt-4">
+      <section className="lp-rev mx-auto max-w-[1100px] px-6 pb-6 pt-10">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {VALORES.map((v) => (
             <div key={v.t} className="rounded-lg p-6" style={{ background: C.surface, border: C.border }}>
@@ -177,8 +270,27 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
+      {/* Antes / Con FitControl */}
+      <section className="lp-rev mx-auto max-w-[1100px] px-6 pt-14">
+        <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Deja el cuaderno y el Excel</h2>
+        <div className="mx-auto mt-9 grid max-w-[900px] grid-cols-1 gap-3">
+          {ANTES_DESPUES.map(([antes, despues]) => (
+            <div key={antes} className="grid grid-cols-1 overflow-hidden rounded-lg md:grid-cols-2" style={{ border: C.border }}>
+              <div className="flex items-center gap-3 px-5 py-4" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <span className="text-[15px] opacity-50">✕</span>
+                <span className="text-[13.5px] font-semibold line-through decoration-white/25" style={{ color: C.muted }}>{antes}</span>
+              </div>
+              <div className="flex items-center gap-3 px-5 py-4" style={{ background: 'rgba(255,107,53,0.07)' }}>
+                <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>✓</span>
+                <span className="text-[13.5px] font-bold text-white">{despues}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Features compactos */}
-      <section className="mx-auto max-w-[1100px] px-6 py-16">
+      <section id="funciones" className="lp-rev mx-auto max-w-[1100px] px-6 py-16">
         <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Todo lo demás, también incluido</h2>
         <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(([icon, t, d]) => (
@@ -193,8 +305,45 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
+      {/* Tu página web en minutos */}
+      <section id="pagina-web" className="lp-rev relative overflow-hidden py-16">
+        <div className="pointer-events-none absolute -left-40 top-20 h-[420px] w-[420px] rounded-full opacity-[0.10] blur-3xl" style={{ background: C.primary }} />
+        <div className="relative mx-auto grid max-w-[1100px] items-center gap-12 px-6 md:grid-cols-[1fr_1.05fr]">
+          <div className="flex justify-center md:justify-start">
+            <GymPageMockup />
+          </div>
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11.5px] font-extrabold uppercase tracking-[1.5px]" style={{ border: C.border, color: C.primary }}>
+              Incluido en todos los planes
+            </div>
+            <h2 className="text-[30px] font-extrabold leading-[1.15] tracking-[-0.8px]">
+              Tu página web profesional,<br />sin pagar un diseñador
+            </h2>
+            <p className="mt-4 max-w-[460px] text-[14.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+              Cada gimnasio en FitControl recibe su propia página con dirección propia,
+              lista para compartir en redes y recibir interesados directo a tu CRM.
+            </p>
+            <ul className="mt-6 space-y-2.5 text-[13.5px] font-semibold" style={{ color: C.muted }}>
+              {[
+                ['🌐', <span key="d">Dirección propia: <b className="text-white">tugym.{ROOT_DOMAIN}</b></span>],
+                ['🎨', <span key="e">8 diseños — de sobrios a extravagantes — con tus colores y fotos</span>],
+                ['🎲', <span key="f">Botón aleatorio: prueba combinaciones hasta dar con la tuya</span>],
+                ['📥', <span key="g">Cada "Inscríbete" cae a tu CRM con la red social de origen</span>],
+              ].map(([ic, txt]) => (
+                <li key={ic} className="flex items-start gap-3"><span className="text-[16px]">{ic}</span>{txt}</li>
+              ))}
+            </ul>
+            <a href={`https://powergym.${ROOT_DOMAIN}`} target="_blank" rel="noreferrer"
+              className="mt-7 inline-block rounded-lg px-6 py-3 text-[14px] font-extrabold text-white transition-colors hover:bg-white/5"
+              style={{ border: `1px solid ${C.primary}`, color: C.primary }}>
+              Ver una página real →
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Pasos */}
-      <section className="py-16" style={{ background: C.surface }}>
+      <section className="lp-rev py-16" style={{ background: C.surface }}>
         <div className="mx-auto max-w-[960px] px-6">
           <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Empieza en 3 pasos</h2>
           <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -215,7 +364,7 @@ export default function PlataformaLanding() {
       </section>
 
       {/* Precios */}
-      <section className="mx-auto max-w-[1100px] px-6 py-18 pt-16">
+      <section id="precios" className="lp-rev mx-auto max-w-[1100px] px-6 py-18 pt-16">
         <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Un plan para cada tipo de gimnasio</h2>
         <p className="mt-2 text-center text-[14px] font-semibold" style={{ color: C.muted }}>
           Estudio de yoga, gym de barrio o cadena multi-sede: paga solo por lo que necesitas.
@@ -259,8 +408,24 @@ export default function PlataformaLanding() {
         </p>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="lp-rev mx-auto max-w-[760px] px-6 pb-16 pt-4">
+        <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Preguntas frecuentes</h2>
+        <div className="mt-8 space-y-2.5">
+          {FAQS.map(([q, a]) => (
+            <details key={q} className="lp-faq rounded-lg" style={{ background: C.surface, border: C.border }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[14.5px] font-extrabold">
+                {q}
+                <span className="lp-faq-chevron text-[12px] transition-transform" style={{ color: C.primary }}>▼</span>
+              </summary>
+              <p className="px-5 pb-5 text-[13.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       {/* CTA final: panel + app en dispositivos reales */}
-      <section className="px-6 pb-20 pt-4">
+      <section className="lp-rev px-6 pb-20 pt-4">
         <div className="relative mx-auto max-w-[1000px] overflow-hidden rounded-xl" style={{ border: C.border }}>
           <div className="absolute inset-0 bg-cover" style={{ backgroundImage: "url('/landing/devices.jpg')", backgroundPosition: 'right center' }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(24,32,52,0.97) 30%, rgba(24,32,52,0.72) 60%, rgba(24,32,52,0.15) 100%)' }} />
@@ -286,6 +451,9 @@ export default function PlataformaLanding() {
             <span className="text-[15px] font-extrabold">FitControl</span>
           </div>
           <div className="text-[12.5px] font-semibold" style={{ color: C.muted }}>El sistema operativo para gimnasios · {ROOT_DOMAIN}</div>
+          <a href="mailto:fitcorecenterpe@gmail.com" className="text-[12.5px] font-bold transition-colors hover:text-white" style={{ color: C.primary }}>
+            fitcorecenterpe@gmail.com
+          </a>
           <div className="text-[11px] font-semibold" style={{ color: 'rgba(142,154,168,0.5)' }}>© 2026 FitControl. Todos los derechos reservados.</div>
         </div>
       </footer>
