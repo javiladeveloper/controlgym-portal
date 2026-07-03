@@ -128,15 +128,15 @@ export default function Landing({ slug }) {
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               {promos.map((pr) => (
                 <div key={pr.nombre}
-                  className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border-2 bg-white p-5 sm:w-[380px]"
+                  className="relative flex w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border-2 bg-white p-5 sm:w-[380px]"
                   style={{ borderColor: tema.color_primary }}>
                   <div className="absolute right-0 top-0 rounded-bl-xl px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white"
                     style={{ background: tema.color_primary }}>
                     Oferta
                   </div>
                   <div className="pr-14 text-[17px] font-extrabold">{pr.nombre}</div>
-                  {pr.descripcion && <div className="mt-1.5 text-[13px] font-semibold leading-relaxed text-muted">{pr.descripcion}</div>}
-                  <div className="mt-3 flex items-center justify-between">
+                  {pr.descripcion && <div className="mt-1.5 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{pr.descripcion}</div>}
+                  <div className="mt-auto flex items-center justify-between pt-3">
                     {pr.fecha_fin
                       ? <span className="text-[11.5px] font-extrabold text-faint">Hasta el {new Date(pr.fecha_fin + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}</span>
                       : <span />}
@@ -156,12 +156,12 @@ export default function Landing({ slug }) {
           <p className="mt-2 text-center text-[14px] font-semibold text-muted">Elige el plan que se ajusta a tu ritmo</p>
           <div className="mt-10 flex flex-wrap justify-center gap-5">
             {data.planes.map((p) => (
-              <div key={p.nombre} className="relative w-full max-w-[260px] rounded-2xl border border-line bg-white p-6 transition-transform hover:-translate-y-1 sm:w-[240px]"
+              <div key={p.nombre} className="relative flex w-full max-w-[260px] flex-col rounded-2xl border border-line bg-white p-6 transition-transform hover:-translate-y-1 sm:w-[240px]"
                 style={p.badge ? { borderColor: tema.color_primary, boxShadow: `0 10px 30px ${tema.color_primary}22` } : {}}>
                 {p.badge && <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-extrabold text-white" style={{ background: tema.color_primary }}>{p.badge}</div>}
                 <div className="text-[15px] font-extrabold text-muted">{p.nombre}</div>
                 <div className="mt-2 text-[32px] font-extrabold tracking-[-1px]">{money(p.precio, data.moneda)}<span className="text-[14px] font-semibold text-muted">/{p.unidad}</span></div>
-                <div className="mt-3 text-[13px] font-semibold leading-relaxed text-muted">{p.descripcion}</div>
+                <div className="mt-3 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{p.descripcion}</div>
                 <a href={portalUrl} className="mt-6 block rounded-[10px] py-2.5 text-center text-[13px] font-extrabold text-white" style={{ background: tema.color_primary }}>Elegir</a>
               </div>
             ))}
