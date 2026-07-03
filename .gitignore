@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Secrets / env
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+*.local
+.vite/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Design reference (kept out of the app build)
+design/FitCore-pretty.html
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md

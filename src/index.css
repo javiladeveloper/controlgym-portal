@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-brand: 'Manrope';
+  }
+  html {
+    font-family: var(--font-brand), 'Manrope', system-ui, sans-serif;
+  }
+  body {
+    margin: 0;
+    background: #e9ebf0;
+    color: #141b2e;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Scrollbar to match the prototype */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c6cbd4;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

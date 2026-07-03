@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<meta name="ext-resource-dependency" content="./ios-frame.jsx" data-resource-id="iosFrame" />
+<template id="__bundler_thumbnail" data-bg-color="#141B2E">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#141B2E"></rect>
+    <rect x="480" y="280" width="240" height="240" rx="56" fill="#FF6B35"></rect>
+    <g fill="#FFFFFF">
+      <rect x="530" y="368" width="18" height="64" rx="7"></rect>
+      <rect x="554" y="352" width="18" height="96" rx="7"></rect>
+      <rect x="628" y="352" width="18" height="96" rx="7"></rect>
+      <rect x="652" y="368" width="18" height="64" rx="7"></rect>
+      <rect x="578" y="390" width="44" height="20" rx="8"></rect>
+    </g>
+  </svg>
+</template>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #E9EBF0; }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #C6CBD4; border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</helmet>
+
+<div style="height:100vh; display:flex; flex-direction:column; font-family:'Manrope',sans-serif; background:#E9EBF0; color:#141B2E;">
+
+  <!-- ═══════════ Barra de demo: switch App / Panel ═══════════ -->
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 24px; background:#FFFFFF; border-bottom:1px solid #E5E7EB; flex-shrink:0; z-index:100;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:34px; height:34px; border-radius:10px; background:#FF6B35; display:flex; align-items:center; justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
+          <rect x="1" y="8" width="3.5" height="8" rx="1.2"></rect>
+          <rect x="5.5" y="5.5" width="3.5" height="13" rx="1.2"></rect>
+          <rect x="15" y="5.5" width="3.5" height="13" rx="1.2"></rect>
+          <rect x="19.5" y="8" width="3.5" height="8" rx="1.2"></rect>
+          <rect x="9" y="10.5" width="6" height="3" rx="1"></rect>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:16px; font-weight:800; letter-spacing:-0.3px;">FitCore</div>
+        <div style="font-size:11px; color:#5B6472;">Demo interactiva · Gestión de gimnasios</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:4px; background:#F5F6F8; border:1px solid #E5E7EB; border-radius:12px; padding:4px;">
+      <button onClick="{{ goApp }}" style="border:none; cursor:pointer; padding:8px 18px; border-radius:9px; font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; background: {{ swAppBg }}; color: {{ swAppColor }}; box-shadow: {{ swAppShadow }};" style-hover="opacity:0.9;">App del socio</button>
+      <button onClick="{{ goPanel }}" style="border:none; cursor:pointer; padding:8px 18px; border-radius:9px; font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; background: {{ swPanelBg }}; color: {{ swPanelColor }}; box-shadow: {{ swPanelShadow }};" style-hover="opacity:0.9;">Panel del gimnasio</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:7px; background:#F5F6F8; border:1px solid #E5E7EB; border-radius:999px; padding:7px 14px;">
+      <div style="width:7px; height:7px; border-radius:50%; background:#1D9E75;"></div>
+      <span style="font-size:12px; color:#141B2E; font-weight:800;">{{ sede }}</span>
+      <span style="font-size:12px; color:#5B6472; font-weight:600;">· Julio 2026</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ APP MÓVIL ═══════════════════ -->
+  <sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="App móvil" style="flex:1; overflow:auto; display:flex; align-items:center; justify-content:center; padding:30px 20px;">
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ statusDark }}" hint-size="402px,874px">
+        <div style="height:100%; display:flex; flex-direction:column; font-family:'Manrope',sans-serif; background:#F5F6F8;">
+          <div style="flex:1; overflow:auto; min-height:0;">
+
+            <!-- ── Inicio ── -->
+            <sc-if value="{{ tabInicio }}" hint-placeholder-val="{{ true }}">
+              <div data-screen-label="App · Inicio">
+                <div style="background:#141B2E; padding:72px 20px 22px; border-radius:0 0 26px 26px; position:relative;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div>
+                      <div style="font-size:13px; color:#9AA3B5; font-weight:600;">Buenos días</div>
+                      <div style="font-size:25px; color:#FFFFFF; font-weight:800; letter-spacing:-0.4px;">Hola, Carlos</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <div onClick="{{ toggleAppNotif }}" style="position:relative; width:42px; height:42px; border-radius:50%; background:#1D2740; display:flex; align-items:center; justify-content:center; cursor:pointer;" style-active="transform:scale(0.95);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DDE2EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7"></path><path d="M10.3 20a2 2 0 003.4 0"></path></svg>
+                        <div style="position:absolute; top:9px; right:10px; width:7px; height:7px; border-radius:50%; background:#FF6B35; border:1.5px solid #141B2E;"></div>
+                      </div>
+                      <div style="width:46px; height:46px; border-radius:50%; background:#FF6B35; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px;">CM</div>
+                    </div>
+                  </div>
+                  <sc-if value="{{ appNotifOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute; top:128px; left:16px; right:16px; background:#FFFFFF; border:1px solid #E5E7EB; border-radius:16px; box-shadow:0 18px 44px rgba(20,27,46,0.28); z-index:60; overflow:hidden; animation:fadeSlide 0.25s ease;">
+                      <div style="display:flex; align-items:center; justify-content:space-between; padding:13px 15px; border-bottom:1px solid #F0F1F4;">
+                        <div style="font-size:13.5px; font-weight:800;">Notificaciones</div>
+                        <div onClick="{{ toggleAppNotif }}" style="font-size:11px; color:#FF6B35; font-weight:800; cursor:pointer;">Cerrar</div>
+                      </div>
+                      <sc-for list="{{ appNotifs }}" as="an" hint-placeholder-count="3">
+                        <div style="display:flex; gap:11px; padding:12px 15px; border-bottom:1px solid #F0F1F4;">
+                          <div style="width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; background: {{ an.dot }};"></div>
+                          <div style="min-width:0;">
+                            <div style="font-size:12.5px; font-weight:800; line-height:1.35;">{{ an.title }}</div>
+                            <div style="font-size:11.5px; color:#5B6472; font-weight:600; margin-top:2px;">{{ an.sub }}</div>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <div style="display:inline-flex; align-items:center; gap:8px; margin-top:16px; background:#1D2740; border-radius:999px; padding:8px 14px;">
+                    <div style="width:8px; height:8px; border-radius:50%; background:#1D9E75;"></div>
+                    <span style="font-size:12.5px; color:#DDE2EB; font-weight:600;">Membresía activa · <span style="color:#FF6B35; font-weight:800;">Vence: 28 jul</span></span>
+                  </div>
+                </div>
+
+                <div style="padding:16px 16px 24px; display:flex; flex-direction:column; gap:13px;">
+                  <div style="background:#FFF0E8; border-radius:14px; padding:18px;">
+                    <div style="font-size:11px; font-weight:800; color:#FF6B35; letter-spacing:0.8px; text-transform:uppercase;">Hoy · Lunes</div>
+                    <div style="font-size:19px; font-weight:800; margin-top:4px;">Pierna y glúteo</div>
+                    <div style="font-size:13px; color:#5B6472; margin-top:2px;">6 ejercicios · 45 min</div>
+                    <button onClick="{{ goRutina }}" style="margin-top:14px; width:100%; border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:14.5px; font-weight:800; padding:13px; border-radius:11px; box-shadow:0 4px 12px rgba(255,107,53,0.3);" style-hover="background:#F05E28;" style-active="transform:scale(0.98);">Empezar rutina</button>
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px;">
+                    <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px;">
+                      <div style="font-size:11.5px; color:#5B6472; font-weight:700;">Peso</div>
+                      <div style="font-size:21px; font-weight:800; margin-top:3px;">78.4 kg</div>
+                      <div style="font-size:12px; color:#1D9E75; font-weight:800; margin-top:2px;">−1.2 kg este mes</div>
+                    </div>
+                    <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px;">
+                      <div style="font-size:11.5px; color:#5B6472; font-weight:700;">Asistencia</div>
+                      <div style="font-size:21px; font-weight:800; margin-top:3px;">4/5</div>
+                      <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">esta semana</div>
+                    </div>
+                  </div>
+
+                  <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                    <div style="width:40px; height:40px; border-radius:11px; background:#F5F6F8; display:flex; align-items:center; justify-content:center;">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" stroke-width="2" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="8.5"></circle>
+                        <circle cx="12" cy="12" r="4"></circle>
+                      </svg>
+                    </div>
+                    <div style="flex:1;">
+                      <div style="font-size:12px; color:#5B6472; font-weight:700;">Próxima comida · 1:00 pm</div>
+                      <div style="font-size:14px; font-weight:700; margin-top:2px;">Pollo, arroz integral y ensalada</div>
+                    </div>
+                    <div style="font-size:12.5px; color:#5B6472; font-weight:800;">650 kcal</div>
+                  </div>
+
+                  <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; padding:0 2px;">
+                    <div style="font-size:15px; font-weight:800;">Clases de hoy</div>
+                    <div style="font-size:11.5px; color:#5B6472; font-weight:700;">Lunes</div>
+                  </div>
+                  <sc-for list="{{ clasesHoy }}" as="cc" hint-placeholder-count="3">
+                    <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:14px; display:flex; align-items:center; gap:12px;">
+                      <div style="flex:1; min-width:0;">
+                        <div style="display:flex; align-items:center; gap:7px;">
+                          <div style="width:8px; height:8px; border-radius:50%; flex-shrink:0; background: {{ cc.dot }};"></div>
+                          <div style="font-size:14px; font-weight:800;">{{ cc.name }}</div>
+                        </div>
+                        <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:3px;">{{ cc.time }} · {{ cc.inst }}</div>
+                        <div style="font-size:11px; color:#5B6472; font-weight:800; margin-top:2px;">Cupos: {{ cc.cupo }}</div>
+                      </div>
+                      <button onClick="{{ cc.onReserve }}" style="border:1.5px solid {{ cc.btnBorder }}; cursor:pointer; background: {{ cc.btnBg }}; color: {{ cc.btnColor }}; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:9px 15px; border-radius:9px; flex-shrink:0;" style-active="transform:scale(0.97);">{{ cc.btnLabel }}</button>
+                    </div>
+                  </sc-for>
+
+                  <div style="background:#141B2E; border-radius:14px; padding:16px; display:flex; align-items:center; gap:13px; margin-top:6px;">
+                    <div style="width:44px; height:44px; border-radius:50%; background:#FF6B35; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; font-weight:800; color:#FFFFFF;">+1</div>
+                    <div style="flex:1;">
+                      <div style="font-size:14px; font-weight:800; color:#FFFFFF;">Refiere a un amigo</div>
+                      <div style="font-size:12px; color:#9AA3B5; font-weight:600; margin-top:2px;">Ambos ganan 1 semana gratis en su plan</div>
+                    </div>
+                    <svg width="8" height="14" viewBox="0 0 8 14"><path d="M1 1l6 6-6 6" stroke="#9AA3B5" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- ── Rutina ── -->
+            <sc-if value="{{ tabRutina }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="App · Rutina" style="padding:70px 16px 24px;">
+                <div style="font-size:23px; font-weight:800; letter-spacing:-0.3px;">Rutina semanal</div>
+                <div style="font-size:13px; color:#5B6472; margin-top:2px;">Objetivo: pérdida de grasa</div>
+
+                <div style="display:flex; gap:9px; margin-top:16px;">
+                  <sc-for list="{{ days }}" as="d" hint-placeholder-count="5">
+                    <button onClick="{{ d.onSelect }}" style="flex:1; border:1px solid {{ d.border }}; cursor:pointer; height:48px; border-radius:12px; font-family:'Manrope',sans-serif; font-size:15px; font-weight:800; background: {{ d.bg }}; color: {{ d.color }};" style-hover="border-color:#FF6B35;">{{ d.label }}</button>
+                  </sc-for>
+                </div>
+
+                <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px; margin-top:14px;">
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700;">
+                    <span style="color:#141B2E;">{{ dayFocus }}</span>
+                    <span style="color:#FF6B35;">{{ progressLabel }}</span>
+                  </div>
+                  <div style="height:8px; background:#F0F1F4; border-radius:999px; margin-top:9px; overflow:hidden;">
+                    <div style="height:100%; border-radius:999px; background:#FF6B35; transition:width 0.3s ease; width: {{ progressPct }};"></div>
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:11px; margin-top:14px;">
+                  <sc-for list="{{ exercises }}" as="ex" hint-placeholder-count="4">
+                    <div onClick="{{ ex.onToggle }}" style="display:flex; align-items:center; gap:12px; background: {{ ex.bg }}; border:1px solid {{ ex.border }}; border-radius:14px; padding:14px; cursor:pointer;" style-hover="border-color:#FF6B35;" style-active="transform:scale(0.99);">
+                      <div style="width:26px; height:26px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:2px solid {{ ex.ckBorder }}; background: {{ ex.ckBg }};">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{ ex.ckOpacity }};">
+                          <path d="M4 12.5l5 5L20 6.5"></path>
+                        </svg>
+                      </div>
+                      <div style="flex:1; min-width:0;">
+                        <div style="font-size:14.5px; font-weight:800; color: {{ ex.nameColor }}; text-decoration: {{ ex.deco }};">{{ ex.name }}</div>
+                        <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">{{ ex.meta }}</div>
+                      </div>
+                      <div style="width:36px; height:36px; border-radius:50%; background:#FFF0E8; flex-shrink:0; display:flex; align-items:center; justify-content:center;" title="Ver video">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#FF6B35"><path d="M7 4.5l13 7.5-13 7.5z"></path></svg>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- ── Dieta ── -->
+            <sc-if value="{{ tabDieta }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="App · Dieta" style="padding:70px 16px 24px;">
+                <div style="font-size:23px; font-weight:800; letter-spacing:-0.3px;">Dieta de hoy</div>
+                <div style="font-size:13px; color:#5B6472; margin-top:2px;">Plan: alta proteína · déficit moderado</div>
+
+                <div style="background:#141B2E; border-radius:14px; padding:16px; margin-top:16px; display:flex; align-items:center; justify-content:space-between;">
+                  <div>
+                    <div style="font-size:11.5px; color:#9AA3B5; font-weight:700;">Registradas hoy</div>
+                    <div style="font-size:21px; color:#FFFFFF; font-weight:800; margin-top:2px;">{{ kcalDone }} <span style="font-size:13px; color:#9AA3B5; font-weight:600;">/ {{ kcalTotal }} kcal</span></div>
+                  </div>
+                  <div style="font-size:12.5px; color:#FF6B35; font-weight:800;">{{ mealsDoneLabel }}</div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:11px; margin-top:14px;">
+                  <sc-for list="{{ meals }}" as="m" hint-placeholder-count="5">
+                    <div onClick="{{ m.onToggle }}" style="display:flex; align-items:center; gap:12px; background: {{ m.bg }}; border:1px solid {{ m.border }}; border-radius:14px; padding:14px; cursor:pointer;" style-hover="border-color:#FF6B35;" style-active="transform:scale(0.99);">
+                      <div style="width:26px; height:26px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:2px solid {{ m.ckBorder }}; background: {{ m.ckBg }};">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{ m.ckOpacity }};">
+                          <path d="M4 12.5l5 5L20 6.5"></path>
+                        </svg>
+                      </div>
+                      <div style="flex:1; min-width:0;">
+                        <div style="font-size:11.5px; color:#FF6B35; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">{{ m.name }} · {{ m.time }}</div>
+                        <div style="font-size:13.5px; font-weight:700; margin-top:2px; color:#141B2E;">{{ m.desc }}</div>
+                      </div>
+                      <div style="font-size:12.5px; color:#5B6472; font-weight:800; flex-shrink:0;">{{ m.kcal }} kcal</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- ── Progreso ── -->
+            <sc-if value="{{ tabProgreso }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="App · Progreso" style="padding:70px 16px 24px;">
+                <div style="font-size:23px; font-weight:800; letter-spacing:-0.3px;">Progreso</div>
+                <div style="font-size:13px; color:#5B6472; margin-top:2px;">Últimas 8 semanas</div>
+
+                <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:16px; margin-top:16px;">
+                  <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                    <div>
+                      <div style="font-size:12px; color:#5B6472; font-weight:700;">Peso actual</div>
+                      <div style="font-size:26px; font-weight:800;">78.4 kg</div>
+                    </div>
+                    <div style="font-size:13px; color:#1D9E75; font-weight:800;">−3.7 kg en 8 semanas</div>
+                  </div>
+                  <svg viewBox="0 0 320 150" style="width:100%; margin-top:10px; display:block;">
+                    <polygon points="10,21 53,34 96,50 139,71 181,82 224,90 267,106 310,119 310,150 10,150" fill="#FF6B35" opacity="0.10"></polygon>
+                    <polyline points="10,21 53,34 96,50 139,71 181,82 224,90 267,106 310,119" fill="none" stroke="#FF6B35" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                    <circle cx="310" cy="119" r="5" fill="#FF6B35" stroke="#FFFFFF" stroke-width="2.5"></circle>
+                  </svg>
+                  <div style="display:flex; justify-content:space-between; font-size:10px; color:#9AA3B5; font-weight:600; margin-top:4px;">
+                    <span>S1</span><span>S2</span><span>S3</span><span>S4</span><span>S5</span><span>S6</span><span>S7</span><span>S8</span>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:11px; margin-top:13px;">
+                  <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:13px;">
+                    <div style="font-size:11px; color:#5B6472; font-weight:700;">Cintura</div>
+                    <div style="font-size:17px; font-weight:800; margin-top:2px;">84 cm</div>
+                    <div style="font-size:11px; color:#1D9E75; font-weight:800;">−3 cm</div>
+                  </div>
+                  <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:13px;">
+                    <div style="font-size:11px; color:#5B6472; font-weight:700;">Pecho</div>
+                    <div style="font-size:17px; font-weight:800; margin-top:2px;">102 cm</div>
+                    <div style="font-size:11px; color:#5B6472; font-weight:700;">sin cambio</div>
+                  </div>
+                  <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:13px;">
+                    <div style="font-size:11px; color:#5B6472; font-weight:700;">Brazo</div>
+                    <div style="font-size:17px; font-weight:800; margin-top:2px;">34.5 cm</div>
+                    <div style="font-size:11px; color:#1D9E75; font-weight:800;">+0.5 cm</div>
+                  </div>
+                </div>
+
+                <div style="background:#FFF0E8; border-radius:14px; padding:16px; margin-top:13px; display:flex; align-items:center; gap:13px;">
+                  <div style="width:44px; height:44px; border-radius:50%; background:#FF6B35; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+                      <path d="M12 2.5c1.2 3.5-3.5 5.5-3.5 9.5a4.5 4.5 0 009 0c0-1.8-1-3.2-1.8-4.4C14.6 6 13 4.4 12 2.5z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style="font-size:15px; font-weight:800;">Racha de 4 semanas</div>
+                    <div style="font-size:12.5px; color:#5B6472; font-weight:600; margin-top:2px;">cumpliendo tu meta de asistencia</div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- ── Perfil ── -->
+            <sc-if value="{{ tabPerfil }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="App · Perfil" style="padding:70px 16px 24px;">
+                <div style="font-size:23px; font-weight:800; letter-spacing:-0.3px;">Perfil</div>
+
+                <div style="background:linear-gradient(135deg, #141B2E 0%, #1D2740 100%); border-radius:16px; padding:19px; margin-top:14px; box-shadow:0 10px 24px rgba(20,27,46,0.25);">
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="font-size:12px; color:#FF6B35; font-weight:800; letter-spacing:1.5px;">PLAN PREMIUM</div>
+                    <div style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ credBadgeBg }}; color: {{ credBadgeColor }};">{{ credBadge }}</div>
+                  </div>
+                  <div style="font-size:20px; color:#FFFFFF; font-weight:800; margin-top:14px;">Carlos Mendoza</div>
+                  <div style="font-size:12.5px; color:#9AA3B5; font-weight:600; margin-top:2px;">Socio N.º 0482 · Objetivo: pérdida de grasa</div>
+                  <div style="height:1px; background:rgba(255,255,255,0.1); margin:15px 0;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <div style="font-size:12.5px; color:#DDE2EB; font-weight:600;">Vence el <span style="color:#FF6B35; font-weight:800;">28 de julio</span></div>
+                    <div style="display:flex; gap:8px;">
+                      <button onClick="{{ toggleFreeze }}" style="border:1.5px solid rgba(255,255,255,0.25); cursor:pointer; background:none; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:800; padding:9px 14px; border-radius:9px;" style-hover="border-color:rgba(255,255,255,0.5);" style-active="transform:scale(0.97);">{{ freezeLabel }}</button>
+                      <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:800; padding:9px 16px; border-radius:9px;" style-hover="background:#F05E28;" style-active="transform:scale(0.97);">Renovar</button>
+                    </div>
+                  </div>
+                  <div style="font-size:11px; color:#9AA3B5; font-weight:600; margin-top:10px;">Tu Plan Premium incluye congelamiento hasta 30 días por año</div>
+                </div>
+
+                <div style="background:#E6F5EF; border-radius:14px; padding:15px; margin-top:13px; display:flex; align-items:center; gap:13px;">
+                  <div style="width:44px; height:44px; border-radius:12px; background:#FFFFFF; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="1.8" stroke-linecap="round">
+                      <path d="M12 11c0 4-0.8 7-2.4 9"></path>
+                      <path d="M8 6.6C9.1 5.6 10.5 5 12 5c3.9 0 7 3.1 7 7 0 2.6-0.3 4.8-0.9 6.6"></path>
+                      <path d="M5.6 9.8C5.2 10.5 5 11.2 5 12c0 3-0.5 5.6-1.4 7.6"></path>
+                      <path d="M15.5 12.5c0 2.8-0.4 5.2-1.1 7.1"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style="font-size:14px; font-weight:800; color:#116B4E;">Huella registrada</div>
+                    <div style="font-size:12px; color:#3A7A62; font-weight:600; margin-top:2px;">Entra y sal con tu huella en el sensor de la sede</div>
+                  </div>
+                </div>
+
+                <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:16px; margin-top:13px;">
+                  <div style="font-size:13px; font-weight:800; margin-bottom:11px;">Asistencia reciente</div>
+                  <div style="display:flex; flex-direction:column; gap:0;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #F0F1F4;">
+                      <div>
+                        <div style="font-size:13.5px; font-weight:700;">Hoy</div>
+                        <div style="font-size:12px; color:#5B6472; font-weight:600;">Entrada 6:05 pm</div>
+                      </div>
+                      <div style="background:#FFF0E8; color:#FF6B35; font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px;">En la sede</div>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #F0F1F4;">
+                      <div>
+                        <div style="font-size:13.5px; font-weight:700;">Ayer</div>
+                        <div style="font-size:12px; color:#5B6472; font-weight:600;">6:12 pm − 7:40 pm</div>
+                      </div>
+                      <div style="font-size:12px; color:#5B6472; font-weight:700;">1 h 28 min</div>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0;">
+                      <div>
+                        <div style="font-size:13.5px; font-weight:700;">Sábado 27</div>
+                        <div style="font-size:12px; color:#5B6472; font-weight:600;">9:03 am − 10:35 am</div>
+                      </div>
+                      <div style="font-size:12px; color:#5B6472; font-weight:700;">1 h 32 min</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+
+          <!-- ── Barra de pestañas ── -->
+          <div style="display:flex; background:#FFFFFF; border-top:1px solid #E5E7EB; padding:9px 6px 30px; flex-shrink:0;">
+            <button onClick="{{ goInicio }}" style="flex:1; border:none; background:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Manrope',sans-serif; font-size:10.5px; font-weight:700; color: {{ tcInicio }};">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9h-6v-6h-6v6H3z"></path></svg>
+              Inicio
+            </button>
+            <button onClick="{{ goRutina }}" style="flex:1; border:none; background:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Manrope',sans-serif; font-size:10.5px; font-weight:700; color: {{ tcRutina }};">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="8.5" width="3" height="7" rx="1"></rect><rect x="5" y="6" width="3" height="12" rx="1"></rect><rect x="16" y="6" width="3" height="12" rx="1"></rect><rect x="20" y="8.5" width="3" height="7" rx="1"></rect><rect x="8.5" y="10.7" width="7" height="2.6" rx="1"></rect></svg>
+              Rutina
+            </button>
+            <button onClick="{{ goDieta }}" style="flex:1; border:none; background:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Manrope',sans-serif; font-size:10.5px; font-weight:700; color: {{ tcDieta }};">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4"></circle></svg>
+              Dieta
+            </button>
+            <button onClick="{{ goProgreso }}" style="flex:1; border:none; background:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Manrope',sans-serif; font-size:10.5px; font-weight:700; color: {{ tcProgreso }};">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="13" width="4.5" height="8" rx="1.2"></rect><rect x="9.75" y="8" width="4.5" height="13" rx="1.2"></rect><rect x="16.5" y="3" width="4.5" height="18" rx="1.2"></rect></svg>
+              Progreso
+            </button>
+            <button onClick="{{ goPerfil }}" style="flex:1; border:none; background:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Manrope',sans-serif; font-size:10.5px; font-weight:700; color: {{ tcPerfil }};">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+              Perfil
+            </button>
+          </div>
+        </div>
+      </x-import>
+    </div>
+  </sc-if>
+
+  <!-- ═══════════════════ PANEL WEB ═══════════════════ -->
+  <sc-if value="{{ isPanel }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Panel web" style="flex:1; display:flex; min-height:0;">
+
+      <!-- ── Sidebar ── -->
+      <div style="width:230px; flex-shrink:0; background:#141B2E; display:flex; flex-direction:column; padding:22px 14px; overflow-y:auto;">
+        <div style="display:flex; align-items:center; gap:10px; padding:0 10px 22px;">
+          <div style="width:36px; height:36px; border-radius:10px; background:#FF6B35; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="#FFFFFF">
+              <rect x="1" y="8" width="3.5" height="8" rx="1.2"></rect>
+              <rect x="5.5" y="5.5" width="3.5" height="13" rx="1.2"></rect>
+              <rect x="15" y="5.5" width="3.5" height="13" rx="1.2"></rect>
+              <rect x="19.5" y="8" width="3.5" height="8" rx="1.2"></rect>
+              <rect x="9" y="10.5" width="6" height="3" rx="1"></rect>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:16px; font-weight:800; color:#FFFFFF; letter-spacing:-0.3px;">FitCore</div>
+            <div style="font-size:10.5px; color:#9AA3B5; font-weight:600;">Multisede · Perú</div>
+          </div>
+        </div>
+
+        <select value="{{ sede }}" onChange="{{ onSede }}" style="margin:0 2px 16px; padding:9px 11px; background:#1D2740; color:#FFFFFF; border:1px solid rgba(255,255,255,0.14); border-radius:10px; font-family:'Manrope',sans-serif; font-size:12.5px; font-weight:800; cursor:pointer; outline:none;">
+          <option value="Sede Centro">Sede Centro</option>
+          <option value="Sede Norte">Sede Norte</option>
+          <option value="Sede Sur">Sede Sur</option>
+        </select>
+
+        <div style="display:flex; flex-direction:column; gap:3px;">
+          <sc-for list="{{ menuItems }}" as="mi" hint-placeholder-count="9">
+            <div onClick="{{ mi.onSelect }}" style="position:relative; display:flex; align-items:center; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:13.5px; background: {{ mi.bg }}; color: {{ mi.color }}; font-weight: {{ mi.weight }};" style-hover="background:#1D2740; color:#FFFFFF;">
+              <div style="position:absolute; left:-14px; top:9px; bottom:9px; width:3.5px; border-radius:0 3px 3px 0; background: {{ mi.bar }};"></div>
+              {{ mi.label }}
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:auto; padding:14px 10px 0; display:flex; align-items:center; gap:10px;">
+          <div style="width:34px; height:34px; border-radius:50%; background:#1D2740; color:#FF6B35; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800;">A</div>
+          <div>
+            <div style="font-size:12.5px; color:#FFFFFF; font-weight:700;">Andrea Quispe</div>
+            <div style="font-size:10.5px; color:#9AA3B5; font-weight:600;">Administradora</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Contenido ── -->
+      <div style="flex:1; overflow:auto; min-width:0;">
+
+        <!-- ── Dashboard ── -->
+        <sc-if value="{{ modDashboard }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Panel · Dashboard" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+              <div style="flex:1;">
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Buen día, Andrea</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Jueves · {{ sede }}</div>
+              </div>
+              <input placeholder="Buscar socio…" style="width:250px; padding:10px 14px; border:1px solid #E5E7EB; border-radius:10px; font-family:'Manrope',sans-serif; font-size:13px; background:#FFFFFF; color:#141B2E; outline:none;" style-focus="border-color:#FF6B35;">
+              <div style="position:relative;">
+                <div onClick="{{ toggleNotif }}" style="position:relative; width:40px; height:40px; border-radius:10px; background:#FFFFFF; border:1px solid #E5E7EB; display:flex; align-items:center; justify-content:center; cursor:pointer;" style-hover="border-color:#FF6B35;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7"></path><path d="M10.3 20a2 2 0 003.4 0"></path></svg>
+                  <div style="position:absolute; top:9px; right:10px; width:7px; height:7px; border-radius:50%; background:#FF6B35; border:1.5px solid #FFFFFF;"></div>
+                </div>
+                <sc-if value="{{ notifOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute; top:48px; right:0; width:340px; background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; box-shadow:0 18px 44px rgba(20,27,46,0.16); z-index:80; overflow:hidden; animation:fadeSlide 0.25s ease;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F0F1F4;">
+                      <div style="font-size:13.5px; font-weight:800;">Notificaciones</div>
+                      <div style="font-size:11px; color:#FF6B35; font-weight:800; cursor:pointer;">Marcar leídas</div>
+                    </div>
+                    <sc-for list="{{ panelNotifs }}" as="n" hint-placeholder-count="4">
+                      <div style="display:flex; gap:11px; padding:12px 16px; border-bottom:1px solid #F0F1F4; cursor:pointer;" style-hover="background:#FAFBFC;">
+                        <div style="width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; background: {{ n.dot }};"></div>
+                        <div style="min-width:0;">
+                          <div style="font-size:12.5px; font-weight:800; line-height:1.35;">{{ n.title }}</div>
+                          <div style="font-size:11.5px; color:#5B6472; font-weight:600; margin-top:2px;">{{ n.sub }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="width:40px; height:40px; border-radius:50%; background:#141B2E; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800;">A</div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px; margin-top:22px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">En la sede ahora</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">{{ kpiEnSede }}</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">aforo al {{ kpiAforo }}</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Socios activos</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">{{ kpiSocios }}</div>
+                <div style="font-size:12px; color:#1D9E75; font-weight:800; margin-top:2px;">{{ kpiSociosDelta }}</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Ingresos de julio</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">{{ kpiIngresos }}</div>
+                <div style="font-size:12px; color:#1D9E75; font-weight:800; margin-top:2px;">{{ kpiIngresosDelta }}</div>
+              </div>
+              <div style="background:#FFF0E8; border:1px solid #FFD9C6; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#FF6B35; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Por vencer (7 días)</div>
+                <div style="font-size:27px; font-weight:800; color:#FF6B35; margin-top:6px;">{{ kpiPorVencer }}</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:700; margin-top:2px;">membresías · <span style="color:#FF6B35; font-weight:800; text-decoration:underline; cursor:pointer;">avisar</span></div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.55fr 1fr; gap:15px; margin-top:15px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="font-size:14.5px; font-weight:800;">Asistencia de hoy por hora</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">6:00 am — 8:00 pm</div>
+                <div style="display:flex; align-items:stretch; gap:7px; height:180px; margin-top:16px;">
+                  <sc-for list="{{ hours }}" as="h" hint-placeholder-count="15">
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                      <div style="width:100%; border-radius:6px 6px 2px 2px; height: {{ h.pct }}; background: {{ h.color }};" title="{{ h.count }} socios"></div>
+                      <div style="font-size:9.5px; color:#9AA3B5; font-weight:700;">{{ h.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px; display:flex; flex-direction:column;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <div style="font-size:14.5px; font-weight:800;">Check-ins por huella</div>
+                  <div style="display:flex; align-items:center; gap:6px; background:#FFF0E8; border-radius:999px; padding:4px 11px;">
+                    <div style="width:7px; height:7px; border-radius:50%; background:#FF6B35; animation:pulseDot 1.4s ease infinite;"></div>
+                    <span style="font-size:10.5px; color:#FF6B35; font-weight:800; letter-spacing:0.8px;">EN VIVO</span>
+                  </div>
+                </div>
+                <div style="margin-top:8px; flex:1; overflow:hidden;">
+                  <sc-for list="{{ checkins }}" as="c" hint-placeholder-count="4">
+                    <div style="display:flex; align-items:center; gap:11px; padding:9.5px 0; border-bottom:1px solid #F0F1F4; animation:fadeSlide 0.35s ease;">
+                      <div style="width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background: {{ c.avBg }}; color: {{ c.avColor }};">{{ c.ini }}</div>
+                      <div style="flex:1; min-width:0;">
+                        <div style="font-size:13px; font-weight:800; color:#141B2E;">{{ c.name }}</div>
+                        <div style="font-size:11px; font-weight:700; color: {{ c.noteColor }};">{{ c.note }}</div>
+                      </div>
+                      <div style="text-align:right; flex-shrink:0;">
+                        <div style="font-size:12px; font-weight:800; color:#141B2E;">{{ c.time }}</div>
+                        <div style="font-size:10.5px; font-weight:800; color: {{ c.stColor }};">{{ c.status }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px; margin-top:15px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                <div style="width:38px; height:38px; border-radius:10px; background:#FFF0E8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg>
+                </div>
+                <div style="font-size:12.5px; font-weight:700; color:#141B2E; line-height:1.45;">Kardex: proteína en polvo con <span style="color:#E24B4A; font-weight:800;">stock bajo (4 uds.)</span></div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                <div style="width:38px; height:38px; border-radius:10px; background:#EDF0F7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#141B2E" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+                </div>
+                <div style="font-size:12.5px; font-weight:700; color:#141B2E; line-height:1.45;"><span style="font-weight:800;">8 socios</span> esperan rutina nueva esta semana</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                <div style="width:38px; height:38px; border-radius:10px; background:#E6F5EF; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                </div>
+                <div style="font-size:12.5px; font-weight:700; color:#141B2E; line-height:1.45;">Caja del día: <span style="font-weight:800;">S/ 1,240</span> · cierre pendiente</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Clientes ── -->
+        <sc-if value="{{ modClientes }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Clientes" style="padding:24px 28px 36px;">
+
+            <sc-if value="{{ fichaClosed }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                  <div>
+                    <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Clientes</div>
+                    <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">{{ kpiSocios }} socios activos · {{ sede }}</div>
+                  </div>
+                  <input placeholder="Buscar por nombre o N.º de socio…" style="width:290px; padding:10px 14px; border:1px solid #E5E7EB; border-radius:10px; font-family:'Manrope',sans-serif; font-size:13px; background:#FFFFFF; color:#141B2E; outline:none;" style-focus="border-color:#FF6B35;">
+                </div>
+
+                <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:18px; overflow:hidden;">
+                  <div style="display:grid; grid-template-columns:2.2fr 1fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:13px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                    <div>Socio</div><div>Plan</div><div>Estado</div><div>Última visita</div><div></div>
+                  </div>
+                  <sc-for list="{{ clients }}" as="cl" hint-placeholder-count="6">
+                    <div style="display:grid; grid-template-columns:2.2fr 1fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:13px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                      <div style="display:flex; align-items:center; gap:11px; min-width:0;">
+                        <div style="width:36px; height:36px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800; background: {{ cl.avBg }}; color: {{ cl.avColor }};">{{ cl.ini }}</div>
+                        <div style="min-width:0;">
+                          <div style="font-size:13.5px; font-weight:800;">{{ cl.name }}</div>
+                          <div style="font-size:11.5px; color:#5B6472; font-weight:600;">Socio N.º {{ cl.num }}</div>
+                        </div>
+                      </div>
+                      <div style="font-size:13px; font-weight:700; color:#141B2E;">{{ cl.plan }}</div>
+                      <div><span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ cl.stBg }}; color: {{ cl.stColor }};">{{ cl.estado }}</span></div>
+                      <div style="font-size:12.5px; color:#5B6472; font-weight:600;">{{ cl.ultima }}</div>
+                      <button onClick="{{ cl.onVer }}" style="border:1px solid #FF6B35; background:none; cursor:pointer; color:#FF6B35; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 0; border-radius:9px;" style-hover="background:#FFF0E8;">Ver ficha</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ fichaOpen }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="Panel · Ficha de socio">
+                <div onClick="{{ closeFicha }}" style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:800; color:#5B6472; cursor:pointer;" style-hover="color:#FF6B35;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+                  Volver a clientes
+                </div>
+
+                <div style="display:flex; align-items:center; gap:16px; margin-top:16px;">
+                  <div style="width:58px; height:58px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800; background: {{ ficha.avBg }}; color: {{ ficha.avColor }};">{{ ficha.ini }}</div>
+                  <div style="flex:1;">
+                    <div style="font-size:21px; font-weight:800; letter-spacing:-0.3px;">{{ ficha.name }}</div>
+                    <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Socio N.º {{ ficha.num }} · Plan {{ ficha.plan }}</div>
+                  </div>
+                  <span style="font-size:11.5px; font-weight:800; padding:6px 13px; border-radius:999px; background: {{ ficha.stBg }}; color: {{ ficha.stColor }};">{{ ficha.estado }}</span>
+                  <button onClick="{{ genRutina }}" style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px; box-shadow:0 4px 12px rgba(255,107,53,0.3);" style-hover="background:#F05E28;">Generar rutina y dieta</button>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:18px;">
+                  <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                    <div style="font-size:14px; font-weight:800; margin-bottom:13px;">Datos del socio</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px;">
+                      <div><div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Edad</div><div style="font-size:14.5px; font-weight:800; margin-top:3px;">{{ ficha.edad }}</div></div>
+                      <div><div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Teléfono</div><div style="font-size:14.5px; font-weight:800; margin-top:3px;">{{ ficha.tel }}</div></div>
+                      <div><div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Talla</div><div style="font-size:14.5px; font-weight:800; margin-top:3px;">{{ ficha.talla }}</div></div>
+                      <div><div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Peso</div><div style="font-size:14.5px; font-weight:800; margin-top:3px;">{{ ficha.peso }}</div></div>
+                      <div style="grid-column:1 / -1;"><div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Objetivo</div><div style="font-size:14.5px; font-weight:800; margin-top:3px; color:#FF6B35;">{{ ficha.objetivo }}</div></div>
+                    </div>
+                  </div>
+                  <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                    <div style="font-size:14px; font-weight:800; margin-bottom:6px;">Historial de asistencia</div>
+                    <sc-for list="{{ ficha.visitas }}" as="v" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #F0F1F4;">
+                        <div>
+                          <div style="font-size:13px; font-weight:800;">{{ v.d }}</div>
+                          <div style="font-size:11.5px; color:#5B6472; font-weight:600;">{{ v.t }}</div>
+                        </div>
+                        <div style="font-size:11.5px; font-weight:800; color: {{ v.color }};">{{ v.extra }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ── Rutinas y dietas ── -->
+        <sc-if value="{{ modRutinas }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Rutinas y dietas" style="padding:24px 28px 36px; max-width:1020px;">
+            <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Rutinas y dietas</div>
+            <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Genera el plan semanal y envíalo a la app del socio</div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px; margin-top:18px;">
+              <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+                <div>
+                  <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:7px;">Socio</div>
+                  <select value="{{ rutSocio }}" onChange="{{ onRutSocio }}" style="padding:11px 14px; border:1px solid #E5E7EB; border-radius:10px; font-family:'Manrope',sans-serif; font-size:13.5px; font-weight:700; color:#141B2E; background:#FFFFFF; min-width:230px; cursor:pointer; outline:none;">
+                    <option value="Carlos Mendoza">Carlos Mendoza · N.º 0482</option>
+                    <option value="Lucía Ramos">Lucía Ramos · N.º 0517</option>
+                    <option value="Jorge Paredes">Jorge Paredes · N.º 0339</option>
+                    <option value="María Torres">María Torres · N.º 0561</option>
+                    <option value="Diego Salas">Diego Salas · N.º 0602</option>
+                  </select>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <div style="background:#F5F6F8; border-radius:10px; padding:10px 15px; font-size:12.5px; font-weight:700; color:#5B6472;">Talla: <span style="color:#141B2E; font-weight:800;">{{ rutTalla }}</span></div>
+                  <div style="background:#F5F6F8; border-radius:10px; padding:10px 15px; font-size:12.5px; font-weight:700; color:#5B6472;">Peso: <span style="color:#141B2E; font-weight:800;">{{ rutPeso }}</span></div>
+                  <div style="background:#FFF0E8; border-radius:10px; padding:10px 15px; font-size:12.5px; font-weight:700; color:#5B6472;">Objetivo: <span style="color:#FF6B35; font-weight:800;">{{ rutObjetivo }}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px; margin-top:15px;">
+              <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                <div style="font-size:14.5px; font-weight:800;">Rutina semanal generada</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600;">Cambia el enfoque de cada día</div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:11px; margin-top:14px;">
+                <sc-for list="{{ weekPlan }}" as="wp" hint-placeholder-count="5">
+                  <div style="border:1px solid #E5E7EB; border-radius:12px; padding:13px; background:#FAFBFC; display:flex; flex-direction:column; gap:10px;">
+                    <div style="width:30px; height:30px; border-radius:9px; background:#141B2E; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; flex-shrink:0;">{{ wp.d }}</div>
+                    <select value="{{ wp.focus }}" onChange="{{ wp.onChange }}" style="width:100%; padding:9px 6px; border:1px solid #E5E7EB; border-radius:9px; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; color:#141B2E; background:#FFFFFF; cursor:pointer; outline:none;" style-hover="border-color:#FF6B35;">
+                      <option value="Pierna y glúteo">Pierna y glúteo</option>
+                      <option value="Pecho y tríceps">Pecho y tríceps</option>
+                      <option value="Espalda y bíceps">Espalda y bíceps</option>
+                      <option value="Hombro y core">Hombro y core</option>
+                      <option value="Full body y cardio">Full body y cardio</option>
+                      <option value="Descanso">Descanso</option>
+                    </select>
+                    <div style="font-size:11.5px; color:#5B6472; font-weight:600;">{{ wp.meta }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px; margin-top:15px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:42px; height:42px; border-radius:11px; background:#FFF0E8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><circle cx="12" cy="12" r="4"></circle></svg>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:14.5px; font-weight:800;">Plan de alimentación</div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:600; margin-top:2px;">Edita cada comida y sus calorías · alta proteína, déficit moderado</div>
+                </div>
+                <div style="font-size:12px; color:#1D9E75; font-weight:800; background:#E6F5EF; padding:6px 13px; border-radius:999px;">Total: {{ planKcalTotal }} kcal</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:9px; margin-top:16px;">
+                <sc-for list="{{ planMeals }}" as="pm" hint-placeholder-count="5">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:130px; flex-shrink:0;">
+                      <div style="font-size:12px; font-weight:800;">{{ pm.name }}</div>
+                      <div style="font-size:10.5px; color:#5B6472; font-weight:600;">{{ pm.time }}</div>
+                    </div>
+                    <input value="{{ pm.desc }}" onChange="{{ pm.onDesc }}" style="flex:1; padding:10px 13px; border:1px solid #E5E7EB; border-radius:9px; font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; color:#141B2E; background:#FAFBFC; outline:none;" style-focus="border-color:#FF6B35; background:#FFFFFF;">
+                    <input type="number" value="{{ pm.kcal }}" onChange="{{ pm.onKcal }}" style="width:76px; padding:10px 8px; border:1px solid #E5E7EB; border-radius:9px; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; color:#141B2E; background:#FAFBFC; outline:none; text-align:right;" style-focus="border-color:#FF6B35; background:#FFFFFF;">
+                    <div style="font-size:11px; color:#5B6472; font-weight:800; width:26px;">kcal</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:14px; margin-top:18px;">
+              <button onClick="{{ enviarPlan }}" style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:14px; font-weight:800; padding:13px 24px; border-radius:11px; box-shadow:0 4px 14px rgba(255,107,53,0.32);" style-hover="background:#F05E28;" style-active="transform:scale(0.98);">Enviar a la app del socio</button>
+              <sc-if value="{{ enviado }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:center; gap:8px; background:#E6F5EF; border-radius:10px; padding:11px 16px; animation:fadeSlide 0.3s ease;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>
+                  <span style="font-size:13px; font-weight:800; color:#116B4E;">Plan enviado a la app de {{ rutSocio }}</span>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Clases ── -->
+        <sc-if value="{{ modClases }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Clases" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Clases y servicios</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Horario semanal · {{ sede }} · los cambios se publican en la app del socio</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Nueva clase</button>
+            </div>
+
+            <div style="display:flex; gap:16px; margin-top:16px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; color:#5B6472;"><div style="width:9px; height:9px; border-radius:50%; background:#FF6B35;"></div>Funcional</div>
+              <div style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; color:#5B6472;"><div style="width:9px; height:9px; border-radius:50%; background:#141B2E;"></div>Baile</div>
+              <div style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; color:#5B6472;"><div style="width:9px; height:9px; border-radius:50%; background:#1D9E75;"></div>Spinning</div>
+              <div style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; color:#5B6472;"><div style="width:9px; height:9px; border-radius:50%; background:#8A93A3;"></div>Yoga</div>
+              <div style="font-size:12px; color:#9AA3B5; font-weight:600; margin-left:auto;">Toca una clase para activarla o pausarla</div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:12px; margin-top:14px; align-items:start;">
+              <sc-for list="{{ claseCols }}" as="col" hint-placeholder-count="6">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="background:#141B2E; border-radius:10px; padding:9px 12px; text-align:center;">
+                    <span style="font-size:12.5px; font-weight:800; color:#FFFFFF;">{{ col.label }}</span>
+                  </div>
+                  <sc-for list="{{ col.items }}" as="cs" hint-placeholder-count="2">
+                    <div onClick="{{ cs.onToggle }}" style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:12px; padding:12px; cursor:pointer; opacity: {{ cs.opacity }};" style-hover="border-color:#FF6B35;">
+                      <div style="font-size:11.5px; font-weight:800; color:#5B6472;">{{ cs.time }}</div>
+                      <div style="display:flex; align-items:center; gap:6px; margin-top:5px;">
+                        <div style="width:8px; height:8px; border-radius:50%; flex-shrink:0; background: {{ cs.dot }};"></div>
+                        <div style="font-size:13px; font-weight:800; line-height:1.25;">{{ cs.name }}</div>
+                      </div>
+                      <div style="font-size:11px; color:#5B6472; font-weight:600; margin-top:4px;">{{ cs.inst }}</div>
+                      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:9px;">
+                        <div style="font-size:10.5px; font-weight:800; color:#5B6472;">{{ cs.cupo }}</div>
+                        <span style="font-size:10px; font-weight:800; padding:4px 9px; border-radius:999px; background: {{ cs.pillBg }}; color: {{ cs.pillColor }};">{{ cs.pillLabel }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:15px; overflow:hidden; max-width:760px;">
+              <div style="padding:16px 20px;">
+                <div style="font-size:14.5px; font-weight:800;">Acceso a clases por plan</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">Toca para incluir o excluir · el plan Básico incluye solo musculación (sala de máquinas)</div>
+              </div>
+              <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:12px; align-items:center; padding:11px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                <div>Servicio</div><div style="text-align:center;">Básico</div><div style="text-align:center;">Estándar</div><div style="text-align:center;">Premium</div>
+              </div>
+              <sc-for list="{{ accesoRows }}" as="ar" hint-placeholder-count="4">
+                <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:12px; align-items:center; padding:11px 20px; border-top:1px solid #F0F1F4;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:9px; height:9px; border-radius:50%; flex-shrink:0; background: {{ ar.dot }};"></div>
+                    <div style="font-size:13.5px; font-weight:800;">{{ ar.name }}</div>
+                  </div>
+                  <sc-for list="{{ ar.cells }}" as="c" hint-placeholder-count="3">
+                    <div style="display:flex; justify-content:center;">
+                      <div onClick="{{ c.onToggle }}" style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; font-weight:800; background: {{ c.bg }}; color: {{ c.color }};" style-hover="box-shadow:0 0 0 2px #FFD9C6;" style-active="transform:scale(0.92);">{{ c.mark }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── CRM ── -->
+        <sc-if value="{{ modCRM }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · CRM" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">CRM · Prospectos</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Embudo de captación y seguimiento · {{ sede }}</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Nuevo prospecto</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px; margin-top:20px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Leads en julio</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">42</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">redes, recepción y referidos</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Conversión</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">38%</div>
+                <div style="font-size:12px; color:#1D9E75; font-weight:800; margin-top:2px;">+5 pts vs. junio</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Inscritos este mes</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">16</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">de 42 leads</div>
+              </div>
+              <div style="background:#FFF0E8; border:1px solid #FFD9C6; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#FF6B35; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Seguimientos hoy</div>
+                <div style="font-size:27px; font-weight:800; color:#FF6B35; margin-top:6px;">{{ crmPendientes }}</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:700; margin-top:2px;">llamadas y WhatsApp pendientes</div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-top:15px; align-items:start;">
+              <sc-for list="{{ crmCols }}" as="col" hint-placeholder-count="4">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; background:#141B2E; border-radius:10px; padding:9px 13px;">
+                    <span style="font-size:12.5px; font-weight:800; color:#FFFFFF;">{{ col.label }}</span>
+                    <span style="font-size:11px; font-weight:800; color:#FF6B35;">{{ col.count }}</span>
+                  </div>
+                  <sc-for list="{{ col.items }}" as="ld" hint-placeholder-count="2">
+                    <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:12px; padding:13px;" style-hover="border-color:#FF6B35;">
+                      <div style="display:flex; align-items:center; gap:9px;">
+                        <div style="width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; background:#EDF0F7; color:#141B2E;">{{ ld.ini }}</div>
+                        <div style="min-width:0;">
+                          <div style="font-size:13px; font-weight:800; line-height:1.25;">{{ ld.name }}</div>
+                          <div style="font-size:10.5px; color:#5B6472; font-weight:700;">{{ ld.fuente }}</div>
+                        </div>
+                      </div>
+                      <div style="font-size:11.5px; color:#5B6472; font-weight:600; margin-top:9px; line-height:1.45;">{{ ld.nota }}</div>
+                      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px;">
+                        <span style="font-size:10.5px; font-weight:800; color:#9AA3B5;">{{ ld.fecha }}</span>
+                        <button onClick="{{ ld.onAdvance }}" style="border:1px solid {{ ld.btnBorder }}; background: {{ ld.btnBg }}; cursor:pointer; color: {{ ld.btnColor }}; font-family:'Manrope',sans-serif; font-size:10.5px; font-weight:800; padding:6px 11px; border-radius:8px;" style-active="transform:scale(0.96);">{{ ld.btnLabel }}</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:15px; overflow:hidden; max-width:860px;">
+              <div style="padding:16px 20px;">
+                <div style="font-size:14.5px; font-weight:800;">Seguimientos de hoy</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">Marca cada contacto como realizado</div>
+              </div>
+              <sc-for list="{{ crmTareas }}" as="t" hint-placeholder-count="4">
+                <div onClick="{{ t.onToggle }}" style="display:flex; align-items:center; gap:13px; padding:12px 20px; border-top:1px solid #F0F1F4; cursor:pointer;" style-hover="background:#FAFBFC;">
+                  <div style="width:24px; height:24px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:2px solid {{ t.ckBorder }}; background: {{ t.ckBg }};">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{ t.ckOpacity }};"><path d="M4 12.5l5 5L20 6.5"></path></svg>
+                  </div>
+                  <span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; flex-shrink:0; background: {{ t.tipoBg }}; color: {{ t.tipoColor }};">{{ t.tipo }}</span>
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:13.5px; font-weight:800; text-decoration: {{ t.deco }};">{{ t.name }}</div>
+                    <div style="font-size:11.5px; color:#5B6472; font-weight:600; margin-top:1px;">{{ t.detalle }}</div>
+                  </div>
+                  <div style="font-size:12px; color:#9AA3B5; font-weight:800; flex-shrink:0;">{{ t.hora }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Promociones ── -->
+        <sc-if value="{{ modPromos }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Promociones" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Promociones</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Campañas para captar y retener socios · {{ sede }}</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Nueva campaña</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
+              <sc-for list="{{ promos }}" as="pr" hint-placeholder-count="4">
+                <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;" style-hover="border-color:#FF6B35;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ pr.pillBg }}; color: {{ pr.pillColor }};">{{ pr.estado }}</span>
+                    <span style="font-size:11.5px; color:#9AA3B5; font-weight:700;">{{ pr.canal }}</span>
+                  </div>
+                  <div style="font-size:16px; font-weight:800; margin-top:12px;">{{ pr.name }}</div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:600; margin-top:4px; line-height:1.5;">{{ pr.desc }}</div>
+                  <div style="display:flex; justify-content:space-between; margin-top:14px; padding-top:13px; border-top:1px solid #F0F1F4;">
+                    <div style="font-size:12px; color:#5B6472; font-weight:700;">{{ pr.vig }}</div>
+                    <div style="font-size:12px; color:#FF6B35; font-weight:800;">{{ pr.stat }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Membresías ── -->
+        <sc-if value="{{ modMembresias }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Membresías" style="padding:24px 28px 36px;">
+            <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Membresías</div>
+            <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">3 planes + pase del día · 312 socios activos</div>
+
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px; margin-top:20px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="font-size:13px; font-weight:800; color:#5B6472;">Básico</div>
+                <div style="font-size:26px; font-weight:800; margin-top:6px;">S/ 60 <span style="font-size:13px; color:#5B6472; font-weight:600;">/mes</span></div>
+                <div style="font-size:12.5px; color:#5B6472; font-weight:600; margin-top:6px;">Acceso a sala de máquinas</div>
+                <div style="font-size:11.5px; color:#9AA3B5; font-weight:700; margin-top:5px;">Sin congelamiento</div>
+                <div style="margin-top:14px; padding-top:13px; border-top:1px solid #F0F1F4; font-size:13px; font-weight:800;">74 socios</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="font-size:13px; font-weight:800; color:#5B6472;">Estándar</div>
+                <div style="font-size:26px; font-weight:800; margin-top:6px;">S/ 90 <span style="font-size:13px; color:#5B6472; font-weight:600;">/mes</span></div>
+                <div style="font-size:12.5px; color:#5B6472; font-weight:600; margin-top:6px;">Sala + clases grupales</div>
+                <div style="font-size:11.5px; color:#1D9E75; font-weight:800; margin-top:5px;">Congela hasta 15 días/año</div>
+                <div style="margin-top:14px; padding-top:13px; border-top:1px solid #F0F1F4; font-size:13px; font-weight:800;">141 socios</div>
+              </div>
+              <div style="background:#141B2E; border-radius:14px; padding:19px; position:relative;">
+                <div style="position:absolute; top:16px; right:16px; background:#FF6B35; color:#FFFFFF; font-size:10px; font-weight:800; padding:4px 10px; border-radius:999px; letter-spacing:0.5px;">MÁS POPULAR</div>
+                <div style="font-size:13px; font-weight:800; color:#9AA3B5;">Premium</div>
+                <div style="font-size:26px; font-weight:800; margin-top:6px; color:#FFFFFF;">S/ 130 <span style="font-size:13px; color:#9AA3B5; font-weight:600;">/mes</span></div>
+                <div style="font-size:12.5px; color:#9AA3B5; font-weight:600; margin-top:6px;">Sala + clases + rutina y dieta en la app</div>
+                <div style="font-size:11.5px; color:#3FCB9C; font-weight:800; margin-top:5px;">Congela hasta 30 días/año</div>
+                <div style="margin-top:14px; padding-top:13px; border-top:1px solid rgba(255,255,255,0.1); font-size:13px; font-weight:800; color:#FF6B35;">97 socios</div>
+              </div>
+              <div style="background:#FFF0E8; border:1px solid #FFD9C6; border-radius:14px; padding:19px;">
+                <div style="font-size:13px; font-weight:800; color:#FF6B35;">Pase del día</div>
+                <div style="font-size:26px; font-weight:800; margin-top:6px;">S/ 15 <span style="font-size:13px; color:#5B6472; font-weight:600;">/día</span></div>
+                <div style="font-size:12.5px; color:#5B6472; font-weight:600; margin-top:6px;">Acceso completo + clases del día</div>
+                <div style="font-size:11.5px; color:#9AA3B5; font-weight:700; margin-top:5px;">Venta en recepción</div>
+                <div style="margin-top:14px; padding-top:13px; border-top:1px solid #FFD9C6; font-size:13px; font-weight:800; color:#FF6B35;">31 vendidos en julio</div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:15px; overflow:hidden;">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px;">
+                <div style="font-size:14.5px; font-weight:800;">Por vencer en los próximos 7 días <span style="color:#FF6B35;">· 23</span></div>
+                <button style="border:1px solid #FF6B35; background:none; cursor:pointer; color:#FF6B35; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 14px; border-radius:9px;" style-hover="background:#FFF0E8;">Recordar a todos</button>
+              </div>
+              <div style="display:grid; grid-template-columns:2.2fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:11px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                <div>Socio</div><div>Plan</div><div>Vence</div><div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:2.2fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                <div style="font-size:13.5px; font-weight:800;">Rosa Medina</div>
+                <div style="font-size:13px; font-weight:700;">Estándar</div>
+                <div style="font-size:12.5px; font-weight:800; color:#E24B4A;">25 jul · en 2 días</div>
+                <button style="border:none; background:#F5F6F8; cursor:pointer; color:#141B2E; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 0; border-radius:9px;" style-hover="background:#FFF0E8; color:#FF6B35;">Recordar</button>
+              </div>
+              <div style="display:grid; grid-template-columns:2.2fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                <div style="font-size:13.5px; font-weight:800;">Luis Herrera</div>
+                <div style="font-size:13px; font-weight:700;">Básico</div>
+                <div style="font-size:12.5px; font-weight:800; color:#E24B4A;">26 jul · en 3 días</div>
+                <button style="border:none; background:#F5F6F8; cursor:pointer; color:#141B2E; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 0; border-radius:9px;" style-hover="background:#FFF0E8; color:#FF6B35;">Recordar</button>
+              </div>
+              <div style="display:grid; grid-template-columns:2.2fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                <div style="font-size:13.5px; font-weight:800;">Carlos Mendoza</div>
+                <div style="font-size:13px; font-weight:700;">Premium</div>
+                <div style="font-size:12.5px; font-weight:800; color:#FF6B35;">28 jul · en 5 días</div>
+                <button style="border:none; background:#F5F6F8; cursor:pointer; color:#141B2E; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 0; border-radius:9px;" style-hover="background:#FFF0E8; color:#FF6B35;">Recordar</button>
+              </div>
+              <div style="display:grid; grid-template-columns:2.2fr 1fr 1.2fr 110px; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                <div style="font-size:13.5px; font-weight:800;">Carmen Soto</div>
+                <div style="font-size:13px; font-weight:700;">Estándar</div>
+                <div style="font-size:12.5px; font-weight:800; color:#FF6B35;">29 jul · en 6 días</div>
+                <button style="border:none; background:#F5F6F8; cursor:pointer; color:#141B2E; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 0; border-radius:9px;" style-hover="background:#FFF0E8; color:#FF6B35;">Recordar</button>
+              </div>
+              <div style="padding:12px 20px; border-top:1px solid #F0F1F4; font-size:12px; color:#5B6472; font-weight:700;">y 19 socios más…</div>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:15px; overflow:hidden;">
+              <div style="padding:16px 20px;">
+                <div style="font-size:14.5px; font-weight:800;">Gestión de membresías</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">Renueva, congela o reactiva según lo que permite cada plan</div>
+              </div>
+              <div style="display:grid; grid-template-columns:1.9fr 1.3fr 1.1fr 1fr 210px; gap:12px; align-items:center; padding:11px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                <div>Socio</div><div>Plan</div><div>Estado</div><div>Vence</div><div>Acciones</div>
+              </div>
+              <sc-for list="{{ gestion }}" as="g" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:1.9fr 1.3fr 1.1fr 1fr 210px; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                  <div>
+                    <div style="font-size:13.5px; font-weight:800;">{{ g.name }}</div>
+                    <div style="font-size:11.5px; color:#5B6472; font-weight:600;">Socio N.º {{ g.num }}</div>
+                  </div>
+                  <div>
+                    <div style="font-size:13px; font-weight:700;">{{ g.plan }}</div>
+                    <div style="font-size:10.5px; color:#9AA3B5; font-weight:700;">{{ g.planSub }}</div>
+                  </div>
+                  <div><span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ g.stBg }}; color: {{ g.stColor }};">{{ g.estado }}</span></div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">{{ g.vence }}</div>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button style="border:1px solid #FF6B35; background:none; cursor:pointer; color:#FF6B35; font-family:'Manrope',sans-serif; font-size:11.5px; font-weight:800; padding:8px 12px; border-radius:9px;" style-hover="background:#FFF0E8;">Renovar</button>
+                    <button onClick="{{ g.onFreeze }}" style="border:1px solid #C6CBD4; background:none; cursor:pointer; color:#141B2E; font-family:'Manrope',sans-serif; font-size:11.5px; font-weight:800; padding:8px 12px; border-radius:9px; display: {{ g.btnFreezeDisplay }};" style-hover="border-color:#141B2E; background:#F5F6F8;">{{ g.freezeLabel }}</button>
+                    <span style="font-size:11px; color:#9AA3B5; font-weight:700; display: {{ g.noFreezeDisplay }};">Sin congelamiento</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Personal ── -->
+        <sc-if value="{{ modPersonal }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Personal" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Personal</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">{{ sede }} · 8 colaboradores · 5 en turno</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Agregar colaborador</button>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:18px; overflow:hidden;">
+              <div style="display:grid; grid-template-columns:2.2fr 1.4fr 1.2fr 1fr; gap:12px; align-items:center; padding:13px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                <div>Colaborador</div><div>Rol</div><div>Turno</div><div>Estado</div>
+              </div>
+              <sc-for list="{{ staff }}" as="st" hint-placeholder-count="8">
+                <div style="display:grid; grid-template-columns:2.2fr 1.4fr 1.2fr 1fr; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                  <div style="display:flex; align-items:center; gap:11px;">
+                    <div style="width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background: {{ st.avBg }}; color: {{ st.avColor }};">{{ st.ini }}</div>
+                    <div style="font-size:13.5px; font-weight:800;">{{ st.name }}</div>
+                  </div>
+                  <div style="font-size:13px; font-weight:700;">{{ st.rol }}</div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:600;">{{ st.turno }}</div>
+                  <div><span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ st.stBg }}; color: {{ st.stColor }};">{{ st.estado }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Kardex ── -->
+        <sc-if value="{{ modKardex }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Kardex" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Kardex</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Inventario y venta de productos · {{ sede }}</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Registrar movimiento</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px; margin-top:20px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Productos en inventario</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">24</div>
+              </div>
+              <div style="background:#FCEAEA; border:1px solid #F5CFCF; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#E24B4A; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Con stock bajo</div>
+                <div style="font-size:27px; font-weight:800; color:#E24B4A; margin-top:6px;">3</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Ventas de hoy</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">S/ 380</div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:15px; overflow:hidden;">
+              <div style="display:grid; grid-template-columns:2.2fr 1.2fr 0.8fr 0.8fr 1.1fr; gap:12px; align-items:center; padding:13px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                <div>Producto</div><div>Categoría</div><div>Stock</div><div>Precio</div><div>Estado</div>
+              </div>
+              <sc-for list="{{ kardex }}" as="k" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:2.2fr 1.2fr 0.8fr 0.8fr 1.1fr; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                  <div style="font-size:13.5px; font-weight:800;">{{ k.name }}</div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">{{ k.cat }}</div>
+                  <div style="font-size:13px; font-weight:800; color: {{ k.stockColor }};">{{ k.stock }} uds.</div>
+                  <div style="font-size:13px; font-weight:700;">{{ k.precio }}</div>
+                  <div><span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ k.stBg }}; color: {{ k.stColor }};">{{ k.estado }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; margin-top:15px; overflow:hidden;">
+              <div style="padding:16px 20px;">
+                <div style="font-size:14.5px; font-weight:800;">Movimientos recientes</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">Compra = entra stock, sale de caja · Venta = sale stock, ingresa a caja</div>
+              </div>
+              <div style="display:grid; grid-template-columns:0.9fr 2fr 1.1fr 0.9fr 0.9fr; gap:12px; align-items:center; padding:11px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Stock</div><div>Caja</div>
+              </div>
+              <sc-for list="{{ kardexMovs }}" as="km" hint-placeholder-count="5">
+                <div style="display:grid; grid-template-columns:0.9fr 2fr 1.1fr 0.9fr 0.9fr; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">{{ km.fecha }}</div>
+                  <div style="font-size:13.5px; font-weight:800;">{{ km.prod }}</div>
+                  <div><span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ km.tipoBg }}; color: {{ km.tipoColor }};">{{ km.tipo }}</span></div>
+                  <div style="font-size:13px; font-weight:800; color: {{ km.stockColor }};">{{ km.stock }}</div>
+                  <div style="font-size:13px; font-weight:800; color: {{ km.cajaColor }};">{{ km.caja }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Máquinas ── -->
+        <sc-if value="{{ modMaquinas }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Máquinas" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Máquinas</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Inventario de equipos, estado y mantenimientos · {{ sede }}</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Programar mantenimiento</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px; margin-top:20px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Total de equipos</div>
+                <div style="font-size:27px; font-weight:800; margin-top:6px;">34</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Operativas</div>
+                <div style="font-size:27px; font-weight:800; color:#1D9E75; margin-top:6px;">31</div>
+              </div>
+              <div style="background:#FFF0E8; border:1px solid #FFD9C6; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#FF6B35; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">En mantenimiento</div>
+                <div style="font-size:27px; font-weight:800; color:#FF6B35; margin-top:6px;">2</div>
+              </div>
+              <div style="background:#FCEAEA; border:1px solid #F5CFCF; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#E24B4A; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Fuera de servicio</div>
+                <div style="font-size:27px; font-weight:800; color:#E24B4A; margin-top:6px;">1</div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.7fr 1fr; gap:15px; margin-top:15px; align-items:start;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; overflow:hidden;">
+                <div style="display:grid; grid-template-columns:1.9fr 0.9fr 1.2fr 1fr; gap:12px; align-items:center; padding:13px 20px; background:#F5F6F8; font-size:11px; font-weight:800; color:#5B6472; text-transform:uppercase; letter-spacing:0.6px;">
+                  <div>Equipo</div><div>Zona</div><div>Estado</div><div>Próximo mant.</div>
+                </div>
+                <sc-for list="{{ maquinas }}" as="mq" hint-placeholder-count="7">
+                  <div style="display:grid; grid-template-columns:1.9fr 0.9fr 1.2fr 1fr; gap:12px; align-items:center; padding:12px 20px; border-top:1px solid #F0F1F4;" style-hover="background:#FAFBFC;">
+                    <div>
+                      <div style="font-size:13.5px; font-weight:800;">{{ mq.name }}</div>
+                      <div style="font-size:11.5px; color:#5B6472; font-weight:600;">{{ mq.det }}</div>
+                    </div>
+                    <div style="font-size:12.5px; color:#5B6472; font-weight:700;">{{ mq.zona }}</div>
+                    <div><span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background: {{ mq.stBg }}; color: {{ mq.stColor }};">{{ mq.estado }}</span></div>
+                    <div style="font-size:12.5px; font-weight:800; color: {{ mq.proxColor }};">{{ mq.prox }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="font-size:14.5px; font-weight:800; margin-bottom:6px;">Próximos mantenimientos</div>
+                <sc-for list="{{ proxMant }}" as="pm" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid #F0F1F4;">
+                    <div style="width:44px; height:44px; border-radius:11px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background: {{ pm.dBg }}; color: {{ pm.dColor }};">
+                      <div style="font-size:15px; font-weight:800; line-height:1;">{{ pm.dia }}</div>
+                      <div style="font-size:9px; font-weight:800; text-transform:uppercase; margin-top:2px;">{{ pm.mes }}</div>
+                    </div>
+                    <div style="min-width:0;">
+                      <div style="font-size:13px; font-weight:800;">{{ pm.name }}</div>
+                      <div style="font-size:11.5px; color:#5B6472; font-weight:600;">{{ pm.det }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Finanzas ── -->
+        <sc-if value="{{ modFinanzas }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Finanzas" style="padding:24px 28px 36px;">
+            <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Finanzas</div>
+            <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Julio 2026 · {{ sede }}</div>
+
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px; margin-top:20px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Ingresos de julio</div>
+                <div style="font-size:26px; font-weight:800; margin-top:6px;">S/ 24,830</div>
+                <div style="font-size:12px; color:#1D9E75; font-weight:800; margin-top:2px;">+9% vs. junio</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Gastos de julio</div>
+                <div style="font-size:26px; font-weight:800; margin-top:6px;">S/ 9,410</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">planilla, servicios, compras</div>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#5B6472; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Utilidad del mes</div>
+                <div style="font-size:26px; font-weight:800; color:#1D9E75; margin-top:6px;">S/ 15,420</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">margen 62%</div>
+              </div>
+              <div style="background:#FFF0E8; border:1px solid #FFD9C6; border-radius:14px; padding:17px;">
+                <div style="font-size:11px; color:#FF6B35; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">Caja del día</div>
+                <div style="font-size:26px; font-weight:800; color:#FF6B35; margin-top:6px;">S/ 1,240</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:700; margin-top:2px;">cierre pendiente</div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:15px; margin-top:15px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="font-size:14.5px; font-weight:800;">Ingresos · últimos 6 meses</div>
+                <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:2px;">en miles de soles</div>
+                <div style="display:flex; align-items:stretch; gap:14px; height:170px; margin-top:16px;">
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                    <div style="font-size:11px; font-weight:800; color:#5B6472;">19.2</div>
+                    <div style="width:100%; border-radius:6px 6px 2px 2px; height:62%; background:#FFD9C6;"></div>
+                    <div style="font-size:10.5px; color:#9AA3B5; font-weight:700;">Feb</div>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                    <div style="font-size:11px; font-weight:800; color:#5B6472;">20.5</div>
+                    <div style="width:100%; border-radius:6px 6px 2px 2px; height:67%; background:#FFD9C6;"></div>
+                    <div style="font-size:10.5px; color:#9AA3B5; font-weight:700;">Mar</div>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                    <div style="font-size:11px; font-weight:800; color:#5B6472;">21.1</div>
+                    <div style="width:100%; border-radius:6px 6px 2px 2px; height:70%; background:#FFA37D;"></div>
+                    <div style="font-size:10.5px; color:#9AA3B5; font-weight:700;">Abr</div>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                    <div style="font-size:11px; font-weight:800; color:#5B6472;">21.9</div>
+                    <div style="width:100%; border-radius:6px 6px 2px 2px; height:73%; background:#FFA37D;"></div>
+                    <div style="font-size:10.5px; color:#9AA3B5; font-weight:700;">May</div>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                    <div style="font-size:11px; font-weight:800; color:#5B6472;">22.8</div>
+                    <div style="width:100%; border-radius:6px 6px 2px 2px; height:78%; background:#FFA37D;"></div>
+                    <div style="font-size:10.5px; color:#9AA3B5; font-weight:700;">Jun</div>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;">
+                    <div style="font-size:11px; font-weight:800; color:#FF6B35;">24.8</div>
+                    <div style="width:100%; border-radius:6px 6px 2px 2px; height:88%; background:#FF6B35;"></div>
+                    <div style="font-size:10.5px; color:#141B2E; font-weight:800;">Jul</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="font-size:14.5px; font-weight:800; margin-bottom:6px;">Últimos movimientos</div>
+                <sc-for list="{{ movimientos }}" as="mv" hint-placeholder-count="5">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #F0F1F4;">
+                    <div style="min-width:0;">
+                      <div style="font-size:13px; font-weight:800;">{{ mv.name }}</div>
+                      <div style="font-size:11.5px; color:#5B6472; font-weight:600;">{{ mv.det }}</div>
+                    </div>
+                    <div style="font-size:13px; font-weight:800; flex-shrink:0; color: {{ mv.color }};">{{ mv.monto }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Sponsors ── -->
+        <sc-if value="{{ modSponsors }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Sponsors" style="padding:24px 28px 36px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div>
+                <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Sponsors</div>
+                <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">4 convenios activos · aporte mensual estimado S/ 1,150</div>
+              </div>
+              <button style="border:none; cursor:pointer; background:#FF6B35; color:#FFFFFF; font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; padding:11px 18px; border-radius:10px;" style-hover="background:#F05E28;">Nuevo convenio</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="display:flex; align-items:center; gap:13px;">
+                  <div style="width:44px; height:44px; border-radius:12px; background:#141B2E; color:#FF6B35; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; flex-shrink:0;">NM</div>
+                  <div style="flex:1;">
+                    <div style="font-size:15px; font-weight:800;">NutriMax Suplementos</div>
+                    <div style="font-size:12px; color:#5B6472; font-weight:600;">Auspicio · exhibición en recepción</div>
+                  </div>
+                  <span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background:#E6F5EF; color:#1D9E75;">Activo</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:13px; border-top:1px solid #F0F1F4;">
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Aporte: <span style="color:#141B2E; font-weight:800;">S/ 800/mes</span></div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Vence: dic 2026</div>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="display:flex; align-items:center; gap:13px;">
+                  <div style="width:44px; height:44px; border-radius:12px; background:#EDF0F7; color:#141B2E; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; flex-shrink:0;">AP</div>
+                  <div style="flex:1;">
+                    <div style="font-size:15px; font-weight:800;">AquaPura</div>
+                    <div style="font-size:12px; color:#5B6472; font-weight:600;">Canje · agua para socios y eventos</div>
+                  </div>
+                  <span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background:#E6F5EF; color:#1D9E75;">Activo</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:13px; border-top:1px solid #F0F1F4;">
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Aporte: <span style="color:#141B2E; font-weight:800;">S/ 350/mes en producto</span></div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Vence: oct 2026</div>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="display:flex; align-items:center; gap:13px;">
+                  <div style="width:44px; height:44px; border-radius:12px; background:#FFF0E8; color:#FF6B35; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; flex-shrink:0;">AS</div>
+                  <div style="flex:1;">
+                    <div style="font-size:15px; font-weight:800;">Andes Sportwear</div>
+                    <div style="font-size:12px; color:#5B6472; font-weight:600;">Descuento cruzado para socios</div>
+                  </div>
+                  <span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background:#E6F5EF; color:#1D9E75;">Activo</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:13px; border-top:1px solid #F0F1F4;">
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Beneficio: <span style="color:#141B2E; font-weight:800;">15% para socios</span></div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Vence: mar 2027</div>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px;">
+                <div style="display:flex; align-items:center; gap:13px;">
+                  <div style="width:44px; height:44px; border-radius:12px; background:#E6F5EF; color:#1D9E75; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; flex-shrink:0;">SR</div>
+                  <div style="flex:1;">
+                    <div style="font-size:15px; font-weight:800;">Clínica San Rafael</div>
+                    <div style="font-size:12px; color:#5B6472; font-weight:600;">Convenio corporativo · 40 socios referidos</div>
+                  </div>
+                  <span style="font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; background:#FFF0E8; color:#FF6B35;">Renovar en agosto</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:13px; border-top:1px solid #F0F1F4;">
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Tarifa corporativa: <span style="color:#141B2E; font-weight:800;">S/ 75/socio</span></div>
+                  <div style="font-size:12.5px; color:#5B6472; font-weight:700;">Vence: 15 ago 2026</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── Reportes ── -->
+        <sc-if value="{{ modReportes }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Panel · Reportes" style="padding:24px 28px 36px;">
+            <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px;">Reportes</div>
+            <div style="font-size:13px; color:#5B6472; font-weight:600; margin-top:2px;">Genera y descarga reportes de la sede en PDF o Excel</div>
+
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px; margin-top:20px;">
+              <sc-for list="{{ reportes }}" as="r" hint-placeholder-count="6">
+                <div style="background:#FFFFFF; border:1px solid #E5E7EB; border-radius:14px; padding:19px; display:flex; flex-direction:column; gap:12px;" style-hover="border-color:#FF6B35;">
+                  <div style="width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; background: {{ r.iconBg }};">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ r.iconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+                  </div>
+                  <div style="flex:1;">
+                    <div style="font-size:14.5px; font-weight:800;">{{ r.name }}</div>
+                    <div style="font-size:12px; color:#5B6472; font-weight:600; margin-top:3px; line-height:1.5;">{{ r.desc }}</div>
+                  </div>
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="font-size:11px; color:#9AA3B5; font-weight:800; letter-spacing:0.5px;">PDF · EXCEL</div>
+                    <button style="border:1px solid #FF6B35; background:none; cursor:pointer; color:#FF6B35; font-family:'Manrope',sans-serif; font-size:12px; font-weight:800; padding:8px 16px; border-radius:9px;" style-hover="background:#FFF0E8;">Generar</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;vistaInicial&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;app&quot;, &quot;panel&quot;], &quot;default&quot;: &quot;app&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Demo&quot; },
+  &quot;checkinsEnVivo&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      view: null,
+      appTab: 'inicio',
+      day: 'L',
+      done: { 'L-3': true, 'L-4': true },
+      mealsDone: { 0: true, 1: true },
+      module: 'Dashboard',
+      sede: 'Sede Centro',
+      fichaId: null,
+      rutSocio: 'Carlos Mendoza',
+      enviado: false,
+      planWeek: { L: 'Pierna y glúteo', M: 'Pecho y tríceps', X: 'Espalda y bíceps', J: 'Hombro y core', V: 'Full body y cardio' },
+      reservas: {},
+      pausadas: {},
+      notifOpen: false,
+      appNotifOpen: false,
+      congeladas: { ana: true },
+      appFrozen: false,
+      leadStages: {},
+      tareasDone: {},
+      accesoPlanes: {
+        Funcional: { B: false, E: true, P: true },
+        Baile: { B: false, E: true, P: true },
+        Spinning: { B: false, E: false, P: true },
+        Yoga: { B: false, E: true, P: true },
+      },
+      planMeals: [
+        { name: 'Desayuno', time: '7:00 am', desc: 'Avena con plátano y claras', kcal: 420 },
+        { name: 'Media mañana', time: '10:00 am', desc: 'Yogur griego y almendras', kcal: 180 },
+        { name: 'Almuerzo', time: '1:00 pm', desc: 'Pollo, arroz integral y ensalada', kcal: 650 },
+        { name: 'Merienda', time: '4:30 pm', desc: 'Batido de proteína y fruta', kcal: 250 },
+        { name: 'Cena', time: '7:30 pm', desc: 'Salmón con verduras al vapor', kcal: 600 },
+      ],
+      extraCheckins: [],
+    };
+    this.tickCount = 0;
+  }
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      if (this.props.checkinsEnVivo === false) return;
+      const pool = [
+        { ini: 'VN', name: 'Valeria Núñez' },
+        { ini: 'PA', name: 'Pedro Aguilar' },
+        { ini: 'SL', name: 'Sofía León' },
+        { ini: 'RD', name: 'Renzo Díaz' },
+        { ini: 'KF', name: 'Karen Flores' },
+        { ini: 'MC', name: 'Marco Chávez' },
+      ];
+      const p = pool[this.tickCount % pool.length];
+      const min = 8 + this.tickCount * 3;
+      const time = '6:' + String(min).padStart(2, '0') + ' pm';
+      this.tickCount++;
+      this.setState(s => ({
+        extraCheckins: [{
+          ini: p.ini, name: p.name, time,
+          note: 'Huella verificada', noteColor: '#9AA3B5',
+          status: 'Entrada', stColor: '#1D9E75',
+          avBg: '#EDF0F7', avColor: '#141B2E',
+        }, ...s.extraCheckins].slice(0, 4),
+      }));
+    }, 5000);
+  }
+
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  routines() {
+    return {
+      L: { focus: 'Pierna y glúteo', items: [
+        { name: 'Sentadilla con barra', meta: '4×12 · descanso 60 s' },
+        { name: 'Prensa de pierna', meta: '4×10 · descanso 90 s' },
+        { name: 'Peso muerto rumano', meta: '3×12 · descanso 60 s' },
+        { name: 'Zancadas con mancuernas', meta: '3×12 · descanso 60 s' },
+        { name: 'Curl femoral', meta: '3×15 · descanso 45 s' },
+        { name: 'Hip thrust', meta: '4×12 · descanso 90 s' } ] },
+      M: { focus: 'Pecho y tríceps', items: [
+        { name: 'Press de banca', meta: '4×10 · descanso 90 s' },
+        { name: 'Press inclinado con mancuernas', meta: '3×12 · descanso 60 s' },
+        { name: 'Fondos en paralelas', meta: '3×máx · descanso 60 s' },
+        { name: 'Extensión de tríceps en polea', meta: '4×12 · descanso 45 s' } ] },
+      X: { focus: 'Espalda y bíceps', items: [
+        { name: 'Jalón al pecho', meta: '4×12 · descanso 60 s' },
+        { name: 'Remo con barra', meta: '4×10 · descanso 90 s' },
+        { name: 'Remo en polea baja', meta: '3×12 · descanso 60 s' },
+        { name: 'Curl con barra', meta: '4×10 · descanso 60 s' } ] },
+      J: { focus: 'Hombro y core', items: [
+        { name: 'Press militar', meta: '4×10 · descanso 90 s' },
+        { name: 'Elevaciones laterales', meta: '4×15 · descanso 45 s' },
+        { name: 'Plancha', meta: '3×45 s · descanso 30 s' },
+        { name: 'Elevación de piernas', meta: '3×15 · descanso 45 s' } ] },
+      V: { focus: 'Full body y cardio', items: [
+        { name: 'Burpees', meta: '3×15 · descanso 45 s' },
+        { name: 'Kettlebell swing', meta: '4×15 · descanso 60 s' },
+        { name: 'Remo en ergómetro', meta: '3×500 m · descanso 90 s' },
+        { name: 'Caminadora inclinada', meta: '20 min · zona 2' } ] },
+    };
+  }
+
+  clasesData() {
+    return [
+      { id: 'l1', day: 'L', time: '7:00 am', name: 'Funcional', inst: 'Iván Rojas', cupo: '12/20' },
+      { id: 'l2', day: 'L', time: '7:00 pm', name: 'Baile · Salsa', inst: 'Paola Vega', cupo: '18/25' },
+      { id: 'l3', day: 'L', time: '8:00 pm', name: 'Spinning', inst: 'Iván Rojas', cupo: '8/10' },
+      { id: 'm1', day: 'M', time: '7:00 am', name: 'Yoga', inst: 'Rocío Palma', cupo: '9/15' },
+      { id: 'm2', day: 'M', time: '7:00 pm', name: 'Funcional', inst: 'Iván Rojas', cupo: '15/20' },
+      { id: 'x1', day: 'X', time: '7:00 pm', name: 'Baile · Ritmos latinos', inst: 'Paola Vega', cupo: '21/25' },
+      { id: 'x2', day: 'X', time: '8:00 pm', name: 'Spinning', inst: 'Iván Rojas', cupo: '6/10' },
+      { id: 'j1', day: 'J', time: '7:00 am', name: 'Funcional', inst: 'Iván Rojas', cupo: '11/20' },
+      { id: 'j2', day: 'J', time: '7:00 pm', name: 'Yoga', inst: 'Rocío Palma', cupo: '12/15' },
+      { id: 'v1', day: 'V', time: '7:00 pm', name: 'Baile · Full dance', inst: 'Paola Vega', cupo: '23/25' },
+      { id: 'v2', day: 'V', time: '8:00 pm', name: 'Funcional', inst: 'Iván Rojas', cupo: '14/20' },
+      { id: 's1', day: 'S', time: '9:00 am', name: 'Funcional', inst: 'Bruno Salazar', cupo: '16/20' },
+      { id: 's2', day: 'S', time: '10:00 am', name: 'Baile · Salsa', inst: 'Paola Vega', cupo: '19/25' },
+    ];
+  }
+
+  claseDot(name) {
+    if (name.startsWith('Baile')) return '#141B2E';
+    if (name.startsWith('Spinning')) return '#1D9E75';
+    if (name.startsWith('Yoga')) return '#8A93A3';
+    return '#FF6B35';
+  }
+
+  clientsData() {
+    const vCarlos = [
+      { d: 'Hoy', t: 'Entrada 6:05 pm', extra: 'En la sede', color: '#FF6B35' },
+      { d: 'Ayer', t: '6:12 pm − 7:40 pm', extra: '1 h 28 min', color: '#5B6472' },
+      { d: 'Sábado 27', t: '9:03 am − 10:35 am', extra: '1 h 32 min', color: '#5B6472' },
+    ];
+    const vGen = [
+      { d: 'Ayer', t: '7:15 pm − 8:20 pm', extra: '1 h 05 min', color: '#5B6472' },
+      { d: 'Martes 30', t: '6:40 am − 7:50 am', extra: '1 h 10 min', color: '#5B6472' },
+    ];
+    return [
+      { id: 'carlos', ini: 'CM', name: 'Carlos Mendoza', num: '0482', plan: 'Premium', estado: 'Activa', ultima: 'Hoy · 6:05 pm', talla: '1.75 m', peso: '78.4 kg', objetivo: 'Pérdida de grasa', edad: '29 años', tel: '987 234 511', visitas: vCarlos },
+      { id: 'lucia', ini: 'LR', name: 'Lucía Ramos', num: '0517', plan: 'Estándar', estado: 'Activa', ultima: 'Hoy · 6:02 pm', talla: '1.62 m', peso: '61.0 kg', objetivo: 'Tonificación', edad: '26 años', tel: '941 880 273', visitas: vGen },
+      { id: 'jorge', ini: 'JP', name: 'Jorge Paredes', num: '0339', plan: 'Premium', estado: 'Vencida', ultima: 'Hoy · 5:58 pm', talla: '1.80 m', peso: '88.2 kg', objetivo: 'Ganancia muscular', edad: '34 años', tel: '999 410 662', visitas: vGen },
+      { id: 'maria', ini: 'MT', name: 'María Torres', num: '0561', plan: 'Estándar', estado: 'Activa', ultima: 'Hoy · 5:51 pm', talla: '1.58 m', peso: '55.6 kg', objetivo: 'Resistencia', edad: '31 años', tel: '956 118 340', visitas: vGen },
+      { id: 'diego', ini: 'DS', name: 'Diego Salas', num: '0602', plan: 'Básico', estado: 'Activa', ultima: 'Ayer · 8:10 pm', talla: '1.71 m', peso: '74.8 kg', objetivo: 'Pérdida de grasa', edad: '24 años', tel: '912 774 508', visitas: vGen },
+      { id: 'ana', ini: 'AC', name: 'Ana Castillo', num: '0448', plan: 'Premium', estado: 'Activa', ultima: 'Hace 2 días', talla: '1.66 m', peso: '63.9 kg', objetivo: 'Tonificación', edad: '38 años', tel: '987 660 194', visitas: vGen },
+    ];
+  }
+
+  renderVals() {
+    const S = this.state;
+    const view = S.view ?? (this.props.vistaInicial ?? 'app');
+    const isApp = view === 'app';
+    const isPanel = view === 'panel';
+    const NAVY = '#141B2E', ORANGE = '#FF6B35', GRAY = '#5B6472';
+
+    // ── App: tabs ──
+    const tab = S.appTab;
+    const tc = t => (tab === t ? ORANGE : '#8A93A3');
+    const setTab = t => () => this.setState({ appTab: t });
+
+    // ── App: rutina ──
+    const routines = this.routines();
+    const dayData = routines[S.day];
+    const days = ['L', 'M', 'X', 'J', 'V'].map(d => {
+      const active = d === S.day;
+      return {
+        label: d,
+        bg: active ? ORANGE : '#FFFFFF',
+        color: active ? '#FFFFFF' : NAVY,
+        border: active ? ORANGE : '#E5E7EB',
+        onSelect: () => this.setState({ day: d }),
+      };
+    });
+    const exercises = dayData.items.map((it, i) => {
+      const key = S.day + '-' + i;
+      const done = !!S.done[key];
+      return {
+        name: it.name, meta: it.meta,
+        bg: done ? '#F0FAF6' : '#FFFFFF',
+        border: done ? '#BFE5D6' : '#E5E7EB',
+        ckBorder: done ? '#1D9E75' : '#C6CBD4',
+        ckBg: done ? '#1D9E75' : 'transparent',
+        ckOpacity: done ? 1 : 0,
+        nameColor: done ? '#116B4E' : NAVY,
+        deco: done ? 'line-through' : 'none',
+        onToggle: () => this.setState(s => ({ done: { ...s.done, [key]: !s.done[key] } })),
+      };
+    });
+    const doneCount = dayData.items.reduce((n, _, i) => n + (S.done[S.day + '-' + i] ? 1 : 0), 0);
+    const total = dayData.items.length;
+
+    // ── App: dieta ──
+    const mealData = S.planMeals;
+    const kcalTotal = mealData.reduce((n, m) => n + (Number(m.kcal) || 0), 0);
+    const meals = mealData.map((m, i) => {
+      const done = !!S.mealsDone[i];
+      return {
+        ...m,
+        bg: done ? '#F0FAF6' : '#FFFFFF',
+        border: done ? '#BFE5D6' : '#E5E7EB',
+        ckBorder: done ? '#1D9E75' : '#C6CBD4',
+        ckBg: done ? '#1D9E75' : 'transparent',
+        ckOpacity: done ? 1 : 0,
+        onToggle: () => this.setState(s => ({ mealsDone: { ...s.mealsDone, [i]: !s.mealsDone[i] } })),
+      };
+    });
+    const kcalDone = mealData.reduce((n, m, i) => n + (S.mealsDone[i] ? m.kcal : 0), 0);
+    const mealsDoneCount = mealData.reduce((n, _, i) => n + (S.mealsDone[i] ? 1 : 0), 0);
+
+    // ── Panel: menú ──
+    const modules = ['Dashboard', 'Clientes', 'CRM', 'Membresías', 'Rutinas y dietas', 'Clases', 'Promociones', 'Personal', 'Kardex', 'Máquinas', 'Finanzas', 'Sponsors', 'Reportes'];
+    const svcOf = name => name.startsWith('Baile') ? 'Baile' : name.split(' ')[0];
+
+    const todasClases = this.clasesData();
+    const clasesHoy = todasClases.filter(c => c.day === 'L' && !S.pausadas[c.id]).map(c => {
+      const res = !!S.reservas[c.id];
+      const acceso = S.accesoPlanes[svcOf(c.name)];
+      const allowed = acceso ? !!acceso.P : true; // Carlos es Premium
+      return {
+        ...c,
+        dot: this.claseDot(c.name),
+        btnLabel: !allowed ? 'No incluido' : res ? 'Reservado' : 'Reservar',
+        btnBg: !allowed ? '#F0F1F4' : res ? '#1D9E75' : 'transparent',
+        btnColor: !allowed ? '#8A93A3' : res ? '#FFFFFF' : '#FF6B35',
+        btnBorder: !allowed ? '#F0F1F4' : res ? '#1D9E75' : '#FF6B35',
+        onReserve: !allowed ? (() => {}) : (() => this.setState(s => ({ reservas: { ...s.reservas, [c.id]: !s.reservas[c.id] } }))),
+      };
+    });
+    const dayNames = { L: 'Lunes', M: 'Martes', X: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado' };
+    const claseCols = ['L', 'M', 'X', 'J', 'V', 'S'].map(d => ({
+      label: dayNames[d],
+      items: todasClases.filter(c => c.day === d).map(c => {
+        const paused = !!S.pausadas[c.id];
+        return {
+          ...c,
+          dot: this.claseDot(c.name),
+          opacity: paused ? 0.55 : 1,
+          pillLabel: paused ? 'Pausada' : 'Activa',
+          pillBg: paused ? '#F0F1F4' : '#E6F5EF',
+          pillColor: paused ? '#5B6472' : '#1D9E75',
+          onToggle: () => this.setState(s => ({ pausadas: { ...s.pausadas, [c.id]: !s.pausadas[c.id] } })),
+        };
+      }),
+    }));
+    const menuItems = modules.map(m => {
+      const active = m === S.module;
+      return {
+        label: m,
+        bg: active ? '#1D2740' : 'transparent',
+        color: active ? '#FFFFFF' : '#9AA3B5',
+        weight: active ? 800 : 600,
+        bar: active ? ORANGE : 'transparent',
+        onSelect: () => this.setState({ module: m, fichaId: null, enviado: false }),
+      };
+    });
+
+    // ── Panel: dashboard ──
+    const hourData = [
+      ['6a', 18], ['7a', 26], ['8a', 22], ['9a', 14], ['10a', 10], ['11a', 8], ['12p', 12],
+      ['1p', 10], ['2p', 8], ['3p', 10], ['4p', 14], ['5p', 22], ['6p', 34], ['7p', 30], ['8p', 16],
+    ];
+    const hours = hourData.map(([label, count]) => ({
+      label, count,
+      pct: Math.round((count / 34) * 100) + '%',
+      color: count >= 28 ? ORANGE : count >= 18 ? '#FFA37D' : '#FFD9C6',
+    }));
+
+    const baseCheckins = [
+      { ini: 'CM', name: 'Carlos Mendoza', time: '6:05 pm', note: 'Huella verificada', noteColor: '#9AA3B5', status: 'Entrada', stColor: '#1D9E75', avBg: '#FFF0E8', avColor: ORANGE },
+      { ini: 'LR', name: 'Lucía Ramos', time: '6:02 pm', note: 'Huella verificada', noteColor: '#9AA3B5', status: 'Entrada', stColor: '#1D9E75', avBg: '#EDF0F7', avColor: NAVY },
+      { ini: 'JP', name: 'Jorge Paredes', time: '5:58 pm', note: 'Membresía vencida — avisar en recepción', noteColor: '#E24B4A', status: 'Alerta', stColor: '#E24B4A', avBg: '#FCEAEA', avColor: '#E24B4A' },
+      { ini: 'MT', name: 'María Torres', time: '5:51 pm', note: 'Huella verificada', noteColor: '#9AA3B5', status: 'Salida registrada', stColor: GRAY, avBg: '#EDF0F7', avColor: NAVY },
+    ];
+    const checkins = [...S.extraCheckins, ...baseCheckins].slice(0, 7);
+
+    // ── Panel: clientes ──
+    const cdata = this.clientsData();
+    const clients = cdata.map(c => ({
+      ...c,
+      avBg: c.estado === 'Vencida' ? '#FCEAEA' : (c.id === 'carlos' ? '#FFF0E8' : '#EDF0F7'),
+      avColor: c.estado === 'Vencida' ? '#E24B4A' : (c.id === 'carlos' ? ORANGE : NAVY),
+      stBg: c.estado === 'Activa' ? '#E6F5EF' : '#FCEAEA',
+      stColor: c.estado === 'Activa' ? '#1D9E75' : '#E24B4A',
+      onVer: () => this.setState({ fichaId: c.id }),
+    }));
+    const fichaClient = clients.find(c => c.id === S.fichaId);
+    const ficha = fichaClient ?? clients[0];
+
+    // ── Panel: rutinas ──
+    const rutClient = cdata.find(c => c.name === S.rutSocio) ?? cdata[0];
+    const weekPlan = ['L', 'M', 'X', 'J', 'V'].map(d => {
+      const focus = S.planWeek[d];
+      return {
+        d, focus,
+        meta: focus === 'Descanso' ? 'Día libre' : focus === 'Full body y cardio' ? '4 ejercicios · 50 min' : focus === 'Pierna y glúteo' ? '6 ejercicios · 45 min' : '4 ejercicios · 40 min',
+        onChange: e => this.setState(s => ({ planWeek: { ...s.planWeek, [d]: e.target.value }, enviado: false })),
+      };
+    });
+    const planMeals = S.planMeals.map((m, i) => ({
+      ...m,
+      onDesc: e => {
+        const desc = e.target.value;
+        this.setState(s => ({ planMeals: s.planMeals.map((x, j) => j === i ? { ...x, desc } : x), enviado: false }));
+      },
+      onKcal: e => {
+        const kcal = Number(e.target.value) || 0;
+        this.setState(s => ({ planMeals: s.planMeals.map((x, j) => j === i ? { ...x, kcal } : x), enviado: false }));
+      },
+    }));
+
+    // ── Notificaciones ──
+    const panelNotifs = [
+      { dot: '#FF6B35', title: '23 membresías vencen en los próximos 7 días', sub: 'Envía recordatorios desde Membresías' },
+      { dot: '#E24B4A', title: 'Jorge Paredes ingresó con membresía vencida', sub: 'Hoy · 5:58 pm · avisar en recepción' },
+      { dot: '#141B2E', title: 'Solicitud de congelamiento', sub: 'Ana Castillo · Premium · 20 días' },
+      { dot: '#E24B4A', title: 'Stock bajo: proteína en polvo (4 uds.)', sub: 'Kardex · reponer esta semana' },
+      { dot: '#1D9E75', title: 'Caja del día lista para cierre', sub: 'S/ 1,240 · Recepción' },
+    ];
+    const appNotifs = [
+      { dot: '#FF6B35', title: 'Tu membresía vence el 28 de julio', sub: 'Renuévala o congélala desde tu perfil' },
+      { dot: '#141B2E', title: 'Nueva rutina disponible', sub: 'Tu trainer actualizó tu plan de esta semana' },
+      { dot: '#1D9E75', title: 'Salsa hoy · 7:00 pm', sub: 'Quedan 7 cupos · reserva desde Inicio' },
+    ];
+
+    // ── Gestión de membresías ──
+    const venceMap = { carlos: '28 jul', lucia: '12 ago', jorge: '30 jun', maria: '5 ago', diego: '18 jul', ana: '15 ago' };
+    const freezeDays = { Premium: 30, 'Estándar': 15, 'Básico': 0 };
+    const gestion = cdata.map(c => {
+      const frozen = !!S.congeladas[c.id];
+      const days = freezeDays[c.plan];
+      return {
+        name: c.name, num: c.num, plan: c.plan,
+        planSub: days ? 'Congela hasta ' + days + ' días/año' : 'Sin congelamiento',
+        estado: frozen ? 'Congelada' : c.estado,
+        stBg: frozen ? '#EDF0F7' : c.estado === 'Activa' ? '#E6F5EF' : '#FCEAEA',
+        stColor: frozen ? '#141B2E' : c.estado === 'Activa' ? '#1D9E75' : '#E24B4A',
+        vence: frozen ? 'Pausada hasta ' + venceMap[c.id] : venceMap[c.id],
+        freezeLabel: frozen ? 'Reactivar' : 'Congelar',
+        btnFreezeDisplay: days ? 'inline-block' : 'none',
+        noFreezeDisplay: days ? 'none' : 'inline',
+        onFreeze: () => this.setState(s => ({ congeladas: { ...s.congeladas, [c.id]: !s.congeladas[c.id] } })),
+      };
+    });
+
+    // ── Acceso a clases por plan ──
+    const accesoRows = ['Funcional', 'Baile', 'Spinning', 'Yoga'].map(svc => ({
+      name: svc,
+      dot: this.claseDot(svc),
+      cells: ['B', 'E', 'P'].map(k => {
+        const on = !!S.accesoPlanes[svc][k];
+        return {
+          mark: on ? '✓' : '—',
+          bg: on ? '#E6F5EF' : '#F0F1F4',
+          color: on ? '#1D9E75' : '#9AA3B5',
+          onToggle: () => this.setState(s => ({
+            accesoPlanes: { ...s.accesoPlanes, [svc]: { ...s.accesoPlanes[svc], [k]: !s.accesoPlanes[svc][k] } },
+          })),
+        };
+      }),
+    }));
+
+    // ── CRM ──
+    const stages = ['Nuevo', 'Contactado', 'Clase de prueba', 'Inscrito'];
+    const leadsBase = [
+      { id: 'ld1', ini: 'GT', name: 'Gabriela Torres', fuente: 'Instagram', nota: 'Preguntó por clases de baile y precios del plan Estándar', fecha: 'Hoy', stage: 0 },
+      { id: 'ld2', ini: 'FR', name: 'Felipe Ríos', fuente: 'Caminó a recepción', nota: 'Quiere bajar de peso · le interesa el Premium con rutina', fecha: 'Hoy', stage: 0 },
+      { id: 'ld3', ini: 'DQ', name: 'Daniela Quiroz', fuente: 'Referido de Carlos M.', nota: 'Amiga del socio 0482 · aplica promo refiere a un amigo', fecha: 'Ayer', stage: 1 },
+      { id: 'ld4', ini: 'MV', name: 'Martín Vidal', fuente: 'Facebook Ads', nota: 'Pidió info del pase del día para probar antes de inscribirse', fecha: 'Ayer', stage: 1 },
+      { id: 'ld5', ini: 'CP', name: 'Camila Ponce', fuente: 'Convenio universitario', nota: 'Agendada para funcional del jueves 7:00 am', fecha: 'Mar 1 jul', stage: 2 },
+      { id: 'ld6', ini: 'RB', name: 'Raúl Benites', fuente: 'Instagram', nota: 'Probó spinning el martes · le gustó, negociando plan', fecha: 'Mar 1 jul', stage: 2 },
+      { id: 'ld7', ini: 'VS', name: 'Vanessa Silva', fuente: 'Referida', nota: 'Se inscribió al plan Estándar · inicia el lunes', fecha: 'Lun 30 jun', stage: 3 },
+    ];
+    const crmColsData = stages.map(() => []);
+    leadsBase.forEach(ld => {
+      const stage = S.leadStages[ld.id] ?? ld.stage;
+      const last = stage >= 3;
+      crmColsData[Math.min(stage, 3)].push({
+        ...ld,
+        btnLabel: last ? 'Inscrito ✓' : 'Avanzar →',
+        btnBg: last ? '#E6F5EF' : 'transparent',
+        btnColor: last ? '#1D9E75' : '#FF6B35',
+        btnBorder: last ? '#E6F5EF' : '#FF6B35',
+        onAdvance: last ? (() => {}) : (() => this.setState(s => ({ leadStages: { ...s.leadStages, [ld.id]: Math.min((s.leadStages[ld.id] ?? ld.stage) + 1, 3) } }))),
+      });
+    });
+    const crmCols = stages.map((label, i) => ({ label, count: crmColsData[i].length, items: crmColsData[i] }));
+    const tareasBase = [
+      { id: 't1', tipo: 'Llamada', name: 'Gabriela Torres', detalle: 'Enviar precios de Estándar y horario de baile', hora: '10:00 am' },
+      { id: 't2', tipo: 'WhatsApp', name: 'Martín Vidal', detalle: 'Confirmar pase del día para mañana', hora: '11:30 am' },
+      { id: 't3', tipo: 'Llamada', name: 'Raúl Benites', detalle: 'Cerrar plan Premium · ofrecer 2×1 en matrícula', hora: '4:00 pm' },
+      { id: 't4', tipo: 'WhatsApp', name: 'Camila Ponce', detalle: 'Recordar clase de prueba del jueves 7:00 am', hora: '6:00 pm' },
+    ];
+    const crmTareas = tareasBase.map(t => {
+      const done = !!S.tareasDone[t.id];
+      return {
+        ...t,
+        ckBorder: done ? '#1D9E75' : '#C6CBD4',
+        ckBg: done ? '#1D9E75' : 'transparent',
+        ckOpacity: done ? 1 : 0,
+        deco: done ? 'line-through' : 'none',
+        tipoBg: t.tipo === 'Llamada' ? '#EDF0F7' : '#E6F5EF',
+        tipoColor: t.tipo === 'Llamada' ? '#141B2E' : '#1D9E75',
+        onToggle: () => this.setState(s => ({ tareasDone: { ...s.tareasDone, [t.id]: !s.tareasDone[t.id] } })),
+      };
+    });
+    const crmPendientes = tareasBase.filter(t => !S.tareasDone[t.id]).length;
+
+    // ── Promociones ──
+    const promos = [
+      { name: '2×1 en matrícula', desc: 'Nuevos socios pagan una matrícula y entran dos', vig: '1 – 31 de julio', canal: 'Recepción y redes', stat: '14 canjes', estado: 'Activa', pillBg: '#E6F5EF', pillColor: '#1D9E75' },
+      { name: 'Refiere a un amigo', desc: 'Socio y referido ganan 1 semana gratis en su plan', vig: 'Todo el año', canal: 'App del socio', stat: '9 referidos en julio', estado: 'Activa', pillBg: '#E6F5EF', pillColor: '#1D9E75' },
+      { name: 'Verano fit · 20% en Estándar', desc: 'Descuento en la primera mensualidad del plan Estándar', vig: '1 – 31 de agosto', canal: 'Redes sociales', stat: 'Inicia en 29 días', estado: 'Programada', pillBg: '#EDF0F7', pillColor: '#141B2E' },
+      { name: 'Convenio universitario', desc: '15% de descuento presentando carné universitario vigente', vig: 'Hasta diciembre', canal: 'Recepción', stat: '22 socios activos', estado: 'Activa', pillBg: '#E6F5EF', pillColor: '#1D9E75' },
+    ];
+
+    return {
+      // switch
+      isApp, isPanel,
+      goApp: () => this.setState({ view: 'app' }),
+      goPanel: () => this.setState({ view: 'panel' }),
+      swAppBg: isApp ? '#141B2E' : 'transparent',
+      swAppColor: isApp ? '#FFFFFF' : GRAY,
+      swAppShadow: isApp ? '0 2px 6px rgba(20,27,46,0.25)' : 'none',
+      swPanelBg: isPanel ? '#141B2E' : 'transparent',
+      swPanelColor: isPanel ? '#FFFFFF' : GRAY,
+      swPanelShadow: isPanel ? '0 2px 6px rgba(20,27,46,0.25)' : 'none',
+
+      // app
+      statusDark: tab === 'inicio',
+      tabInicio: tab === 'inicio', tabRutina: tab === 'rutina', tabDieta: tab === 'dieta',
+      tabProgreso: tab === 'progreso', tabPerfil: tab === 'perfil',
+      goInicio: setTab('inicio'), goRutina: setTab('rutina'), goDieta: setTab('dieta'),
+      goProgreso: setTab('progreso'), goPerfil: setTab('perfil'),
+      tcInicio: tc('inicio'), tcRutina: tc('rutina'), tcDieta: tc('dieta'),
+      tcProgreso: tc('progreso'), tcPerfil: tc('perfil'),
+      days, exercises,
+      dayFocus: dayData.focus,
+      progressLabel: doneCount + ' de ' + total + ' completados',
+      progressPct: Math.round((doneCount / total) * 100) + '%',
+      meals,
+      kcalDone: kcalDone.toLocaleString('en-US'),
+      kcalTotal: kcalTotal.toLocaleString('en-US'),
+      mealsDoneLabel: mealsDoneCount + ' de 5 comidas',
+
+      // panel
+      sede: S.sede,
+      onSede: e => this.setState({ sede: e.target.value }),
+      kpiEnSede: ({ 'Sede Centro': 47, 'Sede Norte': 31, 'Sede Sur': 19 })[S.sede],
+      kpiAforo: ({ 'Sede Centro': '62%', 'Sede Norte': '48%', 'Sede Sur': '41%' })[S.sede],
+      kpiSocios: ({ 'Sede Centro': 312, 'Sede Norte': 224, 'Sede Sur': 158 })[S.sede],
+      kpiSociosDelta: ({ 'Sede Centro': '+18 este mes', 'Sede Norte': '+11 este mes', 'Sede Sur': '+7 este mes' })[S.sede],
+      kpiIngresos: ({ 'Sede Centro': 'S/ 24,830', 'Sede Norte': 'S/ 17,940', 'Sede Sur': 'S/ 12,310' })[S.sede],
+      kpiIngresosDelta: ({ 'Sede Centro': '+9% vs. junio', 'Sede Norte': '+6% vs. junio', 'Sede Sur': '+4% vs. junio' })[S.sede],
+      kpiPorVencer: ({ 'Sede Centro': 23, 'Sede Norte': 15, 'Sede Sur': 9 })[S.sede],
+      module: S.module,
+      menuItems,
+      modDashboard: S.module === 'Dashboard',
+      modClientes: S.module === 'Clientes',
+      modRutinas: S.module === 'Rutinas y dietas',
+      modClases: S.module === 'Clases',
+      modPromos: S.module === 'Promociones',
+      modCRM: S.module === 'CRM',
+      crmCols, crmTareas, crmPendientes,
+      clasesHoy, claseCols, accesoRows, promos,
+      notifOpen: S.notifOpen,
+      toggleNotif: () => this.setState(s => ({ notifOpen: !s.notifOpen })),
+      appNotifOpen: S.appNotifOpen,
+      toggleAppNotif: () => this.setState(s => ({ appNotifOpen: !s.appNotifOpen })),
+      panelNotifs, appNotifs,
+      gestion,
+      credBadge: S.appFrozen ? 'Congelada' : 'Activa',
+      credBadgeBg: S.appFrozen ? 'rgba(255,255,255,0.14)' : 'rgba(29,158,117,0.18)',
+      credBadgeColor: S.appFrozen ? '#DDE2EB' : '#3FCB9C',
+      freezeLabel: S.appFrozen ? 'Reactivar' : 'Congelar',
+      toggleFreeze: () => this.setState(s => ({ appFrozen: !s.appFrozen })),
+      modMembresias: S.module === 'Membresías',
+      modPersonal: S.module === 'Personal',
+      modKardex: S.module === 'Kardex',
+      modFinanzas: S.module === 'Finanzas',
+      modSponsors: S.module === 'Sponsors',
+      modReportes: S.module === 'Reportes',
+      staff: [
+        { ini: 'AQ', name: 'Andrea Quispe', rol: 'Administradora', turno: '9:00 am − 6:00 pm', enTurno: true, avBg: '#FFF0E8', avColor: ORANGE },
+        { ini: 'BS', name: 'Bruno Salazar', rol: 'Entrenador jefe', turno: '6:00 am − 2:00 pm', enTurno: false, avBg: '#EDF0F7', avColor: NAVY },
+        { ini: 'PV', name: 'Paola Vega', rol: 'Entrenadora', turno: '2:00 pm − 10:00 pm', enTurno: true, avBg: '#EDF0F7', avColor: NAVY },
+        { ini: 'IR', name: 'Iván Rojas', rol: 'Entrenador', turno: '2:00 pm − 10:00 pm', enTurno: true, avBg: '#EDF0F7', avColor: NAVY },
+        { ini: 'RP', name: 'Rocío Palma', rol: 'Nutricionista', turno: '10:00 am − 6:00 pm', enTurno: true, avBg: '#EDF0F7', avColor: NAVY },
+        { ini: 'SC', name: 'Silvia Campos', rol: 'Recepción', turno: '6:00 am − 2:00 pm', enTurno: false, avBg: '#EDF0F7', avColor: NAVY },
+        { ini: 'HM', name: 'Hugo Méndez', rol: 'Recepción', turno: '2:00 pm − 10:00 pm', enTurno: true, avBg: '#EDF0F7', avColor: NAVY },
+        { ini: 'OL', name: 'Óscar Luna', rol: 'Mantenimiento', turno: '6:00 am − 2:00 pm', enTurno: false, avBg: '#EDF0F7', avColor: NAVY },
+      ].map(p => ({
+        ...p,
+        estado: p.enTurno ? 'En turno' : 'Turno terminado',
+        stBg: p.enTurno ? '#E6F5EF' : '#F0F1F4',
+        stColor: p.enTurno ? '#1D9E75' : '#5B6472',
+      })),
+      kardex: [
+        { name: 'Proteína en polvo 1 kg', cat: 'Suplementos', stock: 4, precio: 'S/ 145', bajo: true },
+        { name: 'Bebida isotónica 500 ml', cat: 'Bebidas', stock: 5, precio: 'S/ 6', bajo: true },
+        { name: 'Shaker FitCore', cat: 'Accesorios', stock: 6, precio: 'S/ 25', bajo: true },
+        { name: 'Creatina 300 g', cat: 'Suplementos', stock: 12, precio: 'S/ 95', bajo: false },
+        { name: 'Guantes de entrenamiento', cat: 'Accesorios', stock: 15, precio: 'S/ 45', bajo: false },
+        { name: 'Agua mineral 625 ml', cat: 'Bebidas', stock: 48, precio: 'S/ 3', bajo: false },
+        { name: 'Barra de proteína', cat: 'Suplementos', stock: 32, precio: 'S/ 8', bajo: false },
+      ].map(k => ({
+        ...k,
+        stockColor: k.bajo ? '#E24B4A' : '#141B2E',
+        estado: k.bajo ? 'Stock bajo' : 'OK',
+        stBg: k.bajo ? '#FCEAEA' : '#E6F5EF',
+        stColor: k.bajo ? '#E24B4A' : '#1D9E75',
+      })),
+      modMaquinas: S.module === 'Máquinas',
+      kardexMovs: [
+        { fecha: 'Hoy', prod: 'Proteína en polvo 1 kg', venta: true, stock: '−1 ud.', caja: '+S/ 145' },
+        { fecha: 'Hoy', prod: 'Agua mineral 625 ml', venta: true, stock: '−6 uds.', caja: '+S/ 18' },
+        { fecha: 'Ayer', prod: 'Shaker FitCore', venta: true, stock: '−2 uds.', caja: '+S/ 50' },
+        { fecha: '30 jun', prod: 'Proteína en polvo 1 kg', venta: false, stock: '+12 uds.', caja: '−S/ 620' },
+        { fecha: '28 jun', prod: 'Bebida isotónica 500 ml', venta: false, stock: '+24 uds.', caja: '−S/ 96' },
+      ].map(m => ({
+        ...m,
+        tipo: m.venta ? 'Venta' : 'Compra',
+        tipoBg: m.venta ? '#E6F5EF' : '#EDF0F7',
+        tipoColor: m.venta ? '#1D9E75' : '#141B2E',
+        stockColor: m.venta ? '#E24B4A' : '#1D9E75',
+        cajaColor: m.venta ? '#1D9E75' : '#E24B4A',
+      })),
+      maquinas: [
+        { name: 'Caminadora ProRun 400', det: '6 unidades · N.º 1−6', zona: 'Cardio', st: 'ok', prox: '12 ago', proxOk: true },
+        { name: 'Caminadora ProRun 400 · N.º 3', det: 'Cambio de banda', zona: 'Cardio', st: 'mant', prox: 'Lista mañana', proxOk: false },
+        { name: 'Bicicleta de spinning', det: '8 unidades · N.º 1−8', zona: 'Cardio', st: 'ok', prox: '20 sep', proxOk: true },
+        { name: 'Remo ergómetro', det: '3 unidades', zona: 'Cardio', st: 'ok', prox: '5 oct', proxOk: true },
+        { name: 'Prensa de pierna 45°', det: 'Serie FZ-900', zona: 'Fuerza', st: 'ok', prox: '8 sep', proxOk: true },
+        { name: 'Multifuncional Smith', det: 'Revisión de poleas', zona: 'Fuerza', st: 'mant', prox: '30 jul', proxOk: false },
+        { name: 'Polea cruzada doble', det: 'Repuesto en camino', zona: 'Fuerza', st: 'fuera', prox: 'Por confirmar', proxOk: false },
+      ].map(m => ({
+        ...m,
+        estado: m.st === 'ok' ? 'Operativa' : m.st === 'mant' ? 'En mantenimiento' : 'Fuera de servicio',
+        stBg: m.st === 'ok' ? '#E6F5EF' : m.st === 'mant' ? '#FFF0E8' : '#FCEAEA',
+        stColor: m.st === 'ok' ? '#1D9E75' : m.st === 'mant' ? '#FF6B35' : '#E24B4A',
+        proxColor: m.proxOk ? '#5B6472' : '#FF6B35',
+      })),
+      proxMant: [
+        { dia: '30', mes: 'jul', name: 'Multifuncional Smith', det: 'Preventivo · revisión de poleas', dBg: '#FFF0E8', dColor: ORANGE },
+        { dia: '12', mes: 'ago', name: 'Caminadoras ProRun', det: 'Preventivo trimestral · 6 equipos', dBg: '#EDF0F7', dColor: NAVY },
+        { dia: '8', mes: 'sep', name: 'Prensa de pierna 45°', det: 'Lubricación y ajuste', dBg: '#EDF0F7', dColor: NAVY },
+        { dia: '20', mes: 'sep', name: 'Bicicletas de spinning', det: 'Preventivo · 8 equipos', dBg: '#EDF0F7', dColor: NAVY },
+      ],
+      movimientos: [
+        { name: 'Renovación Premium', det: 'Carlos Mendoza · hoy', monto: '+S/ 130', color: '#1D9E75' },
+        { name: 'Membresía Estándar', det: 'Lucía Ramos · ayer', monto: '+S/ 90', color: '#1D9E75' },
+        { name: 'Venta proteína en polvo', det: 'Kardex · ayer', monto: '+S/ 145', color: '#1D9E75' },
+        { name: 'Compra suplementos', det: 'NutriMax · 30 jun', monto: '−S/ 620', color: '#E24B4A' },
+        { name: 'Mantenimiento de máquinas', det: 'Servicio técnico · 28 jun', monto: '−S/ 1,800', color: '#E24B4A' },
+      ],
+      reportes: [
+        { name: 'Asistencia mensual', desc: 'Check-ins por huella, horas pico y aforo por día', iconBg: '#FFF0E8', iconColor: ORANGE },
+        { name: 'Ingresos y cobranzas', desc: 'Pagos de membresías, ventas de Kardex y caja diaria', iconBg: '#E6F5EF', iconColor: '#1D9E75' },
+        { name: 'Nuevos socios y bajas', desc: 'Altas, renovaciones y cancelaciones del mes', iconBg: '#EDF0F7', iconColor: NAVY },
+        { name: 'Membresías por vencer', desc: 'Socios con vencimiento próximo para campañas de renovación', iconBg: '#FFF0E8', iconColor: ORANGE },
+        { name: 'Inventario Kardex', desc: 'Stock actual, productos con quiebre y rotación', iconBg: '#EDF0F7', iconColor: NAVY },
+        { name: 'Desempeño de entrenadores', desc: 'Rutinas asignadas, socios atendidos y seguimiento', iconBg: '#E6F5EF', iconColor: '#1D9E75' },
+      ],
+      hours, checkins,
+      clients,
+      fichaOpen: !!fichaClient,
+      fichaClosed: !fichaClient,
+      ficha,
+      closeFicha: () => this.setState({ fichaId: null }),
+      genRutina: () => this.setState({ module: 'Rutinas y dietas', rutSocio: ficha.name, fichaId: null, enviado: false }),
+      rutSocio: S.rutSocio,
+      onRutSocio: e => this.setState({ rutSocio: e.target.value, enviado: false }),
+      rutTalla: rutClient.talla, rutPeso: rutClient.peso, rutObjetivo: rutClient.objetivo,
+      weekPlan,
+      planMeals,
+      planKcalTotal: kcalTotal.toLocaleString('en-US'),
+      enviado: S.enviado,
+      enviarPlan: () => this.setState({ enviado: true }),
+    };
+  }
+}
+</script>
+</body>
+</html>
