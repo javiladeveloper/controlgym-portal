@@ -38,18 +38,107 @@ export function useDietaSocio(socioId) {
   })
 }
 
-// Guardar comidas (upsert) y marcar enviado.
+// Rutina semanal activa de un socio (con sus días/focos).
+export function useRutinaSocio(socioId) {
+  return useQuery({
+    queryKey: ['rutina', socioId],
+    enabled: !!socioId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rutina')
+        .select('id, nombre, enviado_at, dias:rutina_dia(id, dia_semana, foco)')
+        .eq('socio_id', socioId)
+        .eq('activa', true)
+        .maybeSingle()
+      if (error) throw error
+      if (data?.dias) data.dias.sort((a, b) => a.dia_semana - b.dia_semana)
+      return data
+    },
+  })
+}
+
+const FOCOS_DEFAULT = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio']
+
+// Crear rutina semanal con 5 días por defecto.
+export function useCrearRutina(socioId, empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data: rutina, error } = await supabase
+        .from('rutina')
+        .insert({ empresa_id: empresaId, socio_id: socioId, nombre: 'Rutina semanal', activa: true })
+        .select('id').single()
+      if (error) throw error
+      const dias = FOCOS_DEFAULT.map((foco, i) => ({
+        empresa_id: empresaId, rutina_id: rutina.id, dia_semana: i + 1, foco,
+      }))
+      const { error: e2 } = await supabase.from('rutina_dia').insert(dias)
+      if (e2) throw e2
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rutina', socioId] }),
+  })
+}
+
+// Cambiar el foco de un día.
+export function useSetFoco(socioId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ diaId, foco }) => {
+      const { error } = await supabase.from('rutina_dia').update({ foco }).eq('id', diaId)
+      if (error) throw error
+    },
+    onMutate: async ({ diaId, foco }) => {
+      await qc.cancelQueries({ queryKey: ['rutina', socioId] })
+      const prev = qc.getQueryData(['rutina', socioId])
+      qc.setQueryData(['rutina', socioId], (old) => old ? { ...old, dias: old.dias.map((d) => d.id === diaId ? { ...d, foco } : d) } : old)
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => ctx?.prev && qc.setQueryData(['rutina', socioId], ctx.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['rutina', socioId] }),
+  })
+}
+
+const COMIDAS_DEFAULT = [
+  { nombre: 'Desayuno', hora: '07:00', descripcion: 'Avena con plátano y claras', kcal: 420, orden: 1 },
+  { nombre: 'Media mañana', hora: '10:00', descripcion: 'Yogur griego y almendras', kcal: 180, orden: 2 },
+  { nombre: 'Almuerzo', hora: '13:00', descripcion: 'Pollo, arroz integral y ensalada', kcal: 650, orden: 3 },
+  { nombre: 'Merienda', hora: '16:30', descripcion: 'Batido de proteína y fruta', kcal: 250, orden: 4 },
+  { nombre: 'Cena', hora: '19:30', descripcion: 'Pescado con verduras al vapor', kcal: 600, orden: 5 },
+]
+
+// Crear plan de dieta con 5 comidas base editables.
+export function useCrearDieta(socioId, empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data: dieta, error } = await supabase
+        .from('dieta')
+        .insert({ empresa_id: empresaId, socio_id: socioId, nombre: 'Plan de alimentación', activa: true })
+        .select('id').single()
+      if (error) throw error
+      const comidas = COMIDAS_DEFAULT.map((c) => ({ ...c, empresa_id: empresaId, dieta_id: dieta.id }))
+      const { error: e2 } = await supabase.from('comida').insert(comidas)
+      if (e2) throw e2
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dieta', socioId] }),
+  })
+}
+
+// Guardar comidas y marcar el plan como enviado a la app del socio.
 export function useEnviarPlan(socioId) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ dietaId, comidas }) => {
-      if (dietaId && comidas?.length) {
-        const rows = comidas.map((c) => ({ id: c.id, empresa_id: c.empresa_id, dieta_id: dietaId, nombre: c.nombre, hora: c.hora, descripcion: c.descripcion, kcal: c.kcal, orden: c.orden }))
-        const { error } = await supabase.from('comida').upsert(rows)
+      if (!dietaId) return
+      for (const c of comidas || []) {
+        if (!c.id) continue
+        const { error } = await supabase.from('comida')
+          .update({ descripcion: c.descripcion, kcal: c.kcal })
+          .eq('id', c.id)
         if (error) throw error
-        const { error: e2 } = await supabase.from('dieta').update({ enviado_at: new Date().toISOString() }).eq('id', dietaId)
-        if (e2) throw e2
       }
+      const { error: e2 } = await supabase.from('dieta').update({ enviado_at: new Date().toISOString() }).eq('id', dietaId)
+      if (e2) throw e2
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dieta', socioId] }),
   })

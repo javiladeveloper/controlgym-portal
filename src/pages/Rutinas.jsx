@@ -4,8 +4,15 @@ import { Card } from '../components/ui.jsx'
 import { TargetIcon, CheckIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { usePanel } from '../store.jsx'
-import { useSociosSelect, useDietaSocio, useEnviarPlan } from '../hooks/useRutinas.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import {
+  useSociosSelect, useDietaSocio, useEnviarPlan,
+  useRutinaSocio, useCrearRutina, useSetFoco, useCrearDieta,
+} from '../hooks/useRutinas.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+
+const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
+const DIA_LETRA = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' }
 
 export default function Rutinas() {
   const location = useLocation()
@@ -18,9 +25,14 @@ export default function Rutinas() {
     if (!socioId && socios.data?.length) setSocioId(socios.data[0].id)
   }, [socios.data, socioId])
 
+  const { empresa } = useAuth()
   const socio = socios.data?.find((s) => s.id === socioId)
   const dieta = useDietaSocio(socioId)
   const enviar = useEnviarPlan(socioId)
+  const rutina = useRutinaSocio(socioId)
+  const crearRutina = useCrearRutina(socioId, empresa?.id)
+  const crearDieta = useCrearDieta(socioId, empresa?.id)
+  const setFoco = useSetFoco(socioId)
   const [meals, setMeals] = useState([])
   const [enviado, setEnviado] = useState(false)
 
@@ -59,6 +71,40 @@ export default function Rutinas() {
             </div>
           </Card>
 
+          {/* Rutina semanal */}
+          <Card className="mt-[15px] p-[19px]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[14.5px] font-extrabold">Rutina semanal</div>
+                <div className="mt-0.5 text-[12px] font-semibold text-muted">Elige el enfoque de cada día · se guarda al instante</div>
+              </div>
+              {!rutina.data && !rutina.isLoading && (
+                <button onClick={() => crearRutina.mutate()} disabled={crearRutina.isPending}
+                  className="cursor-pointer rounded-[10px] border-none bg-orange px-4 py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+                  {crearRutina.isPending ? 'Creando…' : 'Crear rutina semanal'}
+                </button>
+              )}
+            </div>
+            {rutina.data?.dias?.length > 0 && (
+              <div className="mt-4 grid grid-cols-5 gap-[11px]">
+                {rutina.data.dias.map((d) => (
+                  <div key={d.id} className="flex flex-col gap-2.5 rounded-xl border border-line bg-[#FAFBFC] p-[13px]">
+                    <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] bg-navy text-[13px] font-extrabold text-white">
+                      {DIA_LETRA[d.dia_semana]}
+                    </div>
+                    <select value={d.foco || 'Descanso'} onChange={(e) => setFoco.mutate({ diaId: d.id, foco: e.target.value })}
+                      className="w-full cursor-pointer rounded-[9px] border border-line bg-white px-1.5 py-[9px] text-[12px] font-extrabold text-ink outline-none hover:border-orange">
+                      {FOCOS.map((f) => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!rutina.data && !rutina.isLoading && (
+              <div className="mt-3 text-[12.5px] font-semibold text-muted">Este socio aún no tiene rutina. Créala y ajusta cada día.</div>
+            )}
+          </Card>
+
           {/* Plan de comidas */}
           <Card className="mt-[15px] p-[19px]">
             <div className="flex items-center gap-3.5">
@@ -72,8 +118,12 @@ export default function Rutinas() {
 
             {dieta.isLoading && <div className="mt-4"><LoadingState variant="table" rows={3} /></div>}
             {!dieta.isLoading && meals.length === 0 && (
-              <div className="mt-4 rounded-[10px] bg-surface px-4 py-6 text-center text-[12.5px] font-semibold text-muted">
-                Este socio aún no tiene un plan de dieta. (La creación de planes se habilitará al conectar el editor completo.)
+              <div className="mt-4 rounded-[10px] bg-surface px-4 py-6 text-center">
+                <div className="text-[12.5px] font-semibold text-muted">Este socio aún no tiene un plan de dieta.</div>
+                <button onClick={() => crearDieta.mutate()} disabled={crearDieta.isPending}
+                  className="mt-3 cursor-pointer rounded-[10px] border-none bg-orange px-5 py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+                  {crearDieta.isPending ? 'Creando…' : 'Crear plan de dieta'}
+                </button>
               </div>
             )}
             <div className="mt-4 flex flex-col gap-2.5">
