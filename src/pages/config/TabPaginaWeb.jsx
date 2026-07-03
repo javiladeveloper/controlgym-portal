@@ -151,6 +151,34 @@ export default function TabPaginaWeb() {
   const [busy, setBusy] = useState('')
   const heroRef = useRef(null)
   const galRef = useRef(null)
+  // Búsqueda de dirección (geocoding con OpenStreetMap/Nominatim, sin API key)
+  const [busqueda, setBusqueda] = useState('')
+  const [resultados, setResultados] = useState(null) // null | []
+  const [buscando, setBuscando] = useState(false)
+  const [coordsManual, setCoordsManual] = useState(false)
+
+  async function buscarDireccion() {
+    if (!busqueda.trim()) return
+    setBuscando(true)
+    setResultados(null)
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=es&q=${encodeURIComponent(busqueda)}`)
+      setResultados(await r.json())
+    } catch {
+      setResultados([])
+    } finally {
+      setBuscando(false)
+    }
+  }
+
+  // Reverse geocoding: coordenadas → dirección legible
+  async function reverseGeo(lat, lng) {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&accept-language=es&lat=${lat}&lon=${lng}`)
+      const j = await r.json()
+      if (j?.display_name) upd({ ubicacion: { lat: String(lat), lng: String(lng), direccion: j.display_name } })
+    } catch { /* sin conexión: se queda solo con coordenadas */ }
+  }
 
   useEffect(() => {
     if (empresa) {
@@ -567,36 +595,84 @@ export default function TabPaginaWeb() {
         </div>
       </Card>
 
-      {/* Ubicación (mapa) */}
+      {/* Ubicación (mapa): escribe la dirección y nosotros la ubicamos */}
       <Card className="mt-4 p-[19px]">
         <div className="text-[14.5px] font-extrabold">Ubicación en el mapa</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">
-          En Google Maps: clic derecho sobre tu gimnasio → copia las coordenadas y pégalas aquí.
+          Escribe la dirección de tu gimnasio y elígela de la lista — el mapa se ubica solo.
         </p>
+
+        {/* Buscador de dirección */}
         <div className="mt-4 flex items-center gap-2.5">
-          <input value={L.ubicacion.lat} onChange={(e) => upd({ ubicacion: { ...L.ubicacion, lat: e.target.value.trim() } })} placeholder="Latitud (-12.0464)"
-            className="w-[170px] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-orange" />
-          <input value={L.ubicacion.lng} onChange={(e) => upd({ ubicacion: { ...L.ubicacion, lng: e.target.value.trim() } })} placeholder="Longitud (-77.0428)"
-            className="w-[170px] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-orange" />
-          <button
-            onClick={() => {
-              const partes = (L.ubicacion.lat || '').split(',')
-              if (partes.length === 2) upd({ ubicacion: { lat: partes[0].trim(), lng: partes[1].trim() } })
-            }}
-            className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12px] font-extrabold text-muted hover:border-orange"
-            title="Si pegaste 'lat, lng' junto en el primer campo, sepáralo">
-            Separar
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && buscarDireccion()}
+            placeholder="Av. Larco 812, Miraflores, Lima"
+            className="min-w-0 flex-1 rounded-[9px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange"
+          />
+          <button onClick={buscarDireccion} disabled={buscando || !busqueda.trim()}
+            className="flex-shrink-0 cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+            {buscando ? 'Buscando…' : 'Buscar'}
           </button>
         </div>
-        {Number(L.ubicacion.lat) && Number(L.ubicacion.lng) ? (
-          <div className="mt-3 overflow-hidden rounded-xl border border-line">
-            <iframe
-              title="Mapa"
-              className="h-[220px] w-full"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(L.ubicacion.lng) - 0.005}%2C${Number(L.ubicacion.lat) - 0.003}%2C${Number(L.ubicacion.lng) + 0.005}%2C${Number(L.ubicacion.lat) + 0.003}&layer=mapnik&marker=${L.ubicacion.lat}%2C${L.ubicacion.lng}`}
-            />
+
+        {/* Resultados */}
+        {resultados !== null && (
+          <div className="mt-2.5 overflow-hidden rounded-[10px] border border-line">
+            {resultados.length === 0 && (
+              <div className="px-3.5 py-3 text-[12.5px] font-semibold text-muted">
+                No encontramos esa dirección. Prueba agregando distrito y ciudad.
+              </div>
+            )}
+            {resultados.map((r, i) => (
+              <button key={i}
+                onClick={() => { upd({ ubicacion: { lat: r.lat, lng: r.lon, direccion: r.display_name } }); setResultados(null); setBusqueda('') }}
+                className="block w-full cursor-pointer border-b border-line2 bg-white px-3.5 py-2.5 text-left text-[12.5px] font-semibold hover:bg-orange-50">
+                📍 {r.display_name}
+              </button>
+            ))}
           </div>
+        )}
+
+        {/* Ubicación fijada + mapa */}
+        {Number(L.ubicacion.lat) && Number(L.ubicacion.lng) ? (
+          <>
+            <div className="mt-3 flex items-start justify-between gap-3 rounded-[10px] bg-green-50 px-3.5 py-2.5">
+              <div className="text-[12.5px] font-bold text-green-600">
+                ✓ {L.ubicacion.direccion || `Ubicación fijada (${L.ubicacion.lat}, ${L.ubicacion.lng})`}
+              </div>
+              <button onClick={() => upd({ ubicacion: { lat: '', lng: '', direccion: '' } })}
+                className="flex-shrink-0 cursor-pointer text-[12px] font-extrabold text-red">Quitar</button>
+            </div>
+            <div className="mt-3 overflow-hidden rounded-xl border border-line">
+              <iframe
+                title="Mapa"
+                className="h-[220px] w-full"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(L.ubicacion.lng) - 0.005}%2C${Number(L.ubicacion.lat) - 0.003}%2C${Number(L.ubicacion.lng) + 0.005}%2C${Number(L.ubicacion.lat) + 0.003}&layer=mapnik&marker=${L.ubicacion.lat}%2C${L.ubicacion.lng}`}
+              />
+            </div>
+          </>
         ) : null}
+
+        {/* Avanzado: coordenadas manuales (con reverse geo automático) */}
+        <button onClick={() => setCoordsManual(!coordsManual)}
+          className="mt-3 cursor-pointer border-none bg-transparent text-[11.5px] font-extrabold text-faint hover:text-orange">
+          {coordsManual ? 'Ocultar coordenadas manuales' : '¿Prefieres pegar coordenadas? (avanzado)'}
+        </button>
+        {coordsManual && (
+          <div className="mt-2 flex items-center gap-2.5">
+            <input value={L.ubicacion.lat} onChange={(e) => upd({ ubicacion: { ...L.ubicacion, lat: e.target.value.trim() } })}
+              onBlur={() => Number(L.ubicacion.lat) && Number(L.ubicacion.lng) && reverseGeo(L.ubicacion.lat, L.ubicacion.lng)}
+              placeholder="Latitud (-12.0464)"
+              className="w-[170px] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-orange" />
+            <input value={L.ubicacion.lng} onChange={(e) => upd({ ubicacion: { ...L.ubicacion, lng: e.target.value.trim() } })}
+              onBlur={() => Number(L.ubicacion.lat) && Number(L.ubicacion.lng) && reverseGeo(L.ubicacion.lat, L.ubicacion.lng)}
+              placeholder="Longitud (-77.0428)"
+              className="w-[170px] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-orange" />
+            <span className="text-[11px] font-semibold text-faint">Al salir del campo, buscamos la dirección automáticamente.</span>
+          </div>
+        )}
       </Card>
 
       {/* Secciones visibles */}

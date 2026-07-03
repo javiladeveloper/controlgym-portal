@@ -306,7 +306,9 @@ export default function Landing({ slug }) {
     mapa: () => (sec.mapa && Number(L.ubicacion?.lat) && Number(L.ubicacion?.lng)) ? (
       <section className="mx-auto max-w-[1000px] px-6 py-20">
         <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Encuéntranos</h2>
-        {data.direccion && <p className="mt-2 text-center text-[14px] font-semibold text-muted">{data.direccion}</p>}
+        {(L.ubicacion?.direccion || data.direccion) && (
+          <p className="mt-2 text-center text-[14px] font-semibold text-muted">{L.ubicacion?.direccion || data.direccion}</p>
+        )}
         <div className="mt-8 overflow-hidden border border-line shadow-sm" style={{ borderRadius: rCard }}>
           <iframe
             title="Ubicación"
