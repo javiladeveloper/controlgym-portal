@@ -77,10 +77,97 @@ function NuevaClaseModal({ sedeId, empresaId, tipos, onClose }) {
   )
 }
 
+// Gestión completa de servicios (tipos de clase): crear, renombrar, color, eliminar.
+function ServiciosModal({ empresaId, sedeId, tipos, onClose }) {
+  const qc = useQueryClient()
+  const [nuevo, setNuevo] = useState({ nombre: '', color: '#FF6B35' })
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+
+  const invalidar = () => {
+    qc.invalidateQueries({ queryKey: ['plan-acceso'] })
+    qc.invalidateQueries({ queryKey: ['clases', sedeId] })
+  }
+
+  async function agregar(e) {
+    e?.preventDefault()
+    if (!nuevo.nombre.trim()) return
+    setBusy('nuevo'); setError('')
+    const { error } = await supabase.from('tipo_clase').insert({
+      empresa_id: empresaId, nombre: nuevo.nombre.trim(), color: nuevo.color,
+    })
+    setBusy('')
+    if (error) { setError(error.message); return }
+    setNuevo({ nombre: '', color: '#FF6B35' })
+    invalidar()
+  }
+
+  async function actualizar(id, patch) {
+    setError('')
+    const { error } = await supabase.from('tipo_clase').update(patch).eq('id', id)
+    if (error) setError(error.message)
+    else invalidar()
+  }
+
+  async function eliminar(t) {
+    if (!confirm(`¿Eliminar el servicio "${t.nombre}"?`)) return
+    setBusy(t.id); setError('')
+    const { error } = await supabase.from('tipo_clase').delete().eq('id', t.id)
+    setBusy('')
+    if (error) {
+      setError(error.message.includes('foreign key')
+        ? `No se puede eliminar "${t.nombre}": tiene clases en el horario o está en la matriz de planes. Quita esas referencias primero.`
+        : error.message)
+      return
+    }
+    invalidar()
+  }
+
+  return (
+    <Modal title="Servicios del gimnasio" subtitle="Se usan en el horario, la matriz de planes y tu página web" onClose={onClose} width={480}>
+      <div className="flex flex-col gap-2">
+        {tipos.map((t) => (
+          <div key={t.id} className="flex items-center gap-2.5 rounded-[10px] border border-line bg-white px-3 py-2">
+            <input type="color" value={t.color || '#FF6B35'}
+              onChange={(e) => actualizar(t.id, { color: e.target.value })}
+              className="h-7 w-9 flex-shrink-0 cursor-pointer rounded border border-line" />
+            <input defaultValue={t.nombre}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== t.nombre && actualizar(t.id, { nombre: e.target.value.trim() })}
+              className="min-w-0 flex-1 rounded-[8px] border border-transparent bg-transparent px-2 py-1.5 text-[13.5px] font-extrabold outline-none focus:border-orange focus:bg-white" />
+            <button onClick={() => eliminar(t)} disabled={busy === t.id}
+              className="flex-shrink-0 cursor-pointer rounded-lg border-none bg-transparent px-2 text-[12px] font-extrabold text-red hover:bg-red-50 disabled:opacity-50">
+              Eliminar
+            </button>
+          </div>
+        ))}
+        {tipos.length === 0 && <div className="rounded-lg bg-surface px-3 py-4 text-center text-[12.5px] font-semibold text-muted">Aún no tienes servicios.</div>}
+      </div>
+
+      <form onSubmit={agregar} className="mt-4 flex items-center gap-2.5 rounded-[10px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2.5">
+        <input type="color" value={nuevo.color} onChange={(e) => setNuevo((s) => ({ ...s, color: e.target.value }))}
+          className="h-7 w-9 flex-shrink-0 cursor-pointer rounded border border-line" />
+        <input value={nuevo.nombre} onChange={(e) => setNuevo((s) => ({ ...s, nombre: e.target.value }))}
+          placeholder="Nuevo servicio (Pilates, Box, Zumba…)"
+          className="min-w-0 flex-1 rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[13px] font-semibold outline-none focus:border-orange" />
+        <button type="submit" disabled={busy === 'nuevo' || !nuevo.nombre.trim()}
+          className="flex-shrink-0 cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+          Agregar
+        </button>
+      </form>
+
+      {error && <div className="mt-3 rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+      <p className="mt-3 text-[11px] font-semibold text-faint">
+        El nombre se guarda al hacer clic fuera del campo; el color, al elegirlo.
+      </p>
+    </Modal>
+  )
+}
+
 export default function Clases() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
   const [nuevaOpen, setNuevaOpen] = useState(false)
+  const [serviciosOpen, setServiciosOpen] = useState(false)
   const clases = useClases(sedeId)
   const toggle = useToggleClase(sedeId)
   const acceso = usePlanAcceso()
@@ -102,12 +189,34 @@ export default function Clases() {
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Clases y servicios</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Horario semanal · {sedeNombre} · toca una clase para pausarla</p>
         </div>
-        <button onClick={() => setNuevaOpen(true)}
-          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
+        <div className="flex items-center gap-2.5">
+          <button onClick={() => setServiciosOpen(true)}
+            className="cursor-pointer rounded-[10px] border border-orange bg-white px-[16px] py-[10px] text-[13px] font-extrabold text-orange transition-colors hover:bg-orange-50">Servicios</button>
+          <button onClick={() => setNuevaOpen(true)}
+            className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
+        </div>
       </div>
+
+      {/* Leyenda dinámica de servicios */}
+      {(acceso.data?.tipos || []).length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          {acceso.data.tipos.map((t) => (
+            <div key={t.id} className="flex items-center gap-1.5 text-[12px] font-extrabold text-muted">
+              <span className="h-[9px] w-[9px] rounded-full" style={{ background: t.color || claseDot(t.nombre) }} />
+              {t.nombre}
+            </div>
+          ))}
+          <button onClick={() => setServiciosOpen(true)} className="cursor-pointer border-none bg-transparent text-[11.5px] font-extrabold text-faint hover:text-orange">
+            + gestionar
+          </button>
+        </div>
+      )}
 
       {nuevaOpen && (
         <NuevaClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} onClose={() => setNuevaOpen(false)} />
+      )}
+      {serviciosOpen && (
+        <ServiciosModal empresaId={empresa?.id} sedeId={sedeId} tipos={acceso.data?.tipos || []} onClose={() => setServiciosOpen(false)} />
       )}
 
       {clases.isLoading && <LoadingState variant="cards" rows={4} />}
