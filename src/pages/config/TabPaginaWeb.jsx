@@ -4,8 +4,8 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { useGuardarEmpresa, subirImagen } from '../../hooks/useConfiguracion.js'
 
 const SECCIONES = [
-  ['planes', 'Planes'], ['clases', 'Clases'], ['sedes', 'Sedes'],
-  ['galeria', 'Galería'], ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
+  ['promociones', 'Ofertas y promociones'], ['planes', 'Planes'], ['clases', 'Clases'],
+  ['sedes', 'Sedes'], ['galeria', 'Galería'], ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
 ]
 
 export default function TabPaginaWeb() {
@@ -26,7 +26,7 @@ export default function TabPaginaWeb() {
         galeria: base.galeria || [],
         stats: base.stats || [],
         ubicacion: base.ubicacion || { lat: '', lng: '' },
-        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, ...(base.secciones || {}) },
+        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, ...(base.secciones || {}) },
       })
     }
   }, [empresa])
@@ -112,7 +112,9 @@ export default function TabPaginaWeb() {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[14.5px] font-extrabold">Estadísticas</div>
-            <p className="mt-0.5 text-[12px] font-semibold text-muted">Números destacados: miembros, sedes, años, etc.</p>
+            <p className="mt-0.5 text-[12px] font-semibold text-muted">
+              Números destacados. Si no agregas ninguno, se muestran automáticamente los <b>datos reales</b> del gym (socios activos, sedes, clases, entrenadores).
+            </p>
           </div>
           <button onClick={() => upd({ stats: [...L.stats, { label: '', valor: '' }] })}
             className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange">Agregar dato</button>

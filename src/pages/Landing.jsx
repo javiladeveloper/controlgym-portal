@@ -44,9 +44,21 @@ export default function Landing({ slug }) {
   const portalUrl = `/?g=${data.slug}#login` // en prod: https://<slug>.fitcorecenter.com/portal
   const redes = data.redes || {}
   const L = data.landing || {}
-  const sec = L.secciones || { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true }
-  const stats = L.stats || []
+  // Merge con defaults: claves nuevas (ej. promociones) quedan visibles aunque
+  // la config guardada no las tenga aún.
+  const sec = { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, ...(L.secciones || {}) }
   const galeria = L.galeria || []
+  const promos = data.promociones || []
+
+  // Stats: manuales del gym o, si no definió, las REALES calculadas de la BD.
+  const sr = data.stats_reales || {}
+  const statsAuto = [
+    sr.socios_activos > 0 && { valor: `${sr.socios_activos}`, label: sr.socios_activos === 1 ? 'Miembro activo' : 'Miembros activos' },
+    sr.sedes > 1 && { valor: `${sr.sedes}`, label: 'Sedes' },
+    sr.clases_semana > 0 && { valor: `${sr.clases_semana}`, label: 'Clases por semana' },
+    sr.entrenadores > 0 && { valor: `${sr.entrenadores}`, label: sr.entrenadores === 1 ? 'Entrenador' : 'Entrenadores' },
+  ].filter(Boolean)
+  const stats = (L.stats && L.stats.length > 0) ? L.stats : statsAuto
 
   return (
     <div className="min-h-screen bg-white">
@@ -108,14 +120,43 @@ export default function Landing({ slug }) {
         </section>
       )}
 
+      {/* Promociones activas */}
+      {sec.promociones && promos.length > 0 && (
+        <section className="py-16" style={{ background: `${tema.color_primary}0d` }}>
+          <div className="mx-auto max-w-[1000px] px-6">
+            <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Ofertas y promociones</h2>
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
+              {promos.map((pr) => (
+                <div key={pr.nombre}
+                  className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border-2 bg-white p-5 sm:w-[380px]"
+                  style={{ borderColor: tema.color_primary }}>
+                  <div className="absolute right-0 top-0 rounded-bl-xl px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white"
+                    style={{ background: tema.color_primary }}>
+                    Oferta
+                  </div>
+                  <div className="pr-14 text-[17px] font-extrabold">{pr.nombre}</div>
+                  {pr.descripcion && <div className="mt-1.5 text-[13px] font-semibold leading-relaxed text-muted">{pr.descripcion}</div>}
+                  <div className="mt-3 flex items-center justify-between">
+                    {pr.fecha_fin
+                      ? <span className="text-[11.5px] font-extrabold text-faint">Hasta el {new Date(pr.fecha_fin + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}</span>
+                      : <span />}
+                    <a href={portalUrl} className="text-[13px] font-extrabold" style={{ color: tema.color_primary }}>Aprovechar →</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Planes */}
       {sec.planes && data.planes?.length > 0 && (
         <section id="planes" className="mx-auto max-w-[1000px] px-6 py-20">
           <h2 className="text-center text-[30px] font-extrabold tracking-[-0.5px]">Planes</h2>
           <p className="mt-2 text-center text-[14px] font-semibold text-muted">Elige el plan que se ajusta a tu ritmo</p>
-          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 flex flex-wrap justify-center gap-5">
             {data.planes.map((p) => (
-              <div key={p.nombre} className="relative rounded-2xl border border-line bg-white p-6 transition-transform hover:-translate-y-1"
+              <div key={p.nombre} className="relative w-full max-w-[260px] rounded-2xl border border-line bg-white p-6 transition-transform hover:-translate-y-1 sm:w-[240px]"
                 style={p.badge ? { borderColor: tema.color_primary, boxShadow: `0 10px 30px ${tema.color_primary}22` } : {}}>
                 {p.badge && <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-extrabold text-white" style={{ background: tema.color_primary }}>{p.badge}</div>}
                 <div className="text-[15px] font-extrabold text-muted">{p.nombre}</div>
