@@ -4,7 +4,10 @@ import { ROOT_DOMAIN } from '../lib/tenant.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
 // Tokens: bg #141B2E · surface #1F293D · primary #FF6B35 · muted #8E9AA8 · radius 8px
-const APP_URL = `https://app.${ROOT_DOMAIN}`
+// En producción el panel vive en app.fitcorecenter.com; en dev (localhost) nos
+// quedamos en el mismo origen para no saltar a producción al hacer clic.
+const IS_DEV_HOST = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+const APP_URL = IS_DEV_HOST ? '' : `https://app.${ROOT_DOMAIN}`
 // Contacto oficial de la plataforma
 const WA_NUM = '+51 986 110 558'
 const WA_LINK = 'https://wa.me/51986110558?text=' + encodeURIComponent('Hola, quiero información sobre FitControl para mi gimnasio')
