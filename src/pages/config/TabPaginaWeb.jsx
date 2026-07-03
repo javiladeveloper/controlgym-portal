@@ -20,7 +20,9 @@ const ETIQUETA_SECCION = {
 }
 
 // Fuentes disponibles para la página (se cargan solas desde Google Fonts).
-const FUENTES_PAGINA = ['Manrope', 'Inter', 'Poppins', 'Montserrat', 'Oswald', 'Bebas Neue', 'Anton', 'Nunito Sans', 'Roboto Condensed', 'Teko']
+// Las "de póster" se aplican SOLO a títulos y números; el texto usa letra legible.
+const FUENTES_PAGINA = ['Manrope', 'Inter', 'Poppins', 'Montserrat', 'Nunito Sans', 'Roboto Condensed', 'Oswald', 'Bebas Neue', 'Anton', 'Teko']
+const FUENTES_DISPLAY = ['Oswald', 'Bebas Neue', 'Anton', 'Teko']
 
 // Diseños de página: cambian la ESTRUCTURA de la landing, no solo colores.
 const DISENOS = [
@@ -482,8 +484,13 @@ export default function TabPaginaWeb() {
             <select value={L.estilo?.fuente || ''} onChange={(e) => upd({ estilo: { ...(L.estilo || {}), fuente: e.target.value } })}
               className="cursor-pointer rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange">
               <option value="">Usar la de mi marca</option>
-              {FUENTES_PAGINA.map((f) => <option key={f} value={f}>{f}</option>)}
+              {FUENTES_PAGINA.map((f) => (
+                <option key={f} value={f}>{f}{FUENTES_DISPLAY.includes(f) ? ' — estilo póster (solo títulos)' : ''}</option>
+              ))}
             </select>
+            <span className="text-[10.5px] font-semibold text-faint">
+              Las de "estilo póster" (Anton, Bebas…) se usan solo en títulos y precios; los textos mantienen una letra legible.
+            </span>
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Texto del botón principal</span>

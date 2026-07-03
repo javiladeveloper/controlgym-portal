@@ -18,6 +18,18 @@ function hexToRgba(hex, a) {
   return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`
 }
 
+// Fuentes "de póster": solo se aplican a títulos/números (ilegibles en párrafos).
+const FUENTES_DISPLAY = ['Anton', 'Bebas Neue', 'Teko', 'Oswald']
+// Ejes de peso válidos por fuente en Google Fonts (pedir un peso inexistente da error 400).
+const FONT_AXIS = {
+  Anton: '', 'Bebas Neue': '', Teko: ':wght@400;600;700', Oswald: ':wght@400;600;700',
+  'Roboto Condensed': ':wght@400;700',
+}
+const fontHref = (fams) =>
+  'https://fonts.googleapis.com/css2?' +
+  fams.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}${FONT_AXIS[f] ?? ':wght@400;600;700;800'}`).join('&') +
+  '&display=swap'
+
 // Radio de los botones según el estilo elegido (landing.estilo.botones)
 const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
 // Radio de tarjetas (landing.estilo.tarjetas)
@@ -74,13 +86,20 @@ export default function Landing({ slug }) {
     return () => { active = false }
   }, [slug])
 
-  // Carga dinámica de la fuente (Google Fonts): la de la página si el gym
-  // eligió una propia, o la de su marca.
+  // Carga dinámica de fuentes (Google Fonts) con EMPAREJADO inteligente:
+  // si la fuente elegida es "de póster" (Anton, Bebas…), se usa solo en
+  // títulos/números y el cuerpo mantiene una letra legible.
   useEffect(() => {
-    const f = data?.landing?.estilo?.fuente || data?.tema?.font_family
-    if (!f) return
+    if (!data) return
+    const elegida = data?.landing?.estilo?.fuente || data?.tema?.font_family || 'Manrope'
+    const marca = data?.tema?.font_family
+    const titulo = elegida
+    const cuerpo = FUENTES_DISPLAY.includes(elegida)
+      ? (marca && !FUENTES_DISPLAY.includes(marca) ? marca : 'Manrope')
+      : elegida
+
     const id = 'lp-font-link'
-    const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800;900&display=swap`
+    const href = fontHref([...new Set([titulo, cuerpo])])
     let link = document.getElementById(id)
     if (!link) {
       link = document.createElement('link')
@@ -89,7 +108,10 @@ export default function Landing({ slug }) {
       document.head.appendChild(link)
     }
     if (link.href !== href) link.href = href
-    document.documentElement.style.setProperty('--font-brand', `'${f}'`)
+    const root = document.documentElement
+    root.style.setProperty('--font-title', `'${titulo}'`)
+    root.style.setProperty('--font-body', `'${cuerpo}'`)
+    root.style.setProperty('--font-brand', `'${cuerpo}'`)
   }, [data])
 
   // Identidad en la pestaña del navegador: título y favicon del gym.
@@ -165,7 +187,7 @@ export default function Landing({ slug }) {
         <div className="mx-auto grid max-w-[900px] grid-cols-2 gap-6 px-6 sm:grid-cols-4">
           {stats.map((s, i) => (
             <div key={i} className="text-center">
-              <div className="text-[32px] font-extrabold tracking-[-1px]" style={{ color: tema.color_primary }}>{s.valor}</div>
+              <div className="lp-display text-[32px] font-extrabold tracking-[-1px]" style={{ color: tema.color_primary }}>{s.valor}</div>
               <div className="mt-1 text-[13px] font-bold text-muted">{s.label}</div>
             </div>
           ))}
@@ -211,7 +233,7 @@ export default function Landing({ slug }) {
               style={p.badge ? { borderColor: tema.color_primary, boxShadow: `0 10px 30px ${tema.color_primary}22`, borderRadius: rCard } : { borderRadius: rCard }}>
               {p.badge && <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-extrabold text-white" style={{ background: tema.color_primary }}>{p.badge}</div>}
               <div className="text-[15px] font-extrabold text-muted">{p.nombre}</div>
-              <div className="mt-2 text-[32px] font-extrabold tracking-[-1px]">{money(p.precio, data.moneda)}<span className="text-[14px] font-semibold text-muted">/{p.unidad}</span></div>
+              <div className="lp-display mt-2 text-[32px] font-extrabold tracking-[-1px]">{money(p.precio, data.moneda)}<span className="text-[14px] font-semibold text-muted" style={{ fontFamily: 'var(--font-body)' }}>/{p.unidad}</span></div>
               <div className="mt-3 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{p.descripcion}</div>
               <button onClick={() => abrirLead(`Plan ${p.nombre}`)}
                 className="mt-6 block w-full cursor-pointer border-none py-2.5 text-center text-[13px] font-extrabold text-white"
@@ -304,6 +326,12 @@ export default function Landing({ slug }) {
 
   return (
     <div className="lp-root min-h-screen bg-white">
+      {/* Emparejado tipográfico: títulos con la fuente elegida, cuerpo legible */}
+      <style>{`
+        .lp-root { font-family: var(--font-body, 'Manrope'), system-ui, sans-serif; }
+        .lp-root h1, .lp-root h2, .lp-root .lp-display { font-family: var(--font-title, var(--font-body, 'Manrope')), system-ui, sans-serif; }
+      `}</style>
+
       {/* Diseño Nocturno: la página completa se vuelve oscura vía overrides */}
       {dark && (
         <style>{`
