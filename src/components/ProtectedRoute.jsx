@@ -18,14 +18,15 @@ function Splash() {
 
 // Guard de rutas privadas: exige sesión, espera al bootstrap, y (opcional)
 // valida que el módulo esté habilitado para la empresa/rol.
-export default function ProtectedRoute({ children, moduleSlug }) {
+// `allowNoEmpresa`: rutas accesibles sin empresa (ej. /registro).
+export default function ProtectedRoute({ children, moduleSlug, allowNoEmpresa = false }) {
   const { session, loading, enabledModules, rol, empresa } = useAuth()
   const location = useLocation()
 
   if (loading) return <Splash />
   if (!session) return <Navigate to="/login" replace state={{ from: location }} />
   // Sesión válida pero sin bootstrap (usuario sin empresa asignada)
-  if (!empresa) return <Navigate to="/sin-empresa" replace />
+  if (!empresa && !allowNoEmpresa) return <Navigate to="/sin-empresa" replace />
 
   if (moduleSlug && !canAccessModule(moduleSlug, enabledModules, rol)) {
     return <Navigate to="/dashboard" replace />

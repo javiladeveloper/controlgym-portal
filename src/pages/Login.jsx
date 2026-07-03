@@ -69,6 +69,11 @@ export default function Login() {
           <p className="mt-5 text-center text-[12px] font-semibold text-faint">
             Solo cuentas autorizadas por tu gimnasio pueden ingresar.
           </p>
+
+          <div className="mt-4 border-t border-line2 pt-4 text-center text-[12.5px] font-semibold text-muted">
+            ¿Tienes un gimnasio?{' '}
+            <a href="/registro" className="font-extrabold text-orange hover:underline">Regístralo gratis</a>
+          </div>
         </div>
 
         <p className="mt-4 text-center text-[12px] font-semibold text-faint">

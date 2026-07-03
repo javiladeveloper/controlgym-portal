@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LogoMark } from './icons.jsx'
-import { visibleModules } from '../config/modules.js'
+import { groupedModules } from '../config/modules.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
 
@@ -21,7 +21,7 @@ export default function Sidebar() {
   const { empresa, usuario, rol, tema, enabledModules, empresas, setEmpresaActiva, signOut } = useAuth()
   const { sedes, sedeId, setSede } = usePanel()
 
-  const modules = visibleModules(enabledModules, rol)
+  const grupos = groupedModules(enabledModules, rol)
   const marca = tema?.nombre_marca || empresa?.nombre || 'FitCore'
 
   return (
@@ -65,30 +65,45 @@ export default function Sidebar() {
         </select>
       )}
 
-      {/* Menú dinámico */}
-      <nav className="flex flex-col gap-[3px]">
-        {modules.map((m) => (
-          <NavLink
-            key={m.slug}
-            to={`/${m.slug}`}
-            className={({ isActive }) =>
-              `relative flex items-center rounded-[10px] px-3.5 py-2.5 text-[13.5px] transition-colors ${
-                isActive
-                  ? 'bg-navy-700 font-extrabold text-white'
-                  : 'font-semibold text-faint hover:bg-navy-700 hover:text-white'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <span
-                  className="absolute -left-3.5 bottom-[9px] top-[9px] w-[3.5px] rounded-r-[3px]"
-                  style={{ background: isActive ? 'var(--color-primary, #FF6B35)' : 'transparent' }}
-                />
-                {m.label}
-              </>
-            )}
-          </NavLink>
+      {/* Menú dinámico agrupado por categorías */}
+      <nav className="flex flex-col gap-0.5">
+        {grupos.map((g, gi) => (
+          <div key={g.key}>
+            {/* Encabezado de categoría: resaltado con color de marca + separador */}
+            <div
+              className={`flex items-center gap-2 px-3 pb-1.5 ${gi === 0 ? 'pt-1' : 'mt-2 border-t border-white/[0.07] pt-3'}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--color-primary, #FF6B35)' }} />
+              <span className="text-[11px] font-extrabold uppercase tracking-[1.2px] text-white/90">
+                {g.label}
+              </span>
+            </div>
+            <div className="flex flex-col gap-[3px]">
+              {g.items.map((m) => (
+                <NavLink
+                  key={m.slug}
+                  to={`/${m.slug}`}
+                  className={({ isActive }) =>
+                    `relative flex items-center rounded-[10px] px-3.5 py-2.5 text-[13.5px] transition-colors ${
+                      isActive
+                        ? 'bg-navy-700 font-extrabold text-white'
+                        : 'font-semibold text-faint hover:bg-navy-700 hover:text-white'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className="absolute -left-3.5 bottom-[9px] top-[9px] w-[3.5px] rounded-r-[3px]"
+                        style={{ background: isActive ? 'var(--color-primary, #FF6B35)' : 'transparent' }}
+                      />
+                      {m.label}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 

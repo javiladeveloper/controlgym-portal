@@ -15,8 +15,9 @@ import Maquinas from './pages/Maquinas.jsx'
 import Finanzas from './pages/Finanzas.jsx'
 import Sponsors from './pages/Sponsors.jsx'
 import Reportes from './pages/Reportes.jsx'
-import Apariencia from './pages/Apariencia.jsx'
+import Configuracion from './pages/Configuracion.jsx'
 import SinEmpresa from './pages/SinEmpresa.jsx'
+import RegistroGym from './pages/RegistroGym.jsx'
 
 // slug -> componente. El guard por módulo vive en ProtectedRoute (moduleSlug).
 const PAGES = [
@@ -32,7 +33,7 @@ const PAGES = [
   ['maquinas', Maquinas],
   ['finanzas', Finanzas],
   ['sponsors', Sponsors],
-  ['apariencia', Apariencia],
+  ['configuracion', Configuracion],
   ['reportes', Reportes],
 ]
 
@@ -52,6 +53,16 @@ export default function App() {
       {/* Público */}
       <Route path="/login" element={<Login />} />
       <Route path="/sin-empresa" element={<SinEmpresa />} />
+
+      {/* Registro de gimnasio: requiere sesión pero NO empresa */}
+      <Route
+        path="/registro"
+        element={
+          <ProtectedRoute allowNoEmpresa>
+            <RegistroGym />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Privado */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

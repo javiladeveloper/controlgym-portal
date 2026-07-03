@@ -9,11 +9,7 @@ export function useClientes(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('socio')
-        .select(`
-          id, codigo, nombre, documento, fecha_nacimiento, telefono, email,
-          objetivo, talla_m, peso_kg, estado, es_menor,
-          membresia:membresia(id, estado, fecha_fin, plan:plan(nombre))
-        `)
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_fin,plan(nombre))')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('nombre')
@@ -31,11 +27,7 @@ export function useSocioFicha(socioId) {
     queryFn: async () => {
       const { data: socio, error } = await supabase
         .from('socio')
-        .select(`
-          id, codigo, nombre, documento, fecha_nacimiento, telefono, email,
-          objetivo, talla_m, peso_kg, estado, es_menor,
-          membresia:membresia(id, estado, fecha_fin, plan:plan(nombre))
-        `)
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_fin,plan(nombre))')
         .eq('id', socioId)
         .single()
       if (error) throw error
