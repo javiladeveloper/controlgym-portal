@@ -30,3 +30,6 @@ design/FitCore-pretty.html
 .github\instructions\codacy.instructions.md
 
 .vercel
+
+# Assets originales de Gemini (ya procesados en public/landing)
+Gemini_Generated_Image_*.png

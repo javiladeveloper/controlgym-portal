@@ -124,10 +124,13 @@ export default function PlataformaLanding() {
         </div>
       </header>
 
-      {/* Hero: copy + mockup del panel */}
+      {/* Hero: foto real de gimnasio de fondo + copy + mockup del panel */}
       <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/landing/hero.jpg')" }} />
+        <div className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(20,27,46,0.96) 0%, rgba(20,27,46,0.86) 45%, rgba(20,27,46,0.62) 100%)' }} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28" style={{ background: 'linear-gradient(180deg, transparent, #141B2E)' }} />
         <div className="pointer-events-none absolute -right-40 -top-40 h-[480px] w-[480px] rounded-full opacity-[0.14] blur-3xl" style={{ background: C.primary }} />
-        <div className="mx-auto grid max-w-[1100px] items-center gap-12 px-6 py-20 md:grid-cols-[1.05fr_1fr] md:py-24">
+        <div className="relative mx-auto grid max-w-[1100px] items-center gap-12 px-6 py-20 md:grid-cols-[1.05fr_1fr] md:py-24">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11.5px] font-extrabold uppercase tracking-[1.5px]" style={{ border: C.border, color: C.muted }}>
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: C.primary }} /> El sistema operativo para gimnasios
@@ -196,10 +199,15 @@ export default function PlataformaLanding() {
           <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Empieza en 3 pasos</h2>
           <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-3">
             {PASOS.map(([n, t, d]) => (
-              <div key={n} className="rounded-lg p-6 text-center" style={{ background: C.bg, border: C.border }}>
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg text-[16px] font-extrabold text-white" style={{ background: C.primary }}>{n}</div>
-                <div className="mt-3.5 text-[15px] font-extrabold">{t}</div>
-                <div className="mt-1.5 text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{d}</div>
+              <div key={n} className="overflow-hidden rounded-lg" style={{ background: C.bg, border: C.border }}>
+                <div className="h-[140px] overflow-hidden">
+                  <img src={`/landing/paso${n}.jpg`} alt={t} loading="lazy" className="h-full w-full object-cover" />
+                </div>
+                <div className="p-6 pt-5 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg text-[16px] font-extrabold text-white" style={{ background: C.primary }}>{n}</div>
+                  <div className="mt-3.5 text-[15px] font-extrabold">{t}</div>
+                  <div className="mt-1.5 text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{d}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -251,18 +259,22 @@ export default function PlataformaLanding() {
         </p>
       </section>
 
-      {/* CTA final */}
+      {/* CTA final: panel + app en dispositivos reales */}
       <section className="px-6 pb-20 pt-4">
-        <div className="mx-auto max-w-[800px] rounded-xl px-8 py-12 text-center" style={{ background: C.surface, border: C.border }}>
-          <h2 className="text-[26px] font-extrabold tracking-[-0.5px]">Tu gimnasio, en control esta misma tarde</h2>
-          <p className="mx-auto mt-2 max-w-[460px] text-[14px] font-semibold" style={{ color: C.muted }}>
-            Panel + página web + captación de clientes. Sin instalaciones, sin técnicos, sin permanencia.
-          </p>
-          <a href={`${APP_URL}/registro`}
-            className="mt-7 inline-block rounded-lg px-8 py-4 text-[15.5px] font-extrabold text-white transition-transform hover:scale-[1.03]"
-            style={{ background: C.primary, boxShadow: '0 12px 36px rgba(255,107,53,0.35)' }}>
-            Crear mi gimnasio gratis
-          </a>
+        <div className="relative mx-auto max-w-[1000px] overflow-hidden rounded-xl" style={{ border: C.border }}>
+          <div className="absolute inset-0 bg-cover" style={{ backgroundImage: "url('/landing/devices.jpg')", backgroundPosition: 'right center' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(24,32,52,0.97) 30%, rgba(24,32,52,0.72) 60%, rgba(24,32,52,0.15) 100%)' }} />
+          <div className="relative max-w-[560px] px-8 py-14 md:px-12 md:py-16">
+            <h2 className="text-[26px] font-extrabold tracking-[-0.5px]">Tu gimnasio, en control esta misma tarde</h2>
+            <p className="mt-2 max-w-[420px] text-[14px] font-semibold" style={{ color: C.muted }}>
+              Panel + página web + captación de clientes. Sin instalaciones, sin técnicos, sin permanencia.
+            </p>
+            <a href={`${APP_URL}/registro`}
+              className="mt-7 inline-block rounded-lg px-8 py-4 text-[15.5px] font-extrabold text-white transition-transform hover:scale-[1.03]"
+              style={{ background: C.primary, boxShadow: '0 12px 36px rgba(255,107,53,0.35)' }}>
+              Crear mi gimnasio gratis
+            </a>
+          </div>
         </div>
       </section>
 
