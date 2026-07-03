@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { applyEmpresaTema } from '../theme/tokens.js'
 import { LogoMark } from '../components/icons.jsx'
@@ -20,6 +20,10 @@ function hexToRgba(hex, a) {
 
 // Radio de los botones según el estilo elegido (landing.estilo.botones)
 const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
+// Radio de tarjetas (landing.estilo.tarjetas)
+const CARD_RADIUS = { redonda: 22, suave: 14, recta: 6 }
+// Orden por defecto de las secciones de la página
+const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'galeria', 'sedes', 'mapa']
 
 // Tema efectivo de la página: colores de la marca + override propio de la
 // landing (empresa.landing.colores), si el gym personalizó su página.
@@ -53,6 +57,24 @@ export default function Landing({ slug }) {
     })
     return () => { active = false }
   }, [slug])
+
+  // Carga dinámica de la fuente (Google Fonts): la de la página si el gym
+  // eligió una propia, o la de su marca.
+  useEffect(() => {
+    const f = data?.landing?.estilo?.fuente || data?.tema?.font_family
+    if (!f) return
+    const id = 'lp-font-link'
+    const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;600;700;800;900&display=swap`
+    let link = document.getElementById(id)
+    if (!link) {
+      link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+    if (link.href !== href) link.href = href
+    document.documentElement.style.setProperty('--font-brand', `'${f}'`)
+  }, [data])
 
   if (data === undefined) {
     return <div className="flex min-h-screen items-center justify-center bg-canvas text-[13px] font-bold text-muted">Cargando…</div>
@@ -89,8 +111,142 @@ export default function Landing({ slug }) {
   ].filter(Boolean)
   const stats = (L.stats && L.stats.length > 0) ? L.stats : statsAuto
   const rBtn = BTN_RADIUS[L.estilo?.botones || 'suave']
-  const D = L.estilo?.diseno || 'clasico' // clasico | split | dark | minimal
+  const D = L.estilo?.diseno || 'clasico' // clasico | split | dark | minimal | bold
   const dark = D === 'dark'
+  const rCard = CARD_RADIUS[L.estilo?.tarjetas || 'suave']
+  const mayus = !!L.estilo?.titulo_mayus
+  const ctaTxt = (L.cta_texto || '').trim() || (D === 'bold' ? '¡Empieza hoy!' : 'Inscríbete ahora')
+  const alturaHero = L.estilo?.hero_altura || 'normal'
+  const heroPadY = { compacto: 'py-16', normal: 'py-28', completo: 'flex min-h-[82vh] flex-col justify-center py-24' }[alturaHero] || 'py-28'
+  const orden = Array.isArray(L.orden) && L.orden.length ? L.orden : DEFAULT_ORDEN
+
+  // Renderers de cada sección — la página los pinta en el orden configurado.
+  const SECCIONES_RENDER = {
+    stats: () => sec.stats && stats.length > 0 && (
+      <section className="border-b border-line bg-white py-10">
+        <div className="mx-auto grid max-w-[900px] grid-cols-2 gap-6 px-6 sm:grid-cols-4">
+          {stats.map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="text-[32px] font-extrabold tracking-[-1px]" style={{ color: tema.color_primary }}>{s.valor}</div>
+              <div className="mt-1 text-[13px] font-bold text-muted">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    promociones: () => sec.promociones && promos.length > 0 && (
+      <section className="py-16" style={{ background: `${tema.color_primary}0d` }}>
+        <div className="mx-auto max-w-[1000px] px-6">
+          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Ofertas y promociones</h2>
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            {promos.map((pr) => (
+              <div key={pr.nombre}
+                className="relative flex w-full max-w-[420px] flex-col overflow-hidden border-2 bg-white p-5 sm:w-[380px]"
+                style={{ borderColor: tema.color_primary, borderRadius: rCard }}>
+                <div className="absolute right-0 top-0 rounded-bl-xl px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white"
+                  style={{ background: tema.color_primary }}>
+                  Oferta
+                </div>
+                <div className="pr-14 text-[17px] font-extrabold">{pr.nombre}</div>
+                {pr.descripcion && <div className="mt-1.5 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{pr.descripcion}</div>}
+                <div className="mt-auto flex items-center justify-between pt-3">
+                  {pr.fecha_fin
+                    ? <span className="text-[11.5px] font-extrabold text-faint">Hasta el {new Date(pr.fecha_fin + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}</span>
+                    : <span />}
+                  <button onClick={() => abrirLead(`Promoción: ${pr.nombre}`)}
+                    className="cursor-pointer border-none bg-transparent text-[13px] font-extrabold"
+                    style={{ color: tema.color_primary }}>Aprovechar →</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    ),
+    planes: () => sec.planes && data.planes?.length > 0 && (
+      <section id="planes" className="mx-auto max-w-[1000px] px-6 py-20">
+        <h2 className="text-center text-[30px] font-extrabold tracking-[-0.5px]">Planes</h2>
+        <p className="mt-2 text-center text-[14px] font-semibold text-muted">Elige el plan que se ajusta a tu ritmo</p>
+        <div className="mt-10 flex flex-wrap justify-center gap-5">
+          {data.planes.map((p) => (
+            <div key={p.nombre} className="relative flex w-full max-w-[260px] flex-col border border-line bg-white p-6 transition-transform hover:-translate-y-1 sm:w-[240px]"
+              style={p.badge ? { borderColor: tema.color_primary, boxShadow: `0 10px 30px ${tema.color_primary}22`, borderRadius: rCard } : { borderRadius: rCard }}>
+              {p.badge && <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-extrabold text-white" style={{ background: tema.color_primary }}>{p.badge}</div>}
+              <div className="text-[15px] font-extrabold text-muted">{p.nombre}</div>
+              <div className="mt-2 text-[32px] font-extrabold tracking-[-1px]">{money(p.precio, data.moneda)}<span className="text-[14px] font-semibold text-muted">/{p.unidad}</span></div>
+              <div className="mt-3 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{p.descripcion}</div>
+              <button onClick={() => abrirLead(`Plan ${p.nombre}`)}
+                className="mt-6 block w-full cursor-pointer border-none py-2.5 text-center text-[13px] font-extrabold text-white"
+                style={{ background: tema.color_primary, borderRadius: rBtn }}>Elegir</button>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    clases: () => sec.clases && data.clases?.length > 0 && (
+      <section className="bg-surface py-16">
+        <div className="mx-auto max-w-[1000px] px-6 text-center">
+          <h2 className="text-[26px] font-extrabold tracking-[-0.5px]">Clases y servicios</h2>
+          <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+            {data.clases.map((c) => (
+              <span key={c} className="rounded-full border border-line bg-white px-4 py-2 text-[13px] font-extrabold">{c}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+    ),
+    galeria: () => sec.galeria && galeria.length > 0 && (
+      <section className="mx-auto max-w-[1000px] px-6 py-20">
+        <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Galería</h2>
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {galeria.map((url, i) => (
+            <div key={i} className="aspect-[4/3] overflow-hidden" style={{ borderRadius: rCard }}>
+              <img src={url} alt="" className="h-full w-full object-cover transition-transform hover:scale-105" />
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    sedes: () => sec.sedes && data.sedes?.length > 0 && (
+      <section className="bg-surface py-20">
+        <div className="mx-auto max-w-[1000px] px-6">
+          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Nuestras sedes</h2>
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.sedes.map((s) => (
+              <div key={s.nombre} className="overflow-hidden border border-line bg-white" style={{ borderRadius: rCard }}>
+                {s.foto_url && <div className="aspect-[16/10] overflow-hidden"><img src={s.foto_url} alt="" className="h-full w-full object-cover" /></div>}
+                <div className="p-5">
+                  <div className="text-[16px] font-extrabold">{s.nombre}</div>
+                  {s.direccion && <div className="mt-1 text-[13px] font-semibold text-muted">{s.direccion}</div>}
+                  {s.telefono && <div className="mt-2 text-[13px] font-bold" style={{ color: tema.color_primary }}>{s.telefono}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    ),
+    mapa: () => (sec.mapa && Number(L.ubicacion?.lat) && Number(L.ubicacion?.lng)) ? (
+      <section className="mx-auto max-w-[1000px] px-6 py-20">
+        <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Encuéntranos</h2>
+        {data.direccion && <p className="mt-2 text-center text-[14px] font-semibold text-muted">{data.direccion}</p>}
+        <div className="mt-8 overflow-hidden border border-line shadow-sm" style={{ borderRadius: rCard }}>
+          <iframe
+            title="Ubicación"
+            className="h-[340px] w-full"
+            loading="lazy"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(L.ubicacion.lng) - 0.006}%2C${Number(L.ubicacion.lat) - 0.004}%2C${Number(L.ubicacion.lng) + 0.006}%2C${Number(L.ubicacion.lat) + 0.004}&layer=mapnik&marker=${L.ubicacion.lat}%2C${L.ubicacion.lng}`}
+          />
+        </div>
+        <div className="mt-3 text-center">
+          <a href={`https://www.google.com/maps?q=${L.ubicacion.lat},${L.ubicacion.lng}`} target="_blank" rel="noreferrer"
+            className="text-[13px] font-extrabold" style={{ color: tema.color_primary }}>
+            Abrir en Google Maps →
+          </a>
+        </div>
+      </section>
+    ) : null,
+  }
 
   return (
     <div className="lp-root min-h-screen bg-white">
@@ -125,12 +281,12 @@ export default function Landing({ slug }) {
       {D === 'split' ? (
         /* ── PANORAMA: texto a la izquierda, foto a la derecha ── */
         <section className="relative overflow-hidden" style={{ background: tema.color_navy }}>
-          <div className="mx-auto grid max-w-[1060px] items-center gap-10 px-6 py-16 md:grid-cols-2 md:py-24">
+          <div className={`mx-auto grid max-w-[1060px] items-center gap-10 px-6 md:grid-cols-2 ${alturaHero === 'compacto' ? 'py-12' : alturaHero === 'completo' ? 'py-24 md:min-h-[80vh]' : 'py-16 md:py-24'}`}>
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[12px] font-extrabold text-white/80">
                 <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
               </div>
-              <h1 className="text-[40px] font-extrabold leading-[1.08] tracking-[-1px] text-white" style={{ color: '#fff' }}>
+              <h1 className="text-[40px] font-extrabold leading-[1.08] tracking-[-1px] text-white" style={{ color: '#fff', textTransform: mayus ? 'uppercase' : undefined }}>
                 {data.eslogan || 'Tu mejor versión empieza aquí'}
               </h1>
               {data.mensaje_bienvenida && (
@@ -140,7 +296,7 @@ export default function Landing({ slug }) {
                 <button onClick={() => abrirLead('Quiero inscribirme')}
                   className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]"
                   style={{ background: tema.color_primary, borderRadius: rBtn }}>
-                  Inscríbete ahora
+                  {ctaTxt}
                 </button>
                 {sec.planes && data.planes?.length > 0 && (
                   <a href="#planes" className="border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10"
@@ -162,7 +318,7 @@ export default function Landing({ slug }) {
             <div className="mb-5 inline-flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[2.5px] text-muted">
               <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
             </div>
-            <h1 className="text-[50px] font-extrabold leading-[1.05] tracking-[-2px] text-ink">
+            <h1 className="text-[50px] font-extrabold leading-[1.05] tracking-[-2px] text-ink" style={{ textTransform: mayus ? 'uppercase' : undefined }}>
               {data.eslogan || 'Tu mejor versión empieza aquí'}
             </h1>
             <div className="mx-auto mt-6 h-1.5 w-24 rounded-full" style={{ background: tema.color_primary }} />
@@ -173,7 +329,7 @@ export default function Landing({ slug }) {
               <button onClick={() => abrirLead('Quiero inscribirme')}
                 className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white transition-transform hover:scale-[1.02]"
                 style={{ background: tema.color_primary, borderRadius: rBtn }}>
-                Inscríbete ahora
+                {ctaTxt}
               </button>
               {sec.planes && data.planes?.length > 0 && (
                 <a href="#planes" className="border-2 px-6 py-3 text-[15px] font-extrabold transition-opacity hover:opacity-75"
@@ -191,12 +347,12 @@ export default function Landing({ slug }) {
         /* ── IMPACTO: degradado fuerte, tipografía gigante ── */
         <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${tema.color_navy} 10%, ${tema.color_primary} 170%)` }}>
           {L.hero_url && <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
-          <div className="relative mx-auto max-w-[1000px] px-6 py-28 text-center">
+          <div className={`relative mx-auto max-w-[1000px] px-6 text-center ${heroPadY}`}>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full px-5 py-2 text-[12px] font-extrabold uppercase tracking-[2px] text-white"
               style={{ background: hexToRgba(tema.color_primary, 0.35) }}>
               {data.nombre}
             </div>
-            <h1 className="text-[54px] font-extrabold uppercase leading-[1] tracking-[-1.5px] text-white" style={{ color: '#fff' }}>
+            <h1 className="text-[54px] font-extrabold uppercase leading-[1] tracking-[-1.5px] text-white" style={{ color: '#fff', textTransform: mayus ? 'uppercase' : undefined }}>
               {data.eslogan || 'Tu mejor versión empieza aquí'}
             </h1>
             <div className="mx-auto mt-6 h-2 w-40 -skew-x-12" style={{ background: tema.color_primary }} />
@@ -207,7 +363,7 @@ export default function Landing({ slug }) {
               <button onClick={() => abrirLead('Quiero inscribirme')}
                 className="cursor-pointer border-none px-8 py-4 text-[16px] font-extrabold uppercase tracking-wide text-white shadow-2xl transition-transform hover:scale-[1.04]"
                 style={{ background: tema.color_primary, borderRadius: rBtn }}>
-                ¡Empieza hoy!
+                {ctaTxt}
               </button>
               {sec.planes && data.planes?.length > 0 && (
                 <a href="#planes" className="border-2 border-white/50 px-7 py-3.5 text-[15px] font-extrabold uppercase text-white transition-colors hover:bg-white/10"
@@ -226,11 +382,11 @@ export default function Landing({ slug }) {
               <div className="absolute inset-0" style={{ background: hexToRgba(tema.color_navy, L.hero_overlay ?? 0.55) }} />
             </>
           )}
-          <div className="relative mx-auto max-w-[1000px] px-6 py-28 text-center">
+          <div className={`relative mx-auto max-w-[1000px] px-6 text-center ${heroPadY}`}>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[12px] font-extrabold text-white/80">
               <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
             </div>
-            <h1 className="text-[44px] font-extrabold leading-[1.1] tracking-[-1px] text-white" style={{ color: '#fff' }}>
+            <h1 className="text-[44px] font-extrabold leading-[1.1] tracking-[-1px] text-white" style={{ color: '#fff', textTransform: mayus ? 'uppercase' : undefined }}>
               {data.eslogan || 'Tu mejor versión empieza aquí'}
             </h1>
             {data.mensaje_bienvenida && (
@@ -240,7 +396,7 @@ export default function Landing({ slug }) {
               <button onClick={() => abrirLead('Quiero inscribirme')}
                 className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]"
                 style={{ background: tema.color_primary, borderRadius: rBtn }}>
-                Inscríbete ahora
+                {ctaTxt}
               </button>
               {sec.planes && data.planes?.length > 0 && (
                 <a href="#planes" className="border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10"
@@ -253,143 +409,11 @@ export default function Landing({ slug }) {
         </section>
       )}
 
-      {/* Estadísticas */}
-      {sec.stats && stats.length > 0 && (
-        <section className="border-b border-line bg-white py-10">
-          <div className="mx-auto grid max-w-[900px] grid-cols-2 gap-6 px-6 sm:grid-cols-4">
-            {stats.map((s, i) => (
-              <div key={i} className="text-center">
-                <div className="text-[32px] font-extrabold tracking-[-1px]" style={{ color: tema.color_primary }}>{s.valor}</div>
-                <div className="mt-1 text-[13px] font-bold text-muted">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Promociones activas */}
-      {sec.promociones && promos.length > 0 && (
-        <section className="py-16" style={{ background: `${tema.color_primary}0d` }}>
-          <div className="mx-auto max-w-[1000px] px-6">
-            <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Ofertas y promociones</h2>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              {promos.map((pr) => (
-                <div key={pr.nombre}
-                  className="relative flex w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border-2 bg-white p-5 sm:w-[380px]"
-                  style={{ borderColor: tema.color_primary }}>
-                  <div className="absolute right-0 top-0 rounded-bl-xl px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white"
-                    style={{ background: tema.color_primary }}>
-                    Oferta
-                  </div>
-                  <div className="pr-14 text-[17px] font-extrabold">{pr.nombre}</div>
-                  {pr.descripcion && <div className="mt-1.5 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{pr.descripcion}</div>}
-                  <div className="mt-auto flex items-center justify-between pt-3">
-                    {pr.fecha_fin
-                      ? <span className="text-[11.5px] font-extrabold text-faint">Hasta el {new Date(pr.fecha_fin + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}</span>
-                      : <span />}
-                    <button onClick={() => abrirLead(`Promoción: ${pr.nombre}`)}
-                      className="cursor-pointer border-none bg-transparent text-[13px] font-extrabold"
-                      style={{ color: tema.color_primary }}>Aprovechar →</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Planes */}
-      {sec.planes && data.planes?.length > 0 && (
-        <section id="planes" className="mx-auto max-w-[1000px] px-6 py-20">
-          <h2 className="text-center text-[30px] font-extrabold tracking-[-0.5px]">Planes</h2>
-          <p className="mt-2 text-center text-[14px] font-semibold text-muted">Elige el plan que se ajusta a tu ritmo</p>
-          <div className="mt-10 flex flex-wrap justify-center gap-5">
-            {data.planes.map((p) => (
-              <div key={p.nombre} className="relative flex w-full max-w-[260px] flex-col rounded-2xl border border-line bg-white p-6 transition-transform hover:-translate-y-1 sm:w-[240px]"
-                style={p.badge ? { borderColor: tema.color_primary, boxShadow: `0 10px 30px ${tema.color_primary}22` } : {}}>
-                {p.badge && <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-extrabold text-white" style={{ background: tema.color_primary }}>{p.badge}</div>}
-                <div className="text-[15px] font-extrabold text-muted">{p.nombre}</div>
-                <div className="mt-2 text-[32px] font-extrabold tracking-[-1px]">{money(p.precio, data.moneda)}<span className="text-[14px] font-semibold text-muted">/{p.unidad}</span></div>
-                <div className="mt-3 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{p.descripcion}</div>
-                <button onClick={() => abrirLead(`Plan ${p.nombre}`)}
-                  className="mt-6 block w-full cursor-pointer border-none py-2.5 text-center text-[13px] font-extrabold text-white"
-                  style={{ background: tema.color_primary, borderRadius: rBtn }}>Elegir</button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Clases */}
-      {sec.clases && data.clases?.length > 0 && (
-        <section className="bg-surface py-16">
-          <div className="mx-auto max-w-[1000px] px-6 text-center">
-            <h2 className="text-[26px] font-extrabold tracking-[-0.5px]">Clases y servicios</h2>
-            <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-              {data.clases.map((c) => (
-                <span key={c} className="rounded-full border border-line bg-white px-4 py-2 text-[13px] font-extrabold">{c}</span>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Galería */}
-      {sec.galeria && galeria.length > 0 && (
-        <section className="mx-auto max-w-[1000px] px-6 py-20">
-          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Galería</h2>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {galeria.map((url, i) => (
-              <div key={i} className="aspect-[4/3] overflow-hidden rounded-xl">
-                <img src={url} alt="" className="h-full w-full object-cover transition-transform hover:scale-105" />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Sedes */}
-      {sec.sedes && data.sedes?.length > 0 && (
-        <section className="bg-surface py-20">
-          <div className="mx-auto max-w-[1000px] px-6">
-            <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Nuestras sedes</h2>
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {data.sedes.map((s) => (
-                <div key={s.nombre} className="overflow-hidden rounded-2xl border border-line bg-white">
-                  {s.foto_url && <div className="aspect-[16/10] overflow-hidden"><img src={s.foto_url} alt="" className="h-full w-full object-cover" /></div>}
-                  <div className="p-5">
-                    <div className="text-[16px] font-extrabold">{s.nombre}</div>
-                    {s.direccion && <div className="mt-1 text-[13px] font-semibold text-muted">{s.direccion}</div>}
-                    {s.telefono && <div className="mt-2 text-[13px] font-bold" style={{ color: tema.color_primary }}>{s.telefono}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Mapa de ubicación */}
-      {sec.mapa && Number(L.ubicacion?.lat) && Number(L.ubicacion?.lng) ? (
-        <section className="mx-auto max-w-[1000px] px-6 py-20">
-          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Encuéntranos</h2>
-          {data.direccion && <p className="mt-2 text-center text-[14px] font-semibold text-muted">{data.direccion}</p>}
-          <div className="mt-8 overflow-hidden rounded-2xl border border-line shadow-sm">
-            <iframe
-              title="Ubicación"
-              className="h-[340px] w-full"
-              loading="lazy"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(L.ubicacion.lng) - 0.006}%2C${Number(L.ubicacion.lat) - 0.004}%2C${Number(L.ubicacion.lng) + 0.006}%2C${Number(L.ubicacion.lat) + 0.004}&layer=mapnik&marker=${L.ubicacion.lat}%2C${L.ubicacion.lng}`}
-            />
-          </div>
-          <div className="mt-3 text-center">
-            <a href={`https://www.google.com/maps?q=${L.ubicacion.lat},${L.ubicacion.lng}`} target="_blank" rel="noreferrer"
-              className="text-[13px] font-extrabold" style={{ color: tema.color_primary }}>
-              Abrir en Google Maps →
-            </a>
-          </div>
-        </section>
-      ) : null}
+      {/* Secciones de la página, en el orden configurado por el gym */}
+      {orden.map((key) => {
+        const R = SECCIONES_RENDER[key]
+        return R ? <Fragment key={key}>{R()}</Fragment> : null
+      })}
 
       {/* Footer */}
       <footer className="border-t border-line px-6 py-10" style={{ background: tema.color_navy }}>
@@ -418,6 +442,17 @@ export default function Landing({ slug }) {
           </div>
         </div>
       </footer>
+
+      {/* Botón flotante de WhatsApp (usa el número de Redes sociales) */}
+      {L.whatsapp_flotante && redes.whatsapp && (
+        <a href={`https://wa.me/${String(redes.whatsapp).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+          className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition-transform hover:scale-110"
+          style={{ background: '#25D366' }} title="Escríbenos por WhatsApp">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" aria-hidden>
+            <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.7-1.3 1.3-1.9 1.4-.5.1-1.1.1-1.8-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5.1-4.5-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.1.1.3 0 .4-.1.2-.1.3-.3.5l-.4.5c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 1.9 1.1.9 2 1.2 2.3 1.4.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.3.1 1.7.8 2 1 .3.1.5.2.5.3.1.1.1.7-.1 1.4z" />
+          </svg>
+        </a>
+      )}
 
       {/* Formulario de inscripción / contacto → crea un lead en el CRM del gym */}
       {lead && (

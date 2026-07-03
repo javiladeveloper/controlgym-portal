@@ -10,6 +10,15 @@ const SECCIONES = [
 
 const MAX_GALERIA = 12 // tope de fotos en la galería
 
+const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'galeria', 'sedes', 'mapa']
+const ETIQUETA_SECCION = {
+  stats: 'Estadísticas', promociones: 'Ofertas y promociones', planes: 'Planes',
+  clases: 'Clases', galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
+}
+
+// Fuentes disponibles para la página (se cargan solas desde Google Fonts).
+const FUENTES_PAGINA = ['Manrope', 'Inter', 'Poppins', 'Montserrat', 'Oswald', 'Bebas Neue', 'Anton', 'Nunito Sans', 'Roboto Condensed', 'Teko']
+
 // Diseños de página: cambian la ESTRUCTURA de la landing, no solo colores.
 const DISENOS = [
   ['clasico', 'Clásico', 'Foto de fondo, centrado y sobrio'],
@@ -111,7 +120,10 @@ export default function TabPaginaWeb() {
         stats: base.stats || [],
         ubicacion: base.ubicacion || { lat: '', lng: '' },
         colores: base.colores || null, // null = heredar los colores de la marca
-        estilo: base.estilo || { botones: 'suave' },
+        estilo: { botones: 'suave', tarjetas: 'suave', hero_altura: 'normal', titulo_mayus: false, fuente: '', ...(base.estilo || {}) },
+        cta_texto: base.cta_texto || '',
+        whatsapp_flotante: !!base.whatsapp_flotante,
+        orden: Array.isArray(base.orden) && base.orden.length ? base.orden : DEFAULT_ORDEN,
         secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, ...(base.secciones || {}) },
       })
     }
@@ -342,6 +354,99 @@ export default function TabPaginaWeb() {
               )
             })}
           </div>
+        </div>
+
+        {/* Forma de tarjetas */}
+        <div className="mt-4">
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Forma de las tarjetas</div>
+          <div className="mt-2 flex gap-2">
+            {[['redonda', 'Redondas'], ['suave', 'Suaves'], ['recta', 'Rectas']].map(([k, lab]) => {
+              const activo = (L.estilo?.tarjetas || 'suave') === k
+              return (
+                <button key={k}
+                  onClick={() => upd({ estilo: { ...(L.estilo || {}), tarjetas: k } })}
+                  className={`border px-4 py-2 text-[12.5px] font-extrabold transition-colors ${activo ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}
+                  style={{ borderRadius: k === 'redonda' ? 16 : k === 'suave' ? 10 : 4 }}>
+                  {lab}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Altura de portada */}
+        <div className="mt-4">
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Altura de la portada</div>
+          <div className="mt-2 flex gap-2">
+            {[['compacto', 'Compacta'], ['normal', 'Normal'], ['completo', 'Pantalla completa']].map(([k, lab]) => {
+              const activo = (L.estilo?.hero_altura || 'normal') === k
+              return (
+                <button key={k}
+                  onClick={() => upd({ estilo: { ...(L.estilo || {}), hero_altura: k } })}
+                  className={`rounded-[10px] border px-4 py-2 text-[12.5px] font-extrabold transition-colors ${activo ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}>
+                  {lab}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Tipografía de la página */}
+        <div className="mt-4 grid grid-cols-2 gap-3.5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Tipografía de la página</span>
+            <select value={L.estilo?.fuente || ''} onChange={(e) => upd({ estilo: { ...(L.estilo || {}), fuente: e.target.value } })}
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange">
+              <option value="">Usar la de mi marca</option>
+              {FUENTES_PAGINA.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Texto del botón principal</span>
+            <input value={L.cta_texto || ''} onChange={(e) => upd({ cta_texto: e.target.value })} placeholder="Inscríbete ahora"
+              className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-6">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={!!L.estilo?.titulo_mayus}
+              onChange={(e) => upd({ estilo: { ...(L.estilo || {}), titulo_mayus: e.target.checked } })}
+              className="h-4 w-4 accent-orange-600" />
+            <span className="text-[13px] font-bold">Título en MAYÚSCULAS</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={!!L.whatsapp_flotante}
+              onChange={(e) => upd({ whatsapp_flotante: e.target.checked })}
+              className="h-4 w-4 accent-orange-600" />
+            <span className="text-[13px] font-bold">Botón flotante de WhatsApp</span>
+            <span className="text-[11px] font-semibold text-faint">(usa el número de Redes sociales)</span>
+          </label>
+        </div>
+      </Card>
+
+      {/* Orden de las secciones */}
+      <Card className="mt-4 p-[19px]">
+        <div className="text-[14.5px] font-extrabold">Orden de las secciones</div>
+        <p className="mt-0.5 text-[12px] font-semibold text-muted">Sube o baja cada bloque para reordenar tu página.</p>
+        <div className="mt-3 flex flex-col gap-1.5">
+          {(L.orden || DEFAULT_ORDEN).map((k, i, arr) => (
+            <div key={k} className="flex items-center justify-between rounded-[10px] border border-line bg-white px-3.5 py-2">
+              <div className="flex items-center gap-2.5">
+                <span className="w-5 text-center text-[11px] font-extrabold text-faint">{i + 1}</span>
+                <span className="text-[13px] font-bold">{ETIQUETA_SECCION[k] || k}</span>
+                {L.secciones?.[k] === false && <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-extrabold text-faint">oculta</span>}
+              </div>
+              <div className="flex gap-1">
+                <button disabled={i === 0}
+                  onClick={() => { const o = [...arr]; [o[i - 1], o[i]] = [o[i], o[i - 1]]; upd({ orden: o }) }}
+                  className="h-7 w-7 cursor-pointer rounded-md border border-line bg-white text-[13px] font-extrabold text-muted hover:border-orange disabled:opacity-30">↑</button>
+                <button disabled={i === arr.length - 1}
+                  onClick={() => { const o = [...arr]; [o[i + 1], o[i]] = [o[i], o[i + 1]]; upd({ orden: o }) }}
+                  className="h-7 w-7 cursor-pointer rounded-md border border-line bg-white text-[13px] font-extrabold text-muted hover:border-orange disabled:opacity-30">↓</button>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
