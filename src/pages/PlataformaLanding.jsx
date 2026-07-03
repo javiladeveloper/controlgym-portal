@@ -100,23 +100,63 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
-      {/* Precio */}
-      <section className="mx-auto max-w-[900px] px-6 py-20 text-center">
-        <h2 className="text-[28px] font-extrabold tracking-[-0.5px]">Un precio simple</h2>
-        <div className="mx-auto mt-8 max-w-[380px] rounded-3xl border-2 border-orange bg-white p-8 shadow-[0_20px_50px_rgba(255,107,53,0.15)]">
-          <div className="text-[13px] font-extrabold uppercase tracking-[1px] text-orange">Plan único · todo incluido</div>
-          <div className="mt-3 text-[46px] font-extrabold tracking-[-2px]">S/ 99<span className="text-[16px] font-semibold text-muted">/mes</span></div>
-          <ul className="mt-5 space-y-2 text-left text-[13.5px] font-semibold text-muted">
-            {['Panel completo y usuarios ilimitados', 'Página web con tu dominio propio', 'CRM + captación desde redes', 'Emails automáticos de interesados', 'Reportes y soporte incluidos'].map((x) => (
-              <li key={x} className="flex items-start gap-2"><span className="mt-0.5 text-green">✓</span>{x}</li>
-            ))}
-          </ul>
-          <a href={`${APP_URL}/registro`}
-            className="mt-7 block rounded-[12px] bg-orange py-3.5 text-[15px] font-extrabold text-white hover:bg-orange-600">
-            Empezar gratis
-          </a>
-          <p className="mt-3 text-[11.5px] font-semibold text-faint">Primer mes de prueba, sin tarjeta.</p>
+      {/* Precios */}
+      <section className="mx-auto max-w-[1080px] px-6 py-20">
+        <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Un plan para cada tipo de gimnasio</h2>
+        <p className="mt-2 text-center text-[14px] font-semibold text-muted">
+          Estudio de yoga, gym de barrio o cadena multi-sede: paga solo por lo que necesitas.
+        </p>
+        <div className="mx-auto mt-10 grid max-w-[980px] grid-cols-1 gap-5 md:grid-cols-3">
+          {[
+            {
+              nombre: 'Estudio', precio: 49, popular: false,
+              para: 'Yoga, pilates, baile y gimnasios pequeños',
+              features: ['1 sede · hasta 100 socios', '2 usuarios del panel', 'Socios, membresías y cobros', 'Clases y check-in de recepción', 'Tu página web con subdominio', 'Reportes básicos'],
+              no: ['CRM y captación desde redes', 'App del socio'],
+            },
+            {
+              nombre: 'Crecimiento', precio: 99, popular: true,
+              para: 'El gimnasio que quiere captar y crecer',
+              features: ['Hasta 3 sedes · 500 socios', 'Usuarios ilimitados', 'Todo lo de Estudio', 'CRM + captación desde redes con origen', 'Emails automáticos de interesados', 'Promociones aplicadas al cobro', 'Kardex, máquinas y finanzas', 'Personalización total (8 diseños)', 'Reportes en Excel'],
+              no: ['App del socio'],
+            },
+            {
+              nombre: 'Cadena', precio: 179, popular: false,
+              para: 'Multi-sede, franquicias y gyms completos',
+              features: ['Sedes y socios ilimitados', 'Todo lo de Crecimiento', 'App del socio: rutinas y dietas (próximamente)', 'Control de acceso: torniquete y huella', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
+              no: [],
+            },
+          ].map((p) => (
+            <div key={p.nombre}
+              className={`relative flex flex-col rounded-3xl border-2 bg-white p-7 ${p.popular ? 'border-orange shadow-[0_20px_50px_rgba(255,107,53,0.15)]' : 'border-line'}`}>
+              {p.popular && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-orange px-4 py-1 text-[11px] font-extrabold tracking-[0.5px] text-white">
+                  MÁS POPULAR
+                </div>
+              )}
+              <div className="text-[15px] font-extrabold">{p.nombre}</div>
+              <div className="mt-0.5 text-[12px] font-semibold text-muted">{p.para}</div>
+              <div className="mt-4 text-[40px] font-extrabold tracking-[-2px]">
+                S/ {p.precio}<span className="text-[15px] font-semibold text-muted">/mes</span>
+              </div>
+              <ul className="mt-5 flex-1 space-y-2 text-left text-[13px] font-semibold text-muted">
+                {p.features.map((x) => (
+                  <li key={x} className="flex items-start gap-2"><span className="mt-0.5 text-green">✓</span>{x}</li>
+                ))}
+                {p.no.map((x) => (
+                  <li key={x} className="flex items-start gap-2 opacity-45"><span className="mt-0.5">✕</span>{x}</li>
+                ))}
+              </ul>
+              <a href={`${APP_URL}/registro`}
+                className={`mt-6 block rounded-[12px] py-3 text-center text-[14px] font-extrabold ${p.popular ? 'bg-orange text-white hover:bg-orange-600' : 'border border-orange text-orange hover:bg-orange-50'}`}>
+                Empezar gratis
+              </a>
+            </div>
+          ))}
         </div>
+        <p className="mt-6 text-center text-[12px] font-semibold text-faint">
+          Todos los planes incluyen 1 mes de prueba gratis, sin tarjeta. Cambia de plan cuando quieras.
+        </p>
       </section>
 
       {/* Footer */}
