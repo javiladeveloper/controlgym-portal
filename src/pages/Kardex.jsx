@@ -1,15 +1,104 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
+import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
+import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProductos, useMovimientosInventario } from '../hooks/useOperaciones.js'
 import { money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
+function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
+  const qc = useQueryClient()
+  const [f, setF] = useState({ producto_id: productos[0]?.id || '__nuevo__', tipo: 'venta', cantidad: 1, monto: '', np_nombre: '', np_categoria: 'Suplementos', np_precio: '', np_stockmin: 5 })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  const prod = productos.find((p) => p.id === f.producto_id)
+  const montoSugerido = prod ? Number(prod.precio) * (Number(f.cantidad) || 0) : 0
+
+  async function guardar(e) {
+    e?.preventDefault()
+    setBusy(true); setError('')
+    try {
+      let productoId = f.producto_id
+      // Producto nuevo al vuelo
+      if (productoId === '__nuevo__') {
+        if (!f.np_nombre.trim()) throw new Error('Escribe el nombre del producto nuevo')
+        const { data, error } = await supabase.from('producto').insert({
+          empresa_id: empresaId, nombre: f.np_nombre.trim(), categoria: f.np_categoria,
+          precio: Number(f.np_precio) || 0, stock_minimo: Number(f.np_stockmin) || 0,
+        }).select('id').single()
+        if (error) throw error
+        productoId = data.id
+      }
+      const { error } = await supabase.rpc('registrar_mov_inventario', {
+        p_sede_id: sedeId, p_producto_id: productoId, p_tipo: f.tipo,
+        p_cantidad: Number(f.cantidad), p_monto: f.monto === '' ? null : Number(f.monto),
+      })
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
+      qc.invalidateQueries({ queryKey: ['kardex-movs', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title="Registrar movimiento" subtitle="Venta o compra: actualiza stock y caja" onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col gap-3.5">
+        <Campo label="Producto">
+          <select value={f.producto_id} onChange={set('producto_id')} className={inputCls + ' cursor-pointer'}>
+            {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre} (stock {p.stock})</option>)}
+            <option value="__nuevo__">+ Producto nuevo…</option>
+          </select>
+        </Campo>
+        {f.producto_id === '__nuevo__' && (
+          <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Nombre *"><input value={f.np_nombre} onChange={set('np_nombre')} className={inputCls} placeholder="Proteína 1 kg" /></Campo>
+              <Campo label="Categoría">
+                <select value={f.np_categoria} onChange={set('np_categoria')} className={inputCls + ' cursor-pointer'}>
+                  {['Suplementos', 'Bebidas', 'Accesorios', 'Ropa', 'Otros'].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Campo>
+              <Campo label={`Precio de venta (${moneda})`}><input type="number" step="0.1" value={f.np_precio} onChange={set('np_precio')} className={inputCls} /></Campo>
+              <Campo label="Alerta de stock bajo"><input type="number" value={f.np_stockmin} onChange={set('np_stockmin')} className={inputCls} /></Campo>
+            </div>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Tipo">
+            <select value={f.tipo} onChange={set('tipo')} className={inputCls + ' cursor-pointer'}>
+              <option value="venta">Venta (sale stock, entra a caja)</option>
+              <option value="compra">Compra (entra stock, sale de caja)</option>
+              <option value="ajuste">Ajuste de inventario (+)</option>
+            </select>
+          </Campo>
+          <Campo label="Cantidad"><input type="number" min="1" value={f.cantidad} onChange={set('cantidad')} className={inputCls} /></Campo>
+        </div>
+        <Campo label={`Monto (${moneda})`} hint={f.tipo === 'venta' && montoSugerido ? `Sugerido: ${money(montoSugerido, moneda)} (precio × cantidad). Déjalo vacío para usarlo.` : f.tipo === 'compra' ? 'Costo total de la compra.' : undefined}>
+          <input type="number" step="0.1" value={f.monto} onChange={set('monto')} className={inputCls} placeholder={montoSugerido ? String(montoSugerido) : '0'} />
+        </Campo>
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        <BotonesModal onCancel={onClose} busy={busy} submitLabel="Registrar" />
+      </form>
+    </Modal>
+  )
+}
+
 export default function Kardex() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
+  const [movOpen, setMovOpen] = useState(false)
   const productos = useProductos(sedeId)
   const movs = useMovimientosInventario(sedeId)
 
@@ -24,8 +113,13 @@ export default function Kardex() {
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Kardex</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Inventario y venta de productos · {sedeNombre}</p>
         </div>
-        <button className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Registrar movimiento</button>
+        <button onClick={() => setMovOpen(true)}
+          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Registrar movimiento</button>
       </div>
+
+      {movOpen && (
+        <MovimientoModal sedeId={sedeId} empresaId={empresa?.id} productos={productos.data || []} moneda={moneda} onClose={() => setMovOpen(false)} />
+      )}
 
       <div className="mt-5 grid grid-cols-3 gap-[15px]">
         <StatCard label="Productos en inventario" value={productos.data?.length ?? 0} />

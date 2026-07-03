@@ -1,12 +1,101 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import Topbar from '../components/Topbar.jsx'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
 import { BoxIcon, DocIcon, ClockIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
+import Modal, { inputCls } from '../components/Modal.jsx'
+import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useDashboardKpis, useAsistenciaPorHora, useCheckins } from '../hooks/useDashboard.js'
+import { useClientes } from '../hooks/useClientes.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
+
+// Check-in manual desde recepción: busca al socio y registra entrada/salida.
+function CheckinModal({ sedeId, onClose }) {
+  const qc = useQueryClient()
+  const { data: clientes } = useClientes(sedeId)
+  const [q, setQ] = useState('')
+  const [resultado, setResultado] = useState(null) // { resultado, motivo, socio }
+  const [busy, setBusy] = useState(false)
+
+  const matches = (clientes || []).filter(
+    (c) => q.trim() && (c.nombre.toLowerCase().includes(q.toLowerCase()) || c.codigo?.includes(q)),
+  ).slice(0, 6)
+
+  async function registrar(socio, direccion) {
+    setBusy(true)
+    const { data, error } = await supabase.rpc('checkin_manual', {
+      p_socio_id: socio.id, p_sede_id: sedeId, p_direccion: direccion,
+    })
+    setBusy(false)
+    if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: socio.nombre }); return }
+    setResultado(data)
+    qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
+    qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+    qc.invalidateQueries({ queryKey: ['asistencia-hora', sedeId] })
+  }
+
+  return (
+    <Modal title="Check-in de recepción" subtitle="Busca al socio y registra su entrada o salida" onClose={onClose} width={440}>
+      {resultado ? (
+        <div>
+          <div className={`rounded-[10px] p-4 text-center ${resultado.resultado === 'permitido' ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className={`text-[22px] font-extrabold ${resultado.resultado === 'permitido' ? 'text-green-600' : 'text-red'}`}>
+              {resultado.resultado === 'permitido' ? '✓ Acceso permitido' : '✕ Acceso denegado'}
+            </div>
+            <div className="mt-1 text-[14px] font-bold">{resultado.socio}</div>
+            {resultado.motivo && (
+              <div className="mt-1.5 text-[12.5px] font-bold text-red">
+                {resultado.motivo === 'membresia_vencida' ? 'Membresía vencida — ofrécele renovar' : resultado.motivo}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 flex gap-2.5">
+            <button onClick={() => { setResultado(null); setQ('') }}
+              className="flex-1 cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Otro socio</button>
+            <button onClick={onClose}
+              className="flex-1 cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600">Listo</button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} className={inputCls}
+            placeholder="Nombre o N.º de socio…" />
+          <div className="mt-2.5 flex flex-col gap-1.5">
+            {matches.map((c) => {
+              const mem = c.membresia?.[0]
+              const activa = mem?.estado === 'activa'
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-2 rounded-[10px] border border-line bg-white px-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13.5px] font-extrabold">{c.nombre}</div>
+                    <div className="text-[11px] font-semibold text-muted">
+                      N.º {c.codigo} · {mem ? `${mem.plan?.nombre || 'Plan'} ${activa ? 'activa' : mem.estado}` : 'sin membresía'}
+                    </div>
+                  </div>
+                  <div className="flex flex-shrink-0 gap-1.5">
+                    <button disabled={busy} onClick={() => registrar(c, 'entrada')}
+                      className="cursor-pointer rounded-lg border-none bg-green px-3 py-1.5 text-[11.5px] font-extrabold text-white disabled:opacity-50">Entrada</button>
+                    <button disabled={busy} onClick={() => registrar(c, 'salida')}
+                      className="cursor-pointer rounded-lg border border-line bg-white px-3 py-1.5 text-[11.5px] font-extrabold text-muted hover:border-orange disabled:opacity-50">Salida</button>
+                  </div>
+                </div>
+              )
+            })}
+            {q.trim() && matches.length === 0 && (
+              <div className="rounded-[10px] bg-surface px-3 py-4 text-center text-[12.5px] font-semibold text-muted">
+                No se encontró. ¿Es nuevo? Inscríbelo desde Clientes.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
 
 function hourColor(count, max) {
   const ratio = max ? count / max : 0
@@ -23,6 +112,7 @@ const HORAS = Array.from({ length: 15 }, (_, i) => {
 export default function Dashboard() {
   const { sedeId, sedeNombre } = usePanel()
   const { usuario, empresa } = useAuth()
+  const [checkinOpen, setCheckinOpen] = useState(false)
   const kpis = useDashboardKpis(sedeId)
   const horas = useAsistenciaPorHora(sedeId)
   const checkins = useCheckins(sedeId)
@@ -73,12 +163,19 @@ export default function Dashboard() {
 
         <Card className="flex flex-col p-[19px]">
           <div className="flex items-center justify-between">
-            <div className="text-[14.5px] font-extrabold">Check-ins por huella</div>
-            <div className="flex items-center gap-1.5 rounded-full bg-orange-50 px-[11px] py-1">
-              <span className="h-[7px] w-[7px] animate-pulseDot rounded-full bg-orange" />
-              <span className="text-[10.5px] font-extrabold tracking-[0.8px] text-orange">EN VIVO</span>
+            <div className="text-[14.5px] font-extrabold">Check-ins</div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCheckinOpen(true)}
+                className="cursor-pointer rounded-[9px] border-none bg-orange px-3 py-1.5 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
+                + Registrar
+              </button>
+              <div className="flex items-center gap-1.5 rounded-full bg-orange-50 px-[11px] py-1">
+                <span className="h-[7px] w-[7px] animate-pulseDot rounded-full bg-orange" />
+                <span className="text-[10.5px] font-extrabold tracking-[0.8px] text-orange">EN VIVO</span>
+              </div>
             </div>
           </div>
+          {checkinOpen && <CheckinModal sedeId={sedeId} onClose={() => setCheckinOpen(false)} />}
           <div className="mt-2 flex-1 overflow-hidden">
             {checkins.isLoading && <div className="py-4 text-[12.5px] font-semibold text-muted">Cargando…</div>}
             {checkins.data?.length === 0 && <div className="py-4 text-[12.5px] font-semibold text-muted">Sin check-ins hoy.</div>}
