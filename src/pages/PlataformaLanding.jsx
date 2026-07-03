@@ -335,6 +335,11 @@ export default function PlataformaLanding() {
               Cada gimnasio en FitControl recibe su propia página con dirección propia,
               lista para compartir en redes y recibir interesados directo a tu CRM.
             </p>
+            <p className="mt-3 max-w-[460px] rounded-lg px-4 py-3 text-[13px] font-semibold leading-relaxed" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.25)' }}>
+              <b style={{ color: C.primary }}>Ningún otro sistema en Perú te da esto:</b>{' '}
+              otros muestran una ficha genérica con la marca de ellos. Aquí la página es <b>tuya</b>:
+              tu dirección, tus colores, tu estilo — tu gimnasio con identidad propia en internet.
+            </p>
             <ul className="mt-6 space-y-2.5 text-[13.5px] font-semibold" style={{ color: C.muted }}>
               {[
                 ['🌐', <span key="d">Dirección propia: <b className="text-white">tugym.{ROOT_DOMAIN}</b></span>],
