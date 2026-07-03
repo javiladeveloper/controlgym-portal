@@ -1,14 +1,86 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '../components/ui.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
+import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
+import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso } from '../hooks/useClases.js'
 import { claseDot, DAY_NAMES } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
+function NuevaClaseModal({ sedeId, empresaId, tipos, onClose }) {
+  const qc = useQueryClient()
+  const [f, setF] = useState({ nombre: '', tipo_id: tipos[0]?.id || '', tipo_nuevo: '', dia: '1', hora: '19:00', duracion: 60, cupo: 20 })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  async function guardar(e) {
+    e?.preventDefault()
+    setBusy(true); setError('')
+    try {
+      let tipoId = f.tipo_id || null
+      // Crear tipo de clase nuevo al vuelo si lo escribió
+      if (f.tipo_id === '__nuevo__' && f.tipo_nuevo.trim()) {
+        const { data, error } = await supabase.from('tipo_clase')
+          .insert({ empresa_id: empresaId, nombre: f.tipo_nuevo.trim() }).select('id').single()
+        if (error) throw error
+        tipoId = data.id
+        qc.invalidateQueries({ queryKey: ['plan-acceso'] })
+      }
+      const { error } = await supabase.from('clase').insert({
+        empresa_id: empresaId, sede_id: sedeId, tipo_clase_id: tipoId === '__nuevo__' ? null : tipoId,
+        nombre: f.nombre.trim(), dia_semana: Number(f.dia), hora: f.hora,
+        duracion_min: Number(f.duracion) || 60, cupo_max: Number(f.cupo) || 20, activa: true,
+      })
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['clases', sedeId] })
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title="Nueva clase" subtitle="Se agrega al horario de la sede actual" onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col gap-3.5">
+        <Campo label="Nombre de la clase *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Baile · Salsa" /></Campo>
+        <Campo label="Tipo de servicio">
+          <select value={f.tipo_id} onChange={set('tipo_id')} className={inputCls + ' cursor-pointer'}>
+            {tipos.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+            <option value="__nuevo__">+ Crear tipo nuevo…</option>
+          </select>
+        </Campo>
+        {f.tipo_id === '__nuevo__' && (
+          <Campo label="Nombre del tipo nuevo"><input value={f.tipo_nuevo} onChange={set('tipo_nuevo')} className={inputCls} placeholder="Pilates" /></Campo>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Día">
+            <select value={f.dia} onChange={set('dia')} className={inputCls + ' cursor-pointer'}>
+              {Object.entries(DAY_NAMES).map(([n, d]) => <option key={n} value={n}>{d}</option>)}
+            </select>
+          </Campo>
+          <Campo label="Hora"><input type="time" value={f.hora} onChange={set('hora')} className={inputCls} /></Campo>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Duración (min)"><input type="number" value={f.duracion} onChange={set('duracion')} className={inputCls} /></Campo>
+          <Campo label="Cupo máximo"><input type="number" value={f.cupo} onChange={set('cupo')} className={inputCls} /></Campo>
+        </div>
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel="Crear clase" />
+      </form>
+    </Modal>
+  )
+}
+
 export default function Clases() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
+  const [nuevaOpen, setNuevaOpen] = useState(false)
   const clases = useClases(sedeId)
   const toggle = useToggleClase(sedeId)
   const acceso = usePlanAcceso()
@@ -30,8 +102,13 @@ export default function Clases() {
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Clases y servicios</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Horario semanal · {sedeNombre} · toca una clase para pausarla</p>
         </div>
-        <button className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
+        <button onClick={() => setNuevaOpen(true)}
+          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
       </div>
+
+      {nuevaOpen && (
+        <NuevaClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} onClose={() => setNuevaOpen(false)} />
+      )}
 
       {clases.isLoading && <LoadingState variant="cards" rows={4} />}
       {clases.error && <ErrorState error={clases.error} onRetry={clases.refetch} />}

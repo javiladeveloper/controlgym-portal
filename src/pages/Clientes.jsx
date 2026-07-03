@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Avatar, Badge, GhostButton, PrimaryButton } from '../components/ui.jsx'
 import { ChevronLeft } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
+import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
 import { estadoBadge, avatarColors, iniciales } from '../lib/uiHelpers.js'
@@ -85,6 +86,7 @@ function Ficha({ socioId, onBack }) {
 export default function Clientes() {
   const { sedeId, sedeNombre } = usePanel()
   const [fichaId, setFichaId] = useState(null)
+  const [nuevoOpen, setNuevoOpen] = useState(false)
   const { data: clientes, isLoading, error, refetch } = useClientes(sedeId)
   const [q, setQ] = useState('')
 
@@ -103,13 +105,18 @@ export default function Clientes() {
             {clientes?.length ?? 0} socios · {sedeNombre}
           </p>
         </div>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nombre o N.º de socio…"
-          className="w-[290px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
-        />
+        <div className="flex items-center gap-3">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nombre o N.º de socio…"
+            className="w-[290px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
+          />
+          <PrimaryButton onClick={() => setNuevoOpen(true)}>Nuevo socio</PrimaryButton>
+        </div>
       </div>
+
+      {nuevoOpen && <NuevoSocioModal sedeId={sedeId} onClose={() => setNuevoOpen(false)} />}
 
       {isLoading && <LoadingState variant="table" rows={6} />}
       {error && <ErrorState error={error} onRetry={refetch} />}

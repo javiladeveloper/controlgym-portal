@@ -1,13 +1,66 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
 import { CheckIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
+import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
+import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
+import { supabase } from '../lib/supabaseClient.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
 import { useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL } from '../hooks/useCRM.js'
 import { iniciales } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
+const FUENTES = ['Recepción', 'Instagram', 'Facebook', 'TikTok', 'WhatsApp', 'Referido', 'Página web', 'Otro']
+
+function NuevoProspectoModal({ sedeId, empresaId, onClose }) {
+  const qc = useQueryClient()
+  const [f, setF] = useState({ nombre: '', telefono: '', email: '', fuente: 'Recepción', nota: '' })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  async function guardar(e) {
+    e?.preventDefault()
+    setBusy(true); setError('')
+    const { error } = await supabase.from('lead').insert({
+      empresa_id: empresaId, sede_id: sedeId,
+      nombre: f.nombre.trim(), telefono: f.telefono || null, email: f.email || null,
+      fuente: f.fuente, nota: f.nota || null, etapa: 'nuevo',
+    })
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+    onClose()
+  }
+
+  return (
+    <Modal title="Nuevo prospecto" subtitle="Entra al embudo en la etapa Nuevo" onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col gap-3.5">
+        <Campo label="Nombre *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} /></Campo>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} /></Campo>
+          <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
+        </div>
+        <Campo label="¿Cómo nos conoció?">
+          <select value={f.fuente} onChange={set('fuente')} className={inputCls + ' cursor-pointer'}>
+            {FUENTES.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </Campo>
+        <Campo label="Nota"><textarea rows={2} value={f.nota} onChange={set('nota')} className={inputCls + ' resize-none'} placeholder="Le interesa el plan Pro…" /></Campo>
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel="Agregar prospecto" />
+      </form>
+    </Modal>
+  )
+}
+
 export default function CRM() {
   const { sedeId, sedeNombre } = usePanel()
+  const { empresa } = useAuth()
+  const [nuevoOpen, setNuevoOpen] = useState(false)
+  const [convertir, setConvertir] = useState(null) // lead a convertir en socio
   const leads = useLeads(sedeId)
   const avanzar = useAvanzarLead(sedeId)
   const tareas = useTareas(sedeId)
@@ -28,8 +81,19 @@ export default function CRM() {
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">CRM · Prospectos</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Embudo de captación y seguimiento · {sedeNombre}</p>
         </div>
-        <button className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo prospecto</button>
+        <button onClick={() => setNuevoOpen(true)}
+          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo prospecto</button>
       </div>
+
+      {nuevoOpen && <NuevoProspectoModal sedeId={sedeId} empresaId={empresa?.id} onClose={() => setNuevoOpen(false)} />}
+      {convertir && (
+        <NuevoSocioModal
+          sedeId={sedeId}
+          leadId={convertir.id}
+          prefill={{ nombre: convertir.nombre, telefono: convertir.telefono, email: convertir.email }}
+          onClose={() => setConvertir(null)}
+        />
+      )}
 
       <div className="mt-5 grid grid-cols-4 gap-[15px]">
         <StatCard label="Leads totales" value={leads.data?.length ?? 0} delta="en el embudo" />
@@ -61,15 +125,29 @@ export default function CRM() {
                       </div>
                     </div>
                     {ld.nota && <div className="mt-2.5 text-[11.5px] font-semibold leading-[1.45] text-muted">{ld.nota}</div>}
-                    <div className="mt-2.5 flex items-center justify-between">
+                    <div className="mt-2.5 flex items-center justify-between gap-1.5">
                       <span className="text-[10.5px] font-extrabold text-faint">
                         {ld.created_at ? new Date(ld.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : ''}
                       </span>
-                      <button onClick={last ? undefined : () => avanzar.mutate({ id: ld.id, etapa: ld.etapa })}
-                        className="cursor-pointer rounded-lg px-[11px] py-1.5 text-[10.5px] font-extrabold active:scale-[0.96]"
-                        style={{ border: `1px solid ${last ? T.successBg : T.primary}`, background: last ? T.successBg : 'transparent', color: last ? T.success : T.primary }}>
-                        {last ? 'Inscrito ✓' : 'Avanzar →'}
-                      </button>
+                      <div className="flex gap-1.5">
+                        {/* Convertir en socio real (si aún no lo es) */}
+                        {!ld.socio_id && (ld.etapa === 'clase_prueba' || ld.etapa === 'inscrito') && (
+                          <button onClick={() => setConvertir(ld)}
+                            className="cursor-pointer rounded-lg border-none px-[10px] py-1.5 text-[10.5px] font-extrabold text-white active:scale-[0.96]"
+                            style={{ background: T.success }}>
+                            → Socio
+                          </button>
+                        )}
+                        {ld.socio_id ? (
+                          <span className="rounded-lg px-[10px] py-1.5 text-[10.5px] font-extrabold" style={{ background: T.successBg, color: T.success }}>Socio ✓</span>
+                        ) : !last && (
+                          <button onClick={() => avanzar.mutate({ id: ld.id, etapa: ld.etapa })}
+                            className="cursor-pointer rounded-lg px-[11px] py-1.5 text-[10.5px] font-extrabold active:scale-[0.96]"
+                            style={{ border: `1px solid ${T.primary}`, background: 'transparent', color: T.primary }}>
+                            Avanzar →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 )
