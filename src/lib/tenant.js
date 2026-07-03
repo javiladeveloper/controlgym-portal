@@ -40,6 +40,16 @@ export function isPortalHost() {
   return host === 'app.' + ROOT_DOMAIN
 }
 
+// ¿Estamos en el host de la plataforma (apex/www), sin importar la ruta?
+// Sirve para páginas hermanas de la landing (/terminos, /privacidad).
+// En dev se simula con ?home
+export function isPlataformaHost() {
+  const host = window.location.hostname
+  const params = new URLSearchParams(window.location.search)
+  if (params.has('home')) return true
+  return host === ROOT_DOMAIN || host === 'www.' + ROOT_DOMAIN
+}
+
 // ¿Es el dominio raíz de la plataforma (fitcorecenter.com / www)? Ahí vive la
 // landing de FitControl que vende el SaaS a los gimnasios.
 // En dev se previsualiza con ?home

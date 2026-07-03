@@ -7,7 +7,8 @@ import { SedeProvider } from './store.jsx'
 import App from './App.jsx'
 import Landing from './pages/Landing.jsx'
 import PlataformaLanding from './pages/PlataformaLanding.jsx'
-import { getTenantSlug, isPlataformaHome } from './lib/tenant.js'
+import LegalPage from './pages/LegalPage.jsx'
+import { getTenantSlug, isPlataformaHome, isPlataformaHost } from './lib/tenant.js'
 import './index.css'
 
 // Enrutado de nivel raíz por host:
@@ -19,10 +20,18 @@ const wantsPortal = window.location.hash === '#login' || window.location.pathnam
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
+const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad' }[window.location.pathname]
+
 if (isPlataformaHome()) {
   root.render(
     <React.StrictMode>
       <PlataformaLanding />
+    </React.StrictMode>,
+  )
+} else if (isPlataformaHost() && legalDoc) {
+  root.render(
+    <React.StrictMode>
+      <LegalPage doc={legalDoc} />
     </React.StrictMode>,
   )
 } else if (slug && !wantsPortal) {

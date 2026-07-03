@@ -5,6 +5,11 @@ import { ROOT_DOMAIN } from '../lib/tenant.js'
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
 // Tokens: bg #141B2E · surface #1F293D · primary #FF6B35 · muted #8E9AA8 · radius 8px
 const APP_URL = `https://app.${ROOT_DOMAIN}`
+// Contacto oficial de la plataforma
+const WA_NUM = '+51 986 110 558'
+const WA_LINK = 'https://wa.me/51986110558?text=' + encodeURIComponent('Hola, quiero información sobre FitControl para mi gimnasio')
+const MAIL_HOLA = `hola@${ROOT_DOMAIN}`
+const MAIL_SOPORTE = `soporte@${ROOT_DOMAIN}`
 const C = {
   bg: '#141B2E', surface: '#1F293D', primary: '#FF6B35',
   muted: '#8E9AA8', border: '1px solid rgba(255,255,255,0.08)',
@@ -422,6 +427,14 @@ export default function PlataformaLanding() {
             </details>
           ))}
         </div>
+        <p className="mt-6 text-center text-[13.5px] font-semibold" style={{ color: C.muted }}>
+          ¿Tienes otra duda?{' '}
+          <a href={WA_LINK} target="_blank" rel="noreferrer" className="font-extrabold underline decoration-2 underline-offset-4" style={{ color: '#25D366' }}>
+            Escríbenos por WhatsApp
+          </a>
+          {' '}o a{' '}
+          <a href={`mailto:${MAIL_HOLA}`} className="font-extrabold" style={{ color: C.primary }}>{MAIL_HOLA}</a>
+        </p>
       </section>
 
       {/* CTA final: panel + app en dispositivos reales */}
@@ -443,20 +456,75 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="px-6 py-10" style={{ borderTop: C.border }}>
-        <div className="mx-auto flex max-w-[1100px] flex-col items-center gap-3 text-center">
-          <div className="flex items-center gap-2.5">
-            <FitControlLogo size={32} />
-            <span className="text-[15px] font-extrabold">FitControl</span>
+      {/* Footer completo */}
+      <footer className="px-6 pb-8 pt-14" style={{ borderTop: C.border }}>
+        <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <FitControlLogo size={34} />
+              <span className="text-[16px] font-extrabold">FitControl</span>
+            </div>
+            <p className="mt-3 max-w-[240px] text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+              El sistema operativo para gimnasios. Panel de gestión, página web y captación de clientes en una sola plataforma.
+            </p>
+            <p className="mt-3 text-[12px] font-semibold" style={{ color: C.muted }}>🇵🇪 Hecho en Perú</p>
           </div>
-          <div className="text-[12.5px] font-semibold" style={{ color: C.muted }}>El sistema operativo para gimnasios · {ROOT_DOMAIN}</div>
-          <a href="mailto:fitcorecenterpe@gmail.com" className="text-[12.5px] font-bold transition-colors hover:text-white" style={{ color: C.primary }}>
-            fitcorecenterpe@gmail.com
-          </a>
-          <div className="text-[11px] font-semibold" style={{ color: 'rgba(142,154,168,0.5)' }}>© 2026 FitControl. Todos los derechos reservados.</div>
+
+          <div>
+            <div className="text-[12px] font-extrabold uppercase tracking-[1.2px]" style={{ color: C.muted }}>Producto</div>
+            <ul className="mt-3.5 space-y-2.5 text-[13.5px] font-bold">
+              {[['Funciones', '#funciones'], ['Tu página web', '#pagina-web'], ['Precios', '#precios'], ['Preguntas frecuentes', '#faq']].map(([l, h]) => (
+                <li key={h}><a href={h} className="transition-colors hover:text-white" style={{ color: C.muted }}>{l}</a></li>
+              ))}
+              <li>
+                <a href={`https://powergym.${ROOT_DOMAIN}`} target="_blank" rel="noreferrer" className="transition-colors hover:text-white" style={{ color: C.muted }}>
+                  Gym de ejemplo ↗
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <div className="text-[12px] font-extrabold uppercase tracking-[1.2px]" style={{ color: C.muted }}>Contacto</div>
+            <ul className="mt-3.5 space-y-2.5 text-[13.5px] font-bold">
+              <li>
+                <a href={WA_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 transition-colors hover:text-white" style={{ color: C.muted }}>
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]" style={{ background: '#25D366' }}>💬</span>
+                  {WA_NUM}
+                </a>
+              </li>
+              <li><a href={`mailto:${MAIL_HOLA}`} className="transition-colors hover:text-white" style={{ color: C.muted }}>{MAIL_HOLA}</a></li>
+              <li><a href={`mailto:${MAIL_SOPORTE}`} className="transition-colors hover:text-white" style={{ color: C.muted }}>{MAIL_SOPORTE}</a></li>
+              <li className="text-[12px] font-semibold" style={{ color: 'rgba(142,154,168,0.6)' }}>Ventas: {MAIL_HOLA.split('@')[0]}@ · Ayuda técnica: soporte@</li>
+            </ul>
+          </div>
+
+          <div>
+            <div className="text-[12px] font-extrabold uppercase tracking-[1.2px]" style={{ color: C.muted }}>Tu cuenta</div>
+            <ul className="mt-3.5 space-y-2.5 text-[13.5px] font-bold">
+              <li><a href={`${APP_URL}/login`} className="transition-colors hover:text-white" style={{ color: C.muted }}>Entrar al panel</a></li>
+              <li><a href={`${APP_URL}/registro`} className="transition-colors hover:text-white" style={{ color: C.primary }}>Crear mi gimnasio gratis</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mx-auto mt-12 flex max-w-[1100px] flex-col items-center justify-between gap-3 pt-6 sm:flex-row" style={{ borderTop: C.border }}>
+          <div className="text-[11.5px] font-semibold" style={{ color: 'rgba(142,154,168,0.5)' }}>© 2026 FitControl. Todos los derechos reservados.</div>
+          <div className="flex gap-5 text-[12px] font-bold">
+            <a href="/terminos" className="transition-colors hover:text-white" style={{ color: C.muted }}>Términos y condiciones</a>
+            <a href="/privacidad" className="transition-colors hover:text-white" style={{ color: C.muted }}>Privacidad</a>
+          </div>
         </div>
       </footer>
+
+      {/* WhatsApp flotante */}
+      <a href={WA_LINK} target="_blank" rel="noreferrer" aria-label="Escríbenos por WhatsApp"
+        className="fixed bottom-5 right-5 z-30 flex h-[54px] w-[54px] items-center justify-center rounded-full transition-transform hover:scale-110"
+        style={{ background: '#25D366', boxShadow: '0 10px 30px rgba(37,211,102,0.45)' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" aria-hidden>
+          <path d="M12 2a10 10 0 0 0-8.62 15.07L2 22l5.09-1.33A10 10 0 1 0 12 2Zm0 18.18c-1.5 0-2.97-.4-4.25-1.15l-.3-.18-3.02.79.8-2.94-.2-.31a8.18 8.18 0 1 1 6.97 3.79Zm4.49-6.13c-.25-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.13-.16.24-.63.8-.77.96-.14.16-.29.18-.53.06a6.7 6.7 0 0 1-1.97-1.21 7.4 7.4 0 0 1-1.36-1.7c-.14-.24-.02-.37.1-.5.11-.11.25-.28.37-.43.12-.14.16-.24.24-.4.08-.17.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.42-.55-.42h-.47c-.16 0-.43.06-.65.3-.22.25-.86.84-.86 2.05 0 1.2.88 2.37 1 2.53.12.16 1.73 2.64 4.2 3.7.59.26 1.05.41 1.4.52.6.19 1.13.16 1.56.1.47-.07 1.45-.6 1.65-1.17.2-.57.2-1.06.15-1.17-.06-.1-.23-.16-.47-.28Z" />
+        </svg>
+      </a>
     </div>
   )
 }
