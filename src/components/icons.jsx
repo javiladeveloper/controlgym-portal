@@ -19,19 +19,17 @@ export function LogoMark({ size = 19, color = '#FFFFFF' }) {
 
 // Marca de FitControl (la plataforma): mancuerna que se convierte en flecha de
 // crecimiento. Redibujo vectorial del logo — navy + naranja sobre cualquier fondo.
-export function FitControlLogo({ size = 22, navy = '#1B2540', orange = '#FF6B35' }) {
+// Logo FitControl: mancuerna cuya barra es una línea de pulso (fitness + control
+// en vivo). Placa naranja redondeada con discos y pulso en blanco.
+export function FitControlLogo({ size = 22, orange = '#FF6B35', ink = '#FFFFFF', badge = true }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
-      {/* barra y tope de la mancuerna */}
-      <rect x="1.5" y="20" width="3.5" height="8" rx="1.2" fill={navy} />
-      <rect x="3" y="21" width="14" height="6" fill={navy} />
-      {/* flecha completa (barra + punta) como una sola silueta con contorno continuo */}
-      <polygon
-        points="16,21 24.8,21 32.7,13.1 29.5,9.9 44,6 40.1,20.5 36.9,17.3 27.2,27 16,27"
-        fill={navy} stroke={orange} strokeWidth="1.6" strokeLinejoin="miter" />
-      {/* discos */}
-      <rect x="5.5" y="15.5" width="5" height="17" rx="2.5" fill={orange} />
-      <rect x="12.5" y="10.5" width="5" height="27" rx="2.5" fill={orange} />
+      {badge && <rect width="48" height="48" rx="10.5" fill={orange} />}
+      <rect x="6.5" y="13.8" width="4.8" height="20.4" rx="2.4" fill={ink} />
+      <rect x="36.7" y="13.8" width="4.8" height="20.4" rx="2.4" fill={ink} />
+      <polyline
+        points="11.3,24 18.9,24 21.7,16.7 25.7,30.2 28.5,24 36.7,24"
+        fill="none" stroke={ink} strokeWidth="3.1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
