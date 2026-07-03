@@ -59,6 +59,7 @@ export const DB_TO_TOKEN = {
   color_navy_soft: 'navySoft',
   color_success: 'success',
   color_danger: 'danger',
+  color_ink: 'ink',
   color_muted: 'muted',
   color_faint: 'faint',
   color_line: 'line',

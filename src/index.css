@@ -11,8 +11,8 @@
   }
   body {
     margin: 0;
-    background: #e9ebf0;
-    color: #141b2e;
+    background: var(--color-canvas, #e9ebf0);
+    color: var(--color-ink, #141b2e);
     -webkit-font-smoothing: antialiased;
   }
 }

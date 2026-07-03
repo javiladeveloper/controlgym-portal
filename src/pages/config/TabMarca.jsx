@@ -9,12 +9,24 @@ const COLOR_FIELDS = [
   ['color_primary', 'Primario (botones y acentos)'],
   ['color_primary_hover', 'Primario · hover'],
   ['color_navy', 'Oscuro (sidebar, hero y footer)'],
+  ['color_ink', 'Texto principal'],
+  ['color_muted', 'Texto secundario'],
   ['color_success', 'Éxito'],
   ['color_danger', 'Alerta'],
   ['color_surface', 'Superficie'],
   ['color_canvas', 'Fondo'],
 ]
 const FONTS = ['Manrope', 'Inter', 'Poppins', 'Roboto', 'Montserrat', 'Nunito Sans']
+
+// Paletas recomendadas: combos completos, armónicos y legibles, de un clic.
+const PALETAS = [
+  { nombre: 'Naranja',  color_primary: '#FF6B35', color_primary_hover: '#F05E28', color_navy: '#141B2E', color_ink: '#141B2E', color_muted: '#5B6472', color_success: '#1D9E75', color_danger: '#E24B4A', color_surface: '#F5F6F8', color_canvas: '#E9EBF0' },
+  { nombre: 'Rojo',     color_primary: '#E11D48', color_primary_hover: '#BE123C', color_navy: '#0C0A09', color_ink: '#1C1917', color_muted: '#57534E', color_success: '#16A34A', color_danger: '#DC2626', color_surface: '#F7F5F4', color_canvas: '#EEEBE9' },
+  { nombre: 'Azul',     color_primary: '#2563EB', color_primary_hover: '#1D4ED8', color_navy: '#0B1220', color_ink: '#0F172A', color_muted: '#475569', color_success: '#059669', color_danger: '#E11D48', color_surface: '#F4F6FA', color_canvas: '#E8ECF4' },
+  { nombre: 'Verde',    color_primary: '#059669', color_primary_hover: '#047857', color_navy: '#06231B', color_ink: '#052E22', color_muted: '#4B635B', color_success: '#16A34A', color_danger: '#DC2626', color_surface: '#F3F7F5', color_canvas: '#E6EEEA' },
+  { nombre: 'Violeta',  color_primary: '#7C3AED', color_primary_hover: '#6D28D9', color_navy: '#171130', color_ink: '#1E1B2E', color_muted: '#5B5470', color_success: '#1D9E75', color_danger: '#E24B4A', color_surface: '#F6F4FA', color_canvas: '#ECE9F4' },
+  { nombre: 'Dorado',   color_primary: '#D97706', color_primary_hover: '#B45309', color_navy: '#0A0A0A', color_ink: '#1C1917', color_muted: '#57534E', color_success: '#16A34A', color_danger: '#DC2626', color_surface: '#FAF8F4', color_canvas: '#F0EDE6' },
+]
 
 function Uploader({ label, help, value, square, onFile, uploading }) {
   const ref = useRef(null)
@@ -113,6 +125,26 @@ export default function TabMarca() {
 
         <Card className="p-[19px]">
           <div className="text-[14.5px] font-extrabold">Colores</div>
+
+          {/* Paletas recomendadas: llenan todos los colores de un clic */}
+          <div className="mt-3">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-faint">Paletas recomendadas</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {PALETAS.map((p) => {
+                const activa = form.color_primary === p.color_primary && form.color_navy === p.color_navy
+                return (
+                  <button key={p.nombre}
+                    onClick={() => { setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(p).filter(([k]) => k !== 'nombre')) })); setOk(false) }}
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-extrabold transition-colors ${activa ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-ink hover:border-orange'}`}>
+                    <span className="h-3.5 w-3.5 rounded-full" style={{ background: p.color_primary }} />
+                    <span className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: p.color_navy }} />
+                    {p.nombre}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="mt-4 flex flex-col gap-3">
             {COLOR_FIELDS.map(([field, label]) => (
               <div key={field} className="flex items-center justify-between gap-3">
