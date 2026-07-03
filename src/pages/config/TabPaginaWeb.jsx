@@ -5,15 +5,18 @@ import { useGuardarEmpresa, subirImagen } from '../../hooks/useConfiguracion.js'
 
 const SECCIONES = [
   ['promociones', 'Ofertas y promociones'], ['planes', 'Planes'], ['clases', 'Clases'],
-  ['sedes', 'Sedes'], ['galeria', 'Galería'], ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
+  ['testimonios', 'Testimonios'], ['sedes', 'Sedes'], ['galeria', 'Galería'],
+  ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
 ]
+
+const MAX_TESTIMONIOS = 6
 
 const MAX_GALERIA = 12 // tope de fotos en la galería
 
-const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
 const ETIQUETA_SECCION = {
   stats: 'Estadísticas', promociones: 'Ofertas y promociones', planes: 'Planes',
-  clases: 'Clases', galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
+  clases: 'Clases', testimonios: 'Testimonios', galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
 }
 
 // Fuentes disponibles para la página (se cargan solas desde Google Fonts).
@@ -134,8 +137,12 @@ export default function TabPaginaWeb() {
         estilo: { botones: 'suave', tarjetas: 'suave', hero_altura: 'normal', titulo_mayus: false, fuente: '', ...(base.estilo || {}) },
         cta_texto: base.cta_texto || '',
         whatsapp_flotante: !!base.whatsapp_flotante,
-        orden: Array.isArray(base.orden) && base.orden.length ? base.orden : DEFAULT_ORDEN,
-        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, ...(base.secciones || {}) },
+        stats_modo: base.stats_modo || ((base.stats || []).length > 0 ? 'manual' : 'auto'),
+        testimonios: base.testimonios || [],
+        orden: Array.isArray(base.orden) && base.orden.length
+          ? [...base.orden, ...DEFAULT_ORDEN.filter((k) => !base.orden.includes(k))]
+          : DEFAULT_ORDEN,
+        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, testimonios: true, ...(base.secciones || {}) },
       })
     }
   }, [empresa])
@@ -222,27 +229,82 @@ export default function TabPaginaWeb() {
 
       {/* Estadísticas */}
       <Card className="mt-4 p-[19px]">
+        <div className="text-[14.5px] font-extrabold">Estadísticas</div>
+        <p className="mt-0.5 text-[12px] font-semibold text-muted">Elige qué números mostrar en tu página.</p>
+
+        {/* Modo: datos reales vs personalizados */}
+        <div className="mt-3 flex flex-col gap-2">
+          <label className={`flex cursor-pointer items-start gap-3 rounded-[10px] border p-3 ${L.stats_modo === 'auto' ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
+            <input type="radio" name="stats_modo" checked={L.stats_modo === 'auto'} onChange={() => upd({ stats_modo: 'auto' })} className="mt-0.5 accent-orange-600" />
+            <span>
+              <span className="block text-[13px] font-extrabold">Datos reales (automático)</span>
+              <span className="block text-[11.5px] font-semibold text-muted">Socios activos, sedes, clases por semana y entrenadores, calculados en vivo del sistema.</span>
+            </span>
+          </label>
+          <label className={`flex cursor-pointer items-start gap-3 rounded-[10px] border p-3 ${L.stats_modo === 'manual' ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
+            <input type="radio" name="stats_modo" checked={L.stats_modo === 'manual'} onChange={() => upd({ stats_modo: 'manual' })} className="mt-0.5 accent-orange-600" />
+            <span>
+              <span className="block text-[13px] font-extrabold">Números personalizados</span>
+              <span className="block text-[11.5px] font-semibold text-muted">Escribe tú los valores (ej. "850+ miembros", "10+ años de experiencia").</span>
+            </span>
+          </label>
+        </div>
+
+        {/* Editor solo en modo personalizado */}
+        {L.stats_modo === 'manual' && (
+          <div className="mt-4 flex flex-col gap-2.5">
+            {L.stats.map((s, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <input value={s.valor} onChange={(e) => upd({ stats: L.stats.map((x, j) => j === i ? { ...x, valor: e.target.value } : x) })} placeholder="500+"
+                  className="w-[110px] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
+                <input value={s.label} onChange={(e) => upd({ stats: L.stats.map((x, j) => j === i ? { ...x, label: e.target.value } : x) })} placeholder="Miembros activos"
+                  className="flex-1 rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-semibold outline-none focus:border-orange" />
+                <button onClick={() => upd({ stats: L.stats.filter((_, j) => j !== i) })} className="text-[12px] font-extrabold text-red">Quitar</button>
+              </div>
+            ))}
+            <button onClick={() => upd({ stats: [...L.stats, { label: '', valor: '' }] })}
+              className="self-start cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange">+ Agregar dato</button>
+          </div>
+        )}
+      </Card>
+
+      {/* Testimonios */}
+      <Card className="mt-4 p-[19px]">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[14.5px] font-extrabold">Estadísticas</div>
-            <p className="mt-0.5 text-[12px] font-semibold text-muted">
-              Números destacados. Si no agregas ninguno, se muestran automáticamente los <b>datos reales</b> del gym (socios activos, sedes, clases, entrenadores).
-            </p>
+            <div className="text-[14.5px] font-extrabold">Testimonios <span className="text-[12px] font-bold text-faint">({(L.testimonios || []).length}/{MAX_TESTIMONIOS})</span></div>
+            <p className="mt-0.5 text-[12px] font-semibold text-muted">Opiniones de tus socios que generan confianza.</p>
           </div>
-          <button onClick={() => upd({ stats: [...L.stats, { label: '', valor: '' }] })}
-            className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange">Agregar dato</button>
+          <button
+            disabled={(L.testimonios || []).length >= MAX_TESTIMONIOS}
+            onClick={() => upd({ testimonios: [...(L.testimonios || []), { nombre: '', texto: '', estrellas: 5 }] })}
+            className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+            + Agregar
+          </button>
         </div>
-        <div className="mt-4 flex flex-col gap-2.5">
-          {L.stats.map((s, i) => (
-            <div key={i} className="flex items-center gap-2.5">
-              <input value={s.valor} onChange={(e) => upd({ stats: L.stats.map((x, j) => j === i ? { ...x, valor: e.target.value } : x) })} placeholder="500+"
-                className="w-[110px] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
-              <input value={s.label} onChange={(e) => upd({ stats: L.stats.map((x, j) => j === i ? { ...x, label: e.target.value } : x) })} placeholder="Miembros activos"
-                className="flex-1 rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-semibold outline-none focus:border-orange" />
-              <button onClick={() => upd({ stats: L.stats.filter((_, j) => j !== i) })} className="text-[12px] font-extrabold text-red">Quitar</button>
+        <div className="mt-4 flex flex-col gap-3">
+          {(L.testimonios || []).map((t, i) => (
+            <div key={i} className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+              <div className="flex items-center gap-2.5">
+                <input value={t.nombre} onChange={(e) => upd({ testimonios: L.testimonios.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x) })}
+                  placeholder="Nombre del socio"
+                  className="flex-1 rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-orange" />
+                <select value={t.estrellas ?? 5} onChange={(e) => upd({ testimonios: L.testimonios.map((x, j) => j === i ? { ...x, estrellas: Number(e.target.value) } : x) })}
+                  className="cursor-pointer rounded-[9px] border border-line bg-white px-2 py-2 text-[13px] font-bold outline-none">
+                  {[5, 4, 3].map((n) => <option key={n} value={n}>{'★'.repeat(n)}</option>)}
+                </select>
+                <button onClick={() => upd({ testimonios: L.testimonios.filter((_, j) => j !== i) })} className="text-[12px] font-extrabold text-red">Quitar</button>
+              </div>
+              <textarea value={t.texto} onChange={(e) => upd({ testimonios: L.testimonios.map((x, j) => j === i ? { ...x, texto: e.target.value.slice(0, 220) } : x) })}
+                rows={2} placeholder="“El mejor gym de la zona, entrenadores de primera…”"
+                className="mt-2 w-full resize-none rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-semibold outline-none focus:border-orange" />
             </div>
           ))}
-          {L.stats.length === 0 && <div className="text-[12px] font-semibold text-faint">Sin estadísticas. Agrega números que quieras mostrar.</div>}
+          {(L.testimonios || []).length === 0 && (
+            <div className="rounded-lg border border-dashed border-line py-5 text-center text-[12px] font-semibold text-faint">
+              Sin testimonios aún. Agrega el primero.
+            </div>
+          )}
         </div>
       </Card>
 

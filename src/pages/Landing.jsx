@@ -23,7 +23,17 @@ const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
 // Radio de tarjetas (landing.estilo.tarjetas)
 const CARD_RADIUS = { redonda: 22, suave: 14, recta: 6 }
 // Orden por defecto de las secciones de la página
-const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
+
+// Iconos de redes sociales para el footer
+const ICONO_RED = {
+  facebook: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5h1.3V4.9c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.2-3.2 3.3V11H9v3h2.3v7h2.2z" /></svg>,
+  instagram: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" /></svg>,
+  tiktok: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2 1.7 3.4 3.9 3.6v3c-1.5 0-2.8-.4-3.9-1.2v5.8c0 3.3-2.3 5.8-5.6 5.8-3.1 0-5.5-2.3-5.5-5.4 0-3 2.3-5.4 5.4-5.4.3 0 .7 0 1 .1v3.1c-.3-.1-.6-.2-1-.2-1.4 0-2.4 1-2.4 2.4s1 2.4 2.4 2.4c1.5 0 2.6-1 2.6-2.7V3h3.1z" /></svg>,
+  whatsapp: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.7-1.3 1.3-1.9 1.4-.5.1-1.1.1-1.8-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5.1-4.5-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.1.1.3 0 .4-.1.2-.1.3-.3.5l-.4.5c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 1.9 1.1.9 2 1.2 2.3 1.4.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.3.1 1.7.8 2 1 .3.1.5.2.5.3.1.1.1.7-.1 1.4z" /></svg>,
+  youtube: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2c-.2-.9-.9-1.6-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4c-.9.2-1.6.9-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.8c.2.9.9 1.6 1.8 1.8 1.6.4 7.8.4 7.8.4s6.2 0 7.8-.4c-.9-.2 1.6-.9 1.8-1.8.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3L10 15z" /></svg>,
+  web: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>,
+}
 
 // Tema efectivo de la página: colores de la marca + override propio de la
 // landing (empresa.landing.colores), si el gym personalizó su página.
@@ -44,6 +54,12 @@ function temaEfectivo(data) {
 export default function Landing({ slug }) {
   const [data, setData] = useState(undefined) // undefined=cargando, null=no existe
   const [lead, setLead] = useState(null) // { interes } cuando el formulario está abierto
+  // Origen de la visita (utm_source): si el gym compartió el link desde una red,
+  // el lead quedará atribuido a esa red en su CRM.
+  const [origen] = useState(() => {
+    const p = new URLSearchParams(window.location.search)
+    return (p.get('utm_source') || p.get('src') || '').slice(0, 40)
+  })
 
   useEffect(() => {
     let active = true
@@ -74,6 +90,23 @@ export default function Landing({ slug }) {
     }
     if (link.href !== href) link.href = href
     document.documentElement.style.setProperty('--font-brand', `'${f}'`)
+  }, [data])
+
+  // Identidad en la pestaña del navegador: título y favicon del gym.
+  useEffect(() => {
+    if (!data) return
+    const marca = data.tema?.nombre_marca || data.nombre
+    document.title = `${marca}${data.eslogan ? ' — ' + data.eslogan : ''}`
+    const fav = data.tema?.favicon_url || data.tema?.logo_url
+    if (fav) {
+      let l = document.querySelector("link[rel='icon']")
+      if (!l) {
+        l = document.createElement('link')
+        l.rel = 'icon'
+        document.head.appendChild(l)
+      }
+      l.href = fav
+    }
   }, [data])
 
   if (data === undefined) {
@@ -109,7 +142,9 @@ export default function Landing({ slug }) {
     sr.clases_semana > 0 && { valor: `${sr.clases_semana}`, label: 'Clases por semana' },
     sr.entrenadores > 0 && { valor: `${sr.entrenadores}`, label: sr.entrenadores === 1 ? 'Entrenador' : 'Entrenadores' },
   ].filter(Boolean)
-  const stats = (L.stats && L.stats.length > 0) ? L.stats : statsAuto
+  // Modo explícito: 'auto' = datos reales calculados; 'manual' = los del gym.
+  const statsModo = L.stats_modo || ((L.stats && L.stats.length > 0) ? 'manual' : 'auto')
+  const stats = statsModo === 'manual' ? (L.stats || []) : statsAuto
   const rBtn = BTN_RADIUS[L.estilo?.botones || 'suave']
   const D = L.estilo?.diseno || 'clasico' // clasico | split | dark | minimal | bold
   const dark = D === 'dark'
@@ -118,7 +153,10 @@ export default function Landing({ slug }) {
   const ctaTxt = (L.cta_texto || '').trim() || (D === 'bold' ? '¡Empieza hoy!' : 'Inscríbete ahora')
   const alturaHero = L.estilo?.hero_altura || 'normal'
   const heroPadY = { compacto: 'py-16', normal: 'py-28', completo: 'flex min-h-[82vh] flex-col justify-center py-24' }[alturaHero] || 'py-28'
-  const orden = Array.isArray(L.orden) && L.orden.length ? L.orden : DEFAULT_ORDEN
+  // Orden guardado + secciones nuevas que aún no estén en él (al final)
+  const orden = Array.isArray(L.orden) && L.orden.length
+    ? [...L.orden, ...DEFAULT_ORDEN.filter((k) => !L.orden.includes(k))]
+    : DEFAULT_ORDEN
 
   // Renderers de cada sección — la página los pinta en el orden configurado.
   const SECCIONES_RENDER = {
@@ -178,6 +216,22 @@ export default function Landing({ slug }) {
               <button onClick={() => abrirLead(`Plan ${p.nombre}`)}
                 className="mt-6 block w-full cursor-pointer border-none py-2.5 text-center text-[13px] font-extrabold text-white"
                 style={{ background: tema.color_primary, borderRadius: rBtn }}>Elegir</button>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    testimonios: () => sec.testimonios !== false && (L.testimonios || []).length > 0 && (
+      <section className="mx-auto max-w-[1000px] px-6 py-20">
+        <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Lo que dicen nuestros socios</h2>
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          {L.testimonios.map((t, i) => (
+            <div key={i} className="flex w-full max-w-[320px] flex-col border border-line bg-white p-5 sm:w-[300px]" style={{ borderRadius: rCard }}>
+              <div className="text-[15px] tracking-[2px]" style={{ color: '#F59E0B' }}>
+                {'★'.repeat(Math.min(5, t.estrellas || 5))}{'☆'.repeat(Math.max(0, 5 - (t.estrellas || 5)))}
+              </div>
+              <p className="mt-2.5 flex-1 text-[13.5px] font-semibold leading-relaxed text-muted">“{t.texto}”</p>
+              <div className="mt-3 text-[13px] font-extrabold" style={{ color: tema.color_primary }}>{t.nombre}</div>
             </div>
           ))}
         </div>
@@ -430,10 +484,14 @@ export default function Landing({ slug }) {
             </div>
           )}
           {Object.keys(redes).some((k) => redes[k]) && (
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2.5">
               {Object.entries(redes).filter(([, v]) => v).map(([k, v]) => (
-                <a key={k} href={v.startsWith('http') ? v : `https://${v}`} target="_blank" rel="noreferrer"
-                  className="text-[12.5px] font-extrabold text-white/70 hover:text-white">{RED_LABEL[k] || k}</a>
+                <a key={k}
+                  href={k === 'whatsapp' ? `https://wa.me/${String(v).replace(/\D/g, '')}` : v.startsWith('http') ? v : `https://${v}`}
+                  target="_blank" rel="noreferrer" title={RED_LABEL[k] || k}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/25 hover:text-white">
+                  {ICONO_RED[k] || <span className="text-[10px] font-extrabold">{(RED_LABEL[k] || k).slice(0, 2)}</span>}
+                </a>
               ))}
             </div>
           )}
@@ -460,6 +518,7 @@ export default function Landing({ slug }) {
           slug={data.slug}
           gym={marca}
           interes={lead.interes}
+          fuente={origen}
           color={tema.color_primary}
           radius={rBtn}
           onClose={() => setLead(null)}
@@ -469,7 +528,7 @@ export default function Landing({ slug }) {
   )
 }
 
-function LeadModal({ slug, gym, interes, color, radius, onClose }) {
+function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
   const [email, setEmail] = useState('')
@@ -485,6 +544,7 @@ function LeadModal({ slug, gym, interes, color, radius, onClose }) {
     const nota = [interes, mensaje.trim()].filter(Boolean).join(' · ')
     const { error } = await supabase.rpc('crear_lead_publico', {
       p_slug: slug, p_nombre: nombre, p_telefono: telefono, p_email: email, p_nota: nota,
+      p_fuente: fuente || null,
     })
     setBusy(false)
     if (error) setError(error.message)

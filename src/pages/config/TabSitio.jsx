@@ -90,6 +90,63 @@ export default function TabSitio() {
           </div>
         </Card>
       )}
+
+      {slug && <CompartirLinks slug={slug} />}
     </div>
+  )
+}
+
+// Links listos para compartir en cada red, con atribución de origen:
+// los leads que lleguen desde cada link quedan marcados con su red en el CRM.
+const REDES_SHARE = [
+  ['instagram', 'Instagram', 'Pégalo en tu bio o stories'],
+  ['facebook', 'Facebook', 'Compártelo en tu página'],
+  ['tiktok', 'TikTok', 'Ponlo en tu perfil'],
+  ['whatsapp', 'WhatsApp', 'Envíalo a tus contactos y grupos'],
+]
+
+function CompartirLinks({ slug }) {
+  const [copiado, setCopiado] = useState('')
+  const base = `https://${slug}.${ROOT_DOMAIN}`
+
+  async function copiar(red, link) {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiado(red)
+      setTimeout(() => setCopiado(''), 1800)
+    } catch {
+      prompt('Copia el link:', link)
+    }
+  }
+
+  return (
+    <Card className="mt-4 p-[19px]">
+      <div className="text-[14.5px] font-extrabold">Comparte tu página 📣</div>
+      <p className="mt-0.5 text-[12px] font-semibold text-muted">
+        Usa un link distinto por red: cada persona que se inscriba quedará marcada en tu CRM con la red desde la que llegó. Así sabrás qué red te trae más clientes.
+      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        {REDES_SHARE.map(([red, nombre, ayuda]) => {
+          const link = `${base}/?utm_source=${red}`
+          return (
+            <div key={red} className="flex items-center gap-2.5">
+              <div className="w-[90px] flex-shrink-0">
+                <div className="text-[12.5px] font-extrabold">{nombre}</div>
+                <div className="text-[10px] font-semibold leading-tight text-faint">{ayuda}</div>
+              </div>
+              <input readOnly value={link}
+                className="min-w-0 flex-1 rounded-[9px] border border-line bg-surface px-3 py-2 text-[12px] font-bold text-muted outline-none" />
+              <button onClick={() => copiar(red, link)}
+                className={`w-[86px] flex-shrink-0 cursor-pointer rounded-[9px] border px-3 py-2 text-[12px] font-extrabold transition-colors ${copiado === red ? 'border-green bg-green-50 text-green' : 'border-orange bg-white text-orange hover:bg-orange-50'}`}>
+                {copiado === red ? '✓ Copiado' : 'Copiar'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      <p className="mt-3 text-[11px] font-semibold text-faint">
+        Estos links funcionarán cuando publiquemos el sitio. Para probar hoy: {window.location.origin}/?g={slug}&utm_source=instagram
+      </p>
+    </Card>
   )
 }
