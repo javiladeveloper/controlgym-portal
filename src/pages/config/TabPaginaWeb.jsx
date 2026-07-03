@@ -89,15 +89,26 @@ function hslToHex(h, s, l) {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
 }
 
-// Estilo aleatorio con paletas que siempre se ven bien (matiz al azar,
-// primario saturado + fondo muy oscuro del mismo matiz).
+// Estilo aleatorio TOTAL: paleta armónica (matiz al azar, primario saturado +
+// fondo muy oscuro del mismo matiz), diseño, tipografía, textos y extras.
+const CTAS_ALEATORIOS = ['Inscríbete ahora', '¡Únete ya!', 'Empieza hoy', 'Reserva tu clase', 'Quiero entrenar', '¡Comienza tu cambio!', 'Prueba gratis']
+
+function alAzar(arr) { return arr[Math.floor(Math.random() * arr.length)] }
+
 function estiloAleatorio() {
   const h = Math.floor(Math.random() * 360)
   return {
     colores: { primary: hslToHex(h, 78, 46), oscuro: hslToHex(h, 45, 7) },
-    botones: ['pill', 'suave', 'recto'][Math.floor(Math.random() * 3)],
-    overlay: [0.45, 0.55, 0.65][Math.floor(Math.random() * 3)],
-    diseno: DISENOS[Math.floor(Math.random() * DISENOS.length)][0],
+    overlay: alAzar([0.45, 0.55, 0.65]),
+    diseno: alAzar(DISENOS)[0],
+    botones: alAzar(['pill', 'suave', 'recto']),
+    tarjetas: alAzar(['redonda', 'suave', 'recta']),
+    hero_altura: alAzar(['compacto', 'normal', 'completo']),
+    fuente: alAzar(FUENTES_PAGINA),
+    titulo_mayus: Math.random() < 0.4,
+    cta_texto: alAzar(CTAS_ALEATORIOS),
+    whatsapp_flotante: Math.random() < 0.6,
+    orden: [...DEFAULT_ORDEN].sort(() => Math.random() - 0.5), // barajar secciones
   }
 }
 
@@ -247,7 +258,18 @@ export default function TabPaginaWeb() {
           <button
             onClick={() => {
               const r = estiloAleatorio()
-              upd({ colores: r.colores, hero_overlay: r.overlay, estilo: { ...(L.estilo || {}), botones: r.botones, diseno: r.diseno } })
+              upd({
+                colores: r.colores,
+                hero_overlay: r.overlay,
+                cta_texto: r.cta_texto,
+                whatsapp_flotante: r.whatsapp_flotante,
+                orden: r.orden,
+                estilo: {
+                  ...(L.estilo || {}),
+                  diseno: r.diseno, botones: r.botones, tarjetas: r.tarjetas,
+                  hero_altura: r.hero_altura, fuente: r.fuente, titulo_mayus: r.titulo_mayus,
+                },
+              })
             }}
             className="flex-shrink-0 cursor-pointer rounded-full border-none bg-ink px-4 py-2 text-[12.5px] font-extrabold text-white transition-transform hover:scale-[1.03] active:scale-[0.97]"
           >
