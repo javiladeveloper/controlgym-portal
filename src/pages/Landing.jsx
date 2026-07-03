@@ -89,11 +89,27 @@ export default function Landing({ slug }) {
   ].filter(Boolean)
   const stats = (L.stats && L.stats.length > 0) ? L.stats : statsAuto
   const rBtn = BTN_RADIUS[L.estilo?.botones || 'suave']
+  const D = L.estilo?.diseno || 'clasico' // clasico | split | dark | minimal
+  const dark = D === 'dark'
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="lp-root min-h-screen bg-white">
+      {/* Diseño Nocturno: la página completa se vuelve oscura vía overrides */}
+      {dark && (
+        <style>{`
+          .lp-root { background:#0B0E14 !important; color:#EDF0F7; }
+          .lp-root .text-muted { color:#98A2B3 !important; }
+          .lp-root .text-faint { color:#7A8496 !important; }
+          .lp-root .text-ink, .lp-root h1, .lp-root h2 { color:#F2F4F8 !important; }
+          .lp-root .bg-white { background:#10151F !important; }
+          .lp-root .bg-surface { background:#0E1219 !important; }
+          .lp-root .border-line { border-color:rgba(255,255,255,0.09) !important; }
+        `}</style>
+      )}
+
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-white/90 px-6 py-3.5 backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-white/90 px-6 py-3.5 backdrop-blur"
+        style={dark ? { background: 'rgba(11,14,20,0.92)', borderColor: 'rgba(255,255,255,0.08)' } : undefined}>
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-[10px] bg-orange">
             {tema.logo_url ? <img src={tema.logo_url} alt="" className="h-full w-full object-cover" /> : <LogoMark size={19} />}
@@ -105,40 +121,137 @@ export default function Landing({ slug }) {
         </a>
       </header>
 
-      {/* Hero — con foto de portada opcional + overlay */}
-      <section className="relative overflow-hidden" style={{ background: tema.color_navy }}>
-        {L.hero_url && (
-          <>
-            <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            {/* overlay con el "fondo oscuro" configurado por el gym */}
-            <div className="absolute inset-0" style={{ background: hexToRgba(tema.color_navy, L.hero_overlay ?? 0.55) }} />
-          </>
-        )}
-        <div className="relative mx-auto max-w-[1000px] px-6 py-28 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[12px] font-extrabold text-white/80">
-            <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
+      {/* Hero — variante según el diseño elegido (landing.estilo.diseno) */}
+      {D === 'split' ? (
+        /* ── PANORAMA: texto a la izquierda, foto a la derecha ── */
+        <section className="relative overflow-hidden" style={{ background: tema.color_navy }}>
+          <div className="mx-auto grid max-w-[1060px] items-center gap-10 px-6 py-16 md:grid-cols-2 md:py-24">
+            <div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[12px] font-extrabold text-white/80">
+                <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
+              </div>
+              <h1 className="text-[40px] font-extrabold leading-[1.08] tracking-[-1px] text-white" style={{ color: '#fff' }}>
+                {data.eslogan || 'Tu mejor versión empieza aquí'}
+              </h1>
+              {data.mensaje_bienvenida && (
+                <p className="mt-4 max-w-[460px] text-[15.5px] font-semibold text-white/70">{data.mensaje_bienvenida}</p>
+              )}
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <button onClick={() => abrirLead('Quiero inscribirme')}
+                  className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]"
+                  style={{ background: tema.color_primary, borderRadius: rBtn }}>
+                  Inscríbete ahora
+                </button>
+                {sec.planes && data.planes?.length > 0 && (
+                  <a href="#planes" className="border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10"
+                    style={{ borderRadius: rBtn }}>Ver planes</a>
+                )}
+              </div>
+            </div>
+            <div>
+              {L.hero_url
+                ? <img src={L.hero_url} alt="" className="h-[300px] w-full rounded-3xl object-cover shadow-2xl md:h-[360px]" />
+                : <div className="h-[300px] w-full rounded-3xl md:h-[360px]" style={{ background: `linear-gradient(135deg, ${tema.color_primary}, transparent)` }} />}
+            </div>
           </div>
-          <h1 className="text-[44px] font-extrabold leading-[1.1] tracking-[-1px] text-white">
-            {data.eslogan || 'Tu mejor versión empieza aquí'}
-          </h1>
-          {data.mensaje_bienvenida && (
-            <p className="mx-auto mt-4 max-w-[560px] text-[16px] font-semibold text-white/70">{data.mensaje_bienvenida}</p>
-          )}
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <button onClick={() => abrirLead('Quiero inscribirme')}
-              className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]"
-              style={{ background: tema.color_primary, borderRadius: rBtn }}>
-              Inscríbete ahora
-            </button>
-            {sec.planes && data.planes?.length > 0 && (
-              <a href="#planes" className="border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10"
-                style={{ borderRadius: rBtn }}>
-                Ver planes
-              </a>
+        </section>
+      ) : D === 'minimal' ? (
+        /* ── MINIMAL: tipográfico, limpio, foto abajo ── */
+        <section>
+          <div className="mx-auto max-w-[860px] px-6 pb-12 pt-24 text-center">
+            <div className="mb-5 inline-flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-[2.5px] text-muted">
+              <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
+            </div>
+            <h1 className="text-[50px] font-extrabold leading-[1.05] tracking-[-2px] text-ink">
+              {data.eslogan || 'Tu mejor versión empieza aquí'}
+            </h1>
+            <div className="mx-auto mt-6 h-1.5 w-24 rounded-full" style={{ background: tema.color_primary }} />
+            {data.mensaje_bienvenida && (
+              <p className="mx-auto mt-5 max-w-[540px] text-[16px] font-semibold text-muted">{data.mensaje_bienvenida}</p>
             )}
+            <div className="mt-8 flex items-center justify-center gap-3">
+              <button onClick={() => abrirLead('Quiero inscribirme')}
+                className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white transition-transform hover:scale-[1.02]"
+                style={{ background: tema.color_primary, borderRadius: rBtn }}>
+                Inscríbete ahora
+              </button>
+              {sec.planes && data.planes?.length > 0 && (
+                <a href="#planes" className="border-2 px-6 py-3 text-[15px] font-extrabold transition-opacity hover:opacity-75"
+                  style={{ borderRadius: rBtn, borderColor: tema.color_primary, color: tema.color_primary }}>Ver planes</a>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+          {L.hero_url && (
+            <div className="mx-auto max-w-[1060px] px-6 pb-8">
+              <img src={L.hero_url} alt="" className="h-[280px] w-full rounded-3xl object-cover md:h-[340px]" />
+            </div>
+          )}
+        </section>
+      ) : D === 'bold' ? (
+        /* ── IMPACTO: degradado fuerte, tipografía gigante ── */
+        <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${tema.color_navy} 10%, ${tema.color_primary} 170%)` }}>
+          {L.hero_url && <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
+          <div className="relative mx-auto max-w-[1000px] px-6 py-28 text-center">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full px-5 py-2 text-[12px] font-extrabold uppercase tracking-[2px] text-white"
+              style={{ background: hexToRgba(tema.color_primary, 0.35) }}>
+              {data.nombre}
+            </div>
+            <h1 className="text-[54px] font-extrabold uppercase leading-[1] tracking-[-1.5px] text-white" style={{ color: '#fff' }}>
+              {data.eslogan || 'Tu mejor versión empieza aquí'}
+            </h1>
+            <div className="mx-auto mt-6 h-2 w-40 -skew-x-12" style={{ background: tema.color_primary }} />
+            {data.mensaje_bienvenida && (
+              <p className="mx-auto mt-5 max-w-[560px] text-[16.5px] font-bold text-white/80">{data.mensaje_bienvenida}</p>
+            )}
+            <div className="mt-9 flex items-center justify-center gap-3">
+              <button onClick={() => abrirLead('Quiero inscribirme')}
+                className="cursor-pointer border-none px-8 py-4 text-[16px] font-extrabold uppercase tracking-wide text-white shadow-2xl transition-transform hover:scale-[1.04]"
+                style={{ background: tema.color_primary, borderRadius: rBtn }}>
+                ¡Empieza hoy!
+              </button>
+              {sec.planes && data.planes?.length > 0 && (
+                <a href="#planes" className="border-2 border-white/50 px-7 py-3.5 text-[15px] font-extrabold uppercase text-white transition-colors hover:bg-white/10"
+                  style={{ borderRadius: rBtn }}>Planes</a>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* ── CLÁSICO (también base del Nocturno): foto de fondo completa ── */
+        <section className="relative overflow-hidden" style={{ background: tema.color_navy }}>
+          {L.hero_url && (
+            <>
+              <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              {/* overlay con el "fondo oscuro" configurado por el gym */}
+              <div className="absolute inset-0" style={{ background: hexToRgba(tema.color_navy, L.hero_overlay ?? 0.55) }} />
+            </>
+          )}
+          <div className="relative mx-auto max-w-[1000px] px-6 py-28 text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[12px] font-extrabold text-white/80">
+              <span className="h-2 w-2 rounded-full" style={{ background: tema.color_primary }} /> {data.nombre}
+            </div>
+            <h1 className="text-[44px] font-extrabold leading-[1.1] tracking-[-1px] text-white" style={{ color: '#fff' }}>
+              {data.eslogan || 'Tu mejor versión empieza aquí'}
+            </h1>
+            {data.mensaje_bienvenida && (
+              <p className="mx-auto mt-4 max-w-[560px] text-[16px] font-semibold text-white/70">{data.mensaje_bienvenida}</p>
+            )}
+            <div className="mt-8 flex items-center justify-center gap-3">
+              <button onClick={() => abrirLead('Quiero inscribirme')}
+                className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]"
+                style={{ background: tema.color_primary, borderRadius: rBtn }}>
+                Inscríbete ahora
+              </button>
+              {sec.planes && data.planes?.length > 0 && (
+                <a href="#planes" className="border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10"
+                  style={{ borderRadius: rBtn }}>
+                  Ver planes
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Estadísticas */}
       {sec.stats && stats.length > 0 && (

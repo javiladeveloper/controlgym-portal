@@ -10,14 +10,65 @@ const SECCIONES = [
 
 const MAX_GALERIA = 12 // tope de fotos en la galería
 
-// Plantillas de estilo listas para usar (primary = botones/acentos, oscuro = portada/pie)
+// Diseños de página: cambian la ESTRUCTURA de la landing, no solo colores.
+const DISENOS = [
+  ['clasico', 'Clásico', 'Foto de fondo, centrado y sobrio'],
+  ['split', 'Panorama', 'Texto y foto lado a lado'],
+  ['dark', 'Nocturno', 'Página oscura, dramática'],
+  ['minimal', 'Minimal', 'Tipográfico, limpio, con aire'],
+  ['bold', 'Impacto', 'Degradados y letra gigante'],
+]
+
+// Mini-boceto visual de cada diseño para el selector.
+function MiniDiseno({ k }) {
+  const base = 'h-12 w-full overflow-hidden rounded-md border border-line'
+  if (k === 'split') return (
+    <div className={`${base} flex bg-[#141B2E]`}>
+      <div className="flex flex-1 flex-col justify-center gap-1 p-1.5">
+        <div className="h-1.5 w-3/4 rounded bg-white/70" /><div className="h-1 w-1/2 rounded bg-white/30" />
+        <div className="mt-0.5 h-2 w-8 rounded bg-orange" />
+      </div>
+      <div className="m-1.5 w-2/5 rounded bg-white/25" />
+    </div>
+  )
+  if (k === 'dark') return (
+    <div className={`${base} bg-black p-1.5`}>
+      <div className="mx-auto h-1.5 w-2/3 rounded bg-white/60" />
+      <div className="mt-1.5 flex gap-1">{[0,1,2].map(i => <div key={i} className="h-4 flex-1 rounded bg-white/10" />)}</div>
+    </div>
+  )
+  if (k === 'minimal') return (
+    <div className={`${base} bg-white p-1.5 text-center`}>
+      <div className="mx-auto h-2 w-3/4 rounded bg-[#141B2E]" />
+      <div className="mx-auto mt-1 h-1 w-8 rounded bg-orange" />
+      <div className="mx-auto mt-1.5 h-3 w-full rounded bg-[#E9EBF0]" />
+    </div>
+  )
+  if (k === 'bold') return (
+    <div className={`${base} bg-gradient-to-br from-[#141B2E] to-orange p-1.5 text-center`}>
+      <div className="mx-auto mt-1 h-2.5 w-4/5 rounded bg-white/90" />
+      <div className="mx-auto mt-1 h-1 w-10 -skew-x-12 bg-orange" />
+    </div>
+  )
+  return ( // clasico
+    <div className={`${base} flex flex-col items-center justify-center gap-1 bg-[#141B2E] p-1.5`}>
+      <div className="h-1.5 w-2/3 rounded bg-white/70" />
+      <div className="h-1 w-1/2 rounded bg-white/30" />
+      <div className="h-2 w-8 rounded bg-orange" />
+    </div>
+  )
+}
+
+// Plantillas completas: diseño + colores + estilo de botones, de un clic.
 const PLANTILLAS = [
-  { nombre: 'Energía',   primary: '#E11D48', oscuro: '#0C0A09' },
-  { nombre: 'Océano',    primary: '#2563EB', oscuro: '#0B1220' },
-  { nombre: 'Bosque',    primary: '#059669', oscuro: '#06231B' },
-  { nombre: 'Atardecer', primary: '#F97316', oscuro: '#1C1210' },
-  { nombre: 'Neón',      primary: '#A855F7', oscuro: '#140524' },
-  { nombre: 'Grafito',   primary: '#1F2937', oscuro: '#030712' },
+  { nombre: 'Energía',   primary: '#E11D48', oscuro: '#0C0A09', diseno: 'clasico', botones: 'pill' },
+  { nombre: 'Océano',    primary: '#2563EB', oscuro: '#0B1220', diseno: 'split',   botones: 'suave' },
+  { nombre: 'Bosque',    primary: '#059669', oscuro: '#06231B', diseno: 'minimal', botones: 'recto' },
+  { nombre: 'Atardecer', primary: '#F97316', oscuro: '#1C1210', diseno: 'split',   botones: 'pill' },
+  { nombre: 'Neón',      primary: '#A855F7', oscuro: '#140524', diseno: 'dark',    botones: 'pill' },
+  { nombre: 'Grafito',   primary: '#1F2937', oscuro: '#030712', diseno: 'minimal', botones: 'recto' },
+  { nombre: 'Fuego',     primary: '#DC2626', oscuro: '#180404', diseno: 'bold',    botones: 'recto' },
+  { nombre: 'Eléctrico', primary: '#06B6D4', oscuro: '#041418', diseno: 'bold',    botones: 'pill' },
 ]
 
 function hslToHex(h, s, l) {
@@ -37,6 +88,7 @@ function estiloAleatorio() {
     colores: { primary: hslToHex(h, 78, 46), oscuro: hslToHex(h, 45, 7) },
     botones: ['pill', 'suave', 'recto'][Math.floor(Math.random() * 3)],
     overlay: [0.45, 0.55, 0.65][Math.floor(Math.random() * 3)],
+    diseno: DISENOS[Math.floor(Math.random() * DISENOS.length)][0],
   }
 }
 
@@ -183,7 +235,7 @@ export default function TabPaginaWeb() {
           <button
             onClick={() => {
               const r = estiloAleatorio()
-              upd({ colores: r.colores, hero_overlay: r.overlay, estilo: { ...(L.estilo || {}), botones: r.botones } })
+              upd({ colores: r.colores, hero_overlay: r.overlay, estilo: { ...(L.estilo || {}), botones: r.botones, diseno: r.diseno } })
             }}
             className="flex-shrink-0 cursor-pointer rounded-full border-none bg-ink px-4 py-2 text-[12.5px] font-extrabold text-white transition-transform hover:scale-[1.03] active:scale-[0.97]"
           >
@@ -191,19 +243,43 @@ export default function TabPaginaWeb() {
           </button>
         </div>
 
-        {/* Plantillas */}
+        {/* Diseño de página (estructura) */}
         <div className="mt-4">
-          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Plantillas</div>
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Diseño de la página</div>
+          <div className="mt-2 grid grid-cols-5 gap-2">
+            {DISENOS.map(([k, lab, desc]) => {
+              const activo = (L.estilo?.diseno || 'clasico') === k
+              return (
+                <button key={k}
+                  onClick={() => upd({ estilo: { ...(L.estilo || {}), diseno: k } })}
+                  className={`rounded-xl border p-2 text-left transition-colors ${activo ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
+                  <MiniDiseno k={k} />
+                  <div className="mt-1.5 text-[12px] font-extrabold">{lab}</div>
+                  <div className="text-[10px] font-semibold leading-tight text-faint">{desc}</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Plantillas completas: diseño + colores + botones de un clic */}
+        <div className="mt-4">
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Plantillas (diseño + colores)</div>
           <div className="mt-2 flex flex-wrap gap-2">
             {PLANTILLAS.map((t) => {
               const activa = L.colores?.primary === t.primary && L.colores?.oscuro === t.oscuro
+                && (L.estilo?.diseno || 'clasico') === t.diseno
               return (
                 <button key={t.nombre}
-                  onClick={() => upd({ colores: { primary: t.primary, oscuro: t.oscuro } })}
+                  onClick={() => upd({
+                    colores: { primary: t.primary, oscuro: t.oscuro },
+                    estilo: { ...(L.estilo || {}), diseno: t.diseno, botones: t.botones },
+                  })}
                   className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-extrabold transition-colors ${activa ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-ink hover:border-orange'}`}>
                   <span className="h-3.5 w-3.5 rounded-full" style={{ background: t.primary }} />
                   <span className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: t.oscuro }} />
                   {t.nombre}
+                  <span className="text-[10px] font-bold text-faint">· {DISENOS.find(d => d[0] === t.diseno)?.[1]}</span>
                 </button>
               )
             })}
