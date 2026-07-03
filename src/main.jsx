@@ -6,19 +6,26 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import { SedeProvider } from './store.jsx'
 import App from './App.jsx'
 import Landing from './pages/Landing.jsx'
-import { getTenantSlug } from './lib/tenant.js'
+import PlataformaLanding from './pages/PlataformaLanding.jsx'
+import { getTenantSlug, isPlataformaHome } from './lib/tenant.js'
 import './index.css'
 
 // Enrutado de nivel raíz por host:
-//  · Hay slug de gym en la URL (subdominio o ?g=) y NO se pide el portal (#login)
-//    → landing PÚBLICA del gym (sin auth, ligera).
+//  · Dominio raíz (fitcorecenter.com) → landing de la PLATAFORMA FitControl.
+//  · Subdominio de gym (o ?g=) sin pedir portal → landing PÚBLICA del gym.
 //  · En cualquier otro caso → el portal/app (con providers de auth).
 const slug = getTenantSlug()
 const wantsPortal = window.location.hash === '#login' || window.location.pathname.startsWith('/portal')
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
-if (slug && !wantsPortal) {
+if (isPlataformaHome()) {
+  root.render(
+    <React.StrictMode>
+      <PlataformaLanding />
+    </React.StrictMode>,
+  )
+} else if (slug && !wantsPortal) {
   root.render(
     <React.StrictMode>
       <Landing slug={slug} />

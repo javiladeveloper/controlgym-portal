@@ -40,4 +40,16 @@ export function isPortalHost() {
   return host === 'app.' + ROOT_DOMAIN
 }
 
+// ¿Es el dominio raíz de la plataforma (fitcorecenter.com / www)? Ahí vive la
+// landing de FitControl que vende el SaaS a los gimnasios.
+// En dev se previsualiza con ?home
+export function isPlataformaHome() {
+  const host = window.location.hostname
+  const params = new URLSearchParams(window.location.search)
+  if (params.has('home')) return true
+  return (host === ROOT_DOMAIN || host === 'www.' + ROOT_DOMAIN)
+    && window.location.pathname === '/'
+    && !params.get('g')
+}
+
 export { ROOT_DOMAIN }
