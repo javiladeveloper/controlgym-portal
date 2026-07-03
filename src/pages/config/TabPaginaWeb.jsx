@@ -157,13 +157,35 @@ export default function TabPaginaWeb() {
   const [buscando, setBuscando] = useState(false)
   const [coordsManual, setCoordsManual] = useState(false)
 
-  async function buscarDireccion() {
-    if (!busqueda.trim()) return
+  async function buscarDireccion(q = busqueda) {
+    if (!q.trim()) return
     setBuscando(true)
     setResultados(null)
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=es&q=${encodeURIComponent(busqueda)}`)
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=es&q=${encodeURIComponent(q)}`)
       setResultados(await r.json())
+    } catch {
+      setResultados([])
+    } finally {
+      setBuscando(false)
+    }
+  }
+
+  // Ubica el pin usando la dirección registrada de la empresa (pestaña Contacto).
+  async function ubicarConDireccionEmpresa() {
+    if (!empresa?.direccion) return
+    setBuscando(true)
+    setResultados(null)
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=es&q=${encodeURIComponent(empresa.direccion)}`)
+      const j = await r.json()
+      if (j.length > 0) {
+        // Toma el mejor resultado directamente
+        upd({ ubicacion: { lat: j[0].lat, lng: j[0].lon, direccion: j[0].display_name } })
+      } else {
+        setBusqueda(empresa.direccion)
+        setResultados([])
+      }
     } catch {
       setResultados([])
     } finally {
@@ -599,20 +621,36 @@ export default function TabPaginaWeb() {
       <Card className="mt-4 p-[19px]">
         <div className="text-[14.5px] font-extrabold">Ubicación en el mapa</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">
-          Escribe la dirección de tu gimnasio y elígela de la lista — el mapa se ubica solo.
+          El mapa se basa en la dirección de tu empresa (pestaña Contacto).
         </p>
 
-        {/* Buscador de dirección */}
-        <div className="mt-4 flex items-center gap-2.5">
+        {/* Un clic: usar la dirección registrada de la empresa */}
+        {empresa?.direccion ? (
+          <button onClick={ubicarConDireccionEmpresa} disabled={buscando}
+            className="mt-3 flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] border border-orange bg-orange-50 px-3.5 py-3 text-left transition-colors hover:bg-orange-100 disabled:opacity-60">
+            <span className="text-[16px]">📍</span>
+            <span className="min-w-0">
+              <span className="block text-[13px] font-extrabold text-orange">{buscando ? 'Ubicando…' : 'Ubicar mi empresa en el mapa'}</span>
+              <span className="block truncate text-[11.5px] font-semibold text-muted">{empresa.direccion}</span>
+            </span>
+          </button>
+        ) : (
+          <div className="mt-3 rounded-[10px] bg-surface px-3.5 py-3 text-[12px] font-semibold text-muted">
+            Aún no registras la dirección de tu empresa. Hazlo en <b>Configuración → Contacto</b> y podrás ubicarla con un clic — o búscala abajo.
+          </div>
+        )}
+
+        {/* Ajuste fino: buscar otra dirección */}
+        <div className="mt-3 flex items-center gap-2.5">
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && buscarDireccion()}
-            placeholder="Av. Larco 812, Miraflores, Lima"
+            placeholder="¿La dirección salió mal ubicada? Busca aquí otra…"
             className="min-w-0 flex-1 rounded-[9px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange"
           />
-          <button onClick={buscarDireccion} disabled={buscando || !busqueda.trim()}
-            className="flex-shrink-0 cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+          <button onClick={() => buscarDireccion()} disabled={buscando || !busqueda.trim()}
+            className="flex-shrink-0 cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
             {buscando ? 'Buscando…' : 'Buscar'}
           </button>
         </div>
