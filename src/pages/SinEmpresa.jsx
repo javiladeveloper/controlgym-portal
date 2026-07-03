@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { LogoMark } from '../components/icons.jsx'
+import { FitControlLogo } from '../components/icons.jsx'
 
 // Fallback: usuario autenticado pero sin empresa asignada.
 export default function SinEmpresa() {
@@ -9,8 +9,8 @@ export default function SinEmpresa() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-[420px] rounded-card border border-line bg-white p-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-orange">
-          <LogoMark size={24} />
+        <div className="mx-auto mb-4 flex justify-center">
+          <FitControlLogo size={48} />
         </div>
         <h1 className="text-[18px] font-extrabold">Sin gimnasio vinculado</h1>
         <p className="mt-2 text-[13px] font-semibold text-muted">

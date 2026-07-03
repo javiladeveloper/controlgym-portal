@@ -17,6 +17,29 @@ export function LogoMark({ size = 19, color = '#FFFFFF' }) {
   )
 }
 
+// Marca de FitControl (la plataforma): mancuerna que se convierte en flecha de
+// crecimiento. Redibujo vectorial del logo — navy + naranja sobre cualquier fondo.
+export function FitControlLogo({ size = 22, navy = '#1B2540', orange = '#FF6B35' }) {
+  const shaft = 'M17.5 24H27L37.1 12.3'
+  const head = '43,5.5 40.9,15.6 33.3,9'
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
+      {/* contorno naranja de la flecha */}
+      <path d={shaft} fill="none" stroke={orange} strokeWidth="9" strokeLinejoin="miter" />
+      <polygon points={head} fill={orange} stroke={orange} strokeWidth="4" strokeLinejoin="miter" />
+      {/* flecha navy */}
+      <path d={shaft} fill="none" stroke={navy} strokeWidth="5.5" />
+      <polygon points={head} fill={navy} />
+      {/* barra y tope de la mancuerna */}
+      <rect x="1.5" y="20.5" width="3.5" height="7" rx="1" fill={navy} />
+      <rect x="3" y="21.5" width="14.5" height="5" fill={navy} />
+      {/* discos */}
+      <rect x="5.5" y="16" width="5" height="16" rx="2.5" fill={orange} />
+      <rect x="12.5" y="11" width="5" height="26" rx="2.5" fill={orange} />
+    </svg>
+  )
+}
+
 export function BellIcon({ size = 18, stroke = 'currentColor' }) {
   return (
     <svg {...svgProps(size)} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

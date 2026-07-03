@@ -1,4 +1,4 @@
-import { LogoMark } from '../components/icons.jsx'
+import { FitControlLogo } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
@@ -112,7 +112,7 @@ export default function PlataformaLanding() {
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: 'rgba(20,27,46,0.85)', borderBottom: C.border }}>
         <div className="mx-auto flex max-w-[1100px] items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: C.primary }}><LogoMark size={19} /></div>
+            <FitControlLogo size={36} navy="#FFFFFF" />
             <span className="text-[17px] font-extrabold tracking-[-0.3px]">FitControl</span>
           </div>
           <div className="flex items-center gap-2">
@@ -282,7 +282,7 @@ export default function PlataformaLanding() {
       <footer className="px-6 py-10" style={{ borderTop: C.border }}>
         <div className="mx-auto flex max-w-[1100px] flex-col items-center gap-3 text-center">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.primary }}><LogoMark size={16} /></div>
+            <FitControlLogo size={32} navy="#FFFFFF" />
             <span className="text-[15px] font-extrabold">FitControl</span>
           </div>
           <div className="text-[12.5px] font-semibold" style={{ color: C.muted }}>El sistema operativo para gimnasios · {ROOT_DOMAIN}</div>

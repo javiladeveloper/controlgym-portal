@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { LogoMark } from '../components/icons.jsx'
+import { FitControlLogo } from '../components/icons.jsx'
 
 function GoogleIcon() {
   return (
@@ -38,11 +38,9 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-[400px]">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange">
-            <LogoMark size={22} />
-          </div>
+          <FitControlLogo size={44} />
           <div>
-            <div className="text-[20px] font-extrabold tracking-[-0.3px]">FitCore</div>
+            <div className="text-[20px] font-extrabold tracking-[-0.3px]">FitControl</div>
             <div className="text-[12px] font-semibold text-muted">Panel de gestión</div>
           </div>
         </div>
