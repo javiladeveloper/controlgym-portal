@@ -11,6 +11,16 @@ function money(n, moneda = 'PEN') {
 
 const RED_LABEL = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', whatsapp: 'WhatsApp', youtube: 'YouTube', web: 'Web' }
 
+// hex -> rgba para el overlay de la portada (usa el "fondo oscuro" del gym)
+function hexToRgba(hex, a) {
+  const h = (hex || '').replace('#', '')
+  if (h.length < 6) return `rgba(20,27,46,${a})`
+  return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`
+}
+
+// Radio de los botones según el estilo elegido (landing.estilo.botones)
+const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
+
 // Tema efectivo de la página: colores de la marca + override propio de la
 // landing (empresa.landing.colores), si el gym personalizó su página.
 function temaEfectivo(data) {
@@ -29,6 +39,7 @@ function temaEfectivo(data) {
 
 export default function Landing({ slug }) {
   const [data, setData] = useState(undefined) // undefined=cargando, null=no existe
+  const [lead, setLead] = useState(null) // { interes } cuando el formulario está abierto
 
   useEffect(() => {
     let active = true
@@ -57,8 +68,10 @@ export default function Landing({ slug }) {
 
   const tema = temaEfectivo(data)
   const marca = tema.nombre_marca || data.nombre
-  const portalUrl = `/?g=${data.slug}#login` // en prod: https://<slug>.fitcorecenter.com/portal
+  // /portal fuerza navegación real (cambio de path) hacia el panel de gestión
+  const portalUrl = `/portal?g=${data.slug}`
   const redes = data.redes || {}
+  const abrirLead = (interes) => setLead({ interes })
   const L = data.landing || {}
   // Merge con defaults: claves nuevas (ej. promociones) quedan visibles aunque
   // la config guardada no las tenga aún.
@@ -75,6 +88,7 @@ export default function Landing({ slug }) {
     sr.entrenadores > 0 && { valor: `${sr.entrenadores}`, label: sr.entrenadores === 1 ? 'Entrenador' : 'Entrenadores' },
   ].filter(Boolean)
   const stats = (L.stats && L.stats.length > 0) ? L.stats : statsAuto
+  const rBtn = BTN_RADIUS[L.estilo?.botones || 'suave']
 
   return (
     <div className="min-h-screen bg-white">
@@ -96,7 +110,8 @@ export default function Landing({ slug }) {
         {L.hero_url && (
           <>
             <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0" style={{ background: `rgba(20,27,46,${L.hero_overlay ?? 0.55})` }} />
+            {/* overlay con el "fondo oscuro" configurado por el gym */}
+            <div className="absolute inset-0" style={{ background: hexToRgba(tema.color_navy, L.hero_overlay ?? 0.55) }} />
           </>
         )}
         <div className="relative mx-auto max-w-[1000px] px-6 py-28 text-center">
@@ -110,11 +125,14 @@ export default function Landing({ slug }) {
             <p className="mx-auto mt-4 max-w-[560px] text-[16px] font-semibold text-white/70">{data.mensaje_bienvenida}</p>
           )}
           <div className="mt-8 flex items-center justify-center gap-3">
-            <a href={portalUrl} className="rounded-[12px] px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]" style={{ background: tema.color_primary }}>
+            <button onClick={() => abrirLead('Quiero inscribirme')}
+              className="cursor-pointer border-none px-6 py-3.5 text-[15px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.02]"
+              style={{ background: tema.color_primary, borderRadius: rBtn }}>
               Inscríbete ahora
-            </a>
+            </button>
             {sec.planes && data.planes?.length > 0 && (
-              <a href="#planes" className="rounded-[12px] border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10">
+              <a href="#planes" className="border border-white/25 px-6 py-3.5 text-[15px] font-extrabold text-white transition-colors hover:bg-white/10"
+                style={{ borderRadius: rBtn }}>
                 Ver planes
               </a>
             )}
@@ -156,7 +174,9 @@ export default function Landing({ slug }) {
                     {pr.fecha_fin
                       ? <span className="text-[11.5px] font-extrabold text-faint">Hasta el {new Date(pr.fecha_fin + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}</span>
                       : <span />}
-                    <a href={portalUrl} className="text-[13px] font-extrabold" style={{ color: tema.color_primary }}>Aprovechar →</a>
+                    <button onClick={() => abrirLead(`Promoción: ${pr.nombre}`)}
+                      className="cursor-pointer border-none bg-transparent text-[13px] font-extrabold"
+                      style={{ color: tema.color_primary }}>Aprovechar →</button>
                   </div>
                 </div>
               ))}
@@ -178,7 +198,9 @@ export default function Landing({ slug }) {
                 <div className="text-[15px] font-extrabold text-muted">{p.nombre}</div>
                 <div className="mt-2 text-[32px] font-extrabold tracking-[-1px]">{money(p.precio, data.moneda)}<span className="text-[14px] font-semibold text-muted">/{p.unidad}</span></div>
                 <div className="mt-3 flex-1 text-[13px] font-semibold leading-relaxed text-muted">{p.descripcion}</div>
-                <a href={portalUrl} className="mt-6 block rounded-[10px] py-2.5 text-center text-[13px] font-extrabold text-white" style={{ background: tema.color_primary }}>Elegir</a>
+                <button onClick={() => abrirLead(`Plan ${p.nombre}`)}
+                  className="mt-6 block w-full cursor-pointer border-none py-2.5 text-center text-[13px] font-extrabold text-white"
+                  style={{ background: tema.color_primary, borderRadius: rBtn }}>Elegir</button>
               </div>
             ))}
           </div>
@@ -283,6 +305,79 @@ export default function Landing({ slug }) {
           </div>
         </div>
       </footer>
+
+      {/* Formulario de inscripción / contacto → crea un lead en el CRM del gym */}
+      {lead && (
+        <LeadModal
+          slug={data.slug}
+          gym={marca}
+          interes={lead.interes}
+          color={tema.color_primary}
+          radius={rBtn}
+          onClose={() => setLead(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function LeadModal({ slug, gym, interes, color, radius, onClose }) {
+  const [nombre, setNombre] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [email, setEmail] = useState('')
+  const [mensaje, setMensaje] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [ok, setOk] = useState(false)
+  const [error, setError] = useState('')
+
+  async function enviar(e) {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    const nota = [interes, mensaje.trim()].filter(Boolean).join(' · ')
+    const { error } = await supabase.rpc('crear_lead_publico', {
+      p_slug: slug, p_nombre: nombre, p_telefono: telefono, p_email: email, p_nota: nota,
+    })
+    setBusy(false)
+    if (error) setError(error.message)
+    else setOk(true)
+  }
+
+  const inputCls = 'rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-current'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="w-full max-w-[420px] rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {ok ? (
+          <div className="py-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full" style={{ background: `${color}1a` }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.5l5 5L20 6.5" /></svg>
+            </div>
+            <div className="mt-4 text-[18px] font-extrabold">¡Listo! Recibimos tus datos</div>
+            <p className="mt-1.5 text-[13px] font-semibold text-muted">{gym} se pondrá en contacto contigo muy pronto.</p>
+            <button onClick={onClose} className="mt-5 cursor-pointer border-none px-6 py-2.5 text-[13.5px] font-extrabold text-white"
+              style={{ background: color, borderRadius: radius }}>Cerrar</button>
+          </div>
+        ) : (
+          <>
+            <div className="text-[18px] font-extrabold">Inscríbete en {gym}</div>
+            <p className="mt-1 text-[12.5px] font-semibold text-muted">{interes} · déjanos tus datos y te contactamos</p>
+            <form onSubmit={enviar} className="mt-4 flex flex-col gap-3" style={{ color }}>
+              <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre *" className={inputCls} />
+              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono / WhatsApp" className={inputCls} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo (opcional)" className={inputCls} />
+              <textarea rows={2} value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="¿Algo que quieras contarnos?" className={`${inputCls} resize-none`} />
+              {error && <div className="rounded-[10px] bg-red-50 px-3 py-2 text-[12.5px] font-bold text-red">{error}</div>}
+              <button type="submit" disabled={busy || !nombre.trim() || (!telefono.trim() && !email.trim())}
+                className="mt-1 cursor-pointer border-none py-3 text-[14.5px] font-extrabold text-white disabled:opacity-50"
+                style={{ background: color, borderRadius: radius }}>
+                {busy ? 'Enviando…' : 'Enviar'}
+              </button>
+              <p className="text-center text-[11px] font-semibold text-faint">Deja al menos un teléfono o correo para contactarte.</p>
+            </form>
+          </>
+        )}
+      </div>
     </div>
   )
 }

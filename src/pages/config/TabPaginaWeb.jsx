@@ -8,6 +8,38 @@ const SECCIONES = [
   ['sedes', 'Sedes'], ['galeria', 'Galería'], ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
 ]
 
+const MAX_GALERIA = 12 // tope de fotos en la galería
+
+// Plantillas de estilo listas para usar (primary = botones/acentos, oscuro = portada/pie)
+const PLANTILLAS = [
+  { nombre: 'Energía',   primary: '#E11D48', oscuro: '#0C0A09' },
+  { nombre: 'Océano',    primary: '#2563EB', oscuro: '#0B1220' },
+  { nombre: 'Bosque',    primary: '#059669', oscuro: '#06231B' },
+  { nombre: 'Atardecer', primary: '#F97316', oscuro: '#1C1210' },
+  { nombre: 'Neón',      primary: '#A855F7', oscuro: '#140524' },
+  { nombre: 'Grafito',   primary: '#1F2937', oscuro: '#030712' },
+]
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100
+  const k = (n) => (n + h / 30) % 12
+  const a = s * Math.min(l, 1 - l)
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+  const toHex = (x) => Math.round(255 * x).toString(16).padStart(2, '0')
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
+}
+
+// Estilo aleatorio con paletas que siempre se ven bien (matiz al azar,
+// primario saturado + fondo muy oscuro del mismo matiz).
+function estiloAleatorio() {
+  const h = Math.floor(Math.random() * 360)
+  return {
+    colores: { primary: hslToHex(h, 78, 46), oscuro: hslToHex(h, 45, 7) },
+    botones: ['pill', 'suave', 'recto'][Math.floor(Math.random() * 3)],
+    overlay: [0.45, 0.55, 0.65][Math.floor(Math.random() * 3)],
+  }
+}
+
 export default function TabPaginaWeb() {
   const { empresa, tema, reloadBootstrap } = useAuth()
   const guardar = useGuardarEmpresa(empresa?.id)
@@ -27,6 +59,7 @@ export default function TabPaginaWeb() {
         stats: base.stats || [],
         ubicacion: base.ubicacion || { lat: '', lng: '' },
         colores: base.colores || null, // null = heredar los colores de la marca
+        estilo: base.estilo || { botones: 'suave' },
         secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, ...(base.secciones || {}) },
       })
     }
@@ -41,10 +74,14 @@ export default function TabPaginaWeb() {
     catch (e) { alert('No se pudo subir: ' + e.message) } finally { setBusy('') }
   }
   async function agregarGaleria(files) {
+    const cupo = MAX_GALERIA - L.galeria.length
+    if (cupo <= 0) return
+    const lote = files.slice(0, cupo) // respetar el tope aunque seleccionen más
+    if (files.length > cupo) alert(`Máximo ${MAX_GALERIA} fotos: se subirán solo las primeras ${cupo}.`)
     setBusy('galeria')
     try {
       const urls = []
-      for (const f of files) urls.push(await subirImagen(empresa.id, 'galeria', f))
+      for (const f of lote) urls.push(await subirImagen(empresa.id, 'galeria', f))
       upd({ galeria: [...L.galeria, ...urls] })
     } catch (e) { alert('No se pudo subir: ' + e.message) } finally { setBusy('') }
   }
@@ -87,12 +124,12 @@ export default function TabPaginaWeb() {
       <Card className="mt-4 p-[19px]">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[14.5px] font-extrabold">Galería</div>
-            <p className="mt-0.5 text-[12px] font-semibold text-muted">Fotos de tus instalaciones y ambiente.</p>
+            <div className="text-[14.5px] font-extrabold">Galería <span className="text-[12px] font-bold text-faint">({L.galeria.length}/{MAX_GALERIA})</span></div>
+            <p className="mt-0.5 text-[12px] font-semibold text-muted">Fotos de tus instalaciones y ambiente. Máximo {MAX_GALERIA}.</p>
           </div>
-          <button onClick={() => galRef.current?.click()} disabled={busy === 'galeria'}
+          <button onClick={() => galRef.current?.click()} disabled={busy === 'galeria' || L.galeria.length >= MAX_GALERIA}
             className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
-            {busy === 'galeria' ? 'Subiendo…' : 'Agregar fotos'}
+            {busy === 'galeria' ? 'Subiendo…' : L.galeria.length >= MAX_GALERIA ? 'Límite alcanzado' : 'Agregar fotos'}
           </button>
         </div>
         <div className="mt-4 grid grid-cols-4 gap-2.5">
@@ -134,13 +171,47 @@ export default function TabPaginaWeb() {
         </div>
       </Card>
 
-      {/* Colores de la página (independientes de la marca del panel) */}
+      {/* Estilo y colores de la página (independientes de la marca del panel) */}
       <Card className="mt-4 p-[19px]">
-        <div className="text-[14.5px] font-extrabold">Colores de la página</div>
-        <p className="mt-0.5 text-[12px] font-semibold text-muted">
-          Por defecto tu página usa los colores de tu marca. Actívalo para darle a la página web colores propios.
-        </p>
-        <label className="mt-3 flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[14.5px] font-extrabold">Estilo y colores de la página</div>
+            <p className="mt-0.5 text-[12px] font-semibold text-muted">
+              Elige una plantilla, prueba suerte con el aleatorio, o personaliza cada color.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              const r = estiloAleatorio()
+              upd({ colores: r.colores, hero_overlay: r.overlay, estilo: { ...(L.estilo || {}), botones: r.botones } })
+            }}
+            className="flex-shrink-0 cursor-pointer rounded-full border-none bg-ink px-4 py-2 text-[12.5px] font-extrabold text-white transition-transform hover:scale-[1.03] active:scale-[0.97]"
+          >
+            🎲 Sorpréndeme
+          </button>
+        </div>
+
+        {/* Plantillas */}
+        <div className="mt-4">
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Plantillas</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {PLANTILLAS.map((t) => {
+              const activa = L.colores?.primary === t.primary && L.colores?.oscuro === t.oscuro
+              return (
+                <button key={t.nombre}
+                  onClick={() => upd({ colores: { primary: t.primary, oscuro: t.oscuro } })}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-extrabold transition-colors ${activa ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-ink hover:border-orange'}`}>
+                  <span className="h-3.5 w-3.5 rounded-full" style={{ background: t.primary }} />
+                  <span className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: t.oscuro }} />
+                  {t.nombre}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Colores personalizados */}
+        <label className="mt-4 flex items-center gap-2">
           <input
             type="checkbox"
             checked={!!L.colores}
@@ -157,6 +228,9 @@ export default function TabPaginaWeb() {
         </label>
         {L.colores && (
           <div className="mt-3 flex flex-col gap-3">
+            <p className="text-[11.5px] font-semibold text-faint">
+              Se inician con los colores de tu marca — elige otros para que la página se vea diferente al panel.
+            </p>
             {[
               ['primary', 'Color principal (botones, ofertas y acentos)'],
               ['oscuro', 'Fondo oscuro (portada y pie de página)'],
@@ -175,6 +249,24 @@ export default function TabPaginaWeb() {
             ))}
           </div>
         )}
+
+        {/* Estilo de botones */}
+        <div className="mt-5">
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Estilo de botones</div>
+          <div className="mt-2 flex gap-2">
+            {[['pill', 'Redondeados'], ['suave', 'Suaves'], ['recto', 'Rectos']].map(([k, lab]) => {
+              const activo = (L.estilo?.botones || 'suave') === k
+              return (
+                <button key={k}
+                  onClick={() => upd({ estilo: { ...(L.estilo || {}), botones: k } })}
+                  className={`border px-4 py-2 text-[12.5px] font-extrabold transition-colors ${activo ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}
+                  style={{ borderRadius: k === 'pill' ? 999 : k === 'suave' ? 10 : 4 }}>
+                  {lab}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </Card>
 
       {/* Ubicación (mapa) */}
