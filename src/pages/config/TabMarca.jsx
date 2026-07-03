@@ -6,9 +6,9 @@ import { applyEmpresaTema } from '../../theme/tokens.js'
 import BrandPreview from './BrandPreview.jsx'
 
 const COLOR_FIELDS = [
-  ['color_primary', 'Color primario (acción)'],
+  ['color_primary', 'Primario (botones y acentos)'],
   ['color_primary_hover', 'Primario · hover'],
-  ['color_navy', 'Oscuro (sidebar)'],
+  ['color_navy', 'Oscuro (sidebar, hero y footer)'],
   ['color_success', 'Éxito'],
   ['color_danger', 'Alerta'],
   ['color_surface', 'Superficie'],

@@ -11,6 +11,22 @@ function money(n, moneda = 'PEN') {
 
 const RED_LABEL = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', whatsapp: 'WhatsApp', youtube: 'YouTube', web: 'Web' }
 
+// Tema efectivo de la página: colores de la marca + override propio de la
+// landing (empresa.landing.colores), si el gym personalizó su página.
+function temaEfectivo(data) {
+  const t = { ...(data?.tema || {}) }
+  const ov = data?.landing?.colores || {}
+  if (ov.primary) {
+    t.color_primary = ov.primary
+    t.color_primary_hover = ov.primary
+  }
+  if (ov.oscuro) {
+    t.color_navy = ov.oscuro
+    t.color_navy_soft = ov.oscuro
+  }
+  return t
+}
+
 export default function Landing({ slug }) {
   const [data, setData] = useState(undefined) // undefined=cargando, null=no existe
 
@@ -20,7 +36,7 @@ export default function Landing({ slug }) {
       if (!active) return
       setData(data)
       if (data?.tema) {
-        applyEmpresaTema(data.tema)
+        applyEmpresaTema(temaEfectivo(data)) // marca + override de colores de la página
         if (data.tema.font_family) document.documentElement.style.setProperty('--font-brand', data.tema.font_family)
       }
     })
@@ -39,7 +55,7 @@ export default function Landing({ slug }) {
     )
   }
 
-  const tema = data.tema || {}
+  const tema = temaEfectivo(data)
   const marca = tema.nombre_marca || data.nombre
   const portalUrl = `/?g=${data.slug}#login` // en prod: https://<slug>.fitcorecenter.com/portal
   const redes = data.redes || {}

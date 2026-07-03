@@ -9,7 +9,7 @@ const SECCIONES = [
 ]
 
 export default function TabPaginaWeb() {
-  const { empresa, reloadBootstrap } = useAuth()
+  const { empresa, tema, reloadBootstrap } = useAuth()
   const guardar = useGuardarEmpresa(empresa?.id)
   const [L, setL] = useState(null) // objeto landing en edición
   const [ok, setOk] = useState(false)
@@ -26,6 +26,7 @@ export default function TabPaginaWeb() {
         galeria: base.galeria || [],
         stats: base.stats || [],
         ubicacion: base.ubicacion || { lat: '', lng: '' },
+        colores: base.colores || null, // null = heredar los colores de la marca
         secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, ...(base.secciones || {}) },
       })
     }
@@ -131,6 +132,49 @@ export default function TabPaginaWeb() {
           ))}
           {L.stats.length === 0 && <div className="text-[12px] font-semibold text-faint">Sin estadísticas. Agrega números que quieras mostrar.</div>}
         </div>
+      </Card>
+
+      {/* Colores de la página (independientes de la marca del panel) */}
+      <Card className="mt-4 p-[19px]">
+        <div className="text-[14.5px] font-extrabold">Colores de la página</div>
+        <p className="mt-0.5 text-[12px] font-semibold text-muted">
+          Por defecto tu página usa los colores de tu marca. Actívalo para darle a la página web colores propios.
+        </p>
+        <label className="mt-3 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={!!L.colores}
+            onChange={(e) =>
+              upd({
+                colores: e.target.checked
+                  ? { primary: tema?.color_primary || '#FF6B35', oscuro: tema?.color_navy || '#141B2E' }
+                  : null,
+              })
+            }
+            className="h-4 w-4 accent-orange-600"
+          />
+          <span className="text-[13px] font-bold">Personalizar colores de la página</span>
+        </label>
+        {L.colores && (
+          <div className="mt-3 flex flex-col gap-3">
+            {[
+              ['primary', 'Color principal (botones, ofertas y acentos)'],
+              ['oscuro', 'Fondo oscuro (portada y pie de página)'],
+            ].map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <span className="text-[13px] font-bold">{label}</span>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={L.colores[key] || '#000000'}
+                    onChange={(e) => upd({ colores: { ...L.colores, [key]: e.target.value } })}
+                    className="h-8 w-10 cursor-pointer rounded border border-line bg-white" />
+                  <input value={L.colores[key] || ''}
+                    onChange={(e) => upd({ colores: { ...L.colores, [key]: e.target.value } })}
+                    className="w-[92px] rounded-[8px] border border-line bg-white px-2 py-1.5 text-[12px] font-bold outline-none focus:border-orange" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Ubicación (mapa) */}
