@@ -73,6 +73,14 @@ export default function Landing({ slug }) {
     return (p.get('utm_source') || p.get('src') || '').slice(0, 40)
   })
 
+  // Contar la visita (una por sesión de navegador por gym); el dueño la ve en su panel
+  useEffect(() => {
+    const key = `fc.visita.${slug}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+    supabase.rpc('registrar_visita_landing', { p_slug: slug, p_fuente: origen || null }).then(() => {})
+  }, [slug, origen])
+
   useEffect(() => {
     let active = true
     supabase.rpc('get_landing_by_slug', { p_slug: slug }).then(({ data }) => {

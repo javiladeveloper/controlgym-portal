@@ -13,6 +13,13 @@ function normalizaSlug(s) {
     .replace(/-+/g, '-').replace(/^-|-$/g, '')
 }
 
+// Planes comerciales (mismos montos que la landing de fitcorecenter.com)
+const PLANES = [
+  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Yoga, pilates, baile y gyms pequeños' },
+  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'Para captar y crecer', popular: true },
+  { slug: 'cadena', nombre: 'Cadena', base: 179, conApp: 229, para: 'Multi-sede y franquicias' },
+]
+
 export default function RegistroGym() {
   const navigate = useNavigate()
   const { usuario, empresas, reloadBootstrap } = useAuth()
@@ -20,6 +27,9 @@ export default function RegistroGym() {
   const [slug, setSlug] = useState('')
   const [slugTocado, setSlugTocado] = useState(false)
   const [categoria, setCategoria] = useState('fitness')
+  const [plan, setPlan] = useState('crecimiento')
+  const [conApp, setConApp] = useState(false)
+  const [acepta, setAcepta] = useState(false)
   const [check, setCheck] = useState(null) // null | 'checking' | 'ok' | 'taken'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -55,12 +65,16 @@ export default function RegistroGym() {
     setError('')
     setBusy(true)
     try {
-      const { error } = await supabase.rpc('registrar_empresa', {
+      const { data, error } = await supabase.rpc('registrar_empresa', {
         p_nombre: nombre.trim(),
         p_slug: slug,
         p_categoria_codigo: categoria,
       })
       if (error) throw error
+      // Guardar el plan elegido (no bloquea el registro si falla)
+      if (data?.empresa_id) {
+        await supabase.rpc('elegir_plan', { p_empresa_id: data.empresa_id, p_plan: plan, p_con_app: conApp })
+      }
       await reloadBootstrap()
       navigate('/dashboard', { replace: true })
     } catch (err) {
@@ -70,7 +84,7 @@ export default function RegistroGym() {
     }
   }
 
-  const puede = nombre.trim().length >= 2 && slug.length >= 2 && check === 'ok' && !busy
+  const puede = nombre.trim().length >= 2 && slug.length >= 2 && check === 'ok' && acepta && !busy
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
@@ -120,6 +134,39 @@ export default function RegistroGym() {
               ))}
             </div>
           </div>
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Tu plan</span>
+              <span className="text-[11px] font-bold text-faint">1 mes de prueba gratis en todos</span>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {PLANES.map((p) => (
+                <label key={p.slug}
+                  className={`relative flex cursor-pointer flex-col rounded-[10px] border p-2.5 text-center transition-colors ${plan === p.slug ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
+                  {p.popular && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-orange px-2 py-[1px] text-[8.5px] font-extrabold uppercase text-white">Popular</span>}
+                  <input type="radio" name="plan" value={p.slug} checked={plan === p.slug} onChange={() => setPlan(p.slug)} className="sr-only" />
+                  <span className="text-[12.5px] font-extrabold">{p.nombre}</span>
+                  <span className="text-[15px] font-extrabold text-orange">S/ {conApp ? p.conApp : p.base}<span className="text-[10px] font-bold text-muted">/mes</span></span>
+                  <span className="mt-0.5 text-[9.5px] font-semibold leading-tight text-muted">{p.para}</span>
+                </label>
+              ))}
+            </div>
+            <label className="mt-2.5 flex items-center gap-2">
+              <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="h-4 w-4 accent-orange-600" />
+              <span className="text-[12.5px] font-bold">📱 App para mis socios <span className="font-semibold text-muted">(disponible muy pronto — se cobra recién cuando la actives)</span></span>
+            </label>
+          </div>
+
+          <label className="mt-4 flex items-start gap-2">
+            <input type="checkbox" checked={acepta} onChange={(e) => setAcepta(e.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />
+            <span className="text-[12px] font-semibold text-muted">
+              Acepto los{' '}
+              <a href={`https://${ROOT_DOMAIN}/terminos`} target="_blank" rel="noreferrer" className="font-extrabold text-orange underline">términos y condiciones</a>
+              {' '}y la{' '}
+              <a href={`https://${ROOT_DOMAIN}/privacidad`} target="_blank" rel="noreferrer" className="font-extrabold text-orange underline">política de privacidad</a>
+            </span>
+          </label>
 
           {error && <div className="mt-4 rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, PrimaryButton } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useGuardarEmpresa } from '../../hooks/useConfiguracion.js'
@@ -91,8 +92,73 @@ export default function TabSitio() {
         </Card>
       )}
 
+      {slug && <VisitasCard empresaId={empresa?.id} />}
+
       {slug && <CompartirLinks slug={slug} />}
     </div>
+  )
+}
+
+// Cuánta gente llega a la página este mes y desde dónde (y cuántos dejaron sus datos)
+function VisitasCard({ empresaId }) {
+  const stats = useQuery({
+    queryKey: ['visitas-landing', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const desde = new Date()
+      desde.setDate(1); desde.setHours(0, 0, 0, 0)
+      const iso = desde.toISOString()
+      const [visitas, leads] = await Promise.all([
+        supabase.from('landing_visita').select('fuente', { count: 'exact' }).gte('created_at', iso).limit(1000),
+        supabase.from('lead').select('id', { count: 'exact', head: true }).gte('created_at', iso).eq('fuente', 'Página web'),
+      ])
+      const porFuente = {}
+      for (const v of visitas.data || []) {
+        const f = v.fuente || 'directo'
+        porFuente[f] = (porFuente[f] || 0) + 1
+      }
+      return {
+        visitas: visitas.count || 0,
+        leads: leads.count || 0,
+        fuentes: Object.entries(porFuente).sort((a, b) => b[1] - a[1]).slice(0, 5),
+      }
+    },
+  })
+  const s = stats.data
+  return (
+    <Card className="mt-4 p-[19px]">
+      <div className="text-[14.5px] font-extrabold">Tu página este mes 📊</div>
+      {!s ? (
+        <p className="mt-2 text-[12px] font-semibold text-faint">Cargando…</p>
+      ) : (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-[10px] border border-line p-3 text-center">
+              <div className="text-[22px] font-extrabold">{s.visitas}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-muted">Visitas</div>
+            </div>
+            <div className="rounded-[10px] border border-line p-3 text-center">
+              <div className="text-[22px] font-extrabold text-orange">{s.leads}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-muted">Interesados captados</div>
+            </div>
+          </div>
+          {s.fuentes.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {s.fuentes.map(([f, n]) => (
+                <span key={f} className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-bold text-muted">
+                  {f}: <b className="text-ink">{n}</b>
+                </span>
+              ))}
+            </div>
+          )}
+          {s.visitas === 0 && (
+            <p className="mt-2.5 text-[11.5px] font-semibold text-faint">
+              Aún no hay visitas este mes. Comparte tus links de abajo para empezar a atraer gente 👇
+            </p>
+          )}
+        </>
+      )}
+    </Card>
   )
 }
 
