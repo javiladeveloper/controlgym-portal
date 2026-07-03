@@ -31,6 +31,9 @@ const DISENOS = [
   ['dark', 'Nocturno', 'Página oscura, dramática'],
   ['minimal', 'Minimal', 'Tipográfico, limpio, con aire'],
   ['bold', 'Impacto', 'Degradados y letra gigante'],
+  ['neon', 'Neón', 'Oscuro con brillos del color'],
+  ['brutal', 'Brutal', 'Color pleno, bordes negros duros'],
+  ['aurora', 'Aurora', 'Degradados suaves y elegantes'],
 ]
 
 // Mini-boceto visual de cada diseño para el selector.
@@ -64,6 +67,26 @@ function MiniDiseno({ k }) {
       <div className="mx-auto mt-1 h-1 w-10 -skew-x-12 bg-orange" />
     </div>
   )
+  if (k === 'neon') return (
+    <div className={`${base} bg-[#07090F] p-1.5 text-center`}>
+      <div className="mx-auto mt-1 h-2 w-3/4 rounded bg-white/80" style={{ boxShadow: '0 0 8px #FF6B35' }} />
+      <div className="mx-auto mt-1.5 h-1 w-10 rounded bg-orange" style={{ boxShadow: '0 0 8px #FF6B35' }} />
+    </div>
+  )
+  if (k === 'brutal') return (
+    <div className={`${base} bg-orange p-1.5 text-center`}>
+      <div className="mx-auto h-2 w-2/3 border-2 border-black bg-white" style={{ boxShadow: '2px 2px 0 #000' }} />
+      <div className="mx-auto mt-1.5 h-3 w-10 border-2 border-black bg-black" style={{ boxShadow: '2px 2px 0 rgba(0,0,0,0.4)' }} />
+    </div>
+  )
+  if (k === 'aurora') return (
+    <div className={`${base} relative bg-white p-1.5 text-center`}>
+      <div className="absolute -left-2 -top-2 h-6 w-6 rounded-full bg-orange opacity-40 blur-md" />
+      <div className="absolute -bottom-2 -right-2 h-6 w-6 rounded-full bg-[#141B2E] opacity-30 blur-md" />
+      <div className="relative mx-auto mt-1.5 h-2 w-3/4 rounded bg-gradient-to-r from-[#141B2E] to-orange" />
+      <div className="relative mx-auto mt-1.5 h-2.5 w-9 rounded-full bg-orange" />
+    </div>
+  )
   return ( // clasico
     <div className={`${base} flex flex-col items-center justify-center gap-1 bg-[#141B2E] p-1.5`}>
       <div className="h-1.5 w-2/3 rounded bg-white/70" />
@@ -83,6 +106,9 @@ const PLANTILLAS = [
   { nombre: 'Grafito',   primary: '#1F2937', oscuro: '#030712', diseno: 'minimal', botones: 'recto' },
   { nombre: 'Fuego',     primary: '#DC2626', oscuro: '#180404', diseno: 'bold',    botones: 'recto' },
   { nombre: 'Eléctrico', primary: '#06B6D4', oscuro: '#041418', diseno: 'bold',    botones: 'pill' },
+  { nombre: 'Cyber',     primary: '#22D3EE', oscuro: '#05070C', diseno: 'neon',    botones: 'pill' },
+  { nombre: 'Street',    primary: '#FACC15', oscuro: '#0A0A0A', diseno: 'brutal',  botones: 'recto' },
+  { nombre: 'Violeta',   primary: '#8B5CF6', oscuro: '#171130', diseno: 'aurora',  botones: 'suave' },
 ]
 
 function hslToHex(h, s, l) {
@@ -344,7 +370,7 @@ export default function TabPaginaWeb() {
         {/* Diseño de página (estructura) */}
         <div className="mt-4">
           <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Diseño de la página</div>
-          <div className="mt-2 grid grid-cols-5 gap-2">
+          <div className="mt-2 grid grid-cols-4 gap-2">
             {DISENOS.map(([k, lab, desc]) => {
               const activo = (L.estilo?.diseno || 'clasico') === k
               return (
