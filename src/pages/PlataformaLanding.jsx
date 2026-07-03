@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { FitControlLogo } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
@@ -126,6 +126,7 @@ const FAQS = [
   ['¿Cómo funciona la página web de mi gimnasio?', 'Al registrarte eliges tu dirección (tugym.' + ROOT_DOMAIN + ') y tu página se genera sola con tus planes, horario, fotos y colores. Eliges entre 8 diseños y todo lo editas desde el panel, sin programadores.'],
   ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitControl registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
   ['¿Sirve si solo doy clases (yoga, baile, funcional)?', 'Sí. Al crear tu cuenta eliges tu tipo de negocio y el sistema se adapta: si no usas máquinas ni rutinas de pesas, esos módulos no te estorban.'],
+  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Es un adicional fijo por gimnasio (no por socio): tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. Cuesta desde S/ 30 extra al mes según tu plan, cubre a todos tus socios y está disponible muy pronto.'],
   ['¿Qué pasa cuando termina mi mes de prueba?', 'Eliges el plan que te acomode y sigues donde quedaste. Tus datos nunca se borran ni se bloquean de un día para otro.'],
   ['¿Puedo cambiar de plan o cancelar?', 'Cuando quieras, sin permanencia ni penalidades. Subes o bajas de plan según crece tu gimnasio.'],
 ]
@@ -151,28 +152,31 @@ const PASOS = [
   ['3', 'Comparte y crece', 'Tu página en WhatsApp e Instagram. Los interesados caen a tu CRM.'],
 ]
 
+// Cada plan tiene 2 precios: solo panel, o panel + app para socios (adicional).
 const PLANES = [
   {
-    nombre: 'Estudio', precio: 49, popular: false,
+    nombre: 'Estudio', base: 49, conApp: 79, popular: false,
     para: 'Yoga, pilates, baile y gimnasios pequeños',
     features: ['1 sede · hasta 100 socios', '2 usuarios del panel', 'Socios, membresías y cobros', 'Clases y check-in', 'Página web con subdominio', 'Reportes básicos'],
-    no: ['CRM y captación desde redes', 'App del socio'],
+    no: ['CRM y captación desde redes'],
   },
   {
-    nombre: 'Crecimiento', precio: 99, popular: true,
+    nombre: 'Crecimiento', base: 99, conApp: 139, popular: true,
     para: 'El gimnasio que quiere captar y crecer',
     features: ['Hasta 3 sedes · 500 socios', 'Usuarios ilimitados', 'Todo lo de Estudio', 'CRM + captación con origen por red', 'Emails automáticos de interesados', 'Promociones aplicadas al cobro', 'Kardex, máquinas y finanzas', 'Personalización total (8 diseños)', 'Reportes en Excel'],
-    no: ['App del socio'],
+    no: [],
   },
   {
-    nombre: 'Cadena', precio: 179, popular: false,
+    nombre: 'Cadena', base: 179, conApp: 229, popular: false,
     para: 'Multi-sede, franquicias y gyms completos',
-    features: ['Sedes y socios ilimitados', 'Todo lo de Crecimiento', 'App del socio (próximamente)', 'Torniquetes y huella', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
+    features: ['Sedes y socios ilimitados', 'Todo lo de Crecimiento', 'Torniquetes y huella', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
     no: [],
   },
 ]
 
 export default function PlataformaLanding() {
+  // Precios: alterna entre solo panel y panel + app para socios
+  const [conApp, setConApp] = useState(false)
   // Aparición suave de secciones al hacer scroll
   useEffect(() => {
     const els = document.querySelectorAll('.lp-rev')
@@ -377,6 +381,32 @@ export default function PlataformaLanding() {
         <p className="mt-2 text-center text-[14px] font-semibold" style={{ color: C.muted }}>
           Estudio de yoga, gym de barrio o cadena multi-sede: paga solo por lo que necesitas.
         </p>
+
+        {/* Toggle: solo panel vs panel + app del socio */}
+        <div className="mt-8 flex justify-center">
+          <div className="inline-flex rounded-full p-1" style={{ background: C.surface, border: C.border }}>
+            <button onClick={() => setConApp(false)}
+              className="rounded-full px-5 py-2 text-[13px] font-extrabold transition-colors"
+              style={conApp ? { color: C.muted } : { background: C.primary, color: '#fff' }}>
+              Solo panel
+            </button>
+            <button onClick={() => setConApp(true)}
+              className="flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-extrabold transition-colors"
+              style={conApp ? { background: C.primary, color: '#fff' } : { color: C.muted }}>
+              📱 Panel + App del socio
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide"
+                style={{ background: conApp ? 'rgba(255,255,255,0.2)' : 'rgba(255,107,53,0.15)', color: conApp ? '#fff' : C.primary }}>
+                Pronto
+              </span>
+            </button>
+          </div>
+        </div>
+        {conApp && (
+          <p className="mt-3 text-center text-[12.5px] font-semibold" style={{ color: C.muted }}>
+            Tus socios reservan clases, ven su rutina y su membresía desde su celular. Disponible muy pronto — el precio ya es el definitivo.
+          </p>
+        )}
+
         <div className="mx-auto mt-10 grid max-w-[1000px] grid-cols-1 gap-4 md:grid-cols-3">
           {PLANES.map((p) => (
             <div key={p.nombre} className="relative flex flex-col rounded-xl p-7"
@@ -393,9 +423,19 @@ export default function PlataformaLanding() {
               <div className="text-[15px] font-extrabold">{p.nombre}</div>
               <div className="mt-0.5 text-[12px] font-semibold" style={{ color: C.muted }}>{p.para}</div>
               <div className="mt-4 text-[38px] font-extrabold tracking-[-2px]">
-                S/ {p.precio}<span className="text-[14px] font-semibold" style={{ color: C.muted }}>/mes</span>
+                S/ {conApp ? p.conApp : p.base}<span className="text-[14px] font-semibold" style={{ color: C.muted }}>/mes</span>
+              </div>
+              <div className="text-[11.5px] font-semibold" style={{ color: C.muted }}>
+                {conApp
+                  ? `S/ ${p.base} sin app · el adicional cubre a todos tus socios`
+                  : `+S/ ${p.conApp - p.base}/mes si luego quieres la app del socio`}
               </div>
               <ul className="mt-5 flex-1 space-y-2 text-[13px] font-semibold" style={{ color: C.muted }}>
+                {conApp && (
+                  <li className="flex items-start gap-2 font-extrabold text-white">
+                    <span className="mt-0.5" style={{ color: C.primary }}>✓</span>App para tus socios (iOS y Android)
+                  </li>
+                )}
                 {p.features.map((x) => (
                   <li key={x} className="flex items-start gap-2"><span className="mt-0.5" style={{ color: C.primary }}>✓</span>{x}</li>
                 ))}
