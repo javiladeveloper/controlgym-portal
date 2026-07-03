@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
+import { comprimirImagen, PRESETS } from '../lib/imagen.js'
 
 // Guardar datos de la empresa (contacto, redes, regional, textos).
 export function useGuardarEmpresa(empresaId) {
@@ -22,13 +23,14 @@ export function useGuardarTema(empresaId) {
 }
 
 // Subir un archivo (logo/favicon) al bucket 'branding' bajo la carpeta de la empresa.
-// Devuelve la URL pública. `slot` = 'logo' | 'favicon'.
+// Comprime/redimensiona antes de subir. `slot` = 'logo' | 'favicon'.
 export async function subirBranding(empresaId, slot, file) {
-  const ext = file.name.split('.').pop().toLowerCase()
+  const f = await comprimirImagen(file, PRESETS[slot] || PRESETS.logo)
+  const ext = f.name.split('.').pop().toLowerCase()
   const path = `${empresaId}/${slot}.${ext}`
   const { error } = await supabase.storage
     .from('branding')
-    .upload(path, file, { upsert: true, cacheControl: '3600' })
+    .upload(path, f, { upsert: true, cacheControl: '3600' })
   if (error) throw error
   const { data } = supabase.storage.from('branding').getPublicUrl(path)
   // Cache-buster para que se refresque el preview tras re-subir
@@ -36,14 +38,15 @@ export async function subirBranding(empresaId, slot, file) {
 }
 
 // Subir imagen con nombre único (galería, portada, foto de sede) → URL pública.
-// `folder` = subcarpeta bajo la empresa (ej. 'hero', 'galeria', 'sede').
+// Comprime según el destino. `folder` = 'hero' | 'galeria' | 'sede'.
 export async function subirImagen(empresaId, folder, file) {
-  const ext = file.name.split('.').pop().toLowerCase()
+  const f = await comprimirImagen(file, PRESETS[folder] || PRESETS.galeria)
+  const ext = f.name.split('.').pop().toLowerCase()
   const rand = Math.abs(file.name.length + file.size).toString(36) + '-' + (file.lastModified || 0).toString(36)
   const path = `${empresaId}/${folder}/${rand}.${ext}`
   const { error } = await supabase.storage
     .from('branding')
-    .upload(path, file, { upsert: true, cacheControl: '3600' })
+    .upload(path, f, { upsert: true, cacheControl: '3600' })
   if (error) throw error
   const { data } = supabase.storage.from('branding').getPublicUrl(path)
   return data.publicUrl
