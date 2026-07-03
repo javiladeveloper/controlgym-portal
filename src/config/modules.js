@@ -7,6 +7,7 @@
 
 // Orden y etiqueta de los grupos del sidebar.
 export const GRUPOS = [
+  { key: 'plataforma', label: 'FitControl' }, // solo super-admin de la plataforma
   { key: 'general', label: 'General' },
   { key: 'socios', label: 'Socios' },
   { key: 'operacion', label: 'Operación' },
@@ -15,7 +16,10 @@ export const GRUPOS = [
 ]
 
 // roles: null = todos los roles; array = solo esos roles ven el módulo.
+// soloSuperadmin: visible únicamente para el dueño de la plataforma.
 export const MODULES = [
+  { slug: 'plataforma',  label: 'Dashboard global', grupo: 'plataforma', roles: null, alwaysOn: true, soloSuperadmin: true },
+
   { slug: 'dashboard',   label: 'Dashboard',        grupo: 'general',   roles: null },
 
   { slug: 'clientes',    label: 'Clientes',         grupo: 'socios',    roles: null },
@@ -36,10 +40,12 @@ export const MODULES = [
   { slug: 'configuracion', label: 'Configuración',   grupo: 'config',    roles: ['admin'], alwaysOn: true },
 ]
 
-// Devuelve los módulos visibles para un usuario según empresa (módulos habilitados) y rol.
-export function visibleModules(enabledModules, rol) {
+// Devuelve los módulos visibles para un usuario según empresa (módulos habilitados),
+// rol y si es super-admin de la plataforma.
+export function visibleModules(enabledModules, rol, esSuperadmin = false) {
   const enabled = new Set(enabledModules || [])
   return MODULES.filter((m) => {
+    if (m.soloSuperadmin && !esSuperadmin) return false
     const moduleOn = m.alwaysOn || m.slug === 'dashboard' || enabled.has(m.slug)
     const roleOk = !m.roles || (rol && m.roles.includes(rol))
     return moduleOn && roleOk
@@ -48,14 +54,14 @@ export function visibleModules(enabledModules, rol) {
 
 // Agrupa los módulos visibles por su `grupo`, respetando el orden de GRUPOS.
 // Devuelve [{ key, label, items: [...] }] omitiendo grupos vacíos.
-export function groupedModules(enabledModules, rol) {
-  const visibles = visibleModules(enabledModules, rol)
+export function groupedModules(enabledModules, rol, esSuperadmin = false) {
+  const visibles = visibleModules(enabledModules, rol, esSuperadmin)
   return GRUPOS
     .map((g) => ({ ...g, items: visibles.filter((m) => m.grupo === g.key) }))
     .filter((g) => g.items.length > 0)
 }
 
 // ¿El usuario puede acceder a este slug? (para el guard por módulo en rutas)
-export function canAccessModule(slug, enabledModules, rol) {
-  return visibleModules(enabledModules, rol).some((m) => m.slug === slug)
+export function canAccessModule(slug, enabledModules, rol, esSuperadmin = false) {
+  return visibleModules(enabledModules, rol, esSuperadmin).some((m) => m.slug === slug)
 }

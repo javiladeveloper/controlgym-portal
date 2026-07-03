@@ -83,6 +83,7 @@ export function AuthProvider({ children }) {
     session,
     loading,
     usuario: bootstrap?.usuario ?? null,
+    esSuperadmin: bootstrap?.es_superadmin ?? false,
     empresa: bootstrap?.empresa_activa ?? null,
     rol: bootstrap?.rol ?? null,
     tema: bootstrap?.tema ?? null,

@@ -20,7 +20,7 @@ function Splash() {
 // valida que el módulo esté habilitado para la empresa/rol.
 // `allowNoEmpresa`: rutas accesibles sin empresa (ej. /registro).
 export default function ProtectedRoute({ children, moduleSlug, allowNoEmpresa = false }) {
-  const { session, loading, enabledModules, rol, empresa } = useAuth()
+  const { session, loading, enabledModules, rol, empresa, esSuperadmin } = useAuth()
   const location = useLocation()
 
   if (loading) return <Splash />
@@ -28,7 +28,7 @@ export default function ProtectedRoute({ children, moduleSlug, allowNoEmpresa = 
   // Sesión válida pero sin bootstrap (usuario sin empresa asignada)
   if (!empresa && !allowNoEmpresa) return <Navigate to="/sin-empresa" replace />
 
-  if (moduleSlug && !canAccessModule(moduleSlug, enabledModules, rol)) {
+  if (moduleSlug && !canAccessModule(moduleSlug, enabledModules, rol, esSuperadmin)) {
     return <Navigate to="/dashboard" replace />
   }
 

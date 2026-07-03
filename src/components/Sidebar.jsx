@@ -18,10 +18,10 @@ function iniciales(nombre) {
 }
 
 export default function Sidebar() {
-  const { empresa, usuario, rol, tema, enabledModules, empresas, setEmpresaActiva, signOut } = useAuth()
+  const { empresa, usuario, rol, tema, enabledModules, empresas, esSuperadmin, setEmpresaActiva, signOut } = useAuth()
   const { sedes, sedeId, setSede } = usePanel()
 
-  const grupos = groupedModules(enabledModules, rol)
+  const grupos = groupedModules(enabledModules, rol, esSuperadmin)
   const marca = tema?.nombre_marca || empresa?.nombre || 'FitCore'
 
   return (

@@ -16,11 +16,13 @@ import Finanzas from './pages/Finanzas.jsx'
 import Sponsors from './pages/Sponsors.jsx'
 import Reportes from './pages/Reportes.jsx'
 import Configuracion from './pages/Configuracion.jsx'
+import Plataforma from './pages/Plataforma.jsx'
 import SinEmpresa from './pages/SinEmpresa.jsx'
 import RegistroGym from './pages/RegistroGym.jsx'
 
 // slug -> componente. El guard por módulo vive en ProtectedRoute (moduleSlug).
 const PAGES = [
+  ['plataforma', Plataforma],
   ['dashboard', Dashboard],
   ['clientes', Clientes],
   ['crm', CRM],
