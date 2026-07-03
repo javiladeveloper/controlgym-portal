@@ -47,6 +47,7 @@ export default function Finanzas() {
                 <div className="text-[13px] font-extrabold">{mv.descripcion || mv.categoria}</div>
                 <div className="text-[11.5px] font-semibold text-muted capitalize">
                   {mv.categoria} · {new Date(mv.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                  {mv.metodo_pago && <span className="ml-1.5 rounded-full bg-surface px-2 py-0.5 text-[10px] font-extrabold text-muted">{mv.metodo_pago}</span>}
                 </div>
               </div>
               <div className="flex-shrink-0 text-[13px] font-extrabold" style={{ color: mv.tipo === 'ingreso' ? T.success : T.danger }}>

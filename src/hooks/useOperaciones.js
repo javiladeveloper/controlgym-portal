@@ -95,10 +95,10 @@ export function useFinanzas(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('movimiento_financiero')
-        .select('id, tipo, categoria, descripcion, monto, fecha')
+        .select('id, tipo, categoria, descripcion, monto, fecha, metodo_pago')
         .eq('sede_id', sedeId)
         .order('fecha', { ascending: false })
-        .limit(8)
+        .limit(12)
       if (error) throw error
       return data
     },
