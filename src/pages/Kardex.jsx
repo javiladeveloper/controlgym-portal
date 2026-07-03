@@ -105,6 +105,8 @@ export default function Kardex() {
   const bajos = (productos.data || []).filter((p) => p.bajo).length
   const ventasHoy = (movs.data || []).filter((m) => m.tipo === 'venta' && new Date(m.fecha).toDateString() === new Date().toDateString())
     .reduce((n, m) => n + Number(m.monto || 0), 0)
+  const ventasMes = (movs.data || []).filter((m) => m.tipo === 'venta').reduce((n, m) => n + Number(m.monto || 0), 0)
+  const comprasMes = (movs.data || []).filter((m) => m.tipo === 'compra').reduce((n, m) => n + Number(m.monto || 0), 0)
 
   return (
     <div className="px-7 pb-9 pt-6">
@@ -121,10 +123,11 @@ export default function Kardex() {
         <MovimientoModal sedeId={sedeId} empresaId={empresa?.id} productos={productos.data || []} moneda={moneda} onClose={() => setMovOpen(false)} />
       )}
 
-      <div className="mt-5 grid grid-cols-3 gap-[15px]">
+      <div className="mt-5 grid grid-cols-4 gap-[15px]">
         <StatCard label="Productos en inventario" value={productos.data?.length ?? 0} />
         <StatCard label="Con stock bajo" value={bajos} variant={bajos ? 'danger' : 'default'} />
-        <StatCard label="Ventas de hoy" value={money(ventasHoy, moneda)} />
+        <StatCard label="Ventas del mes" value={money(ventasMes, moneda)} delta={`hoy: ${money(ventasHoy, moneda)}`} deltaColor={T.success} />
+        <StatCard label="Compras del mes" value={money(comprasMes, moneda)} delta="inversión en mercadería" />
       </div>
 
       {productos.isLoading && <LoadingState variant="table" rows={5} />}
@@ -150,18 +153,34 @@ export default function Kardex() {
 
       {(movs.data || []).length > 0 && (
         <Card className="mt-[15px] overflow-hidden">
-          <div className="px-5 py-4"><div className="text-[14.5px] font-extrabold">Movimientos recientes</div></div>
-          <div className="grid grid-cols-[0.9fr_2fr_1.1fr_0.9fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Monto</div>
-          </div>
-          {movs.data.map((m) => (
-            <div key={m.id} className="grid grid-cols-[0.9fr_2fr_1.1fr_0.9fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
-              <div className="text-[12.5px] font-bold text-muted">{new Date(m.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
-              <div className="text-[13.5px] font-extrabold">{m.producto?.nombre}</div>
-              <div><Badge bg={m.tipo === 'venta' ? T.successBg : T.chipNavy} color={m.tipo === 'venta' ? T.success : T.navy} className="capitalize">{m.tipo}</Badge></div>
-              <div className="text-[13px] font-extrabold" style={{ color: m.tipo === 'venta' ? T.success : T.danger }}>{money(m.monto, moneda)}</div>
+          <div className="px-5 py-4">
+            <div className="text-[14.5px] font-extrabold">Movimientos del mes</div>
+            <div className="mt-0.5 text-[12px] font-semibold text-muted">
+              Compra = <b>entra stock, sale de caja</b> · Venta = <b>sale stock, entra a caja</b>
             </div>
-          ))}
+          </div>
+          <div className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Stock</div><div>Caja</div>
+          </div>
+          {movs.data.slice(0, 12).map((m) => {
+            const venta = m.tipo === 'venta'
+            const ajuste = m.tipo === 'ajuste'
+            return (
+              <div key={m.id} className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+                <div className="text-[12.5px] font-bold text-muted">{new Date(m.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
+                <div className="text-[13.5px] font-extrabold">{m.producto?.nombre}</div>
+                <div><Badge bg={venta ? T.successBg : ajuste ? T.line2 : T.chipNavy} color={venta ? T.success : ajuste ? T.muted : T.navy} className="capitalize">{m.tipo}</Badge></div>
+                {/* Efecto en el stock */}
+                <div className="text-[13px] font-extrabold" style={{ color: venta ? T.danger : T.success }}>
+                  {venta ? '−' : '+'}{m.cantidad} uds.
+                </div>
+                {/* Efecto en la caja */}
+                <div className="text-[13px] font-extrabold" style={{ color: ajuste ? T.faint : venta ? T.success : T.danger }}>
+                  {ajuste ? '—' : (venta ? '+' : '−') + money(m.monto, moneda)}
+                </div>
+              </div>
+            )
+          })}
         </Card>
       )}
     </div>

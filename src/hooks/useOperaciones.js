@@ -40,12 +40,14 @@ export function useMovimientosInventario(sedeId) {
     queryKey: ['kardex-movs', sedeId],
     enabled: !!sedeId,
     queryFn: async () => {
+      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
       const { data, error } = await supabase
         .from('movimiento_inventario')
         .select('id, tipo, cantidad, monto, fecha, producto:producto(nombre)')
         .eq('sede_id', sedeId)
+        .gte('fecha', inicioMes)
         .order('fecha', { ascending: false })
-        .limit(8)
+        .limit(200)
       if (error) throw error
       return data
     },
