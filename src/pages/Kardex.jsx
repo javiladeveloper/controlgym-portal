@@ -8,6 +8,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProductos, useMovimientosInventario } from '../hooks/useOperaciones.js'
 import { money } from '../lib/uiHelpers.js'
+import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
@@ -183,7 +184,8 @@ export default function Kardex() {
     const { error } = await supabase.rpc('anular_mov_inventario', { p_id: m.id })
     setBusyAnular(false)
     setAnulando(null)
-    if (error) { alert('No se pudo anular: ' + error.message); return }
+    if (error) { toast.error('No se pudo anular: ' + error.message); return }
+    toast.ok('Movimiento anulado: stock y caja revertidos')
     qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
     qc.invalidateQueries({ queryKey: ['kardex-movs', sedeId] })
     qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })

@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
 import { estadoBadge, money } from '../lib/uiHelpers.js'
 import { waLink, msgRenovacion } from '../lib/whatsapp.js'
+import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function PlanCard({ p, moneda, popular }) {
@@ -51,8 +52,8 @@ export default function Membresias() {
 
   function onAnular(m, devolver) {
     anular.mutate({ membresiaId: m.id, devolver }, {
-      onSuccess: () => setAnulando(null),
-      onError: (e) => { alert('No se pudo anular: ' + e.message); setAnulando(null) },
+      onSuccess: () => { setAnulando(null); toast.ok(devolver ? 'Membresía anulada y devolución registrada en caja' : 'Membresía anulada') },
+      onError: (e) => { toast.error('No se pudo anular: ' + e.message); setAnulando(null) },
     })
   }
 

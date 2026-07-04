@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TrialBanner from './components/TrialBanner.jsx'
+import Toasts from './components/Toasts.jsx'
+import BuscadorGlobal from './components/BuscadorGlobal.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Clientes from './pages/Clientes.jsx'
@@ -72,6 +74,10 @@ function PanelLayout({ children }) {
         <TrialBanner />
         {children}
       </main>
+
+      {/* Utilidades globales del panel */}
+      <Toasts />
+      <BuscadorGlobal />
     </div>
   )
 }

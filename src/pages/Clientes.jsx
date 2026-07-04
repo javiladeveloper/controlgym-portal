@@ -92,7 +92,8 @@ function Ficha({ socioId, onBack }) {
 
 export default function Clientes() {
   const { sedeId, sedeNombre } = usePanel()
-  const [fichaId, setFichaId] = useState(null)
+  // Deep-link desde la búsqueda global: /clientes?socio=<id> abre la ficha
+  const [fichaId, setFichaId] = useState(() => new URLSearchParams(window.location.search).get('socio'))
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const { data: clientes, isLoading, error, refetch } = useClientes(sedeId)
   const [q, setQ] = useState('')
