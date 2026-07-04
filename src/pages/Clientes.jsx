@@ -4,6 +4,7 @@ import { Card, Avatar, Badge, GhostButton, PrimaryButton } from '../components/u
 import { ChevronLeft } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
+import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
 import { estadoBadge, avatarColors, iniciales } from '../lib/uiHelpers.js'
@@ -23,6 +24,7 @@ function edadDe(fechaNac) {
 function Ficha({ socioId, onBack }) {
   const navigate = useNavigate()
   const { data: ficha, isLoading, error, refetch } = useSocioFicha(socioId)
+  const [editOpen, setEditOpen] = useState(false)
 
   if (isLoading) return <div className="px-7 pt-6"><LoadingState variant="cards" rows={2} /></div>
   if (error) return <div className="px-7 pt-6"><ErrorState error={error} onRetry={refetch} /></div>
@@ -46,10 +48,15 @@ function Ficha({ socioId, onBack }) {
           </div>
         </div>
         <Badge bg={st.bg} color={st.color} className="!px-[13px] !py-1.5 !text-[11.5px]">{st.label}</Badge>
+        <GhostButton onClick={() => setEditOpen(true)}>✏️ Editar</GhostButton>
         <PrimaryButton onClick={() => navigate('/rutinas', { state: { socioId: ficha.id, socio: ficha.nombre } })}>
           Generar rutina y dieta
         </PrimaryButton>
       </div>
+
+      {editOpen && (
+        <EditarSocioModal socio={ficha} onClose={() => setEditOpen(false)} onSaved={refetch} />
+      )}
 
       <div className="mt-[18px] grid grid-cols-2 gap-[15px]">
         <Card className="p-[19px]">

@@ -6,6 +6,7 @@ import { usePlanes } from '../../hooks/useMembresias.js'
 import { usePromociones } from '../../hooks/useOperaciones.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { money } from '../../lib/uiHelpers.js'
+import ObjetivoChips from './ObjetivoChips.jsx'
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
 
@@ -100,7 +101,9 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
           <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
           <Campo label="Fecha de nacimiento"><input type="date" value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
         </div>
-        <Campo label="Objetivo"><input value={f.objetivo} onChange={set('objetivo')} className={inputCls} placeholder="Pérdida de grasa, tonificación…" /></Campo>
+        <Campo label="Objetivo">
+          <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
+        </Campo>
         <Campo label="Plan de membresía" hint={!plan ? 'Opcional: puedes asignarlo después.' : undefined}>
           <select value={f.plan_id} onChange={set('plan_id')} className={inputCls + ' cursor-pointer'}>
             <option value="">Sin plan por ahora</option>

@@ -19,7 +19,7 @@ begin
   select valor into v_key from privado.secreto where clave = 'resend_api_key';
   if v_key is null then return new; end if;
 
-  select nombre, email_contacto, telefono into v_gym, v_email_gym, v_tel_gym
+  select nombre, email_contacto, telefono_contacto into v_gym, v_email_gym, v_tel_gym
   from public.empresa where id = new.empresa_id;
 
   v_html :=

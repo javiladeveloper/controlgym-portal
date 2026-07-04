@@ -1,5 +1,7 @@
-import { Card, Badge } from '../components/ui.jsx'
+import { useState } from 'react'
+import { Card, Badge, GhostButton } from '../components/ui.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
+import PlanesModal from '../components/forms/PlanesModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar } from '../hooks/useMembresias.js'
@@ -36,19 +38,28 @@ function PlanCard({ p, moneda, popular }) {
 
 export default function Membresias() {
   const { sedeId } = usePanel()
-  const { empresa } = useAuth()
+  const { empresa, rol } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
   const planes = usePlanes()
   const membresias = useMembresias(sedeId)
   const freeze = useToggleFreeze(sedeId)
   const renovar = useRenovar(sedeId)
+  const [planesOpen, setPlanesOpen] = useState(false)
 
   const populares = new Set((planes.data || []).filter((p) => p.badge).map((p) => p.id))
 
   return (
     <div className="px-7 pb-9 pt-6">
-      <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Membresías</h1>
-      <p className="mt-0.5 text-[13px] font-semibold text-muted">Planes y gestión de membresías de socios</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Membresías</h1>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">Planes y gestión de membresías de socios</p>
+        </div>
+        {rol === 'admin' && (
+          <GhostButton onClick={() => setPlanesOpen(true)}>⚙️ Gestionar planes</GhostButton>
+        )}
+      </div>
+      {planesOpen && <PlanesModal onClose={() => setPlanesOpen(false)} />}
 
       {/* Planes */}
       {planes.isLoading && <LoadingState variant="cards" rows={4} />}
