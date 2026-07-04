@@ -1,11 +1,18 @@
 import { Card, Field, SaveBar, useEmpresaForm } from './empresaForm.jsx'
 import DireccionAutocomplete from '../../components/forms/DireccionAutocomplete.jsx'
+import HorarioEditor, { resumenHorario } from '../../components/forms/HorarioEditor.jsx'
 
 export default function TabContacto() {
   const { form, set, dirty, ok, saving, onGuardar } = useEmpresaForm([
-    'email_contacto', 'telefono_contacto', 'direccion', 'razon_social', 'ruc', 'horario_atencion',
+    'email_contacto', 'telefono_contacto', 'direccion', 'razon_social', 'ruc', 'horario_atencion', 'horario',
   ])
   if (!form) return <div className="text-[13px] text-muted">Cargando…</div>
+
+  // El editor guarda la estructura Y el texto derivado (lo que ve la página pública)
+  const onHorario = (estructura) => {
+    set('horario', estructura)
+    set('horario_atencion', resumenHorario(estructura))
+  }
 
   return (
     <div className="max-w-[720px]">
@@ -21,7 +28,10 @@ export default function TabContacto() {
           </div>
           <Field label="Razón social" value={form.razon_social} onChange={(v) => set('razon_social', v)} />
           <Field label="RUC" value={form.ruc} onChange={(v) => set('ruc', v)} />
-          <div className="col-span-2"><Field label="Horario de atención" value={form.horario_atencion} onChange={(v) => set('horario_atencion', v)} placeholder="Lun–Sáb 6:00 am – 10:00 pm" /></div>
+          <div className="col-span-2 flex flex-col gap-1.5">
+            <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Horario de atención</span>
+            <HorarioEditor value={form.horario} onChange={onHorario} />
+          </div>
         </div>
       </Card>
       <SaveBar dirty={dirty} saving={saving} ok={ok} onGuardar={onGuardar} />

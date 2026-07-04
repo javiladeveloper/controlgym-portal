@@ -6,6 +6,7 @@ import { FitControlLogo } from '../components/icons.jsx'
 import LoadingOverlay from '../components/LoadingOverlay.jsx'
 import { subirBranding } from '../hooks/useConfiguracion.js'
 import DireccionAutocomplete from '../components/forms/DireccionAutocomplete.jsx'
+import HorarioEditor, { HORARIO_DEFAULT, resumenHorario } from '../components/forms/HorarioEditor.jsx'
 import { urlPublica } from '../lib/tenant.js'
 
 // Extrae los colores dominantes del logo (canvas): se agrupan por tono,
@@ -149,8 +150,8 @@ export default function Bienvenida() {
   // P2: planes con precio editable
   const [planes, setPlanes] = useState(() => PLANES_SUGERIDOS[tipo].map((p) => ({ ...p, on: !!p.popular, precio: String(p.precio) })))
   const [matricula, setMatricula] = useState('')
-  // P3: contacto
-  const [horario, setHorario] = useState('')
+  // P3: contacto (horario estructurado por día, no texto libre)
+  const [horario, setHorario] = useState(HORARIO_DEFAULT)
   const [whatsapp, setWhatsapp] = useState('')
   const [direccion, setDireccion] = useState('')
   const [ubicacionSel, setUbicacionSel] = useState(null) // coords del autocompletado
@@ -233,7 +234,7 @@ export default function Bienvenida() {
           popular: !!p.popular, congela: p.congela || 0,
           matricula: Number(matricula) || 0, descripcion: p.descripcion || '',
         })),
-        horario: horario.trim(), whatsapp: whatsapp.trim(), direccion: direccion.trim(),
+        horario: resumenHorario(horario), whatsapp: whatsapp.trim(), direccion: direccion.trim(),
         ubicacion,
         sedes: sedesExtra.map((s) => s.trim()).filter(Boolean),
         color,
@@ -241,6 +242,8 @@ export default function Bienvenida() {
 
       const { error } = await supabase.rpc('aplicar_onboarding', { p_empresa_id: empresaId, p_config: config })
       if (error) throw error
+      // Horario estructurado (el RPC solo guarda el texto derivado)
+      await supabase.from('empresa').update({ horario }).eq('id', empresaId)
       // Logo (si lo eligió): recién ahora se sube, ya con empresa creada
       if (logoFile) {
         try {
@@ -363,11 +366,10 @@ export default function Bienvenida() {
                     placeholder="Av. Principal 123, Tacna"
                     className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange" />
                 </label>
-                <label className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5">
                   <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Horario de atención</span>
-                  <input value={horario} onChange={(e) => setHorario(e.target.value)} placeholder="Lun–Vie 6:00–22:00 · Sáb 8:00–13:00"
-                    className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange" />
-                </label>
+                  <HorarioEditor value={horario} onChange={setHorario} />
+                </div>
                 {esCadena && (
                   <div>
                     <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿Tienes más sedes? Agrégalas</span>
@@ -462,6 +464,9 @@ export default function Bienvenida() {
                   className="rounded-[11px] border border-orange bg-orange-50 py-3 text-[14px] font-extrabold text-orange hover:bg-orange-100">
                   🌐 Ver mi página web
                 </a>
+                <p className="-mt-1 text-[11px] font-semibold text-faint">
+                  Tu dirección se está activando: la primera vez puede tardar ~1 minuto en abrir. Si sale un error, espera un momento y recarga.
+                </p>
                 <button onClick={() => navigate('/dashboard', { replace: true })}
                   className="cursor-pointer rounded-[11px] border-none bg-orange py-3 text-[14.5px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] hover:bg-orange-600">
                   Ir a mi panel →
