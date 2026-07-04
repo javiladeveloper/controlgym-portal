@@ -10,7 +10,7 @@ export const PLANES_GYM = [
 ]
 
 export const PLANES_SEGMENTO = {
-  clases: { slug: 'academia', nombre: 'Academia', base: 49, conApp: 79, para: 'Clases, alumnos, cobros y tu página web — sin módulos que no usas' },
+  clases: { slug: 'academia', nombre: 'Academia', base: 49, conApp: 69, para: 'Clases, alumnos, cobros y tu página web — sin módulos que no usas' },
   ninos: { slug: 'ninos', nombre: 'Niños', base: 69, conApp: 109, para: 'Alumnos con apoderados, clases por edades y tu página web' },
   personal_trainer: { slug: 'trainer', nombre: 'Trainer', base: 29, conApp: 49, para: 'Tus clientes, tus paquetes de sesiones y tu página personal' },
 }

@@ -35,7 +35,7 @@ const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
 // Radio de tarjetas (landing.estilo.tarjetas)
 const CARD_RADIUS = { redonda: 22, suave: 14, recta: 6 }
 // Orden por defecto de las secciones de la página
-const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
 
 // Iconos de redes sociales para el footer
 const ICONO_RED = {
@@ -248,6 +248,20 @@ export default function Landing({ slug }) {
               <button onClick={() => abrirLead(`Plan ${p.nombre}`)}
                 className="mt-6 block w-full cursor-pointer border-none py-2.5 text-center text-[13px] font-extrabold text-white"
                 style={{ background: tema.color_primary, borderRadius: rBtn }}>Elegir</button>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    logros: () => sec.logros !== false && (L.logros || []).length > 0 && (
+      <section className="mx-auto max-w-[1000px] px-6 py-20">
+        <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Nuestros logros</h2>
+        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {L.logros.map((lg, i) => (
+            <div key={i} className="border border-line bg-white p-5 text-center" style={{ borderRadius: rCard }}>
+              <div className="text-[36px] leading-none">{lg.icono || '🏆'}</div>
+              <div className="mt-2.5 text-[15px] font-extrabold leading-tight" style={{ color: tema.color_navy }}>{lg.titulo}</div>
+              {lg.detalle && <div className="mt-1 text-[12px] font-semibold leading-snug text-muted">{lg.detalle}</div>}
             </div>
           ))}
         </div>

@@ -5,17 +5,18 @@ import { useGuardarEmpresa, subirImagen } from '../../hooks/useConfiguracion.js'
 
 const SECCIONES = [
   ['promociones', 'Ofertas y promociones'], ['planes', 'Planes'], ['clases', 'Clases'],
-  ['testimonios', 'Testimonios'], ['sedes', 'Sedes'], ['galeria', 'Galería'],
+  ['logros', 'Logros'], ['testimonios', 'Testimonios'], ['sedes', 'Sedes'], ['galeria', 'Galería'],
   ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
 ]
 
 const MAX_TESTIMONIOS = 6
+const MAX_LOGROS = 6
 
 const MAX_GALERIA = 12 // tope de fotos en la galería
 
-const DEFAULT_ORDEN = ['stats', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
 const ETIQUETA_SECCION = {
-  stats: 'Estadísticas', promociones: 'Ofertas y promociones', planes: 'Planes',
+  stats: 'Estadísticas', logros: 'Logros', promociones: 'Ofertas y promociones', planes: 'Planes',
   clases: 'Clases', testimonios: 'Testimonios', galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
 }
 
@@ -218,10 +219,11 @@ export default function TabPaginaWeb() {
         whatsapp_flotante: !!base.whatsapp_flotante,
         stats_modo: base.stats_modo || ((base.stats || []).length > 0 ? 'manual' : 'auto'),
         testimonios: base.testimonios || [],
+        logros: base.logros || [],
         orden: Array.isArray(base.orden) && base.orden.length
           ? [...base.orden, ...DEFAULT_ORDEN.filter((k) => !base.orden.includes(k))]
           : DEFAULT_ORDEN,
-        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, testimonios: true, ...(base.secciones || {}) },
+        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, testimonios: true, logros: true, ...(base.secciones || {}) },
       })
     }
   }, [empresa])
@@ -411,6 +413,45 @@ export default function TabPaginaWeb() {
           {(L.testimonios || []).length === 0 && (
             <div className="rounded-lg border border-dashed border-line py-5 text-center text-[12px] font-semibold text-faint">
               Sin testimonios aún. Agrega el primero.
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Logros: medallero del negocio (campeonatos, años, graduados…) */}
+      <Card className="mt-4 p-[19px]">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[14.5px] font-extrabold">Logros 🏆 <span className="text-[12px] font-bold text-faint">({(L.logros || []).length}/{MAX_LOGROS})</span></div>
+            <p className="mt-0.5 text-[12px] font-semibold text-muted">Campeonatos, años de trayectoria, alumnos graduados — lo que te hace único.</p>
+          </div>
+          <button
+            onClick={() => upd({ logros: [...(L.logros || []), { icono: '🏆', titulo: '', detalle: '' }] })}
+            disabled={(L.logros || []).length >= MAX_LOGROS}
+            className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+            + Agregar
+          </button>
+        </div>
+        <div className="mt-4 flex flex-col gap-3">
+          {(L.logros || []).map((lg, i) => (
+            <div key={i} className="flex items-center gap-2.5 rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+              <input value={lg.icono} maxLength={4}
+                onChange={(e) => upd({ logros: L.logros.map((x, j) => j === i ? { ...x, icono: e.target.value } : x) })}
+                className="w-[52px] flex-shrink-0 rounded-[9px] border border-line bg-white px-1 py-2 text-center text-[18px] outline-none focus:border-orange" title="Emoji" />
+              <input value={lg.titulo}
+                onChange={(e) => upd({ logros: L.logros.map((x, j) => j === i ? { ...x, titulo: e.target.value.slice(0, 60) } : x) })}
+                placeholder="Campeones regionales 2025"
+                className="w-[40%] rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-orange" />
+              <input value={lg.detalle}
+                onChange={(e) => upd({ logros: L.logros.map((x, j) => j === i ? { ...x, detalle: e.target.value.slice(0, 90) } : x) })}
+                placeholder="Detalle (opcional)"
+                className="min-w-0 flex-1 rounded-[9px] border border-line bg-white px-3 py-2 text-[13px] font-semibold outline-none focus:border-orange" />
+              <button onClick={() => upd({ logros: L.logros.filter((_, j) => j !== i) })} className="flex-shrink-0 text-[12px] font-extrabold text-red">Quitar</button>
+            </div>
+          ))}
+          {(L.logros || []).length === 0 && (
+            <div className="rounded-lg border border-dashed border-line py-5 text-center text-[12px] font-semibold text-faint">
+              Sin logros aún. Ej.: 🥇 Campeones regionales · 🥋 +100 graduados · 🏆 15 años de trayectoria
             </div>
           )}
         </div>
