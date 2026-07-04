@@ -62,4 +62,15 @@ export function isPlataformaHome() {
     && !params.get('g')
 }
 
+// URL pública de la página de un gym: subdominio real en producción,
+// ?g=slug solo en desarrollo (localhost no tiene subdominios).
+export function urlPublica(slug) {
+  if (!slug) return '#'
+  const host = window.location.hostname
+  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+    return `${window.location.origin}/?g=${slug}`
+  }
+  return `https://${slug}.${ROOT_DOMAIN}`
+}
+
 export { ROOT_DOMAIN }

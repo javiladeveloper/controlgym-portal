@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card, PrimaryButton } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useGuardarEmpresa, subirImagen } from '../../hooks/useConfiguracion.js'
+import { urlPublica } from '../../lib/tenant.js'
 
 const SECCIONES = [
   ['promociones', 'Ofertas y promociones'], ['planes', 'Planes'], ['clases', 'Clases'],
@@ -831,7 +832,7 @@ export default function TabPaginaWeb() {
       <div className="mt-5 flex items-center gap-3">
         <PrimaryButton onClick={onGuardar} disabled={guardar.isPending}>{guardar.isPending ? 'Guardando…' : 'Guardar página web'}</PrimaryButton>
         {ok && <span className="text-[13px] font-extrabold text-green-600">Guardado ✓</span>}
-        {empresa.slug && <a href={`${window.location.origin}/?g=${empresa.slug}`} target="_blank" rel="noreferrer" className="ml-auto text-[13px] font-extrabold text-orange">Ver mi página →</a>}
+        {empresa.slug && <a href={urlPublica(empresa.slug)} target="_blank" rel="noreferrer" className="ml-auto text-[13px] font-extrabold text-orange">Ver mi página →</a>}
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { LoadingState, ErrorState } from '../components/states.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { money } from '../lib/uiHelpers.js'
+import { urlPublica } from '../lib/tenant.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 // Dashboard global de FitControl: solo para el dueño de la plataforma.
@@ -113,7 +114,7 @@ export default function Plataforma() {
                   <div className="text-[13px] font-extrabold">{money(e.ingresos_mes, 'PEN')}</div>
                   <div>
                     {e.landing_activa ? (
-                      <a href={`${window.location.origin}/?g=${e.slug}`} target="_blank" rel="noreferrer"
+                      <a href={urlPublica(e.slug)} target="_blank" rel="noreferrer"
                         className="text-[12px] font-extrabold text-orange hover:underline">Ver página →</a>
                     ) : (
                       <span className="text-[11.5px] font-bold text-faint">desactivada</span>

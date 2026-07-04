@@ -6,6 +6,7 @@ import { FitControlLogo } from '../components/icons.jsx'
 import LoadingOverlay from '../components/LoadingOverlay.jsx'
 import { subirBranding } from '../hooks/useConfiguracion.js'
 import DireccionAutocomplete from '../components/forms/DireccionAutocomplete.jsx'
+import { urlPublica } from '../lib/tenant.js'
 
 // Extrae los colores dominantes del logo (canvas): se agrupan por tono,
 // se descartan grises/blancos/negros y se devuelven los 4 más presentes.
@@ -457,7 +458,7 @@ export default function Bienvenida() {
                 Tus {t.gente}, clases, planes y página web ya están armados con tu información. Todo se puede afinar desde el panel.
               </p>
               <div className="mt-6 flex flex-col gap-2.5">
-                <a href={`/?g=${creada?.slug || empresa?.slug}`} target="_blank" rel="noreferrer"
+                <a href={urlPublica(creada?.slug || empresa?.slug)} target="_blank" rel="noreferrer"
                   className="rounded-[11px] border border-orange bg-orange-50 py-3 text-[14px] font-extrabold text-orange hover:bg-orange-100">
                   🌐 Ver mi página web
                 </a>

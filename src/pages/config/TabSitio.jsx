@@ -4,7 +4,7 @@ import { Card, PrimaryButton } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useGuardarEmpresa } from '../../hooks/useConfiguracion.js'
 import { supabase } from '../../lib/supabaseClient.js'
-import { ROOT_DOMAIN } from '../../lib/tenant.js'
+import { ROOT_DOMAIN, urlPublica } from '../../lib/tenant.js'
 
 function normalizaSlug(s) {
   return (s || '').toLowerCase().trim().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -44,7 +44,7 @@ export default function TabSitio() {
   }
 
   const url = slug ? `${slug}.${ROOT_DOMAIN}` : `tu-gym.${ROOT_DOMAIN}`
-  const devUrl = slug ? `${window.location.origin}/?g=${slug}` : ''
+  const devUrl = slug ? urlPublica(slug) : ''
 
   return (
     <div className="max-w-[720px]">
@@ -210,9 +210,6 @@ function CompartirLinks({ slug }) {
           )
         })}
       </div>
-      <p className="mt-3 text-[11px] font-semibold text-faint">
-        Estos links funcionarán cuando publiquemos el sitio. Para probar hoy: {window.location.origin}/?g={slug}&utm_source=instagram
-      </p>
     </Card>
   )
 }
