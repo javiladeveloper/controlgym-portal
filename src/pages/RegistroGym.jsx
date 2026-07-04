@@ -145,10 +145,26 @@ export default function RegistroGym() {
             </div>
           </div>
 
+          {/* El mes gratis es EL mensaje — y es 1 por persona (correo Google) */}
+          <div className={`mt-5 rounded-[10px] border px-4 py-3 ${empresas.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+            {empresas.length > 0 ? (
+              <div className="text-[12.5px] font-bold text-amber-800">
+                ℹ️ Tu mes gratis ya lo usaste con tu primer negocio. Este nuevo espacio se activa
+                agregando tu tarjeta — y tu primer cobro igual sale recién en 1 mes.
+              </div>
+            ) : (
+              <div className="text-[13px] font-extrabold text-green-700">
+                🎁 Tu primer mes es GRATIS — todo incluido, sin tarjeta.
+                <span className="block text-[11.5px] font-semibold text-green-800/80">
+                  Un mes gratis por persona. Después, solo el plan que elijas abajo.
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className="mt-4">
             <div className="flex items-center justify-between">
               <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Tu plan</span>
-              <span className="text-[11px] font-bold text-faint">1 mes de prueba gratis en todos</span>
             </div>
             <div className={`mt-2 grid gap-2 ${planesDisponibles.length === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}>
               {planesDisponibles.map((p) => (
@@ -186,7 +202,7 @@ export default function RegistroGym() {
 
           <button type="submit" disabled={!puede}
             className="mt-5 w-full cursor-pointer rounded-[11px] border-none bg-orange py-3 text-[14.5px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] transition-colors hover:bg-orange-600 active:scale-[0.99] disabled:opacity-50">
-            {busy ? 'Creando tu gimnasio…' : 'Crear mi gimnasio'}
+            {busy ? 'Creando tu espacio…' : empresas.length > 0 ? 'Crear mi negocio' : 'Crear mi negocio — empezar mi mes gratis'}
           </button>
 
           <p className="mt-3 text-center text-[11.5px] font-semibold text-faint">
