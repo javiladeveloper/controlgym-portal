@@ -79,21 +79,25 @@ export default function Finanzas() {
         <Card className="mt-[15px] p-[19px]">
           <div className="text-[14.5px] font-extrabold">¿En qué se movió la plata este mes?</div>
           <div className="mt-0.5 text-[12px] font-semibold text-muted">Haz clic en una categoría para filtrar los movimientos.</div>
-          <div className="mt-3 grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Categoría</div><div className="text-right">Ingresos</div><div className="text-right">Gastos</div><div className="text-right">Neto</div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[520px]">
+              <div className="mt-3 grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+                <div>Categoría</div><div className="text-right">Ingresos</div><div className="text-right">Gastos</div><div className="text-right">Neto</div>
+              </div>
+              {desglose.map(([cat, v]) => {
+                const neto = v.ingreso - v.gasto
+                return (
+                  <button key={cat} onClick={() => setFCat(fCat === cat ? 'todas' : cat)}
+                    className={`grid w-full cursor-pointer grid-cols-[1.6fr_1fr_1fr_1fr] items-center gap-3 border-none bg-transparent px-0 py-2.5 text-left border-b border-line2 hover:bg-[#FAFBFC] ${fCat === cat ? 'bg-orange/5' : ''}`}>
+                    <div className="text-[13px] font-extrabold">{fCat === cat ? '● ' : ''}{catLabel(cat)}</div>
+                    <div className="text-right text-[13px] font-extrabold" style={{ color: v.ingreso ? T.success : T.faint }}>{v.ingreso ? '+' + money(v.ingreso, moneda) : '—'}</div>
+                    <div className="text-right text-[13px] font-extrabold" style={{ color: v.gasto ? T.danger : T.faint }}>{v.gasto ? '−' + money(v.gasto, moneda) : '—'}</div>
+                    <div className="text-right text-[13px] font-extrabold" style={{ color: neto >= 0 ? T.success : T.danger }}>{money(neto, moneda)}</div>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          {desglose.map(([cat, v]) => {
-            const neto = v.ingreso - v.gasto
-            return (
-              <button key={cat} onClick={() => setFCat(fCat === cat ? 'todas' : cat)}
-                className={`grid w-full cursor-pointer grid-cols-[1.6fr_1fr_1fr_1fr] items-center gap-3 border-none bg-transparent px-0 py-2.5 text-left border-b border-line2 hover:bg-[#FAFBFC] ${fCat === cat ? 'bg-orange/5' : ''}`}>
-                <div className="text-[13px] font-extrabold">{fCat === cat ? '● ' : ''}{catLabel(cat)}</div>
-                <div className="text-right text-[13px] font-extrabold" style={{ color: v.ingreso ? T.success : T.faint }}>{v.ingreso ? '+' + money(v.ingreso, moneda) : '—'}</div>
-                <div className="text-right text-[13px] font-extrabold" style={{ color: v.gasto ? T.danger : T.faint }}>{v.gasto ? '−' + money(v.gasto, moneda) : '—'}</div>
-                <div className="text-right text-[13px] font-extrabold" style={{ color: neto >= 0 ? T.success : T.danger }}>{money(neto, moneda)}</div>
-              </button>
-            )
-          })}
         </Card>
       )}
 

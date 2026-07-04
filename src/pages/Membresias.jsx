@@ -207,12 +207,12 @@ export default function Membresias() {
             const etiqueta = d < 0 ? `Vencida hace ${-d} día${-d === 1 ? '' : 's'}` : d === 0 ? 'Vence HOY' : `Vence en ${d} día${d === 1 ? '' : 's'}`
             const rojo = d <= 0
             return (
-              <div key={m.id} className="flex items-center justify-between gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div key={m.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line2 px-4 py-3 hover:bg-[#FAFBFC] sm:px-5">
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-extrabold">{m.socio?.nombre}</div>
                   <div className="text-[11.5px] font-semibold text-muted">{m.plan?.nombre} · {money(m.plan?.precio, moneda)}</div>
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge bg={rojo ? T.dangerBg : T.primaryBg} color={rojo ? T.danger : T.primary}>{etiqueta}</Badge>
                   {m.socio?.telefono && (
                     <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}

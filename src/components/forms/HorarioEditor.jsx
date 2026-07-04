@@ -39,7 +39,7 @@ export default function HorarioEditor({ value, onChange }) {
   return (
     <div className="rounded-[10px] border border-line bg-white p-3">
       {h.map((d, i) => (
-        <div key={i} className="flex items-center gap-2.5 py-1">
+        <div key={i} className="flex flex-wrap items-center gap-x-2.5 gap-y-1 py-1">
           <span className="w-[74px] flex-shrink-0 text-[12.5px] font-extrabold">{DIAS[i]}</span>
           {d.cerrado ? (
             <span className="flex-1 text-[12px] font-bold text-faint">Cerrado</span>
