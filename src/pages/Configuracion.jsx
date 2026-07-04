@@ -8,8 +8,10 @@ import TabContacto from './config/TabContacto.jsx'
 import TabRedes from './config/TabRedes.jsx'
 import TabRegional from './config/TabRegional.jsx'
 import TabTextos from './config/TabTextos.jsx'
+import TabPlan from './config/TabPlan.jsx'
 
 const TABS = [
+  { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'sitio', label: 'Sitio web', Comp: TabSitio },
   { key: 'pagina', label: 'Página web', Comp: TabPaginaWeb },
@@ -22,7 +24,7 @@ const TABS = [
 
 export default function Configuracion() {
   const { empresa } = useAuth()
-  const [tab, setTab] = useState('marca')
+  const [tab, setTab] = useState('plan')
   const Active = TABS.find((t) => t.key === tab)?.Comp
 
   return (
