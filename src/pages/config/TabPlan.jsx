@@ -81,6 +81,32 @@ export default function TabPlan() {
     else { setMsg(null); qc.invalidateQueries({ queryKey: ['mi-suscripcion'] }) }
   }
 
+  // Upgrade self-service: el plan ya está activo y quiere sumar la app.
+  // Usa la tarjeta guardada — sin volver a pasar por el checkout.
+  async function agregarApp() {
+    if (!window.confirm(`¿Agregar la App del socio a tu plan? El nuevo monto se cobra desde tu siguiente ciclo.`)) return
+    setBusy(true); setFase('activando'); setMsg(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const res = await fetch('/api/culqi/agregar-app', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${sess?.session?.access_token || ''}`,
+        },
+        body: JSON.stringify({ empresa_id: empresa.id }),
+      })
+      const out = await res.json()
+      if (!res.ok) throw new Error(out.error || 'No se pudo agregar la app')
+      setMsg({ tipo: 'ok', texto: '📱 ¡App agregada a tu plan! El nuevo monto se cobra desde el siguiente ciclo.' })
+      qc.invalidateQueries({ queryKey: ['mi-suscripcion'] })
+    } catch (e) {
+      setMsg({ tipo: 'error', texto: e.message })
+    } finally {
+      setBusy(false); setFase(null)
+    }
+  }
+
   async function activarPago() {
     setMsg(null)
     if (!CULQI_PK) {
@@ -189,7 +215,9 @@ export default function TabPlan() {
         {s.estado === 'prueba' && (
           <div className="mt-4 rounded-[10px] border border-blue-200 bg-blue-50 px-4 py-3 text-[13px] font-semibold text-blue-800">
             Te quedan <b>{diasTrial} días de prueba gratis</b> (hasta el {new Date(s.trial_hasta).toLocaleDateString('es-PE')}).
-            Y cuando actives tu tarjeta, el primer cobro recién sale <b>1 mes después</b> — actives cuando actives.
+            {diasTrial > 5
+              ? ' Disfrútala — la activación del pago se habilita en los últimos 5 días.'
+              : ' Ya puedes activar tu tarjeta: el primer cobro sale recién 1 mes después.'}
           </div>
         )}
         {s.estado === 'vencida' && (
@@ -203,7 +231,8 @@ export default function TabPlan() {
           </div>
         )}
 
-        {!activa && (
+        {/* El pago se habilita recién al final del trial (últimos 5 días) o vencido */}
+        {!activa && (s.estado !== 'prueba' || diasTrial <= 5) && (
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <PrimaryButton onClick={activarPago} disabled={busy}>
               {busy ? 'Abriendo pago seguro…' : `💳 Activar pago automático · ${money(Number(s.monto))}/mes`}
@@ -253,8 +282,8 @@ export default function TabPlan() {
               </div>
             )}
             <label className="mt-3 flex items-start gap-2">
-              <input type="checkbox" checked={!!s.con_app} disabled={activa}
-                onChange={(e) => cambiarPlan(s.plan_slug, e.target.checked)}
+              <input type="checkbox" checked={!!s.con_app} disabled={activa && s.con_app}
+                onChange={(e) => (activa ? agregarApp() : cambiarPlan(s.plan_slug, e.target.checked))}
                 className="mt-0.5 h-4 w-4 accent-orange-600" />
               <span className="text-[12.5px] font-bold">
                 📱 App incluida{' '}
@@ -264,7 +293,8 @@ export default function TabPlan() {
                 <span className="font-semibold text-muted">— cubre a todos (muy pronto; se cobra recién cuando la actives)</span>
               </span>
             </label>
-            {activa && <p className="mt-2 text-[11.5px] font-semibold text-faint">Con el pago activo, los cambios de plan se coordinan por WhatsApp para ajustar el cobro.</p>}
+            {activa && !s.con_app && <p className="mt-2 text-[11.5px] font-semibold text-faint">Puedes agregar la app cuando quieras: usa tu misma tarjeta y el nuevo monto se cobra desde el siguiente ciclo.</p>}
+            {activa && s.con_app && <p className="mt-2 text-[11.5px] font-semibold text-faint">Para quitar la app o cambiar de plan escríbenos por WhatsApp y lo ajustamos al toque.</p>}
           </Card>
         )
       })()}
