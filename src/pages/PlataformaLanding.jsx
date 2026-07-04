@@ -155,19 +155,19 @@ const PASOS = [
 // Cada plan tiene 2 precios: solo panel, o panel + app para socios (adicional).
 const PLANES = [
   {
-    nombre: 'Estudio', base: 49, conApp: 79, popular: false,
+    nombre: 'Estudio', base: 49, conApp: 79, popular: false, foto: '/landing/paso2.jpg',
     para: 'Yoga, pilates, baile y gimnasios pequeños',
     features: ['1 sede · hasta 100 socios', '2 usuarios del panel', 'Socios, membresías y cobros', 'Clases y check-in', 'Página web con subdominio', 'Reportes básicos'],
     no: ['CRM y captación desde redes'],
   },
   {
-    nombre: 'Crecimiento', base: 99, conApp: 139, popular: true,
+    nombre: 'Crecimiento', base: 99, conApp: 139, popular: true, foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
     features: ['Hasta 3 sedes · 500 socios', 'Usuarios ilimitados', 'Todo lo de Estudio', 'CRM + captación con origen por red', 'Emails automáticos de interesados', 'Promociones aplicadas al cobro', 'Kardex, máquinas y finanzas', 'Personalización total (8 diseños)', 'Reportes en Excel'],
     no: [],
   },
   {
-    nombre: 'Cadena', base: 179, conApp: 229, popular: false,
+    nombre: 'Cadena', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
     para: 'Multi-sede, franquicias y gyms completos',
     features: ['Sedes y socios ilimitados', 'Todo lo de Crecimiento', 'Torniquetes y huella', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
     no: [],
@@ -430,14 +430,18 @@ export default function PlataformaLanding() {
 
         <div className="mx-auto mt-10 grid max-w-[1000px] grid-cols-1 gap-4 md:grid-cols-3">
           {PLANES.map((p) => (
-            <div key={p.nombre} className="relative flex flex-col rounded-xl p-7"
+            <div key={p.nombre} className="relative flex flex-col overflow-hidden rounded-xl pt-0"
               style={{
                 background: C.surface,
                 border: p.popular ? `2px solid ${C.primary}` : C.border,
                 boxShadow: p.popular ? '0 24px 60px rgba(255,107,53,0.18)' : 'none',
               }}>
+              <div className="h-[110px] w-full overflow-hidden">
+                <img src={p.foto} alt={`Plan ${p.nombre}`} loading="lazy" className="h-full w-full object-cover opacity-90" />
+              </div>
+              <div className="flex flex-1 flex-col p-7 pt-5">
               {p.popular && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-[10.5px] font-extrabold tracking-[0.5px] text-white" style={{ background: C.primary }}>
+                <div className="absolute left-1/2 top-2.5 z-10 -translate-x-1/2 rounded-full px-4 py-1 text-[10.5px] font-extrabold tracking-[0.5px] text-white" style={{ background: C.primary, boxShadow: '0 4px 14px rgba(0,0,0,0.35)' }}>
                   MÁS POPULAR
                 </div>
               )}
@@ -469,6 +473,7 @@ export default function PlataformaLanding() {
                 style={p.popular ? { background: C.primary } : { border: `1px solid ${C.primary}`, color: C.primary }}>
                 Empezar gratis
               </a>
+              </div>
             </div>
           ))}
         </div>
@@ -559,7 +564,8 @@ export default function PlataformaLanding() {
               </li>
               <li><a href={`mailto:${MAIL_HOLA}`} className="transition-colors hover:text-white" style={{ color: C.muted }}>{MAIL_HOLA}</a></li>
               <li><a href={`mailto:${MAIL_SOPORTE}`} className="transition-colors hover:text-white" style={{ color: C.muted }}>{MAIL_SOPORTE}</a></li>
-              <li className="text-[12px] font-semibold" style={{ color: 'rgba(142,154,168,0.6)' }}>Ventas: {MAIL_HOLA.split('@')[0]}@ · Ayuda técnica: soporte@</li>
+              <li className="text-[13px] font-bold" style={{ color: C.muted }}>📍 Lima, Perú</li>
+              <li className="text-[12px] font-semibold" style={{ color: 'rgba(142,154,168,0.6)' }}>Ventas: hola@ · Ayuda técnica: soporte@</li>
             </ul>
           </div>
 
@@ -574,9 +580,11 @@ export default function PlataformaLanding() {
 
         <div className="mx-auto mt-12 flex max-w-[1100px] flex-col items-center justify-between gap-3 pt-6 sm:flex-row" style={{ borderTop: C.border }}>
           <div className="text-[11.5px] font-semibold" style={{ color: 'rgba(142,154,168,0.5)' }}>© 2026 FitControl. Todos los derechos reservados.</div>
-          <div className="flex gap-5 text-[12px] font-bold">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[12px] font-bold">
             <a href="/terminos" className="transition-colors hover:text-white" style={{ color: C.muted }}>Términos y condiciones</a>
             <a href="/privacidad" className="transition-colors hover:text-white" style={{ color: C.muted }}>Privacidad</a>
+            <a href="/devoluciones" className="transition-colors hover:text-white" style={{ color: C.muted }}>Cambios y devoluciones</a>
+            <a href="/reclamaciones" className="transition-colors hover:text-white" style={{ color: C.muted }}>📖 Libro de Reclamaciones</a>
           </div>
         </div>
       </footer>

@@ -8,6 +8,7 @@ import App from './App.jsx'
 import Landing from './pages/Landing.jsx'
 import PlataformaLanding from './pages/PlataformaLanding.jsx'
 import LegalPage from './pages/LegalPage.jsx'
+import Reclamaciones from './pages/Reclamaciones.jsx'
 import { getTenantSlug, isPlataformaHome, isPlataformaHost } from './lib/tenant.js'
 import './index.css'
 
@@ -20,12 +21,19 @@ const wantsPortal = window.location.hash === '#login' || window.location.pathnam
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
-const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad' }[window.location.pathname]
+const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad', '/devoluciones': 'devoluciones' }[window.location.pathname]
+const esReclamaciones = window.location.pathname === '/reclamaciones'
 
 if (isPlataformaHome()) {
   root.render(
     <React.StrictMode>
       <PlataformaLanding />
+    </React.StrictMode>,
+  )
+} else if (isPlataformaHost() && esReclamaciones) {
+  root.render(
+    <React.StrictMode>
+      <Reclamaciones />
     </React.StrictMode>,
   )
 } else if (isPlataformaHost() && legalDoc) {

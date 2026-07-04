@@ -27,10 +27,24 @@ const PRIVACIDAD = [
   ['8. Contacto', 'Para cualquier consulta sobre privacidad: soporte@' + ROOT_DOMAIN + ' o WhatsApp +51 986 110 558.'],
 ]
 
+const DEVOLUCIONES = [
+  ['1. Naturaleza del servicio', 'FitControl es un servicio de software por suscripción mensual (SaaS). No vendemos productos físicos: no hay envíos ni cambios de mercadería. Esta política regula los cobros de la suscripción.'],
+  ['2. Prueba gratuita', 'Todos los planes incluyen 30 días de prueba gratis sin tarjeta. Durante la prueba no se realiza ningún cobro, por lo que no hay nada que devolver: puedes dejar de usar el servicio sin costo alguno.'],
+  ['3. Cancelación', 'Puedes cancelar tu suscripción en cualquier momento, sin penalidad ni permanencia mínima, desde tu panel o escribiendo a soporte@' + ROOT_DOMAIN + '. Al cancelar, mantienes acceso hasta el final del ciclo ya pagado y no se generan nuevos cobros.'],
+  ['4. Devoluciones', 'Reembolsamos el 100% del cobro en un máximo de 7 días hábiles, al mismo medio de pago, en estos casos: (a) cobro duplicado o por un monto distinto al contratado; (b) cobros posteriores a una cancelación confirmada; (c) primer cobro luego de la prueba, si nos lo solicitas dentro de los 7 días siguientes y no usaste el servicio en ese período.'],
+  ['5. Cambios de plan', 'Puedes subir de plan cuando quieras (el nuevo monto aplica desde el siguiente cobro) o bajar de plan para el siguiente ciclo. Los meses ya consumidos no son reembolsables.'],
+  ['6. Cómo solicitarlo', 'Escríbenos a soporte@' + ROOT_DOMAIN + ' o al WhatsApp +51 986 110 558 indicando el nombre de tu gimnasio y el motivo. Confirmamos la solicitud en un máximo de 2 días hábiles.'],
+  ['7. Reclamos', 'Si no estás conforme con la atención, puedes registrar tu reclamo en nuestro Libro de Reclamaciones virtual (enlace en el pie de página), conforme a la Ley N° 29571.'],
+]
+
+const DOCS = {
+  terminos: { titulo: 'Términos y condiciones', secciones: TERMINOS },
+  privacidad: { titulo: 'Política de privacidad', secciones: PRIVACIDAD },
+  devoluciones: { titulo: 'Política de cambios y devoluciones', secciones: DEVOLUCIONES },
+}
+
 export default function LegalPage({ doc = 'terminos' }) {
-  const esTerminos = doc === 'terminos'
-  const titulo = esTerminos ? 'Términos y condiciones' : 'Política de privacidad'
-  const secciones = esTerminos ? TERMINOS : PRIVACIDAD
+  const { titulo, secciones } = DOCS[doc] || DOCS.terminos
   return (
     <div className="min-h-screen text-white" style={{ background: C.bg, fontFamily: "'Manrope', system-ui, sans-serif" }}>
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: 'rgba(20,27,46,0.85)', borderBottom: C.border }}>
@@ -63,9 +77,11 @@ export default function LegalPage({ doc = 'terminos' }) {
           <a href="https://wa.me/51986110558" target="_blank" rel="noreferrer" className="font-extrabold" style={{ color: C.primary }}>+51 986 110 558</a>.
         </div>
 
-        <div className="mt-8 flex gap-5 text-[13px] font-bold">
-          <a href="/terminos" style={{ color: esTerminos ? C.primary : C.muted }}>Términos</a>
-          <a href="/privacidad" style={{ color: esTerminos ? C.muted : C.primary }}>Privacidad</a>
+        <div className="mt-8 flex flex-wrap gap-5 text-[13px] font-bold">
+          <a href="/terminos" style={{ color: doc === 'terminos' ? C.primary : C.muted }}>Términos</a>
+          <a href="/privacidad" style={{ color: doc === 'privacidad' ? C.primary : C.muted }}>Privacidad</a>
+          <a href="/devoluciones" style={{ color: doc === 'devoluciones' ? C.primary : C.muted }}>Cambios y devoluciones</a>
+          <a href="/reclamaciones" style={{ color: C.muted }}>📖 Libro de Reclamaciones</a>
         </div>
       </main>
     </div>
