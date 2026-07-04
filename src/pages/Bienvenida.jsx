@@ -300,7 +300,7 @@ export default function Bienvenida() {
   if (!empresa && !pendiente) return null
 
   return (
-    <div className="flex min-h-screen items-start justify-center bg-canvas px-4 py-10">
+    <div className="flex min-h-screen items-start justify-center bg-canvas px-4 py-6 sm:py-10">
       {aplicando && <LoadingOverlay texto="Armando tu espacio…" sub="Creando tus clases, planes y página web" />}
       <div className="w-full max-w-[560px]">
         <div className="mb-6 flex items-center gap-3">
@@ -324,7 +324,7 @@ export default function Bienvenida() {
           </div>
         )}
 
-        <div className="rounded-card border border-line bg-white p-7 shadow-[0_10px_40px_rgba(20,27,46,0.06)]">
+        <div className="rounded-card border border-line bg-white p-5 shadow-[0_10px_40px_rgba(20,27,46,0.06)] sm:p-7">
           {/* ── PASO 1: disciplinas ── */}
           {paso === 0 && (
             <>

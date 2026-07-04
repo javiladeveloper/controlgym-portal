@@ -103,7 +103,7 @@ export default function RegistroGym() {
           </div>
         </div>
 
-        <form onSubmit={onRegistrar} className="rounded-card border border-line bg-white p-7 shadow-[0_10px_40px_rgba(20,27,46,0.06)]">
+        <form onSubmit={onRegistrar} className="rounded-card border border-line bg-white p-5 shadow-[0_10px_40px_rgba(20,27,46,0.06)] sm:p-7">
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Nombre del gimnasio</span>
             <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="PowerGym" required

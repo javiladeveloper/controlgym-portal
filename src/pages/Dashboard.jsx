@@ -9,7 +9,7 @@ import Modal, { inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { useDashboardKpis, useAsistenciaPorHora, useCheckins } from '../hooks/useDashboard.js'
+import { useDashboardKpis, useAsistenciaPorHora, useCheckins, useIngresosPorDia } from '../hooks/useDashboard.js'
 import { useClientes } from '../hooks/useClientes.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
@@ -117,6 +117,7 @@ export default function Dashboard() {
   const kpis = useDashboardKpis(sedeId)
   const horas = useAsistenciaPorHora(sedeId)
   const checkins = useCheckins(sedeId)
+  const ingresos = useIngresosPorDia(sedeId)
 
   const nombre = usuario?.nombre?.split(' ')[0] || ''
   const moneda = empresa?.moneda || 'PEN'
@@ -206,6 +207,34 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Ingresos por día: cuánta plata entró en las últimas 2 semanas */}
+      {(ingresos.data || []).some((d) => d.total > 0) && (() => {
+        const serie = ingresos.data
+        const maxIng = Math.max(1, ...serie.map((d) => d.total))
+        const totalIng = serie.reduce((n, d) => n + d.total, 0)
+        return (
+          <Card className="mt-[15px] p-[19px]">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <div className="text-[14.5px] font-extrabold">Ingresos por día</div>
+                <div className="mt-0.5 text-[12px] font-semibold text-muted">Últimos 14 días · membresías + ventas</div>
+              </div>
+              <div className="text-[18px] font-extrabold" style={{ color: T.success }}>{money(totalIng, moneda)}</div>
+            </div>
+            <div className="mt-4 flex h-[130px] items-stretch gap-[6px]">
+              {serie.map((d) => (
+                <div key={d.fecha.toISOString()} className="group flex flex-1 flex-col items-center justify-end gap-1.5">
+                  <div className="w-full rounded-t-[5px] transition-opacity group-hover:opacity-80"
+                    style={{ height: `${Math.round((d.total / maxIng) * 100)}%`, minHeight: 2, background: d.total ? T.success : T.line2 }}
+                    title={`${d.fecha.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}: ${money(d.total, moneda)}`} />
+                  <div className="text-[9px] font-bold text-faint">{d.fecha.getDate()}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Alertas */}
       <div className="mt-[15px] grid grid-cols-1 gap-[15px] lg:grid-cols-3">

@@ -2,9 +2,11 @@
 
 export default function Modal({ title, subtitle, onClose, children, width = 460 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+    // En móvil el modal sube desde abajo (bottom sheet) y usa todo el ancho;
+    // en pantallas grandes queda centrado como siempre.
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:px-4" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+        className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:max-h-[90vh] sm:rounded-2xl sm:p-6 sm:pb-6"
         style={{ maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
       >

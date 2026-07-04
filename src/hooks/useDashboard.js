@@ -31,6 +31,38 @@ export function useAsistenciaPorHora(sedeId) {
   })
 }
 
+// Ingresos por día de los últimos 14 días (para el gráfico de plata).
+export function useIngresosPorDia(sedeId) {
+  return useQuery({
+    queryKey: ['ingresos-dia', sedeId],
+    enabled: !!sedeId,
+    queryFn: async () => {
+      const desde = new Date()
+      desde.setDate(desde.getDate() - 13)
+      desde.setHours(0, 0, 0, 0)
+      const { data, error } = await supabase
+        .from('movimiento_financiero')
+        .select('fecha, monto, tipo')
+        .eq('sede_id', sedeId)
+        .eq('tipo', 'ingreso')
+        .gte('fecha', desde.toISOString())
+      if (error) throw error
+      // Serie completa de 14 días (con ceros donde no hubo ingresos)
+      const porDia = new Map()
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(desde)
+        d.setDate(desde.getDate() + i)
+        porDia.set(d.toDateString(), { fecha: new Date(d), total: 0 })
+      }
+      for (const m of data || []) {
+        const k = new Date(m.fecha).toDateString()
+        if (porDia.has(k)) porDia.get(k).total += Number(m.monto || 0)
+      }
+      return [...porDia.values()]
+    },
+  })
+}
+
 // Últimos check-ins de la sede (para el panel "en vivo").
 export function useCheckins(sedeId) {
   return useQuery({
