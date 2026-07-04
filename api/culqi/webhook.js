@@ -65,6 +65,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true })
   } catch (err) {
     console.error('webhook culqi error', err)
-    return res.status(200).json({ ok: false })
+    return res.status(200).json({ ok: false, err: String(err?.message || err).slice(0, 120) })
   }
 }
