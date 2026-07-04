@@ -37,13 +37,14 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-[400px]">
-        <div className="mb-6 flex items-center gap-3">
+        <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com"
+          className="mb-6 flex items-center gap-3 transition-opacity hover:opacity-75">
           <FitControlLogo size={44} />
           <div>
             <div className="text-[20px] font-extrabold tracking-[-0.3px]">FitControl</div>
             <div className="text-[12px] font-semibold text-muted">Panel de gestión</div>
           </div>
-        </div>
+        </a>
 
         <div className="rounded-card border border-line bg-white p-7 shadow-[0_10px_40px_rgba(20,27,46,0.06)]">
           <h1 className="text-[19px] font-extrabold">Iniciar sesión</h1>

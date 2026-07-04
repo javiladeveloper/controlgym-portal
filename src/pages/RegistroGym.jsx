@@ -98,7 +98,9 @@ export default function RegistroGym() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-[480px]">
         <div className="mb-6 flex items-center gap-3">
-          <FitControlLogo size={44} />
+          <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com" className="transition-opacity hover:opacity-75">
+            <FitControlLogo size={44} />
+          </a>
           <div>
             <div className="text-[20px] font-extrabold tracking-[-0.3px]">Registra tu gimnasio</div>
             <div className="text-[12px] font-semibold text-muted">
