@@ -220,6 +220,7 @@ export default function TabPaginaWeb() {
         stats_modo: base.stats_modo || ((base.stats || []).length > 0 ? 'manual' : 'auto'),
         testimonios: base.testimonios || [],
         logros: base.logros || [],
+        galeria_estilo: base.galeria_estilo || 'mosaico',
         orden: Array.isArray(base.orden) && base.orden.length
           ? [...base.orden, ...DEFAULT_ORDEN.filter((k) => !base.orden.includes(k))]
           : DEFAULT_ORDEN,
@@ -324,16 +325,45 @@ export default function TabPaginaWeb() {
             {busy === 'galeria' ? 'Subiendo…' : L.galeria.length >= MAX_GALERIA ? 'Límite alcanzado' : 'Agregar fotos'}
           </button>
         </div>
-        <div className="mt-4 grid grid-cols-4 gap-2.5">
+        {/* Estilo de presentación en la página */}
+        <div className="mt-3.5 flex items-center gap-2">
+          <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Se muestran como</span>
+          {[['mosaico', '▦ Mosaico'], ['carrusel', '⇆ Carrusel'], ['lista', '☰ Lista']].map(([v, l]) => (
+            <button key={v} onClick={() => upd({ galeria_estilo: v })}
+              className={`cursor-pointer rounded-full border px-3 py-1.5 text-[11.5px] font-extrabold transition-colors ${(L.galeria_estilo || 'mosaico') === v ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Miniaturas: arrastra para reordenar (el orden es el de la página) */}
+        <div className="mt-3.5 grid grid-cols-4 gap-2.5">
           {L.galeria.map((url, i) => (
-            <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-line">
-              <img src={url} alt="" className="h-full w-full object-cover" />
+            <div key={url} draggable
+              onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move' }}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const desde = Number(e.dataTransfer.getData('text/plain'))
+                if (Number.isNaN(desde) || desde === i) return
+                const arr = [...L.galeria]
+                const [mov] = arr.splice(desde, 1)
+                arr.splice(i, 0, mov)
+                upd({ galeria: arr })
+              }}
+              className="group relative aspect-square cursor-grab overflow-hidden rounded-lg border border-line active:cursor-grabbing"
+              title="Arrastra para reordenar">
+              <img src={url} alt="" className="pointer-events-none h-full w-full object-cover" />
+              <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-extrabold text-white">{i + 1}</span>
               <button onClick={() => upd({ galeria: L.galeria.filter((_, j) => j !== i) })}
                 className="absolute right-1 top-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-extrabold text-white opacity-0 transition group-hover:opacity-100">✕</button>
             </div>
           ))}
           {L.galeria.length === 0 && <div className="col-span-4 rounded-lg border border-dashed border-line py-6 text-center text-[12px] font-semibold text-faint">Sin fotos aún</div>}
         </div>
+        {L.galeria.length > 1 && (
+          <p className="mt-2 text-[11px] font-semibold text-faint">💡 Arrastra las fotos para cambiar su orden — el número indica la posición en tu página.</p>
+        )}
         <input ref={galRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files || [])]; if (fs.length) agregarGaleria(fs); e.target.value = '' }} />
       </Card>
 

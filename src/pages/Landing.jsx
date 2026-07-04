@@ -122,6 +122,21 @@ export default function Landing({ slug }) {
     root.style.setProperty('--font-brand', `'${cuerpo}'`)
   }, [data])
 
+  // Aparición suave de las secciones al hacer scroll (la primera pantalla no se toca)
+  useEffect(() => {
+    if (!data) return
+    const secs = [...document.querySelectorAll('.lp-root section')].slice(1)
+    secs.forEach((el) => el.classList.add('lp-sec'))
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add('lp-sec-in'); io.unobserve(e.target) }
+      }),
+      { threshold: 0.1 },
+    )
+    secs.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [data])
+
   // Identidad en la pestaña del navegador: título y favicon del gym.
   useEffect(() => {
     if (!data) return
@@ -298,13 +313,33 @@ export default function Landing({ slug }) {
     galeria: () => sec.galeria && galeria.length > 0 && (
       <section className="mx-auto max-w-[1000px] px-6 py-20">
         <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Galería</h2>
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {galeria.map((url, i) => (
-            <div key={i} className="aspect-[4/3] overflow-hidden" style={{ borderRadius: rCard }}>
-              <img src={url} alt="" className="h-full w-full object-cover transition-transform hover:scale-105" />
-            </div>
-          ))}
-        </div>
+        {/* Estilo configurable: mosaico (grid) · carrusel (scroll) · lista (grandes) */}
+        {(L.galeria_estilo || 'mosaico') === 'carrusel' ? (
+          <div className="mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3"
+            style={{ scrollbarWidth: 'thin' }}>
+            {galeria.map((url, i) => (
+              <div key={i} className="h-[300px] w-[82%] flex-shrink-0 snap-center overflow-hidden sm:w-[420px]" style={{ borderRadius: rCard }}>
+                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              </div>
+            ))}
+          </div>
+        ) : (L.galeria_estilo || 'mosaico') === 'lista' ? (
+          <div className="mx-auto mt-8 flex max-w-[760px] flex-col gap-4">
+            {galeria.map((url, i) => (
+              <div key={i} className="aspect-[16/9] overflow-hidden" style={{ borderRadius: rCard }}>
+                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {galeria.map((url, i) => (
+              <div key={i} className="aspect-[4/3] overflow-hidden" style={{ borderRadius: rCard }}>
+                <img src={url} alt="" className="h-full w-full object-cover transition-transform hover:scale-105" loading="lazy" />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     ),
     sedes: () => sec.sedes && data.sedes?.length > 0 && (
@@ -383,6 +418,14 @@ export default function Landing({ slug }) {
         `}</style>
       )}
 
+      {/* Estética de navegación: anclas con scroll suave y secciones que aparecen */}
+      <style>{`
+        html { scroll-behavior: smooth; }
+        .lp-root section { scroll-margin-top: 70px; }
+        .lp-sec { opacity: 0; transform: translateY(18px); transition: opacity .55s ease, transform .55s ease; }
+        .lp-sec-in { opacity: 1; transform: none; }
+      `}</style>
+
       {/* Header */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-white/90 px-6 py-3.5 backdrop-blur"
         style={dark ? { background: 'rgba(11,14,20,0.92)', borderColor: 'rgba(255,255,255,0.08)' } : undefined}>
@@ -392,9 +435,12 @@ export default function Landing({ slug }) {
           </div>
           <span className="text-[17px] font-extrabold tracking-[-0.3px]">{marca}</span>
         </div>
-        <a href={portalUrl} className="rounded-[10px] bg-orange px-4 py-2 text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">
-          Entrar
-        </a>
+        {/* CTA del visitante: inscribirse (el acceso del staff vive discreto en el footer) */}
+        <button onClick={() => setLead({ interes: 'Inscripción' })}
+          className="cursor-pointer rounded-[10px] border-none bg-orange px-4 py-2 text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600"
+          style={{ background: 'var(--color-primary)', borderRadius: rBtn }}>
+          {L.estilo?.cta_texto || 'Inscríbete'}
+        </button>
       </header>
 
       {/* Hero — variante según el diseño elegido (landing.estilo.diseno) */}
@@ -661,8 +707,10 @@ export default function Landing({ slug }) {
               ))}
             </div>
           )}
-          <div className="text-[11px] font-semibold text-white/40">
-            Powered by FitCore · {ROOT_DOMAIN}
+          <div className="flex items-center gap-3 text-[11px] font-semibold text-white/40">
+            <span>Powered by FitControl · {ROOT_DOMAIN}</span>
+            <span>·</span>
+            <a href={portalUrl} className="text-white/40 transition-colors hover:text-white/80">Acceso staff</a>
           </div>
         </div>
       </footer>
