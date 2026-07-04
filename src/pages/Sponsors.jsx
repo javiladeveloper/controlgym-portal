@@ -91,8 +91,8 @@ export default function Sponsors() {
   }
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Sponsors</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Convenios y auspicios de {empresa?.nombre}</p>
@@ -109,7 +109,7 @@ export default function Sponsors() {
       {!isLoading && (data || []).length === 0 && <EmptyState message="Sin convenios registrados." />}
 
       {(data || []).length > 0 && (
-        <div className="mt-5 grid grid-cols-2 gap-[15px]">
+        <div className="mt-5 grid grid-cols-1 gap-[15px] md:grid-cols-2">
           {data.map((s) => {
             const est = ESTADO[s.estado] || ESTADO.activo
             return (

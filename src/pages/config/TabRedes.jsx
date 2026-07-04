@@ -19,7 +19,7 @@ export default function TabRedes() {
       <Card className="p-[19px]">
         <div className="text-[14.5px] font-extrabold">Redes sociales</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">Se mostrarán en la app del socio y materiales de marketing.</p>
-        <div className="mt-4 grid grid-cols-2 gap-3.5">
+        <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           {REDES.map(([key, label, ph]) => (
             <label key={key} className="flex flex-col gap-1.5">
               <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">{label}</span>

@@ -44,10 +44,10 @@ export default function TabSedes() {
       {edit && (
         <Card className="mt-4 p-[19px]">
           <div className="text-[14.5px] font-extrabold">{edit.id ? 'Editar sede' : 'Nueva sede'}</div>
-          <div className="mt-4 grid grid-cols-2 gap-3.5">
+          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             <Field label="Nombre" value={edit.nombre} onChange={(v) => setEdit({ ...edit, nombre: v })} />
             <Field label="Teléfono" value={edit.telefono} onChange={(v) => setEdit({ ...edit, telefono: v })} />
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <div className="flex flex-col gap-1.5">
                 <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Dirección / ubicación</span>
                 <DireccionAutocomplete value={edit.direccion || ''} onChange={(v) => setEdit({ ...edit, direccion: v })}
@@ -59,7 +59,7 @@ export default function TabSedes() {
               <input type="checkbox" checked={!!edit.activa} onChange={(e) => setEdit({ ...edit, activa: e.target.checked })} className="h-4 w-4 accent-orange-600" />
               <span className="text-[13px] font-bold">Sede activa</span>
             </label>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Foto de la sede</span>
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex h-16 w-24 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface">

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(PGPASSWORD='jonimon321jojo' PGCLIENTENCODING=UTF8 psql \"host=db.zlmqdubrjzmagslcsqvb.supabase.co port=5432 dbname=postgres user=postgres sslmode=require\" -t -c \"update empresa set nombre = 'Peniel' where slug = 'peniel' returning 'renombrado: ' || nombre;\")"
+      "Bash(PGPASSWORD='jonimon321jojo' PGCLIENTENCODING=UTF8 psql \"host=db.zlmqdubrjzmagslcsqvb.supabase.co port=5432 dbname=postgres user=postgres sslmode=require\" -t -c \"update empresa set nombre = 'Peniel' where slug = 'peniel' returning 'renombrado: ' || nombre;\")",
+      "Bash(node \"C:/Users/USUARIO/AppData/Local/Temp/claude/d--Personal-Proyects-ControlGym/78df848e-c0b3-42d8-ae9e-3b226ade0b5b/scratchpad/responsive.mjs\")"
     ]
   }
 }

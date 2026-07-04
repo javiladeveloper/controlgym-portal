@@ -338,7 +338,7 @@ export default function TabPaginaWeb() {
         </div>
 
         {/* Miniaturas: arrastra para reordenar (el orden es el de la página) */}
-        <div className="mt-3.5 grid grid-cols-4 gap-2.5">
+        <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {L.galeria.map((url, i) => (
             <div key={url} draggable
               onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move' }}
@@ -522,7 +522,7 @@ export default function TabPaginaWeb() {
         {/* Diseño de página (estructura) */}
         <div className="mt-4">
           <div className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Diseño de la página</div>
-          <div className="mt-2 grid grid-cols-4 gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
             {DISENOS.map(([k, lab, desc]) => {
               const activo = (L.estilo?.diseno || 'clasico') === k
               return (
@@ -656,7 +656,7 @@ export default function TabPaginaWeb() {
         </div>
 
         {/* Tipografía de la página */}
-        <div className="mt-4 grid grid-cols-2 gap-3.5">
+        <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Tipografía de la página</span>
             <select value={L.estilo?.fuente || ''} onChange={(e) => upd({ estilo: { ...(L.estilo || {}), fuente: e.target.value } })}
@@ -819,7 +819,7 @@ export default function TabPaginaWeb() {
       <Card className="mt-4 p-[19px]">
         <div className="text-[14.5px] font-extrabold">Secciones visibles</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">Muestra u oculta partes de tu página web.</p>
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {SECCIONES.map(([key, label]) => (
             <label key={key} className="flex items-center gap-2">
               <input type="checkbox" checked={!!L.secciones[key]} onChange={(e) => upd({ secciones: { ...L.secciones, [key]: e.target.checked } })} className="h-4 w-4 accent-orange-600" />

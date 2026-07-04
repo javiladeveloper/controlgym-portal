@@ -32,19 +32,19 @@ export default function Configuracion() {
   const Active = TABS.find((t) => t.key === tab)?.Comp
 
   return (
-    <div className="px-7 pb-9 pt-6">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Configuración</h1>
       <p className="mt-0.5 text-[13px] font-semibold text-muted">
         Ajustes de {empresa?.nombre}. La marca y algunos datos se comparten con la app del socio.
       </p>
 
       {/* Pestañas */}
-      <div className="mt-5 flex gap-1 border-b border-line">
+      <div className="mt-5 flex gap-1 overflow-x-auto border-b border-line">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`relative px-4 py-2.5 text-[13.5px] font-extrabold transition-colors ${
+            className={`relative flex-shrink-0 whitespace-nowrap px-3 py-2.5 text-[13.5px] font-extrabold transition-colors sm:px-4 ${
               tab === t.key ? 'text-orange' : 'text-muted hover:text-ink'
             }`}
           >

@@ -119,8 +119,8 @@ export default function CRM() {
   const inscritos = (leads.data || []).filter((l) => l.etapa === 'inscrito').length
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">CRM · Prospectos</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Embudo de captación y seguimiento · {sedeNombre}</p>
@@ -140,7 +140,7 @@ export default function CRM() {
         />
       )}
 
-      <div className="mt-5 grid grid-cols-4 gap-[15px]">
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         <StatCard label="Leads totales" value={leads.data?.length ?? 0} delta="en el embudo" />
         <StatCard label="Inscritos" value={inscritos} delta="convertidos" deltaColor={T.success} />
         <StatCard label="En proceso" value={(leads.data?.length ?? 0) - inscritos} delta="en seguimiento" />
@@ -151,7 +151,7 @@ export default function CRM() {
       {leads.error && <ErrorState error={leads.error} onRetry={leads.refetch} />}
 
       {leads.data && (
-        <div className="mt-[15px] grid grid-cols-4 items-start gap-3">
+        <div className="mt-[15px] grid grid-cols-4 items-start gap-3 max-lg:flex max-lg:snap-x max-lg:overflow-x-auto max-lg:pb-2 max-lg:[&>div]:w-[78vw] max-lg:[&>div]:flex-shrink-0 max-lg:[&>div]:snap-start">
           {cols.map((col) => (
             <div key={col.etapa} className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between rounded-[10px] bg-navy px-[13px] py-[9px]">

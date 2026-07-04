@@ -127,7 +127,7 @@ export default function Dashboard() {
   const maxCount = Math.max(1, ...barras.map((b) => b.count))
 
   return (
-    <div className="px-7 pb-9 pt-6">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <Topbar title={`Buen día${nombre ? ', ' + nombre : ''}`} subtitle={sedeNombre} />
 
       {/* Primeros pasos del negocio (desaparece al completarse) */}
@@ -137,7 +137,7 @@ export default function Dashboard() {
       {kpis.isLoading && <LoadingState variant="kpis" />}
       {kpis.error && <ErrorState error={kpis.error} onRetry={kpis.refetch} />}
       {kpis.data && (
-        <div className="mt-[22px] grid grid-cols-4 gap-[15px]">
+        <div className="mt-[22px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
           <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
             delta={kpis.data.aforo_max ? `aforo ${Math.round((kpis.data.en_sede_hoy / kpis.data.aforo_max) * 100)}%` : ' '} />
           <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta=" " deltaColor={T.success} />
@@ -151,7 +151,7 @@ export default function Dashboard() {
       )}
 
       {/* Chart + live check-ins */}
-      <div className="mt-[15px] grid grid-cols-[1.55fr_1fr] gap-[15px]">
+      <div className="mt-[15px] grid grid-cols-1 gap-[15px] lg:grid-cols-[1.55fr_1fr]">
         <Card className="p-[19px]">
           <div className="text-[14.5px] font-extrabold">Asistencia de hoy por hora</div>
           <div className="mt-0.5 text-[12px] font-semibold text-muted">6:00 am — 8:00 pm</div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
       </div>
 
       {/* Alertas */}
-      <div className="mt-[15px] grid grid-cols-3 gap-[15px]">
+      <div className="mt-[15px] grid grid-cols-1 gap-[15px] lg:grid-cols-3">
         <Card className="flex items-center gap-3 p-[15px]">
           <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-orange-50"><BoxIcon stroke={T.primary} /></div>
           <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Revisa el <span className="font-extrabold">Kardex</span> para productos con stock bajo</div>

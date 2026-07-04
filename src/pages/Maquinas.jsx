@@ -185,8 +185,8 @@ export default function Maquinas() {
   const fuera = data.filter((m) => m.estado === 'fuera_servicio').length
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Máquinas</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Equipos, estado y mantenimientos · {sedeNombre}</p>
@@ -203,7 +203,7 @@ export default function Maquinas() {
       {editarMq && <MaquinaModal sedeId={sedeId} empresaId={empresa?.id} maquina={editarMq} onClose={() => setEditarMq(null)} />}
       {mantOpen && <MantenimientoModal sedeId={sedeId} empresaId={empresa?.id} maquinas={data} onClose={() => setMantOpen(false)} />}
 
-      <div className="mt-5 grid grid-cols-4 gap-[15px]">
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         <StatCard label="Total de equipos" value={data.length} />
         <StatCard label="Operativas" value={operativas} delta=" " deltaColor={T.success} />
         <StatCard label="En mantenimiento" value={enMant} variant={enMant ? 'accent' : 'default'} />
@@ -220,13 +220,13 @@ export default function Maquinas() {
       {data.length > 0 && (
         <div className="mt-[15px] grid grid-cols-[1.7fr_1fr] items-start gap-[15px]">
           <Card className="overflow-hidden">
-            <div className="grid grid-cols-[1.9fr_0.9fr_1.2fr_50px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div className="grid min-w-[660px] grid-cols-[1.9fr_0.9fr_1.2fr_50px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
               <div>Equipo</div><div>Zona</div><div>Estado (toca para cambiar)</div><div />
             </div>
             {data.map((mq) => {
               const est = maquinaEstado(mq.estado)
               return (
-                <div key={mq.id} className="grid grid-cols-[1.9fr_0.9fr_1.2fr_50px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+                <div key={mq.id} className="grid min-w-[660px] grid-cols-[1.9fr_0.9fr_1.2fr_50px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                   <div>
                     <div className="text-[13.5px] font-extrabold">{mq.nombre}</div>
                     <div className="text-[11.5px] font-semibold text-muted">{mq.detalle}</div>

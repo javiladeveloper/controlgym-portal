@@ -127,8 +127,8 @@ export default function Promociones() {
   }
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Promociones</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Campañas para captar y retener socios · {empresa?.nombre}</p>
@@ -145,7 +145,7 @@ export default function Promociones() {
       {!isLoading && (data || []).length === 0 && <EmptyState message="Sin campañas registradas." />}
 
       {(data || []).length > 0 && (
-        <div className="mt-5 grid grid-cols-2 gap-[15px]">
+        <div className="mt-5 grid grid-cols-1 gap-[15px] md:grid-cols-2">
           {data.map((pr) => {
             const est = ESTADO[pr.estado] || ESTADO.activa
             return (

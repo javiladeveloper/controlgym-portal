@@ -34,7 +34,7 @@ function Ficha({ socioId, onBack }) {
   const st = estadoBadge(ficha.membresia?.[0]?.estado || ficha.estado)
 
   return (
-    <div className="px-7 pb-9 pt-6">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-muted transition-colors hover:text-orange">
         <ChevronLeft /> Volver a clientes
       </button>
@@ -105,8 +105,8 @@ export default function Clientes() {
   )
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Clientes</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">
@@ -136,8 +136,8 @@ export default function Clientes() {
       )}
 
       {!isLoading && !error && filtered.length > 0 && (
-        <Card className="mt-[18px] overflow-hidden">
-          <div className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_110px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+        <Card className="mt-[18px] overflow-x-auto">
+          <div className="grid min-w-[660px] grid-cols-[2.2fr_1fr_1fr_1.2fr_110px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
             <div>Socio</div><div>Plan</div><div>Estado</div><div>Vence</div><div />
           </div>
           {filtered.map((c) => {
@@ -145,7 +145,7 @@ export default function Clientes() {
             const av = avatarColors({ estado: c.estado })
             const st = estadoBadge(mem?.estado || c.estado)
             return (
-              <div key={c.id} className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_110px] items-center gap-3 border-t border-line2 px-5 py-[13px] hover:bg-[#FAFBFC]">
+              <div key={c.id} className="grid min-w-[660px] grid-cols-[2.2fr_1fr_1fr_1.2fr_110px] items-center gap-3 border-t border-line2 px-5 py-[13px] hover:bg-[#FAFBFC]">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Avatar ini={iniciales(c.nombre)} bg={av.bg} color={av.color} />
                   <div className="min-w-0">

@@ -3,7 +3,7 @@
 export function LoadingState({ variant = 'cards', rows = 4 }) {
   if (variant === 'kpis') {
     return (
-      <div className="mt-[22px] grid grid-cols-4 gap-[15px]">
+      <div className="mt-[22px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-[92px] animate-pulse rounded-card border border-line bg-white" />
         ))}
@@ -23,7 +23,7 @@ export function LoadingState({ variant = 'cards', rows = 4 }) {
     )
   }
   return (
-    <div className="mt-5 grid grid-cols-2 gap-[15px]">
+    <div className="mt-5 grid grid-cols-1 gap-[15px] md:grid-cols-2">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="h-[110px] animate-pulse rounded-card border border-line bg-white" />
       ))}

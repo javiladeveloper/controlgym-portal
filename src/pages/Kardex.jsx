@@ -222,8 +222,8 @@ export default function Kardex() {
   const comprasMes = (movs.data || []).filter((m) => m.tipo === 'compra').reduce((n, m) => n + Number(m.monto || 0), 0)
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Kardex</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Inventario y venta de productos · {sedeNombre}</p>
@@ -239,7 +239,7 @@ export default function Kardex() {
         <ProductoModal producto={editarProd} sedeId={sedeId} moneda={moneda} onClose={() => setEditarProd(null)} />
       )}
 
-      <div className="mt-5 grid grid-cols-4 gap-[15px]">
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         <StatCard label="Productos en inventario" value={productos.data?.length ?? 0} />
         <StatCard label="Con stock bajo" value={bajos} variant={bajos ? 'danger' : 'default'} />
         <StatCard label="Ventas del mes" value={money(ventasMes, moneda)} delta={`hoy: ${money(ventasHoy, moneda)}`} deltaColor={T.success} />
@@ -254,12 +254,12 @@ export default function Kardex() {
       )}
 
       {(productos.data || []).length > 0 && (
-        <Card className="mt-[15px] overflow-hidden">
-          <div className="grid grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+        <Card className="mt-[15px] overflow-x-auto">
+          <div className="grid min-w-[660px] grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
             <div>Producto</div><div>Categoría</div><div>Stock</div><div>Precio</div><div>Estado</div><div />
           </div>
           {productos.data.map((k) => (
-            <div key={k.id} className="grid grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+            <div key={k.id} className="grid min-w-[660px] grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
               <div className="text-[13.5px] font-extrabold">{k.nombre}</div>
               <div className="text-[12.5px] font-bold text-muted">{k.categoria}</div>
               <div className="text-[13px] font-extrabold" style={{ color: k.bajo ? T.danger : T.navy }}>{k.stock} uds.</div>
@@ -273,21 +273,21 @@ export default function Kardex() {
       )}
 
       {(movs.data || []).length > 0 && (
-        <Card className="mt-[15px] overflow-hidden">
+        <Card className="mt-[15px] overflow-x-auto">
           <div className="px-5 py-4">
             <div className="text-[14.5px] font-extrabold">Movimientos del mes</div>
             <div className="mt-0.5 text-[12px] font-semibold text-muted">
               Compra = <b>entra stock, sale de caja</b> · Venta = <b>sale stock, entra a caja</b>
             </div>
           </div>
-          <div className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+          <div className="grid min-w-[660px] grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
             <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Stock</div><div>Caja</div><div />
           </div>
           {movs.data.slice(0, 12).map((m) => {
             const venta = m.tipo === 'venta'
             const ajuste = m.tipo === 'ajuste'
             return (
-              <div key={m.id} className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div key={m.id} className="grid min-w-[660px] grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                 <div className="text-[12.5px] font-bold text-muted">{new Date(m.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
                 <div className="text-[13.5px] font-extrabold">{m.producto?.nombre}</div>
                 <div><Badge bg={venta ? T.successBg : ajuste ? T.line2 : T.chipNavy} color={venta ? T.success : ajuste ? T.muted : T.navy} className="capitalize">{m.tipo}</Badge></div>

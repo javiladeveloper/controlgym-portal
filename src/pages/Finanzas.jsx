@@ -55,11 +55,11 @@ export default function Finanzas() {
     (fTipo === 'todos' || m.tipo === fTipo) && (fCat === 'todas' || (m.categoria || 'otro') === fCat))
 
   return (
-    <div className="px-7 pb-9 pt-6">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Finanzas</h1>
       <p className="mt-0.5 text-[13px] font-semibold text-muted">{sedeNombre}</p>
 
-      <div className="mt-5 grid grid-cols-4 gap-[15px]">
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         <StatCard label="Ingresos del mes" value={money(ingresos, moneda)} delta=" " deltaColor={T.success} />
         <StatCard label="Gastos del mes" value={money(gastos, moneda)} delta="planilla, compras, servicios" />
         <div className="rounded-card border border-line bg-white p-[17px]">

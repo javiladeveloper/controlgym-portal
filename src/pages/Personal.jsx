@@ -33,33 +33,47 @@ function usePagosPlanilla() {
         .eq('tipo', 'gasto')
         .gte('fecha', inicioMes)
       if (error) throw error
-      return new Map((data || []).map((p) => [p.ref_id, Number(p.monto)]))
+      // Suma por colaborador: los de pago por clase pueden cobrar varias veces al mes
+      const m = new Map()
+      for (const p of data || []) m.set(p.ref_id, (m.get(p.ref_id) || 0) + Number(p.monto))
+      return m
     },
   })
 }
 
-// Pagar el sueldo del mes: registra el gasto en caja y guarda el sueldo base.
+// Pagar al colaborador: sueldo mensual fijo (planilla) o por clases/sesiones
+// dictadas (instructores contratados). Ambos registran gasto de planilla en caja.
 function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
   const qc = useQueryClient()
+  const [modo, setModo] = useState(colaborador.tipo_pago || 'mensual')
   const [monto, setMonto] = useState(String(colaborador.sueldo_mensual ?? ''))
+  const [clases, setClases] = useState('')
+  const [tarifa, setTarifa] = useState(String(colaborador.tarifa_clase ?? ''))
   const [metodo, setMetodo] = useState('transferencia')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  const totalClases = (Number(clases) || 0) * (Number(tarifa) || 0)
 
   async function pagar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
     try {
-      const n = Number(monto)
-      if (!n || n <= 0) throw new Error('Ingresa el monto del sueldo')
-      // Guardar/actualizar el sueldo base para el próximo mes
+      const esMensual = modo === 'mensual'
+      const n = esMensual ? Number(monto) : totalClases
+      if (!n || n <= 0) throw new Error(esMensual ? 'Ingresa el monto del sueldo' : 'Ingresa cuántas clases y la tarifa')
+      // Guardar cómo se le paga (y su base) para la próxima vez
       await supabase.from('usuario_empresa')
-        .update({ sueldo_mensual: n })
+        .update(esMensual
+          ? { tipo_pago: 'mensual', sueldo_mensual: n }
+          : { tipo_pago: 'por_clase', tarifa_clase: Number(tarifa) })
         .eq('usuario_id', colaborador.id).eq('empresa_id', empresaId)
       // Registrar el gasto de planilla
       const { error } = await supabase.from('movimiento_financiero').insert({
         empresa_id: empresaId, sede_id: sedeId, tipo: 'gasto', categoria: 'planilla',
-        descripcion: `Sueldo ${MES_LABEL} · ${colaborador.nombre}`,
+        descripcion: esMensual
+          ? `Sueldo ${MES_LABEL} · ${colaborador.nombre}`
+          : `Pago por ${clases} clase${Number(clases) === 1 ? '' : 's'} · ${MES_LABEL} · ${colaborador.nombre}`,
         monto: n, metodo_pago: metodo, ref_tipo: 'usuario', ref_id: colaborador.id,
       })
       if (error) throw error
@@ -75,12 +89,39 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
   }
 
   return (
-    <Modal title={`Pagar sueldo · ${MES_LABEL}`} subtitle={colaborador.nombre} onClose={onClose}>
+    <Modal title={`Pagar · ${MES_LABEL}`} subtitle={colaborador.nombre} onClose={onClose}>
       <form onSubmit={pagar} className="flex flex-col gap-3.5">
-        <Campo label="Monto (S/) *" hint="Queda guardado como su sueldo base para el próximo mes.">
-          <input required type="number" step="0.01" min="1" value={monto} onChange={(e) => setMonto(e.target.value)}
-            className={inputCls} placeholder="1200" autoFocus />
-        </Campo>
+        {/* Cómo se le paga: fijo de planilla o por clases dictadas */}
+        <div className="flex gap-2">
+          {[['mensual', '💼 Sueldo mensual'], ['por_clase', '🕐 Por clases / sesiones']].map(([v, l]) => (
+            <button type="button" key={v} onClick={() => setModo(v)}
+              className={`flex-1 cursor-pointer rounded-[10px] border px-3 py-2.5 text-[12.5px] font-extrabold transition-colors ${modo === v ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {modo === 'mensual' ? (
+          <Campo label="Monto (S/) *" hint="Queda guardado como su sueldo base para el próximo mes.">
+            <input required type="number" step="0.01" min="1" value={monto} onChange={(e) => setMonto(e.target.value)}
+              className={inputCls} placeholder="1200" autoFocus />
+          </Campo>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Clases dictadas *">
+                <input required type="number" min="1" value={clases} onChange={(e) => setClases(e.target.value)} className={inputCls} placeholder="8" autoFocus />
+              </Campo>
+              <Campo label="Tarifa por clase (S/) *" hint="Se guarda para la próxima vez.">
+                <input required type="number" step="0.01" min="0.01" value={tarifa} onChange={(e) => setTarifa(e.target.value)} className={inputCls} placeholder="30" />
+              </Campo>
+            </div>
+            <div className="flex justify-between rounded-[10px] bg-surface px-3.5 py-2.5 text-[13px] font-extrabold">
+              <span>Total a pagar</span><span className="text-orange">S/ {totalClases.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+
         <Campo label="Método de pago">
           <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={inputCls + ' cursor-pointer'}>
             {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -90,7 +131,7 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
           Se registrará como gasto de <b>planilla</b> en Finanzas y contará en los reportes del mes.
         </p>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!monto} submitLabel="Registrar pago" />
+        <BotonesModal onCancel={onClose} busy={busy} submitLabel="Registrar pago" />
       </form>
     </Modal>
   )
@@ -237,9 +278,10 @@ export default function Personal() {
   const invitaciones = useInvitaciones()
   const pagosMes = usePagosPlanilla()
 
-  // Activos con sueldo fijado que aún no cobraron este mes
+  // Activos de sueldo FIJO que aún no cobraron este mes (los de pago por
+  // clase no entran al lote: se les paga según lo que dictaron)
   const pendientesPlanilla = (data || []).filter(
-    (st) => st.activo && Number(st.sueldo_mensual) > 0 && pagosMes.data && !pagosMes.data.has(st.id)
+    (st) => st.activo && st.tipo_pago !== 'por_clase' && Number(st.sueldo_mensual) > 0 && pagosMes.data && !pagosMes.data.has(st.id)
   )
 
   // Revocar una invitación pendiente (esa persona ya no podrá vincularse)
@@ -261,8 +303,8 @@ export default function Personal() {
   }
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Personal</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">{sedeNombre} · {data?.length ?? 0} colaboradores</p>
@@ -290,21 +332,27 @@ export default function Personal() {
       {!isLoading && !error && (data || []).length === 0 && <EmptyState message="No hay colaboradores asignados a esta sede." />}
 
       {(data || []).length > 0 && (
-        <Card className="mt-[18px] overflow-hidden">
-          <div className="grid grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+        <Card className="mt-[18px] overflow-x-auto">
+          <div className="grid min-w-[660px] grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
             <div>Colaborador</div><div>Teléfono</div><div>Sueldo · {MES_LABEL.split(' ')[0]}</div><div>Estado</div><div />
           </div>
           {data.map((st) => {
             const pagado = pagosMes.data?.get(st.id)
+            const porClase = st.tipo_pago === 'por_clase'
             return (
-              <div key={st.id} className="grid grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div key={st.id} className="grid min-w-[660px] grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                 <div className="flex items-center gap-2.5">
                   <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
                   <div className="text-[13.5px] font-extrabold">{st.nombre}</div>
                 </div>
                 <div className="text-[12.5px] font-semibold text-muted">{st.telefono || '—'}</div>
                 <div className="text-[12.5px] font-bold">
-                  {pagado != null
+                  {porClase ? (
+                    <span className="text-muted">
+                      {st.tarifa_clase ? `S/ ${Number(st.tarifa_clase)} por clase` : 'por clase'}
+                      {pagado != null && <span className="ml-1.5 font-extrabold text-green-600">· pagado S/ {pagado}</span>}
+                    </span>
+                  ) : pagado != null
                     ? <span className="text-green-600">✓ Pagado S/ {pagado}</span>
                     : st.sueldo_mensual
                       ? <span className="text-muted">S/ {Number(st.sueldo_mensual)} pendiente</span>
@@ -313,10 +361,10 @@ export default function Personal() {
                 <div><Badge bg={st.activo ? T.successBg : T.line2} color={st.activo ? T.success : T.muted}>{st.activo ? 'Activo' : 'Inactivo'}</Badge></div>
                 {rol === 'admin' ? (
                   <div className="flex items-center justify-end gap-1.5">
-                    {pagado == null && st.activo && (
+                    {(porClase || pagado == null) && st.activo && (
                       <button onClick={() => setPagarA(st)}
                         className="cursor-pointer rounded-[9px] border border-green-300 bg-green-50 px-3 py-1.5 text-[11px] font-extrabold text-green-700 hover:bg-green-100">
-                        💵 Pagar sueldo
+                        💵 {porClase ? 'Pagar clases' : 'Pagar sueldo'}
                       </button>
                     )}
                     <button onClick={() => toggleActivo(st)}
@@ -333,7 +381,7 @@ export default function Personal() {
 
       {/* Invitaciones pendientes */}
       {(invitaciones.data || []).length > 0 && (
-        <Card className="mt-[15px] overflow-hidden">
+        <Card className="mt-[15px] overflow-x-auto">
           <div className="px-5 py-4">
             <div className="text-[14.5px] font-extrabold">Invitaciones pendientes</div>
             <div className="mt-0.5 text-[12px] font-semibold text-muted">Se vinculan solas cuando la persona entra con su Google.</div>

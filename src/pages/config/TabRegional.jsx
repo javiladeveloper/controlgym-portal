@@ -25,7 +25,7 @@ export default function TabRegional() {
       <Card className="p-[19px]">
         <div className="text-[14.5px] font-extrabold">Preferencias regionales</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">Moneda y formato usados en todo el sistema y la app.</p>
-        <div className="mt-4 grid grid-cols-3 gap-3.5">
+        <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           <Select label="Moneda" value={form.moneda} onChange={(v) => set('moneda', v)} options={MONEDAS} />
           <Select label="Zona horaria" value={form.zona_horaria} onChange={(v) => set('zona_horaria', v)} options={ZONAS} />
           <Select label="Idioma / formato" value={form.locale} onChange={(v) => set('locale', v)} options={LOCALES} />

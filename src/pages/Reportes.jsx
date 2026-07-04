@@ -170,13 +170,13 @@ export default function Reportes() {
   }
 
   return (
-    <div className="px-7 pb-9 pt-6">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Reportes</h1>
       <p className="mt-0.5 text-[13px] font-semibold text-muted">
         Descarga los datos reales de {sedeNombre} en Excel (CSV).
       </p>
 
-      <div className="mt-5 grid grid-cols-3 gap-[15px]">
+      <div className="mt-5 grid grid-cols-1 gap-[15px] lg:grid-cols-3">
         {REPORTES.map((r) => (
           <Card key={r.key} className="flex flex-col gap-3 p-[19px] transition hover:border-orange">
             <div className="flex h-10 w-10 items-center justify-center rounded-[11px]" style={{ background: r.iconBg }}>

@@ -15,7 +15,7 @@ export function usePersonal(sedeId) {
           .from('usuario_sede')
           .select('usuario:usuario(id, nombre, avatar_iniciales, telefono)')
           .eq('sede_id', sedeId),
-        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual'),
+        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual, tipo_pago, tarifa_clase'),
       ])
       if (error) throw error
       const memDe = new Map((membresias || []).map((m) => [m.usuario_id, m]))
@@ -26,6 +26,8 @@ export function usePersonal(sedeId) {
           ...u,
           activo: memDe.get(u.id)?.activo ?? true,
           sueldo_mensual: memDe.get(u.id)?.sueldo_mensual ?? null,
+          tipo_pago: memDe.get(u.id)?.tipo_pago ?? 'mensual',
+          tarifa_clase: memDe.get(u.id)?.tarifa_clase ?? null,
         }))
     },
   })

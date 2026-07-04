@@ -123,8 +123,8 @@ export default function Membresias() {
   const populares = new Set((planes.data || []).filter((p) => p.badge).map((p) => p.id))
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Membresías</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Planes y gestión de membresías de socios</p>
@@ -182,18 +182,18 @@ export default function Membresias() {
       {planes.isLoading && <LoadingState variant="cards" rows={4} />}
       {planes.error && <ErrorState error={planes.error} onRetry={planes.refetch} />}
       {planes.data && (
-        <div className="mt-5 grid grid-cols-4 gap-[15px]">
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
           {planes.data.map((p) => <PlanCard key={p.id} p={p} moneda={moneda} popular={populares.has(p.id)} />)}
         </div>
       )}
 
       {/* Gestión */}
-      <Card className="mt-[15px] overflow-hidden">
+      <Card className="mt-[15px] overflow-x-auto">
         <div className="px-5 py-4">
           <div className="text-[14.5px] font-extrabold">Gestión de membresías</div>
           <div className="mt-0.5 text-[12px] font-semibold text-muted">Renueva, congela o reactiva según lo que permite cada plan</div>
         </div>
-        <div className="grid grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+        <div className="grid min-w-[660px] grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
           <div>Socio</div><div>Plan</div><div>Estado</div><div>Vence</div><div>Acciones</div>
         </div>
 
@@ -205,7 +205,7 @@ export default function Membresias() {
           const frozen = m.estado === 'congelada'
           const busy = freeze.isPending || renovar.isPending
           return (
-            <div key={m.id} className="grid grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+            <div key={m.id} className="grid min-w-[660px] grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
               <div>
                 <div className="text-[13.5px] font-extrabold">{m.socio?.nombre}</div>
                 <div className="text-[11.5px] font-semibold text-muted">Socio N.º {m.socio?.codigo}</div>

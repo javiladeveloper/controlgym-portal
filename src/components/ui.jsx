@@ -13,7 +13,7 @@ export function Card({ className = '', children, ...props }) {
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
       <div className="min-w-0">
         <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">{title}</h1>
         {subtitle && (

@@ -32,7 +32,7 @@ export default function Plataforma() {
   const empresas = data?.empresas || []
 
   return (
-    <div className="px-7 pb-9 pt-6">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy text-[16px]">⚡</div>
         <div>
@@ -49,7 +49,7 @@ export default function Plataforma() {
       {data && (
         <>
           {/* KPIs de la plataforma */}
-          <div className="mt-[22px] grid grid-cols-4 gap-[15px]">
+          <div className="mt-[22px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
             <StatCard label="Gimnasios registrados" value={k.empresas ?? 0}
               delta={k.empresas_mes ? `+${k.empresas_mes} este mes` : 'sin nuevos este mes'}
               deltaColor={k.empresas_mes ? T.success : undefined} />
@@ -59,7 +59,7 @@ export default function Plataforma() {
             <StatCard label="Check-ins hoy" value={k.checkins_hoy ?? 0} delta="en todos los gyms" variant="accent" />
           </div>
           {/* Facturación de FitControl */}
-          <div className="mt-[15px] grid grid-cols-4 gap-[15px]">
+          <div className="mt-[15px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
             <div className="rounded-card border border-line bg-navy p-[17px]">
               <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-faint">MRR (suscripciones activas)</div>
               <div className="mt-1.5 text-[27px] font-extrabold text-white">{money(k.mrr, 'PEN')}</div>
@@ -79,18 +79,18 @@ export default function Plataforma() {
           </div>
 
           {/* Tabla de gimnasios */}
-          <Card className="mt-[15px] overflow-hidden">
+          <Card className="mt-[15px] overflow-x-auto">
             <div className="px-5 py-4">
               <div className="text-[14.5px] font-extrabold">Gimnasios</div>
               <div className="mt-0.5 text-[12px] font-semibold text-muted">Todos los clientes de la plataforma, del más reciente al más antiguo.</div>
             </div>
-            <div className="grid grid-cols-[1.8fr_1fr_1.1fr_0.7fr_0.8fr_1fr_1fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div className="grid min-w-[660px] grid-cols-[1.8fr_1fr_1.1fr_0.7fr_0.8fr_1fr_1fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
               <div>Gimnasio</div><div>Categoría</div><div>Plan / Estado</div><div>Socios</div><div>Leads mes</div><div>Ingresos mes</div><div>Página</div>
             </div>
             {empresas.map((e) => {
               const cat = CAT_COLOR[e.categoria] || { bg: T.surface, color: T.muted }
               return (
-                <div key={e.id} className="grid grid-cols-[1.8fr_1fr_1.1fr_0.7fr_0.8fr_1fr_1fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+                <div key={e.id} className="grid min-w-[660px] grid-cols-[1.8fr_1fr_1.1fr_0.7fr_0.8fr_1fr_1fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                   <div>
                     <div className="text-[13.5px] font-extrabold">{e.nombre}</div>
                     <div className="text-[11px] font-semibold text-muted">

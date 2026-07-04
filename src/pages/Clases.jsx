@@ -255,8 +255,8 @@ export default function Clases() {
   const accesoMap = new Map((acceso.data?.acceso || []).map((a) => [`${a.plan_id}:${a.tipo_clase_id}`, a.incluido]))
 
   return (
-    <div className="px-7 pb-9 pt-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Clases y servicios</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Horario semanal · {sedeNombre} · toca una clase para pausarla</p>
@@ -313,7 +313,7 @@ export default function Clases() {
       {clases.error && <ErrorState error={clases.error} onRetry={clases.refetch} />}
 
       {clases.data && (
-        <div className="mt-3.5 grid grid-cols-6 items-start gap-3">
+        <div className="mt-3.5 grid grid-cols-6 items-start gap-3 max-lg:flex max-lg:snap-x max-lg:overflow-x-auto max-lg:pb-2 max-lg:[&>div]:w-[74vw] max-lg:[&>div]:flex-shrink-0 max-lg:[&>div]:snap-start">
           {cols.map((col) => (
             <div key={col.label} className="flex flex-col gap-2.5">
               <div className="rounded-[10px] bg-navy px-3 py-[9px] text-center text-[12.5px] font-extrabold text-white">{col.label}</div>
