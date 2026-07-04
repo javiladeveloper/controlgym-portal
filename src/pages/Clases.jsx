@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso } from '../hooks/useClases.js'
+import { usePersonal } from '../hooks/useOperaciones.js'
 import { claseDot, DAY_NAMES } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
@@ -14,6 +15,7 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
   const qc = useQueryClient()
   const editando = !!clase
+  const personal = usePersonal(sedeId) // staff que puede dictar la clase
   const [f, setF] = useState({
     nombre: clase?.nombre || '',
     tipo_id: clase?.tipo_clase_id || tipos[0]?.id || '',
@@ -22,6 +24,9 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
     hora: clase?.hora?.slice(0, 5) || '19:00',
     duracion: clase?.duracion_min || 60,
     cupo: clase?.cupo_max || 20,
+    // Instructor: id de staff, '__externo__' (contratado solo para la clase) o '' (sin asignar)
+    instructor: clase?.instructor_id || (clase?.instructor_nombre ? '__externo__' : ''),
+    instructor_externo: clase?.instructor_nombre || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -45,6 +50,9 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
         tipo_clase_id: tipoId === '__nuevo__' ? null : tipoId,
         nombre: f.nombre.trim(), dia_semana: Number(f.dia), hora: f.hora,
         duracion_min: Number(f.duracion) || 60, cupo_max: Number(f.cupo) || 20,
+        // Staff del panel o externo por nombre (nunca ambos)
+        instructor_id: f.instructor && f.instructor !== '__externo__' ? f.instructor : null,
+        instructor_nombre: f.instructor === '__externo__' ? (f.instructor_externo.trim() || null) : null,
       }
       const { error } = editando
         ? await supabase.from('clase').update(payload).eq('id', clase.id)
@@ -99,6 +107,18 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
           <Campo label="Duración (min)"><input type="number" value={f.duracion} onChange={set('duracion')} className={inputCls} /></Campo>
           <Campo label="Cupo máximo"><input type="number" value={f.cupo} onChange={set('cupo')} className={inputCls} /></Campo>
         </div>
+        <Campo label="Instructor" hint="Puede ser de tu equipo, o alguien contratado solo para dictar esta clase.">
+          <select value={f.instructor} onChange={set('instructor')} className={inputCls + ' cursor-pointer'}>
+            <option value="">Por asignar</option>
+            {(personal.data || []).map((p) => <option key={p.id} value={p.id}>{p.nombre} (equipo)</option>)}
+            <option value="__externo__">Instructor externo…</option>
+          </select>
+        </Campo>
+        {f.instructor === '__externo__' && (
+          <Campo label="Nombre del instructor externo">
+            <input value={f.instructor_externo} onChange={set('instructor_externo')} className={inputCls} placeholder="Sensei Carlos Nakamura" />
+          </Campo>
+        )}
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         {editando && (
           confirmarDel ? (
@@ -311,7 +331,10 @@ export default function Clases() {
                       <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: cs.tipo?.color || claseDot(cs.nombre) }} />
                       <div className="text-[13px] font-extrabold leading-[1.25]">{cs.nombre}</div>
                     </div>
-                    <div className="mt-1 text-[11px] font-semibold text-muted">{cs.instructor?.nombre || 'Por asignar'}</div>
+                    <div className="mt-1 text-[11px] font-semibold text-muted">
+                      {cs.instructor?.nombre || cs.instructor_nombre || 'Por asignar'}
+                      {cs.instructor_nombre && !cs.instructor && <span className="ml-1 text-[9px] font-extrabold text-faint">(externo)</span>}
+                    </div>
                     <div className="mt-2.5 flex items-center justify-between">
                       <div className="text-[10.5px] font-extrabold text-muted">Cupo {cs.cupo_max}</div>
                       <span className="rounded-full px-2.5 py-1 text-[10px] font-extrabold" style={{ background: paused ? T.line2 : T.successBg, color: paused ? T.muted : T.success }}>

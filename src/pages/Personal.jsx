@@ -15,6 +15,86 @@ const ROLES = [
   ['nutricionista', 'Nutricionista'], ['mantenimiento', 'Mantenimiento'],
 ]
 
+const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta']]
+const MES_LABEL = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+
+// Sueldos pagados este mes (para marcar "✓ Pagado" y evitar dobles pagos)
+function usePagosPlanilla() {
+  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+  return useQuery({
+    queryKey: ['planilla-mes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('movimiento_financiero')
+        .select('ref_id, monto')
+        .eq('categoria', 'planilla')
+        .eq('ref_tipo', 'usuario')
+        .eq('tipo', 'gasto')
+        .gte('fecha', inicioMes)
+      if (error) throw error
+      return new Map((data || []).map((p) => [p.ref_id, Number(p.monto)]))
+    },
+  })
+}
+
+// Pagar el sueldo del mes: registra el gasto en caja y guarda el sueldo base.
+function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
+  const qc = useQueryClient()
+  const [monto, setMonto] = useState(String(colaborador.sueldo_mensual ?? ''))
+  const [metodo, setMetodo] = useState('transferencia')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function pagar(e) {
+    e?.preventDefault()
+    setBusy(true); setError('')
+    try {
+      const n = Number(monto)
+      if (!n || n <= 0) throw new Error('Ingresa el monto del sueldo')
+      // Guardar/actualizar el sueldo base para el próximo mes
+      await supabase.from('usuario_empresa')
+        .update({ sueldo_mensual: n })
+        .eq('usuario_id', colaborador.id).eq('empresa_id', empresaId)
+      // Registrar el gasto de planilla
+      const { error } = await supabase.from('movimiento_financiero').insert({
+        empresa_id: empresaId, sede_id: sedeId, tipo: 'gasto', categoria: 'planilla',
+        descripcion: `Sueldo ${MES_LABEL} · ${colaborador.nombre}`,
+        monto: n, metodo_pago: metodo, ref_tipo: 'usuario', ref_id: colaborador.id,
+      })
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['planilla-mes'] })
+      qc.invalidateQueries({ queryKey: ['personal', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title={`Pagar sueldo · ${MES_LABEL}`} subtitle={colaborador.nombre} onClose={onClose}>
+      <form onSubmit={pagar} className="flex flex-col gap-3.5">
+        <Campo label="Monto (S/) *" hint="Queda guardado como su sueldo base para el próximo mes.">
+          <input required type="number" step="0.01" min="1" value={monto} onChange={(e) => setMonto(e.target.value)}
+            className={inputCls} placeholder="1200" autoFocus />
+        </Campo>
+        <Campo label="Método de pago">
+          <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={inputCls + ' cursor-pointer'}>
+            {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Campo>
+        <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
+          Se registrará como gasto de <b>planilla</b> en Finanzas y contará en los reportes del mes.
+        </p>
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!monto} submitLabel="Registrar pago" />
+      </form>
+    </Modal>
+  )
+}
+
 function useInvitaciones() {
   return useQuery({
     queryKey: ['invitaciones'],
@@ -84,8 +164,10 @@ export default function Personal() {
   const { rol, empresa } = useAuth()
   const qc = useQueryClient()
   const [invitarOpen, setInvitarOpen] = useState(false)
+  const [pagarA, setPagarA] = useState(null) // colaborador al que se le paga el sueldo
   const { data, isLoading, error, refetch } = usePersonal(sedeId)
   const invitaciones = useInvitaciones()
+  const pagosMes = usePagosPlanilla()
 
   // Revocar una invitación pendiente (esa persona ya no podrá vincularse)
   async function revocar(inv) {
@@ -119,6 +201,7 @@ export default function Personal() {
       </div>
 
       {invitarOpen && <InvitarModal sedeId={sedeId} onClose={() => setInvitarOpen(false)} />}
+      {pagarA && <PagarSueldoModal colaborador={pagarA} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPagarA(null)} />}
 
       {isLoading && <LoadingState variant="table" rows={5} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
@@ -126,25 +209,43 @@ export default function Personal() {
 
       {(data || []).length > 0 && (
         <Card className="mt-[18px] overflow-hidden">
-          <div className="grid grid-cols-[2.5fr_1.5fr_1fr_120px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Colaborador</div><div>Teléfono</div><div>Estado</div><div />
+          <div className="grid grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Colaborador</div><div>Teléfono</div><div>Sueldo · {MES_LABEL.split(' ')[0]}</div><div>Estado</div><div />
           </div>
-          {data.map((st) => (
-            <div key={st.id} className="grid grid-cols-[2.5fr_1.5fr_1fr_120px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
-              <div className="flex items-center gap-2.5">
-                <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
-                <div className="text-[13.5px] font-extrabold">{st.nombre}</div>
+          {data.map((st) => {
+            const pagado = pagosMes.data?.get(st.id)
+            return (
+              <div key={st.id} className="grid grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+                <div className="flex items-center gap-2.5">
+                  <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
+                  <div className="text-[13.5px] font-extrabold">{st.nombre}</div>
+                </div>
+                <div className="text-[12.5px] font-semibold text-muted">{st.telefono || '—'}</div>
+                <div className="text-[12.5px] font-bold">
+                  {pagado != null
+                    ? <span className="text-green-600">✓ Pagado S/ {pagado}</span>
+                    : st.sueldo_mensual
+                      ? <span className="text-muted">S/ {Number(st.sueldo_mensual)} pendiente</span>
+                      : <span className="text-faint">sin sueldo fijado</span>}
+                </div>
+                <div><Badge bg={st.activo ? T.successBg : T.line2} color={st.activo ? T.success : T.muted}>{st.activo ? 'Activo' : 'Inactivo'}</Badge></div>
+                {rol === 'admin' ? (
+                  <div className="flex items-center justify-end gap-1.5">
+                    {pagado == null && st.activo && (
+                      <button onClick={() => setPagarA(st)}
+                        className="cursor-pointer rounded-[9px] border border-green-300 bg-green-50 px-3 py-1.5 text-[11px] font-extrabold text-green-700 hover:bg-green-100">
+                        💵 Pagar sueldo
+                      </button>
+                    )}
+                    <button onClick={() => toggleActivo(st)}
+                      className={`cursor-pointer rounded-[9px] border px-3 py-1.5 text-[11px] font-extrabold transition-colors ${st.activo ? 'border-line bg-white text-muted hover:border-red hover:text-red' : 'border-green-300 bg-green-50 text-green-600'}`}>
+                      {st.activo ? '⏸' : '▶'}
+                    </button>
+                  </div>
+                ) : <div />}
               </div>
-              <div className="text-[12.5px] font-semibold text-muted">{st.telefono || '—'}</div>
-              <div><Badge bg={st.activo ? T.successBg : T.line2} color={st.activo ? T.success : T.muted}>{st.activo ? 'Activo' : 'Inactivo'}</Badge></div>
-              {rol === 'admin' ? (
-                <button onClick={() => toggleActivo(st)}
-                  className={`cursor-pointer justify-self-end rounded-[9px] border px-3 py-1.5 text-[11px] font-extrabold transition-colors ${st.activo ? 'border-line bg-white text-muted hover:border-red hover:text-red' : 'border-green-300 bg-green-50 text-green-600'}`}>
-                  {st.activo ? '⏸ Suspender' : '▶ Reactivar'}
-                </button>
-              ) : <div />}
-            </div>
-          ))}
+            )
+          })}
         </Card>
       )}
 

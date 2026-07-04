@@ -9,7 +9,7 @@ export function useClases(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clase')
-        .select('id, nombre, dia_semana, hora, cupo_max, activa, duracion_min, tipo_clase_id, instructor:usuario(nombre), tipo:tipo_clase(nombre, color)')
+        .select('id, nombre, dia_semana, hora, cupo_max, activa, duracion_min, tipo_clase_id, instructor_id, instructor_nombre, instructor:usuario(nombre), tipo:tipo_clase(nombre, color)')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('dia_semana').order('hora')

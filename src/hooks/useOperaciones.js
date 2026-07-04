@@ -15,14 +15,18 @@ export function usePersonal(sedeId) {
           .from('usuario_sede')
           .select('usuario:usuario(id, nombre, avatar_iniciales, telefono)')
           .eq('sede_id', sedeId),
-        supabase.from('usuario_empresa').select('usuario_id, activo'),
+        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual'),
       ])
       if (error) throw error
-      const activoDe = new Map((membresias || []).map((m) => [m.usuario_id, m.activo]))
+      const memDe = new Map((membresias || []).map((m) => [m.usuario_id, m]))
       return (data || [])
         .map((r) => r.usuario)
         .filter(Boolean)
-        .map((u) => ({ ...u, activo: activoDe.get(u.id) ?? true }))
+        .map((u) => ({
+          ...u,
+          activo: memDe.get(u.id)?.activo ?? true,
+          sueldo_mensual: memDe.get(u.id)?.sueldo_mensual ?? null,
+        }))
     },
   })
 }
