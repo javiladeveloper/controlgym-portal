@@ -177,6 +177,8 @@ const PLANES = [
 export default function PlataformaLanding() {
   // Precios: alterna entre solo panel y panel + app para socios
   const [conApp, setConApp] = useState(false)
+  // Menú móvil del header
+  const [menu, setMenu] = useState(false)
   // Aparición suave de secciones al hacer scroll
   useEffect(() => {
     const els = document.querySelectorAll('.lp-rev')
@@ -212,12 +214,26 @@ export default function PlataformaLanding() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <a href={`${APP_URL}/login`} className="px-3 py-2 text-[13.5px] font-extrabold transition-colors hover:text-white" style={{ color: C.muted }}>Entrar</a>
+            <a href={`${APP_URL}/login`} className="hidden px-3 py-2 text-[13.5px] font-extrabold transition-colors hover:text-white sm:block" style={{ color: C.muted }}>Entrar</a>
             <a href={`${APP_URL}/registro`} className="rounded-lg px-4 py-2.5 text-[13.5px] font-extrabold text-white transition-transform hover:scale-[1.03]" style={{ background: C.primary }}>
               Crear mi gimnasio
             </a>
+            <button onClick={() => setMenu(!menu)} aria-label="Menú"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-[20px] md:hidden" style={{ border: C.border }}>
+              {menu ? '✕' : '☰'}
+            </button>
           </div>
         </div>
+        {/* Menú móvil desplegable */}
+        {menu && (
+          <nav className="flex flex-col px-6 pb-4 md:hidden" style={{ borderTop: C.border }}>
+            {[['Funciones', '#funciones'], ['Tu página web', '#pagina-web'], ['Precios', '#precios'], ['Preguntas', '#faq']].map(([l, h]) => (
+              <a key={h} href={h} onClick={() => setMenu(false)}
+                className="border-b border-white/5 py-3.5 text-[14.5px] font-extrabold" style={{ color: C.muted }}>{l}</a>
+            ))}
+            <a href={`${APP_URL}/login`} className="py-3.5 text-[14.5px] font-extrabold" style={{ color: C.primary }}>Entrar al panel →</a>
+          </nav>
+        )}
       </header>
 
       {/* Hero: foto real de gimnasio de fondo + copy + mockup del panel */}
