@@ -3,12 +3,19 @@
 // no pasan por RLS; validan permisos explícitamente antes de escribir.
 import pg from 'pg'
 
+// Sanea variables de entorno: sin BOM ni saltos de línea colados al grabarlas
+// por CLI (un header HTTP con esos bytes revienta el fetch). El trim() de JS
+// elimina U+FEFF porque es whitespace según el estándar.
+export function env(name, fallback = '') {
+  return String(process.env[name] ?? fallback).trim()
+}
+
 let pool
 
 export function db() {
   if (!pool) {
     pool = new pg.Pool({
-      connectionString: (process.env.DATABASE_URL || '').trim(),
+      connectionString: env('DATABASE_URL'),
       ssl: { rejectUnauthorized: false },
       max: 1,
     })
@@ -20,8 +27,8 @@ export function db() {
 export async function usuarioDesdeJwt(req) {
   const jwt = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
   if (!jwt) return null
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-  const anon = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  const url = env('SUPABASE_URL') || env('VITE_SUPABASE_URL')
+  const anon = env('SUPABASE_ANON_KEY') || env('VITE_SUPABASE_ANON_KEY')
   const res = await fetch(`${url}/auth/v1/user`, {
     headers: { apikey: anon, authorization: `Bearer ${jwt}` },
   })

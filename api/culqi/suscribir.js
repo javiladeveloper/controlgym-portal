@@ -5,7 +5,7 @@
 //   token_id: token de tarjeta generado por Culqi Checkout en el navegador.
 // Flujo Culqi: customer → card → subscription (plan pre-creado en Culqi,
 // ids en env CULQI_PLANES = {"estudio":"...","estudio_app":"...", ...}).
-import { db, usuarioDesdeJwt } from '../_lib/db.js'
+import { db, usuarioDesdeJwt, env } from '../_lib/db.js'
 
 const CULQI = 'https://api.culqi.com/v2'
 
@@ -13,7 +13,7 @@ async function culqi(path, body) {
   const res = await fetch(`${CULQI}${path}`, {
     method: 'POST',
     headers: {
-      authorization: `Bearer ${(process.env.CULQI_SECRET_KEY || '').trim()}`,
+      authorization: `Bearer ${env('CULQI_SECRET_KEY')}`,
       'content-type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     if (!sus) return res.status(403).json({ error: 'No eres administrador de este gimnasio' })
     if (sus.estado === 'activa') return res.status(409).json({ error: 'El pago automático ya está activo' })
 
-    const planes = JSON.parse((process.env.CULQI_PLANES || '{}').trim())
+    const planes = JSON.parse(env('CULQI_PLANES', '{}'))
     const planKey = sus.con_app ? `${sus.plan_slug}_app` : sus.plan_slug
     const planId = planes[planKey]
     if (!planId) return res.status(500).json({ error: `Plan Culqi no configurado: ${planKey}` })
