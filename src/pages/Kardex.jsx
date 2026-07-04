@@ -94,7 +94,12 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
               <option value="ajuste">Ajuste de inventario (+)</option>
             </select>
           </Campo>
-          <Campo label="Cantidad"><input type="number" min="1" value={f.cantidad} onChange={set('cantidad')} className={inputCls} /></Campo>
+          <Campo label="Cantidad (unidades)"
+            hint={f.tipo === 'venta'
+              ? (prod ? `Disponible: ${prod.stock} uds.` : undefined)
+              : `En unidades sueltas, no paquetes: 4 paquetes de 12 = 48.${prod ? ` El stock quedará en ${Number(prod.stock) + (Number(f.cantidad) || 0)} uds.` : ''}`}>
+            <input type="number" min="1" value={f.cantidad} onChange={set('cantidad')} className={inputCls} />
+          </Campo>
         </div>
         <Campo label={`Total de la operación (${moneda})`}
           hint={f.tipo === 'venta' ? 'Se calcula solo (precio × cantidad). Cámbialo únicamente si cobraste otro monto, p. ej. con descuento.'
