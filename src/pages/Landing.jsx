@@ -35,7 +35,13 @@ const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
 // Radio de tarjetas (landing.estilo.tarjetas)
 const CARD_RADIUS = { redonda: 22, suave: 14, recta: 6 }
 // Orden por defecto de las secciones de la página
-const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'sponsors', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'videos', 'testimonios', 'sponsors', 'galeria', 'sedes', 'mapa']
+
+// Saca el id numérico de un link de video de TikTok (…/video/123456…)
+function tiktokId(url) {
+  const m = /tiktok\.com\/.*video\/(\d+)/.exec(url || '')
+  return m ? m[1] : null
+}
 
 // Iconos de redes sociales para el footer
 const ICONO_RED = {
@@ -282,6 +288,24 @@ export default function Landing({ slug }) {
         </div>
       </section>
     ),
+    // TikToks anclados: embed oficial por iframe, sin API ni cookies extra
+    videos: () => {
+      const ids = (L.videos || []).map(tiktokId).filter(Boolean)
+      if (sec.videos === false || ids.length === 0) return null
+      return (
+        <section className="mx-auto max-w-[1080px] px-6 py-20">
+          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Síguenos en TikTok 🎵</h2>
+          <div className="mt-8 flex flex-wrap items-start justify-center gap-5">
+            {ids.map((id) => (
+              <iframe key={id} src={`https://www.tiktok.com/embed/v2/${id}`}
+                title="TikTok" loading="lazy" allow="encrypted-media; fullscreen"
+                className="h-[575px] w-full max-w-[325px] rounded-xl border border-line bg-black"
+                style={{ borderRadius: rCard }} />
+            ))}
+          </div>
+        </section>
+      )
+    },
     // Franja de auspiciadores: los sponsors con logo que el gym marcó para la web
     sponsors: () => sec.sponsors !== false && (data.sponsors || []).length > 0 && (
       <section className="mx-auto max-w-[900px] px-6 py-14">

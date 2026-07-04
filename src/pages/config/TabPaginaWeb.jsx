@@ -6,7 +6,8 @@ import { urlPublica } from '../../lib/tenant.js'
 
 const SECCIONES = [
   ['promociones', 'Ofertas y promociones'], ['planes', 'Planes'], ['clases', 'Clases'],
-  ['logros', 'Logros'], ['testimonios', 'Testimonios'], ['sponsors', 'Sponsors (Nos respaldan)'],
+  ['logros', 'Logros'], ['testimonios', 'Testimonios'], ['videos', 'Videos de TikTok'],
+  ['sponsors', 'Sponsors (Nos respaldan)'],
   ['sedes', 'Sedes'], ['galeria', 'Galería'],
   ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
 ]
@@ -16,12 +17,13 @@ const MAX_LOGROS = 6
 
 const MAX_GALERIA = 12 // tope de fotos en la galería
 
-const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'sponsors', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'videos', 'testimonios', 'sponsors', 'galeria', 'sedes', 'mapa']
 const ETIQUETA_SECCION = {
   stats: 'Estadísticas', logros: 'Logros', promociones: 'Ofertas y promociones', planes: 'Planes',
-  clases: 'Clases', testimonios: 'Testimonios', sponsors: 'Sponsors (Nos respaldan)',
+  clases: 'Clases', testimonios: 'Testimonios', videos: 'Videos de TikTok', sponsors: 'Sponsors (Nos respaldan)',
   galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
 }
+const MAX_VIDEOS = 3
 
 // Fuentes disponibles para la página (se cargan solas desde Google Fonts).
 // Las "de póster" se aplican SOLO a títulos y números; el texto usa letra legible.
@@ -223,6 +225,7 @@ export default function TabPaginaWeb() {
         stats_modo: base.stats_modo || ((base.stats || []).length > 0 ? 'manual' : 'auto'),
         testimonios: base.testimonios || [],
         logros: base.logros || [],
+        videos: base.videos || [],
         galeria_estilo: base.galeria_estilo || 'mosaico',
         orden: Array.isArray(base.orden) && base.orden.length
           ? [...base.orden, ...DEFAULT_ORDEN.filter((k) => !base.orden.includes(k))]
@@ -718,6 +721,36 @@ export default function TabPaginaWeb() {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Videos de TikTok anclados en la página */}
+      <Card className="mt-4 p-[19px]">
+        <div className="text-[14.5px] font-extrabold">Videos de TikTok 🎵 <span className="text-[12px] font-bold text-faint">({(L.videos || []).filter(Boolean).length}/{MAX_VIDEOS})</span></div>
+        <p className="mt-0.5 text-[12px] font-semibold text-muted">
+          Ancla tus mejores TikToks en tu página. En el video: <b>Compartir → Copiar enlace</b> y pégalo aquí.
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          {Array.from({ length: MAX_VIDEOS }).map((_, i) => {
+            const v = (L.videos || [])[i] || ''
+            const valido = !v || /tiktok\.com\/.*video\/(\d+)/.test(v) || /vm\.tiktok\.com\//.test(v)
+            return (
+              <div key={i}>
+                <input value={v}
+                  onChange={(e) => {
+                    const arr = [...(L.videos || [])]
+                    arr[i] = e.target.value.trim()
+                    upd({ videos: arr })
+                  }}
+                  placeholder={`https://www.tiktok.com/@tugym/video/… (video ${i + 1})`}
+                  className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[12.5px] outline-none focus:border-orange" />
+                {!valido && <p className="mt-1 text-[11px] font-bold text-red">Ese no parece un link de video de TikTok — usa el enlace completo del video (con /video/).</p>}
+                {v && /vm\.tiktok\.com\//.test(v) && (
+                  <p className="mt-1 text-[11px] font-bold text-amber-600">Link corto detectado: mejor abre el video en el navegador y copia el enlace completo (con /video/…).</p>
+                )}
+              </div>
+            )
+          })}
         </div>
       </Card>
 
