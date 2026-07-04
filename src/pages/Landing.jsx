@@ -742,10 +742,15 @@ export default function Landing({ slug }) {
   )
 }
 
+const CUANDO_OPCIONES = ['Hoy mismo 🔥', 'Esta semana', 'Este mes', 'Solo quiero información']
+const TURNO_OPCIONES = ['Mañana', 'Tarde', 'Noche']
+
 function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
   const [email, setEmail] = useState('')
+  const [cuando, setCuando] = useState('')
+  const [turno, setTurno] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [busy, setBusy] = useState(false)
   const [ok, setOk] = useState(false)
@@ -755,7 +760,13 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const nota = [interes, mensaje.trim()].filter(Boolean).join(' · ')
+    // Todo el contexto viaja en la nota → el gym lo ve en su CRM y en el email
+    const nota = [
+      interes,
+      cuando && `Quiere empezar: ${cuando.replace(' 🔥', '')}`,
+      turno && `Turno preferido: ${turno.toLowerCase()}`,
+      mensaje.trim(),
+    ].filter(Boolean).join(' · ')
     const { error } = await supabase.rpc('crear_lead_publico', {
       p_slug: slug, p_nombre: nombre, p_telefono: telefono, p_email: email, p_nota: nota,
       p_fuente: fuente || null,
@@ -764,6 +775,9 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
     if (error) setError(error.message)
     else setOk(true)
   }
+
+  const chipLead = (on) =>
+    `cursor-pointer rounded-full border px-3 py-1.5 text-[12px] font-extrabold transition-colors ${on ? 'text-white' : 'border-line bg-white text-muted'}`
 
   const inputCls = 'rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-current'
 
@@ -788,7 +802,31 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
               <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre *" className={inputCls} />
               <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono / WhatsApp" className={inputCls} />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo (opcional)" className={inputCls} />
-              <textarea rows={2} value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="¿Algo que quieras contarnos?" className={`${inputCls} resize-none`} />
+
+              <div>
+                <div className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿Cuándo te gustaría empezar?</div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {CUANDO_OPCIONES.map((c) => (
+                    <button key={c} type="button" onClick={() => setCuando(cuando === c ? '' : c)}
+                      className={chipLead(cuando === c)} style={cuando === c ? { background: color, borderColor: color } : undefined}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿En qué turno entrenarías?</div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {TURNO_OPCIONES.map((t2) => (
+                    <button key={t2} type="button" onClick={() => setTurno(turno === t2 ? '' : t2)}
+                      className={chipLead(turno === t2)} style={turno === t2 ? { background: color, borderColor: color } : undefined}>
+                      {t2}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea rows={2} value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="¿Algo que quieras contarnos? (lesiones, objetivos…)" className={`${inputCls} resize-none`} />
               {error && <div className="rounded-[10px] bg-red-50 px-3 py-2 text-[12.5px] font-bold text-red">{error}</div>}
               <button type="submit" disabled={busy || !nombre.trim() || (!telefono.trim() && !email.trim())}
                 className="mt-1 cursor-pointer border-none py-3 text-[14.5px] font-extrabold text-white disabled:opacity-50"
