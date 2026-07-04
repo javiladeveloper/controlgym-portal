@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card, Badge, GhostButton } from '../components/ui.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
 import PlanesModal from '../components/forms/PlanesModal.jsx'
+import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
@@ -9,6 +10,59 @@ import { estadoBadge, money } from '../lib/uiHelpers.js'
 import { waLink, msgRenovacion } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+
+const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
+
+// Cuándo vencería si se renueva hoy (espejo de renew_membership: desde el
+// vencimiento actual si aún no pasó, o desde hoy si ya venció)
+function nuevaFechaFin(m) {
+  const base = new Date(Math.max(new Date(m.fecha_fin).getTime(), Date.now()))
+  const u = m.plan?.unidad
+  if (u === 'dia') base.setDate(base.getDate() + 1)
+  else if (u === 'trimestre') base.setMonth(base.getMonth() + 3)
+  else if (u === 'anual') base.setFullYear(base.getFullYear() + 1)
+  else base.setMonth(base.getMonth() + 1)
+  return base
+}
+
+// El gym cobra en persona (efectivo/Yape/POS) y aquí lo deja registrado:
+// renueva la membresía y el ingreso entra a caja con su método.
+function CobrarModal({ m, moneda, renovar, onClose }) {
+  const [metodo, setMetodo] = useState('efectivo')
+  const precio = Number(m.plan?.precio || 0)
+
+  function confirmar() {
+    renovar.mutate({ membresiaId: m.id, metodo }, {
+      onSuccess: () => { toast.ok(`Cobro de ${money(precio, moneda)} registrado — ${m.socio?.nombre} renovado`); onClose() },
+      onError: (e) => toast.error('No se pudo registrar: ' + e.message),
+    })
+  }
+
+  return (
+    <Modal title="Registrar cobro" subtitle={m.socio?.nombre} onClose={onClose} width={420}>
+      <div className="flex flex-col gap-3.5">
+        <div className="rounded-[10px] bg-surface px-3.5 py-3">
+          <div className="flex justify-between text-[13px] font-bold text-muted">
+            <span>{m.plan?.nombre}</span><span className="font-extrabold text-ink">{money(precio, moneda)}</span>
+          </div>
+          <div className="mt-1.5 flex justify-between text-[12px] font-semibold text-muted">
+            <span>Nuevo vencimiento</span>
+            <span className="font-extrabold text-green-600">{nuevaFechaFin(m).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+          </div>
+        </div>
+        <Campo label="¿Cómo pagó?">
+          <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={inputCls + ' cursor-pointer'}>
+            {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Campo>
+        <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
+          El ingreso queda registrado en <b>Finanzas</b> como renovación de membresía.
+        </p>
+        <BotonesModal onCancel={onClose} busy={renovar.isPending} submitLabel={`Cobré ${money(precio, moneda)}`} onSubmit={confirmar} />
+      </div>
+    </Modal>
+  )
+}
 
 function PlanCard({ p, moneda, popular }) {
   if (popular) {
@@ -49,6 +103,15 @@ export default function Membresias() {
   const anular = useAnularMembresia(sedeId)
   const [planesOpen, setPlanesOpen] = useState(false)
   const [anulando, setAnulando] = useState(null) // membresía en confirmación de anulación
+  const [cobrando, setCobrando] = useState(null) // membresía a la que se le registra el cobro
+
+  // Control de cobros: vencidas y por vencer en ≤7 días (el gym cobra en persona)
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const diasPara = (f) => Math.ceil((new Date(f) - hoy) / 86400000)
+  const porCobrar = (membresias.data || [])
+    .filter((m) => !['cancelada', 'congelada'].includes(m.estado) && m.fecha_fin && diasPara(m.fecha_fin) <= 7)
+    .sort((a, b) => new Date(a.fecha_fin) - new Date(b.fecha_fin))
+  const totalPorCobrar = porCobrar.reduce((n, m) => n + Number(m.plan?.precio || 0), 0)
 
   function onAnular(m, devolver) {
     anular.mutate({ membresiaId: m.id, devolver }, {
@@ -71,6 +134,49 @@ export default function Membresias() {
         )}
       </div>
       {planesOpen && <PlanesModal onClose={() => setPlanesOpen(false)} />}
+      {cobrando && <CobrarModal m={cobrando} moneda={moneda} renovar={renovar} onClose={() => setCobrando(null)} />}
+
+      {/* Control de cobros: a quién hay que cobrarle */}
+      {porCobrar.length > 0 && (
+        <Card className="mt-5 overflow-hidden border-orange/40">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <div className="text-[14.5px] font-extrabold">💵 Cobros pendientes ({porCobrar.length})</div>
+              <div className="mt-0.5 text-[12px] font-semibold text-muted">Vencidas y por vencer en 7 días · recuérdales por WhatsApp y registra el cobro cuando paguen</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Por cobrar</div>
+              <div className="text-[19px] font-extrabold text-orange">{money(totalPorCobrar, moneda)}</div>
+            </div>
+          </div>
+          {porCobrar.map((m) => {
+            const d = diasPara(m.fecha_fin)
+            const etiqueta = d < 0 ? `Vencida hace ${-d} día${-d === 1 ? '' : 's'}` : d === 0 ? 'Vence HOY' : `Vence en ${d} día${d === 1 ? '' : 's'}`
+            const rojo = d <= 0
+            return (
+              <div key={m.id} className="flex items-center justify-between gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-extrabold">{m.socio?.nombre}</div>
+                  <div className="text-[11.5px] font-semibold text-muted">{m.plan?.nombre} · {money(m.plan?.precio, moneda)}</div>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2.5">
+                  <Badge bg={rojo ? T.dangerBg : T.primaryBg} color={rojo ? T.danger : T.primary}>{etiqueta}</Badge>
+                  {m.socio?.telefono && (
+                    <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}
+                      target="_blank" rel="noreferrer" title="Recordarle por WhatsApp"
+                      className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
+                      style={{ background: '#25D36622', color: '#1DA851' }}>💬</a>
+                  )}
+                  <button onClick={() => setCobrando(m)}
+                    className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
+                    Cobré — renovar
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </Card>
+      )}
 
       {/* Planes */}
       {planes.isLoading && <LoadingState variant="cards" rows={4} />}
@@ -134,7 +240,7 @@ export default function Membresias() {
                   )}
                   <button
                     disabled={busy || m.estado === 'cancelada'}
-                    onClick={() => renovar.mutate(m.id)}
+                    onClick={() => setCobrando(m)}
                     className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-50"
                   >
                     Renovar

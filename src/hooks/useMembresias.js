@@ -25,7 +25,7 @@ export function useMembresias(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membresia')
-        .select('id, estado, fecha_fin, socio:socio!membresia_socio_id_fkey(id, nombre, codigo, telefono), plan:plan(nombre, dias_congelamiento_anio)')
+        .select('id, estado, fecha_fin, socio:socio!membresia_socio_id_fkey(id, nombre, codigo, telefono), plan:plan(nombre, precio, unidad, dias_congelamiento_anio)')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('fecha_fin')
@@ -78,14 +78,15 @@ export function useAnularMembresia(sedeId) {
 export function useRenovar(sedeId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (membresiaId) => {
-      const { data, error } = await supabase.rpc('renew_membership', { p_membresia_id: membresiaId })
+    mutationFn: async ({ membresiaId, metodo = 'efectivo' }) => {
+      const { data, error } = await supabase.rpc('renew_membership', { p_membresia_id: membresiaId, p_metodo_pago: metodo })
       if (error) throw error
       return data
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
       qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
     },
   })
 }

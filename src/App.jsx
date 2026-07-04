@@ -99,11 +99,12 @@ export default function App() {
         }
       />
 
-      {/* Asistente de bienvenida (post-registro): pantalla completa, sin sidebar */}
+      {/* Asistente de bienvenida (post-registro): pantalla completa, sin sidebar.
+          allowNoEmpresa: en el flujo nuevo la empresa se crea AL FINAL del wizard. */}
       <Route
         path="/bienvenida"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowNoEmpresa>
             <Bienvenida />
           </ProtectedRoute>
         }
