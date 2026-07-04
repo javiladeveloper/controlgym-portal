@@ -288,6 +288,68 @@ export default function TabPlan() {
           </div>
         )}
       </Card>
+
+      {/* Zona de peligro: eliminar el negocio (creado por error, cierre, etc.) */}
+      <ZonaPeligro empresa={empresa} suscripcion={s} />
     </div>
+  )
+}
+
+// Eliminar el negocio: pide escribir el nombre para confirmar. Con suscripción
+// de pago activa no se permite (primero se cancela, para no dejar cobros vivos).
+function ZonaPeligro({ empresa, suscripcion }) {
+  const { reloadBootstrap } = useAuth()
+  const [abierto, setAbierto] = useState(false)
+  const [confirmacion, setConfirmacion] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const coincide = confirmacion.trim().toLowerCase() === (empresa?.nombre || '').trim().toLowerCase()
+
+  async function eliminar() {
+    setBusy(true); setError('')
+    const { error } = await supabase.rpc('eliminar_empresa', { p_empresa_id: empresa.id })
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    await reloadBootstrap()
+    window.location.href = '/dashboard'
+  }
+
+  return (
+    <Card className="mt-4 border-red-200 p-[19px]">
+      <div className="text-[13.5px] font-extrabold text-red">Zona de peligro</div>
+      {!abierto ? (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[12px] font-semibold text-muted">
+            Eliminar este negocio: desaparece del panel y su página web se apaga. Sus datos se conservan por si necesitas recuperarlos (soporte).
+          </p>
+          <button onClick={() => setAbierto(true)}
+            className="cursor-pointer rounded-[10px] border border-red-300 bg-white px-4 py-2 text-[12.5px] font-extrabold text-red hover:bg-red-50">
+            Eliminar negocio…
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3">
+          {suscripcion?.estado === 'activa' && (
+            <p className="mb-3 rounded-[10px] bg-amber-50 px-3.5 py-2.5 text-[12px] font-bold text-amber-800">
+              Este negocio tiene una suscripción de pago activa — escríbenos por WhatsApp para cancelarla primero y evitar cobros.
+            </p>
+          )}
+          <p className="text-[12.5px] font-bold">
+            Escribe <b className="text-red">{empresa?.nombre}</b> para confirmar:
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input value={confirmacion} onChange={(e) => setConfirmacion(e.target.value)} placeholder={empresa?.nombre}
+              className="w-[240px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-red" />
+            <button disabled={!coincide || busy || suscripcion?.estado === 'activa'} onClick={eliminar}
+              className="cursor-pointer rounded-[10px] border-none bg-red px-4 py-2.5 text-[12.5px] font-extrabold text-white disabled:opacity-40">
+              {busy ? 'Eliminando…' : 'Eliminar definitivamente'}
+            </button>
+            <button onClick={() => { setAbierto(false); setConfirmacion('') }}
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[12.5px] font-extrabold text-muted">Cancelar</button>
+          </div>
+          {error && <p className="mt-2 text-[12.5px] font-bold text-red">{error}</p>}
+        </div>
+      )}
+    </Card>
   )
 }

@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TrialBanner from './components/TrialBanner.jsx'
+import BloqueoPlan from './components/BloqueoPlan.jsx'
 import Toasts from './components/Toasts.jsx'
 import BuscadorGlobal from './components/BuscadorGlobal.jsx'
 import Login from './pages/Login.jsx'
@@ -72,7 +73,7 @@ function PanelLayout({ children }) {
           <span className="text-[15px] font-extrabold">FitControl</span>
         </div>
         <TrialBanner />
-        {children}
+        <BloqueoPlan>{children}</BloqueoPlan>
       </main>
 
       {/* Utilidades globales del panel */}

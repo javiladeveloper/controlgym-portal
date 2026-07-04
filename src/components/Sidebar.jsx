@@ -43,7 +43,10 @@ export default function Sidebar() {
       {empresas.length > 1 && (
         <select
           value={empresa?.id || ''}
-          onChange={(e) => setEmpresaActiva(e.target.value)}
+          onChange={async (e) => {
+            try { await setEmpresaActiva(e.target.value) }
+            catch (err) { alert('No se pudo cambiar de negocio: ' + err.message) }
+          }}
           className="mx-0.5 mb-2 cursor-pointer rounded-[10px] border border-white/[0.14] bg-navy-700 px-[11px] py-2 text-[12px] font-extrabold text-white outline-none"
         >
           {empresas.map((em) => (

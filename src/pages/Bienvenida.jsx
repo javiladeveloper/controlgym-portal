@@ -408,19 +408,10 @@ export default function Bienvenida() {
                   <HorarioEditor value={horario} onChange={setHorario} />
                 </div>
                 {esCadena && (
-                  <div>
-                    <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿Tienes más sedes? Agrégalas</span>
-                    {sedesExtra.map((s, i) => (
-                      <input key={i} value={s}
-                        onChange={(e) => setSedesExtra((arr) => arr.map((x, j) => j === i ? e.target.value : x))}
-                        placeholder={`Sede ${i + 2} (ej. Sede Norte)`}
-                        className="mt-2 w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange" />
-                    ))}
-                    <button onClick={() => setSedesExtra((s) => [...s, ''])}
-                      className="mt-2 cursor-pointer rounded-[9px] border border-dashed border-line bg-white px-3 py-1.5 text-[12px] font-extrabold text-muted hover:border-orange hover:text-orange">
-                      + Otra sede
-                    </button>
-                  </div>
+                  <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
+                    🏢 ¿Tienes más sedes? Se agregan en <b>Configuración → Sedes</b> al activar tu plan
+                    (el mes de prueba incluye 1 sede).
+                  </p>
                 )}
               </div>
             </>
