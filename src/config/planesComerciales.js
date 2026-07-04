@@ -4,8 +4,8 @@
 // Gimnasios (categoría fitness) eligen entre 3 tamaños; los demás segmentos
 // tienen plan único pensado para lo que realmente usan.
 export const PLANES_GYM = [
-  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Hasta 50 socios · 1 sede', limite: 50 },
-  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'Hasta 200 socios', popular: true, limite: 200 },
+  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Hasta 50 socios activos · 1 sede', limite: 50 },
+  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'Hasta 200 socios activos', popular: true, limite: 200 },
   { slug: 'cadena', nombre: 'Cadena', base: 179, conApp: 229, para: 'Socios ilimitados · multi-sede', limite: null },
 ]
 
