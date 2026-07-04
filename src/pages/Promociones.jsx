@@ -10,10 +10,14 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function NuevaCampanaModal({ empresaId, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ nombre: '', descripcion: '', canal: 'Recepción y redes', tipo: '2x1', fecha_inicio: '', fecha_fin: '', estado: 'activa' })
+  const [f, setF] = useState({ nombre: '', descripcion: '', canal: 'Recepción y redes', tipo: '2x1', valor: '', duracion_meses: '', fecha_inicio: '', fecha_fin: '', estado: 'activa' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  // Qué pide cada tipo: % / monto / precio total + meses
+  const pideValor = ['descuento_pct', 'descuento_monto', 'precio_especial'].includes(f.tipo)
+  const labelValor = f.tipo === 'descuento_pct' ? 'Descuento (%)' : f.tipo === 'descuento_monto' ? 'Descuento (S/)' : 'Precio total (S/)'
 
   async function guardar(e) {
     e?.preventDefault()
@@ -21,6 +25,8 @@ function NuevaCampanaModal({ empresaId, onClose }) {
     const { error } = await supabase.from('promocion').insert({
       empresa_id: empresaId, nombre: f.nombre.trim(), descripcion: f.descripcion || null,
       canal: f.canal, tipo: f.tipo, estado: f.estado,
+      valor: pideValor && f.valor !== '' ? Number(f.valor) : null,
+      duracion_meses: f.tipo === 'precio_especial' && f.duracion_meses !== '' ? Number(f.duracion_meses) : null,
       fecha_inicio: f.fecha_inicio || null, fecha_fin: f.fecha_fin || null,
     })
     setBusy(false)
@@ -37,13 +43,32 @@ function NuevaCampanaModal({ empresaId, onClose }) {
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Tipo">
             <select value={f.tipo} onChange={set('tipo')} className={inputCls + ' cursor-pointer'}>
-              <option value="2x1">2×1</option><option value="descuento_pct">Descuento %</option>
+              <option value="2x1">2×1 (matrícula gratis)</option><option value="descuento_pct">Descuento %</option>
               <option value="descuento_monto">Descuento fijo</option><option value="semana_gratis">Semana gratis</option>
+              <option value="precio_especial">Precio especial (paquete)</option>
               <option value="otro">Otro</option>
             </select>
           </Campo>
           <Campo label="Canal"><input value={f.canal} onChange={set('canal')} className={inputCls} /></Campo>
         </div>
+        {pideValor && (
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label={labelValor + ' *'}>
+              <input required type="number" step="0.01" min="0" value={f.valor} onChange={set('valor')} className={inputCls}
+                placeholder={f.tipo === 'descuento_pct' ? '20' : '500'} />
+            </Campo>
+            {f.tipo === 'precio_especial' && (
+              <Campo label="Duración (meses) *">
+                <input required type="number" min="1" max="36" value={f.duracion_meses} onChange={set('duracion_meses')} className={inputCls} placeholder="12" />
+              </Campo>
+            )}
+          </div>
+        )}
+        {f.tipo === 'precio_especial' && (
+          <p className="-mt-1 text-[11.5px] font-semibold text-faint">
+            Ej.: "Paga S/500 y entrena todo el año" → precio 500, duración 12. Al inscribir con esta promo, la membresía usa este precio y duración (pisa al plan).
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-3">
           <Campo label="Inicio"><input type="date" value={f.fecha_inicio} onChange={set('fecha_inicio')} className={inputCls} /></Campo>
           <Campo label="Fin"><input type="date" value={f.fecha_fin} onChange={set('fecha_fin')} className={inputCls} /></Campo>

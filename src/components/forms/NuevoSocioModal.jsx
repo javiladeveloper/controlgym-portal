@@ -38,6 +38,12 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     else if (promo.tipo === 'descuento_monto') { precio = Math.max(0, precio - Number(promo.valor || 0)); promoNota = `−${money(promo.valor, empresa?.moneda)}` }
     else if (promo.tipo === 'semana_gratis') { promoNota = '+7 días de membresía' }
     else if (promo.tipo === '2x1') { matricula = 0; promoNota = 'matrícula gratis' }
+    else if (promo.tipo === 'precio_especial') {
+      precio = Number(promo.valor || precio)
+      promoNota = promo.duracion_meses
+        ? `${promo.duracion_meses} meses de membresía por ${money(promo.valor, empresa?.moneda)}`
+        : `precio especial ${money(promo.valor, empresa?.moneda)}`
+    }
   }
   const total = precio + matricula
 
