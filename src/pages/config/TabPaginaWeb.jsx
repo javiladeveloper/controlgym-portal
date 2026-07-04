@@ -208,6 +208,7 @@ export default function TabPaginaWeb() {
       setL({
         hero_url: base.hero_url || '',
         hero_overlay: base.hero_overlay ?? 0.55,
+        hero_pos: base.hero_pos ?? 50,
         galeria: base.galeria || [],
         stats: base.stats || [],
         ubicacion: base.ubicacion || { lat: '', lng: '' },
@@ -228,7 +229,30 @@ export default function TabPaginaWeb() {
   if (!L) return <div className="text-[13px] text-muted">Cargando…</div>
   const upd = (patch) => { setL((s) => ({ ...s, ...patch })); setOk(false) }
 
+  // Antes de subir la portada, revisamos que la imagen sirva como fondo:
+  // resolución suficiente y sin formato banner (esos traen texto y se cortan).
+  function validarHero(file) {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const avisos = []
+        if (img.width < 1200) {
+          avisos.push(`• Es pequeña (${img.width}px de ancho): se verá borrosa en pantallas grandes. Ideal: 1600px o más.`)
+        }
+        if (img.width / img.height > 2.3) {
+          avisos.push('• Tiene formato de banner (muy alargada, como portada de Facebook): se recortará por los lados. Si además trae textos, quedarán cortados y encima tu página le pone su propio título. Mejor usa una FOTO limpia, sin textos.')
+        }
+        URL.revokeObjectURL(img.src)
+        if (avisos.length === 0) return resolve(true)
+        resolve(window.confirm('⚠️ Esta imagen puede no verse bien como portada:\n\n' + avisos.join('\n') + '\n\n¿Subirla de todos modos?'))
+      }
+      img.onerror = () => { URL.revokeObjectURL(img.src); resolve(true) }
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
   async function subirHero(file) {
+    if (!(await validarHero(file))) return
     setBusy('hero')
     try { upd({ hero_url: await subirImagen(empresa.id, 'hero', file) + `?t=${file.size}` }) }
     catch (e) { alert('No se pudo subir: ' + e.message) } finally { setBusy('') }
@@ -260,7 +284,7 @@ export default function TabPaginaWeb() {
         <div className="text-[14.5px] font-extrabold">Foto de portada (hero)</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">Imagen de fondo del banner principal de tu página.</p>
         <div className="mt-4 overflow-hidden rounded-xl border border-line" style={{ height: 180, background: '#141B2E', position: 'relative' }}>
-          {L.hero_url && <img src={L.hero_url} alt="" className="h-full w-full object-cover" />}
+          {L.hero_url && <img src={L.hero_url} alt="" className="h-full w-full object-cover" style={{ objectPosition: `center ${L.hero_pos ?? 50}%` }} />}
           <div className="absolute inset-0" style={{ background: `rgba(20,27,46,${L.hero_overlay})` }} />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
             <div className="text-[18px] font-extrabold">{empresa.eslogan || 'Tu eslogan aquí'}</div>
@@ -272,9 +296,15 @@ export default function TabPaginaWeb() {
             {busy === 'hero' ? 'Subiendo…' : L.hero_url ? 'Cambiar portada' : 'Subir portada'}
           </button>
           {L.hero_url && <button onClick={() => upd({ hero_url: '' })} className="text-[12px] font-extrabold text-red">Quitar</button>}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-[11.5px] font-bold text-muted">Oscurecer</span>
-            <input type="range" min="0" max="0.85" step="0.05" value={L.hero_overlay} onChange={(e) => upd({ hero_overlay: Number(e.target.value) })} className="accent-orange-600" />
+          <div className="ml-auto flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[11.5px] font-bold text-muted" title="Qué parte de la foto se ve cuando se recorta">Encuadre ↕</span>
+              <input type="range" min="0" max="100" step="5" value={L.hero_pos ?? 50} onChange={(e) => upd({ hero_pos: Number(e.target.value) })} className="accent-orange-600" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11.5px] font-bold text-muted">Oscurecer</span>
+              <input type="range" min="0" max="0.85" step="0.05" value={L.hero_overlay} onChange={(e) => upd({ hero_overlay: Number(e.target.value) })} className="accent-orange-600" />
+            </div>
           </div>
         </div>
         <input ref={heroRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) subirHero(f); e.target.value = '' }} />

@@ -183,6 +183,7 @@ export default function Landing({ slug }) {
   const mayus = !!L.estilo?.titulo_mayus
   const ctaTxt = (L.cta_texto || '').trim() || (D === 'bold' ? '¡Empieza hoy!' : 'Inscríbete ahora')
   const alturaHero = L.estilo?.hero_altura || 'normal'
+  const heroPos = { objectPosition: 'center ' + (L.hero_pos ?? 50) + '%' } // encuadre configurable de la portada
   const heroPadY = { compacto: 'py-16', normal: 'py-28', completo: 'flex min-h-[82vh] flex-col justify-center py-24' }[alturaHero] || 'py-28'
   // Orden guardado + secciones nuevas que aún no estén en él (al final)
   const orden = Array.isArray(L.orden) && L.orden.length
@@ -407,7 +408,7 @@ export default function Landing({ slug }) {
             </div>
             <div>
               {L.hero_url
-                ? <img src={L.hero_url} alt="" className="h-[300px] w-full rounded-3xl object-cover shadow-2xl md:h-[360px]" />
+                ? <img src={L.hero_url} alt="" style={heroPos} className="h-[300px] w-full rounded-3xl object-cover shadow-2xl md:h-[360px]" />
                 : <div className="h-[300px] w-full rounded-3xl md:h-[360px]" style={{ background: `linear-gradient(135deg, ${tema.color_primary}, transparent)` }} />}
             </div>
           </div>
@@ -440,14 +441,14 @@ export default function Landing({ slug }) {
           </div>
           {L.hero_url && (
             <div className="mx-auto max-w-[1060px] px-6 pb-8">
-              <img src={L.hero_url} alt="" className="h-[280px] w-full rounded-3xl object-cover md:h-[340px]" />
+              <img src={L.hero_url} alt="" style={heroPos} className="h-[280px] w-full rounded-3xl object-cover md:h-[340px]" />
             </div>
           )}
         </section>
       ) : D === 'bold' ? (
         /* ── IMPACTO: degradado fuerte, tipografía gigante ── */
         <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${tema.color_navy} 10%, ${tema.color_primary} 170%)` }}>
-          {L.hero_url && <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
+          {L.hero_url && <img src={L.hero_url} alt="" style={heroPos} className="absolute inset-0 h-full w-full object-cover opacity-25" />}
           <div className={`relative mx-auto max-w-[1000px] px-6 text-center ${heroPadY}`}>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full px-5 py-2 text-[12px] font-extrabold uppercase tracking-[2px] text-white"
               style={{ background: hexToRgba(tema.color_primary, 0.35) }}>
@@ -476,7 +477,7 @@ export default function Landing({ slug }) {
       ) : D === 'neon' ? (
         /* ── NEÓN: oscuro con resplandor del color primario ── */
         <section className="relative overflow-hidden" style={{ background: '#07090F' }}>
-          {L.hero_url && <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
+          {L.hero_url && <img src={L.hero_url} alt="" style={heroPos} className="absolute inset-0 h-full w-full object-cover opacity-20" />}
           <div className={`relative mx-auto max-w-[1000px] px-6 text-center ${heroPadY}`}>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[12px] font-extrabold uppercase tracking-[2px] text-white"
               style={{ borderColor: tema.color_primary, boxShadow: `0 0 14px ${tema.color_primary}66, inset 0 0 10px ${tema.color_primary}22` }}>
@@ -530,7 +531,7 @@ export default function Landing({ slug }) {
               )}
             </div>
             {L.hero_url && (
-              <img src={L.hero_url} alt="" className="mx-auto mt-10 h-[260px] w-full max-w-[820px] border-[3px] border-black object-cover"
+              <img src={L.hero_url} alt="" style={heroPos} className="mx-auto mt-10 h-[260px] w-full max-w-[820px] border-[3px] border-black object-cover"
                 style={{ boxShadow: '10px 10px 0 #000' }} />
             )}
           </div>
@@ -569,7 +570,7 @@ export default function Landing({ slug }) {
           </div>
           {L.hero_url && (
             <div className="relative mx-auto max-w-[1060px] px-6 pb-10">
-              <img src={L.hero_url} alt="" className="h-[280px] w-full rounded-3xl object-cover shadow-xl md:h-[340px]" />
+              <img src={L.hero_url} alt="" style={heroPos} className="h-[280px] w-full rounded-3xl object-cover shadow-xl md:h-[340px]" />
             </div>
           )}
         </section>
@@ -578,7 +579,7 @@ export default function Landing({ slug }) {
         <section className="relative overflow-hidden" style={{ background: tema.color_navy }}>
           {L.hero_url && (
             <>
-              <img src={L.hero_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              <img src={L.hero_url} alt="" style={heroPos} className="absolute inset-0 h-full w-full object-cover" />
               {/* overlay con el "fondo oscuro" configurado por el gym */}
               <div className="absolute inset-0" style={{ background: hexToRgba(tema.color_navy, L.hero_overlay ?? 0.55) }} />
             </>
