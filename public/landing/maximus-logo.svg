@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FCD34D"/>
+      <stop offset="1" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="#0B0B0F"/>
+  <!-- M de Maximus -->
+  <path d="M28 74 L28 30 L60 60 L92 30 L92 74" fill="none" stroke="url(#oro)" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- barra con discos -->
+  <line x1="30" y1="94" x2="90" y2="94" stroke="url(#oro)" stroke-width="6" stroke-linecap="round"/>
+  <rect x="18" y="84" width="9" height="20" rx="3.5" fill="url(#oro)"/>
+  <rect x="93" y="84" width="9" height="20" rx="3.5" fill="url(#oro)"/>
+  <rect x="29" y="88" width="6" height="12" rx="2.5" fill="url(#oro)"/>
+  <rect x="85" y="88" width="6" height="12" rx="2.5" fill="url(#oro)"/>
+</svg>
