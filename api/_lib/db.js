@@ -8,7 +8,7 @@ let pool
 export function db() {
   if (!pool) {
     pool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: (process.env.DATABASE_URL || '').trim(),
       ssl: { rejectUnauthorized: false },
       max: 1,
     })

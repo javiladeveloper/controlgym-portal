@@ -21,7 +21,7 @@ const ESTADOS = {
   cancelada: { label: 'Cancelada', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
 }
 
-const CULQI_PK = import.meta.env.VITE_CULQI_PUBLIC_KEY
+const CULQI_PK = (import.meta.env.VITE_CULQI_PUBLIC_KEY || '').trim()
 
 function cargarCulqi() {
   return new Promise((resolve, reject) => {
