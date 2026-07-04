@@ -53,6 +53,20 @@ const ICONO_RED = {
   web: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>,
 }
 
+// Link real de cada red: acepta URL completa o solo el usuario
+function urlRed(k, v) {
+  const s = String(v || '').trim()
+  if (!s) return '#'
+  if (k === 'whatsapp') return `https://wa.me/${s.replace(/\D/g, '')}`
+  if (/^https?:\/\//i.test(s)) return s
+  const u = s.replace(/^@/, '')
+  if (k === 'instagram') return `https://instagram.com/${u}`
+  if (k === 'facebook') return `https://facebook.com/${u}`
+  if (k === 'tiktok') return `https://tiktok.com/@${u}`
+  if (k === 'youtube') return `https://youtube.com/@${u}`
+  return `https://${s}`
+}
+
 // Tema efectivo de la página: colores de la marca + override propio de la
 // landing (empresa.landing.colores), si el gym personalizó su página.
 function temaEfectivo(data) {
@@ -303,6 +317,18 @@ export default function Landing({ slug }) {
                 style={{ borderRadius: rCard }} />
             ))}
           </div>
+          {/* Y el resto de redes del gym, a la mano */}
+          {Object.keys(redes).some((k) => redes[k]) && (
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
+              <span className="text-[12.5px] font-extrabold text-muted">También estamos en:</span>
+              {Object.entries(redes).filter(([, v]) => v).map(([k, v]) => (
+                <a key={k} href={urlRed(k, v)} target="_blank" rel="noreferrer" title={RED_LABEL[k] || k}
+                  className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-[12px] font-extrabold transition-colors hover:border-orange hover:text-orange">
+                  {ICONO_RED[k]} {RED_LABEL[k] || k}
+                </a>
+              ))}
+            </div>
+          )}
         </section>
       )
     },
@@ -735,7 +761,7 @@ export default function Landing({ slug }) {
             <div className="flex flex-wrap justify-center gap-2.5">
               {Object.entries(redes).filter(([, v]) => v).map(([k, v]) => (
                 <a key={k}
-                  href={k === 'whatsapp' ? `https://wa.me/${String(v).replace(/\D/g, '')}` : v.startsWith('http') ? v : `https://${v}`}
+                  href={urlRed(k, v)}
                   target="_blank" rel="noreferrer" title={RED_LABEL[k] || k}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/25 hover:text-white">
                   {ICONO_RED[k] || <span className="text-[10px] font-extrabold">{(RED_LABEL[k] || k).slice(0, 2)}</span>}
