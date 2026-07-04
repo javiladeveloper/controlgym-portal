@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD='jonimon321jojo' PGCLIENTENCODING=UTF8 psql \"host=db.zlmqdubrjzmagslcsqvb.supabase.co port=5432 dbname=postgres user=postgres sslmode=require\" -t -c \"update empresa set nombre = 'Peniel' where slug = 'peniel' returning 'renombrado: ' || nombre;\")"
+    ]
+  }
+}

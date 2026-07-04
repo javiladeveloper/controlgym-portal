@@ -186,6 +186,28 @@ export default function RegistroGym() {
                 <span className="font-semibold text-muted">— cubre a todos (disponible muy pronto; se cobra recién cuando la actives)</span>
               </span>
             </label>
+            {conApp && (
+              <ul className="ml-6 mt-2 space-y-1 rounded-[10px] bg-surface px-3.5 py-2.5 text-[11.5px] font-semibold text-muted">
+                {(categoria === 'ninos' ? [
+                  '👀 Los papás ven la asistencia de su hijo y las cámaras de la clase en vivo',
+                  '📅 Reservan y consultan el horario de actividades desde el celular',
+                  '💳 Ven el estado de su mensualidad y reciben recordatorios de pago',
+                ] : categoria === 'personal_trainer' ? [
+                  '🏋️ Tus clientes ven su rutina y su plan de alimentación en el celular',
+                  '📅 Reservan sus sesiones contigo sin escribirte por WhatsApp',
+                  '💳 Ven cuántas sesiones les quedan de su paquete',
+                ] : categoria === 'clases' ? [
+                  '📅 Tus alumnos reservan sus clases y ven los cupos en tiempo real',
+                  '💳 Consultan su membresía y cuántas clases les quedan',
+                  '🔔 Reciben avisos de cambios de horario y promociones',
+                ] : [
+                  '🏋️ Tus socios ven su rutina y dieta asignadas por tu entrenador',
+                  '📅 Reservan clases y hacen check-in desde el celular',
+                  '💳 Consultan su membresía y reciben recordatorio antes de vencer',
+                ]).map((b) => <li key={b}>{b}</li>)}
+                <li className="pt-0.5 text-[11px] text-faint">Todo con tu marca y tus colores — además apareces en el buscador de la app.</li>
+              </ul>
+            )}
           </div>
 
           <label className="mt-4 flex items-start gap-2">
