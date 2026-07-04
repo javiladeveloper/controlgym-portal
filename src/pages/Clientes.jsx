@@ -31,7 +31,9 @@ function Ficha({ socioId, onBack, onVerSocio }) {
   if (!ficha) return null
 
   const av = avatarColors({ estado: ficha.estado, destacado: false })
-  const st = estadoBadge(ficha.membresia?.[0]?.estado || ficha.estado)
+  const st = ficha.estado === 'inactivo'
+    ? { bg: '#E9EBF0', color: '#5B6472', label: 'De baja — ya no es miembro' }
+    : estadoBadge(ficha.membresia?.[0]?.estado || ficha.estado)
 
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
@@ -178,7 +180,8 @@ export default function Clientes() {
           {filtered.map((c) => {
             const mem = c.membresia?.[0]
             const av = avatarColors({ estado: c.estado })
-            const st = estadoBadge(mem?.estado || c.estado)
+            const deBaja = c.estado === 'inactivo'
+            const st = deBaja ? { bg: '#E9EBF0', color: '#5B6472', label: 'De baja' } : estadoBadge(mem?.estado || c.estado)
             const grupo = companerosDe(c)
             return (
               <div key={c.id}

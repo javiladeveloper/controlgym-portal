@@ -260,24 +260,25 @@ export default function Membresias() {
           <div className="text-[14.5px] font-extrabold">Gestión de membresías</div>
           <div className="mt-0.5 text-[12px] font-semibold text-muted">Renueva, congela o reactiva según lo que permite cada plan</div>
         </div>
-        <div className="grid min-w-[660px] grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-          <div>Socio</div><div>Plan</div><div>Estado</div><div>Vence</div><div>Acciones</div>
+        <div className="grid min-w-[700px] grid-cols-[1.8fr_1.2fr_1fr_0.9fr_264px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+          <div>Socio</div><div>Plan</div><div>Estado</div><div>Vence</div><div className="text-right">Acciones</div>
         </div>
 
         {membresias.isLoading && <LoadingState variant="table" rows={5} />}
         {membresias.error && <ErrorState error={membresias.error} onRetry={membresias.refetch} />}
         {(membresias.data || []).map((m) => {
-          const st = estadoBadge(m.estado)
+          const deBaja = m.socio?.estado === 'inactivo'
+          const st = deBaja ? { bg: T.line2, color: T.muted, label: 'De baja' } : estadoBadge(m.estado)
           const dias = m.plan?.dias_congelamiento_anio || 0
           const frozen = m.estado === 'congelada'
           const busy = freeze.isPending || renovar.isPending
           return (
             <div key={m.id}
               onClick={(e) => { if (e.target.closest('button,a') || !m.socio?.id) return; navigate(`/clientes?socio=${m.socio.id}`) }}
-              className="grid min-w-[660px] cursor-pointer grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
-              <div>
+              className="grid min-w-[700px] cursor-pointer grid-cols-[1.8fr_1.2fr_1fr_0.9fr_264px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div className={deBaja ? 'opacity-60' : ''}>
                 <div className="text-[13.5px] font-extrabold">{m.socio?.nombre}</div>
-                <div className="text-[11.5px] font-semibold text-muted">Socio N.º {m.socio?.codigo}</div>
+                <div className="text-[11.5px] font-semibold text-muted">Socio N.º {m.socio?.codigo}{deBaja ? ' · ya no es miembro' : ''}</div>
               </div>
               <div>
                 <div className="text-[13px] font-bold">{m.plan?.nombre}</div>
@@ -288,7 +289,7 @@ export default function Membresias() {
                 {m.fecha_fin ? new Date(m.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
               </div>
               {anulando === m.id ? (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
                   <span className="text-[10.5px] font-extrabold text-red">¿Anular?</span>
                   <button disabled={anular.isPending} onClick={() => onAnular(m, false)}
                     className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1.5 text-[10.5px] font-extrabold text-white disabled:opacity-50">Sí</button>
@@ -298,19 +299,23 @@ export default function Membresias() {
                     className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[10.5px] font-extrabold text-muted">No</button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  {m.socio?.telefono && m.estado !== 'cancelada' && (
+                <div className="flex items-center justify-end gap-2">
+                  {/* Slots de ancho fijo: todas las filas alinean igual aunque
+                      falte WhatsApp o el plan no permita congelar */}
+                  {m.socio?.telefono && m.estado !== 'cancelada' ? (
                     <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}
                       target="_blank" rel="noreferrer" title="Recordarle por WhatsApp que renueve"
-                      className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
                       style={{ background: '#25D36622', color: '#1DA851' }}>
                       💬
                     </a>
+                  ) : (
+                    <span className="h-8 w-8 flex-shrink-0" />
                   )}
                   <button
                     disabled={busy || m.estado === 'cancelada'}
                     onClick={() => setCobrando(m)}
-                    className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-50"
+                    className="w-[78px] cursor-pointer rounded-[9px] border border-orange bg-transparent py-2 text-center text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-50"
                   >
                     Renovar
                   </button>
@@ -318,11 +323,13 @@ export default function Membresias() {
                     <button
                       disabled={busy}
                       onClick={() => (frozen ? freeze.mutate({ membresiaId: m.id, dias: null }) : setCongelando(m))}
-                      className="cursor-pointer rounded-[9px] border border-[#C6CBD4] bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-ink transition-colors hover:border-ink hover:bg-surface disabled:opacity-50"
+                      className="w-[86px] cursor-pointer rounded-[9px] border border-[#C6CBD4] bg-transparent py-2 text-center text-[11.5px] font-extrabold text-ink transition-colors hover:border-ink hover:bg-surface disabled:opacity-50"
                     >
                       {frozen ? 'Reactivar' : 'Congelar'}
                     </button>
-                  ) : null}
+                  ) : (
+                    <span className="w-[86px] flex-shrink-0" />
+                  )}
                   {m.estado !== 'cancelada' && (
                     <button
                       disabled={busy}
