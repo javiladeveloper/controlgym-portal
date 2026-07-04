@@ -17,6 +17,11 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+  // Un producto nuevo nace con stock 0: su primer movimiento natural es una compra
+  const setProducto = (e) => {
+    const v = e.target.value
+    setF((s) => ({ ...s, producto_id: v, tipo: v === '__nuevo__' ? 'compra' : s.tipo }))
+  }
 
   const prod = productos.find((p) => p.id === f.producto_id)
   // Sugerido = precio unitario × cantidad (también para producto nuevo, usando el precio recién escrito)
@@ -60,7 +65,7 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
     <Modal title="Registrar movimiento" subtitle="Venta o compra: actualiza stock y caja" onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
         <Campo label="Producto">
-          <select value={f.producto_id} onChange={set('producto_id')} className={inputCls + ' cursor-pointer'}>
+          <select value={f.producto_id} onChange={setProducto} className={inputCls + ' cursor-pointer'}>
             {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre} (stock {p.stock})</option>)}
             <option value="__nuevo__">+ Producto nuevo…</option>
           </select>
@@ -82,7 +87,7 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <Campo label="Tipo">
+          <Campo label="Tipo" hint={f.producto_id === '__nuevo__' && f.tipo === 'venta' ? 'Un producto nuevo empieza con stock 0: primero regístrale una compra.' : undefined}>
             <select value={f.tipo} onChange={set('tipo')} className={inputCls + ' cursor-pointer'}>
               <option value="venta">Venta (sale stock, entra a caja)</option>
               <option value="compra">Compra (entra stock, sale de caja)</option>
