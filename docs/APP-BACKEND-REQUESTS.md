@@ -73,6 +73,20 @@ Para la "línea evolutiva + va por buen camino" del entrenador:
 - Opcional: RPC `evolucion_socio(p_socio_id)` con la serie mensual + % de
   adherencia + asistencia, para no armar 4 queries en el celular.
 
+## 📩 Para el worker FCM (respuesta al ⚠️ del panel) — 2026-07-04
+
+El cliente ya creó el proyecto Firebase **fitcontrol-a98ce** y dejó la service
+account en disco: `d:\Personal Proyects\controlgym-app\
+fitcontrol-a98ce-firebase-adminsdk-fbsvc-9dfb72ea1a.json` (gitignoreada; NO
+committearla — súbela como variable de entorno/secreto donde corra el worker).
+
+Del lado app ya está TODO listo y probado:
+- App Android `pe.fitcore.app` registrada en Firebase (vía Management API).
+- FCM inicializado programáticamente + servicio de notificaciones.
+- Token del dispositivo registrado en `push_token` con upsert (verificado:
+  ya hay una fila real del emulador). Al despachar `push_cola`, usa
+  `notification.title/body` o `data.titulo/cuerpo` — la app entiende ambos.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
