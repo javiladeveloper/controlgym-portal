@@ -101,15 +101,67 @@ const REPORTES = [
   },
 ]
 
+// Vista previa del reporte antes de descargar: tabla con las primeras filas.
+function PreviewModal({ reporte, filas, sedeNombre, onClose }) {
+  const cols = filas.length ? Object.keys(filas[0]) : []
+  const muestra = filas.slice(0, 50)
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="flex max-h-[86vh] w-full max-w-[900px] flex-col rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[17px] font-extrabold">{reporte.name}</div>
+            <div className="mt-0.5 text-[12.5px] font-semibold text-muted">
+              {filas.length} {filas.length === 1 ? 'fila' : 'filas'}{filas.length > 50 ? ` · mostrando las primeras 50` : ''}
+            </div>
+          </div>
+          <button onClick={onClose} className="cursor-pointer rounded-lg border-none bg-surface px-2.5 py-1 text-[13px] font-extrabold text-muted hover:text-ink">✕</button>
+        </div>
+        {filas.length === 0 ? (
+          <div className="py-12 text-center text-[13.5px] font-semibold text-muted">Sin datos para este reporte en el período.</div>
+        ) : (
+          <div className="mt-4 flex-1 overflow-auto rounded-[10px] border border-line">
+            <table className="w-full border-collapse text-[12px]">
+              <thead className="sticky top-0">
+                <tr>
+                  {cols.map((c) => (
+                    <th key={c} className="whitespace-nowrap bg-surface px-3 py-2.5 text-left text-[10.5px] font-extrabold uppercase tracking-[0.5px] text-muted">{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {muestra.map((f, i) => (
+                  <tr key={i} className="border-t border-line2 hover:bg-[#FAFBFC]">
+                    {cols.map((c) => <td key={c} className="whitespace-nowrap px-3 py-2 font-semibold">{String(f[c] ?? '')}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="mt-4 flex items-center justify-end gap-2.5">
+          <button onClick={onClose} className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted">Cerrar</button>
+          <button disabled={!filas.length}
+            onClick={() => descargarCSV(`${reporte.key}-${sedeNombre.replace(/\s+/g, '-').toLowerCase()}`, filas)}
+            className="cursor-pointer rounded-[10px] border-none bg-orange px-5 py-2.5 text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] disabled:opacity-50">
+            ⬇ Descargar Excel (CSV)
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Reportes() {
   const { sedeId, sedeNombre } = usePanel()
   const [busy, setBusy] = useState('')
+  const [preview, setPreview] = useState(null) // { reporte, filas }
 
   async function generar(r) {
     setBusy(r.key)
     try {
       const filas = await r.fetch(sedeId)
-      descargarCSV(`${r.key}-${sedeNombre.replace(/\s+/g, '-').toLowerCase()}`, filas)
+      setPreview({ reporte: r, filas })
     } catch (e) {
       alert('No se pudo generar: ' + e.message)
     } finally {

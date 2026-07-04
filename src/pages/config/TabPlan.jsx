@@ -90,13 +90,7 @@ export default function TabPlan() {
     try {
       await cargarCulqi()
       window.Culqi.publicKey = CULQI_PK
-      window.Culqi.settings({
-        title: 'FitControl',
-        currency: 'PEN',
-        amount: Math.round(Number(s.monto) * 100),
-      })
-      window.Culqi.options({ style: { buttonBackground: '#FF6B35' } })
-      // Callback global que Culqi invoca con el token de la tarjeta
+      // Callback global ANTES de configurar (Culqi lo invoca con el token o error)
       window.culqi = async function () {
         if (window.Culqi.token) {
           try {
@@ -127,7 +121,31 @@ export default function TabPlan() {
           setBusy(false)
         }
       }
+      // Solo tarjeta: Yape/billeteras del checkout requieren config extra y
+      // hacen que el modal no abra si no están habilitadas en la cuenta.
+      window.Culqi.settings({
+        title: 'FitControl',
+        currency: 'PEN',
+        amount: Math.round(Number(s.monto) * 100),
+      })
+      window.Culqi.options({
+        lang: 'auto',
+        installments: false,
+        paymentMethods: { tarjeta: true, yape: false, bancaMovil: false, agente: false, billetera: false, cuotealo: false },
+        style: { buttonBackground: '#FF6B35' },
+      })
       window.Culqi.open()
+      // Watchdog: si en 6s no apareció el modal de Culqi, liberar el botón con ayuda
+      setTimeout(() => {
+        const abierto = document.querySelector('iframe[src*="culqi"], #culqi-checkout, .culqi-checkout')
+        if (!abierto) {
+          setBusy(false)
+          setMsg({
+            tipo: 'error',
+            texto: 'El formulario de pago no se abrió. Desactiva bloqueadores de anuncios para este sitio e inténtalo de nuevo — o abre la consola (F12) y cuéntanos qué error aparece.',
+          })
+        }
+      }, 6000)
     } catch (e) {
       setMsg({ tipo: 'error', texto: e.message })
       setBusy(false)
