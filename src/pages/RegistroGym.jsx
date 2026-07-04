@@ -152,9 +152,15 @@ export default function RegistroGym() {
                 </label>
               ))}
             </div>
-            <label className="mt-2.5 flex items-center gap-2">
-              <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="h-4 w-4 accent-orange-600" />
-              <span className="text-[12.5px] font-bold">📱 App para mis socios <span className="font-semibold text-muted">(disponible muy pronto — se cobra recién cuando la actives)</span></span>
+            <label className="mt-2.5 flex items-start gap-2">
+              <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />
+              <span className="text-[12.5px] font-bold">
+                📱 App para mis socios{' '}
+                <b className="text-orange">
+                  +S/ {(PLANES.find((p) => p.slug === plan)?.conApp ?? 0) - (PLANES.find((p) => p.slug === plan)?.base ?? 0)}/mes
+                </b>{' '}
+                <span className="font-semibold text-muted">— cubre a todos tus socios (disponible muy pronto; se cobra recién cuando la actives)</span>
+              </span>
             </label>
           </div>
 

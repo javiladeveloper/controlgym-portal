@@ -206,11 +206,17 @@ export default function TabPlan() {
             )
           })}
         </div>
-        <label className="mt-3 flex items-center gap-2">
+        <label className="mt-3 flex items-start gap-2">
           <input type="checkbox" checked={!!s.con_app} disabled={activa}
             onChange={(e) => cambiarPlan(s.plan_slug, e.target.checked)}
-            className="h-4 w-4 accent-orange-600" />
-          <span className="text-[12.5px] font-bold">📱 App para mis socios <span className="font-semibold text-muted">(muy pronto — se cobra recién cuando la actives)</span></span>
+            className="mt-0.5 h-4 w-4 accent-orange-600" />
+          <span className="text-[12.5px] font-bold">
+            📱 App para mis socios{' '}
+            <b className="text-orange">
+              +S/ {(PLANES.find((p) => p.slug === s.plan_slug)?.conApp ?? 0) - (PLANES.find((p) => p.slug === s.plan_slug)?.base ?? 0)}/mes
+            </b>{' '}
+            <span className="font-semibold text-muted">— cubre a todos tus socios (muy pronto; se cobra recién cuando la actives)</span>
+          </span>
         </label>
         {activa && <p className="mt-2 text-[11.5px] font-semibold text-faint">Con el pago activo, los cambios de plan se coordinan por WhatsApp para ajustar el cobro.</p>}
       </Card>
