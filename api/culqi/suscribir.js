@@ -86,11 +86,13 @@ export default async function handler(req, res) {
       metadata: { empresa_id },
     })
 
+    // Los planes Culqi tienen el primer ciclo gratis: el primer cobro real
+    // siempre sale 1 mes después de activar la tarjeta, se active cuando se active.
     await db().query(
       `update public.suscripcion_plataforma
        set estado = 'activa', proveedor = 'culqi',
            proveedor_customer_id = $2, proveedor_card_id = $3, proveedor_suscripcion_id = $4,
-           proximo_cobro = greatest(coalesce(trial_hasta, current_date), current_date)
+           proximo_cobro = (current_date + interval '1 month')::date
        where id = $1`,
       [sus.id, customerId, card.id, sub.id],
     )

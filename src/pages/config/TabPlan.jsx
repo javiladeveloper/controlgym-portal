@@ -155,12 +155,12 @@ export default function TabPlan() {
         {s.estado === 'prueba' && (
           <div className="mt-4 rounded-[10px] border border-blue-200 bg-blue-50 px-4 py-3 text-[13px] font-semibold text-blue-800">
             Te quedan <b>{diasTrial} días de prueba gratis</b> (hasta el {new Date(s.trial_hasta).toLocaleDateString('es-PE')}).
-            Activa el pago automático cuando quieras: tu tarjeta recién se carga al terminar la prueba.
+            Y cuando actives tu tarjeta, el primer cobro recién sale <b>1 mes después</b> — actives cuando actives.
           </div>
         )}
         {s.estado === 'vencida' && (
           <div className="mt-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-bold text-red">
-            Tu prueba gratis terminó. Activa el pago para seguir usando FitControl sin interrupciones.
+            Tu prueba gratis terminó. Activa tu tarjeta hoy: tienes 1 mes más de regalo y el primer cobro sale recién en 30 días.
           </div>
         )}
         {s.estado === 'pendiente_pago' && (
