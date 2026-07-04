@@ -181,7 +181,9 @@ export default function Clientes() {
             const st = estadoBadge(mem?.estado || c.estado)
             const grupo = companerosDe(c)
             return (
-              <div key={c.id} className="grid min-w-[720px] grid-cols-[2.2fr_1.3fr_1fr_1fr_150px] items-center gap-3 border-t border-line2 px-5 py-[13px] hover:bg-[#FAFBFC]">
+              <div key={c.id}
+                onClick={(e) => { if (e.target.closest('button,a')) return; setFichaId(c.id) }}
+                className="grid min-w-[720px] cursor-pointer grid-cols-[2.2fr_1.3fr_1fr_1fr_150px] items-center gap-3 border-t border-line2 px-5 py-[13px] hover:bg-[#FAFBFC]">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Avatar ini={iniciales(c.nombre)} bg={av.bg} color={av.color} />
                   <div className="min-w-0">

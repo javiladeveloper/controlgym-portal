@@ -155,7 +155,9 @@ export default function Sponsors() {
           {data.map((s) => {
             const est = ESTADO[s.estado] || ESTADO.activo
             return (
-              <Card key={s.id} className="p-[19px]">
+              <Card key={s.id}
+                onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(s) }}
+                className="cursor-pointer p-[19px] transition hover:border-orange">
                 <div className="flex items-center gap-3">
                   {s.logo_url
                     ? <div className="flex h-11 w-[72px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-line bg-white"><img src={s.logo_url} alt="" className="h-full w-full object-contain" /></div>

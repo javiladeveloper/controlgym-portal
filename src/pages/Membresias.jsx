@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, Badge, GhostButton } from '../components/ui.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
 import PlanesModal from '../components/forms/PlanesModal.jsx'
@@ -93,6 +94,7 @@ function PlanCard({ p, moneda, popular }) {
 }
 
 export default function Membresias() {
+  const navigate = useNavigate()
   const { sedeId } = usePanel()
   const { empresa, rol } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
@@ -205,7 +207,9 @@ export default function Membresias() {
           const frozen = m.estado === 'congelada'
           const busy = freeze.isPending || renovar.isPending
           return (
-            <div key={m.id} className="grid min-w-[660px] grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+            <div key={m.id}
+              onClick={(e) => { if (e.target.closest('button,a') || !m.socio?.id) return; navigate(`/clientes?socio=${m.socio.id}`) }}
+              className="grid min-w-[660px] cursor-pointer grid-cols-[1.9fr_1.3fr_1.1fr_1fr_210px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
               <div>
                 <div className="text-[13.5px] font-extrabold">{m.socio?.nombre}</div>
                 <div className="text-[11.5px] font-semibold text-muted">Socio N.º {m.socio?.codigo}</div>

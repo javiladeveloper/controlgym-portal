@@ -479,7 +479,9 @@ export default function Personal() {
             const pagado = pagosMes.data?.get(st.id)
             const porClase = st.tipo_pago === 'por_clase'
             return (
-              <div key={st.id} className="grid min-w-[760px] grid-cols-[2fr_1fr_1fr_1.3fr_0.8fr_230px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div key={st.id}
+                onClick={(e) => { if (rol !== 'admin' || e.target.closest('button,a')) return; setEditarCol(st) }}
+                className={`grid min-w-[760px] grid-cols-[2fr_1fr_1fr_1.3fr_0.8fr_230px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC] ${rol === 'admin' ? 'cursor-pointer' : ''}`}>
                 <div className="flex items-center gap-2.5">
                   <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
                   <div className="min-w-0">

@@ -173,7 +173,9 @@ export default function Promociones() {
           {data.map((pr) => {
             const est = ESTADO[pr.estado] || ESTADO.activa
             return (
-              <Card key={pr.id} className="p-[19px] transition hover:border-orange">
+              <Card key={pr.id}
+                onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(pr) }}
+                className="cursor-pointer p-[19px] transition hover:border-orange">
                 <div className="flex items-center justify-between gap-2.5">
                   <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
                   <span className="text-[11.5px] font-bold text-faint">{pr.canal}</span>

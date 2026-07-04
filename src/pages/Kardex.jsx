@@ -259,7 +259,9 @@ export default function Kardex() {
             <div>Producto</div><div>Categoría</div><div>Stock</div><div>Precio</div><div>Estado</div><div />
           </div>
           {productos.data.map((k) => (
-            <div key={k.id} className="grid min-w-[660px] grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+            <div key={k.id}
+              onClick={(e) => { if (e.target.closest('button,a')) return; setEditarProd(k) }}
+              className="grid min-w-[660px] cursor-pointer grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
               <div className="text-[13.5px] font-extrabold">{k.nombre}</div>
               <div className="text-[12.5px] font-bold text-muted">{k.categoria}</div>
               <div className="text-[13px] font-extrabold" style={{ color: k.bajo ? T.danger : T.navy }}>{k.stock} uds.</div>
