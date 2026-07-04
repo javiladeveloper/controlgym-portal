@@ -17,7 +17,7 @@ import { planesPorCategoria } from '../config/planesComerciales.js'
 
 export default function RegistroGym() {
   const navigate = useNavigate()
-  const { usuario, empresas, reloadBootstrap } = useAuth()
+  const { usuario, empresas } = useAuth()
   const [nombre, setNombre] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTocado, setSlugTocado] = useState(false)
@@ -39,7 +39,6 @@ export default function RegistroGym() {
   }
   const [acepta, setAcepta] = useState(false)
   const [check, setCheck] = useState(null) // null | 'checking' | 'ok' | 'taken'
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   const categorias = useQuery({
@@ -68,31 +67,23 @@ export default function RegistroGym() {
     return () => { active = false; clearTimeout(t) }
   }, [slug])
 
-  async function onRegistrar(e) {
+  // Nada se crea aquí: guardamos lo elegido y el negocio (panel + página web)
+  // se crea recién al FINAL del asistente. Si el usuario abandona, no queda
+  // nada a medias ni se consume su mes gratis.
+  function onRegistrar(e) {
     e.preventDefault()
     setError('')
-    setBusy(true)
     try {
-      const { data, error } = await supabase.rpc('registrar_empresa', {
-        p_nombre: nombre.trim(),
-        p_slug: slug,
-        p_categoria_codigo: categoria,
-      })
-      if (error) throw error
-      // Guardar el plan elegido (no bloquea el registro si falla)
-      if (data?.empresa_id) {
-        await supabase.rpc('elegir_plan', { p_empresa_id: data.empresa_id, p_plan: plan, p_con_app: conApp })
-      }
-      await reloadBootstrap()
+      sessionStorage.setItem('fc.registroPendiente', JSON.stringify({
+        nombre: nombre.trim(), slug, categoria, plan, conApp,
+      }))
       navigate('/bienvenida', { replace: true })
     } catch (err) {
-      setError(err?.message || 'No se pudo registrar el gimnasio')
-    } finally {
-      setBusy(false)
+      setError(err?.message || 'No se pudo continuar')
     }
   }
 
-  const puede = nombre.trim().length >= 2 && slug.length >= 2 && check === 'ok' && acepta && !busy
+  const puede = nombre.trim().length >= 2 && slug.length >= 2 && check === 'ok' && acepta
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
@@ -224,11 +215,11 @@ export default function RegistroGym() {
 
           <button type="submit" disabled={!puede}
             className="mt-5 w-full cursor-pointer rounded-[11px] border-none bg-orange py-3 text-[14.5px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] transition-colors hover:bg-orange-600 active:scale-[0.99] disabled:opacity-50">
-            {busy ? 'Creando tu espacio…' : empresas.length > 0 ? 'Crear mi negocio' : 'Crear mi negocio — empezar mi mes gratis'}
+            Continuar — 4 preguntas y listo →
           </button>
 
           <p className="mt-3 text-center text-[11.5px] font-semibold text-faint">
-            Tendrás tu panel de gestión y tu página web {slug ? <b className="text-ink">{slug}.{ROOT_DOMAIN}</b> : 'propia'} al instante.
+            Tu panel y tu página web {slug ? <b className="text-ink">{slug}.{ROOT_DOMAIN}</b> : 'propia'} se crean al final, cuando termines los pasos.
           </p>
         </form>
 

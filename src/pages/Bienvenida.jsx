@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { FitControlLogo } from '../components/icons.jsx'
 import LoadingOverlay from '../components/LoadingOverlay.jsx'
 import { subirBranding } from '../hooks/useConfiguracion.js'
+import DireccionAutocomplete from '../components/forms/DireccionAutocomplete.jsx'
 
 // Extrae los colores dominantes del logo (canvas): se agrupan por tono,
 // se descartan grises/blancos/negros y se devuelven los 4 más presentes.
@@ -122,8 +123,18 @@ const chipCls = (on) =>
 export default function Bienvenida() {
   const navigate = useNavigate()
   const { empresa, reloadBootstrap } = useAuth()
-  const tipo = TIPO_POR_PLAN[empresa?.plan_slug] || 'fitness'
-  const esCadena = empresa?.plan_slug === 'cadena'
+
+  // Registro pendiente: el negocio NO existe todavía — se crea al final del
+  // wizard. Si no hay pendiente, es el flujo viejo sobre la empresa activa.
+  const [pendiente] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('fc.registroPendiente')) } catch { return null }
+  })
+  const [creada, setCreada] = useState(null) // { empresa_id, slug, nombre } al finalizar
+
+  const planSlug = pendiente?.plan || empresa?.plan_slug
+  const tipo = TIPO_POR_PLAN[planSlug] || 'fitness'
+  const esCadena = planSlug === 'cadena'
+  const nombreNegocio = pendiente?.nombre || empresa?.nombre
   const t = TITULOS[tipo]
 
   const [paso, setPaso] = useState(0)
@@ -141,28 +152,24 @@ export default function Bienvenida() {
   const [horario, setHorario] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [direccion, setDireccion] = useState('')
+  const [ubicacionSel, setUbicacionSel] = useState(null) // coords del autocompletado
   const [sedesExtra, setSedesExtra] = useState(esCadena ? [''] : [])
-  // P4: logo + color (del logo salen sugerencias)
+  // P4: logo + color. El archivo se guarda en memoria y se sube AL FINAL
+  // (recién ahí existe la empresa); la vista previa y los colores salen del blob local.
   const [color, setColor] = useState('#FF6B35')
-  const [logoUrl, setLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState(null)
+  const [logoUrl, setLogoUrl] = useState('') // objectURL local para previsualizar
   const [coloresLogo, setColoresLogo] = useState([])
-  const [subiendoLogo, setSubiendoLogo] = useState(false)
   const logoRef = useRef(null)
 
   async function onLogo(file) {
     if (!file) return
-    setSubiendoLogo(true)
-    try {
-      const url = await subirBranding(empresa.id, 'logo', file)
-      setLogoUrl(url)
-      const sugeridos = await extraerColoresDeLogo(URL.createObjectURL(file))
-      setColoresLogo(sugeridos)
-      if (sugeridos[0]) setColor(sugeridos[0]) // el dominante como propuesta
-    } catch (e) {
-      setError('No se pudo subir el logo: ' + e.message)
-    } finally {
-      setSubiendoLogo(false)
-    }
+    const preview = URL.createObjectURL(file)
+    setLogoFile(file)
+    setLogoUrl(preview)
+    const sugeridos = await extraerColoresDeLogo(preview)
+    setColoresLogo(sugeridos)
+    if (sugeridos[0]) setColor(sugeridos[0]) // el dominante como propuesta
   }
 
   const total = 4
@@ -171,12 +178,42 @@ export default function Bienvenida() {
     setElegidas((s) => (s.includes(n) ? s.filter((x) => x !== n) : [...s, n]))
   }
 
+  // Crea la empresa (solo en modo registro pendiente) y devuelve su id.
+  async function crearEmpresa() {
+    const { data, error } = await supabase.rpc('registrar_empresa', {
+      p_nombre: pendiente.nombre, p_slug: pendiente.slug, p_categoria_codigo: pendiente.categoria,
+    })
+    if (error) throw error
+    await supabase.rpc('elegir_plan', { p_empresa_id: data.empresa_id, p_plan: pendiente.plan, p_con_app: pendiente.conApp })
+    sessionStorage.removeItem('fc.registroPendiente')
+    setCreada({ empresa_id: data.empresa_id, slug: pendiente.slug, nombre: pendiente.nombre })
+    return data.empresa_id
+  }
+
+  // "Configurar después" en modo registro: igual hay que crear el negocio
+  // (con el seed genérico), si no el usuario se queda sin nada.
+  async function crearYSalir() {
+    setAplicando(true); setError('')
+    try {
+      await crearEmpresa()
+      await reloadBootstrap()
+      navigate('/dashboard', { replace: true })
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setAplicando(false)
+    }
+  }
+
   async function aplicar() {
     setAplicando(true); setError('')
     try {
-      // Geocodificar la dirección para el mapa (best effort)
-      let ubicacion = null
-      if (direccion.trim()) {
+      const empresaId = pendiente ? await crearEmpresa() : empresa.id
+      if (pendiente) await reloadBootstrap() // activa la empresa recién creada
+
+      // Ubicación para el mapa: la del autocompletado o geocodificar (best effort)
+      let ubicacion = ubicacionSel && ubicacionSel.direccion === direccion.trim() ? ubicacionSel : null
+      if (!ubicacion && direccion.trim()) {
         try {
           const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&q=${encodeURIComponent(direccion + ', Perú')}`)
           const j = await r.json()
@@ -201,11 +238,14 @@ export default function Bienvenida() {
         color,
       }
 
-      const { error } = await supabase.rpc('aplicar_onboarding', { p_empresa_id: empresa.id, p_config: config })
+      const { error } = await supabase.rpc('aplicar_onboarding', { p_empresa_id: empresaId, p_config: config })
       if (error) throw error
-      // Logo (si lo subió): al tema, para el panel y la página web
-      if (logoUrl) {
-        await supabase.from('empresa_tema').update({ logo_url: logoUrl }).eq('empresa_id', empresa.id)
+      // Logo (si lo eligió): recién ahora se sube, ya con empresa creada
+      if (logoFile) {
+        try {
+          const url = await subirBranding(empresaId, 'logo', logoFile)
+          await supabase.from('empresa_tema').update({ logo_url: url }).eq('empresa_id', empresaId)
+        } catch { /* el logo se puede subir después en Configuración → Marca */ }
       }
       await reloadBootstrap()
       setPaso(total) // pantalla final
@@ -216,7 +256,7 @@ export default function Bienvenida() {
     }
   }
 
-  if (!empresa) return null
+  if (!empresa && !pendiente) return null
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-canvas px-4 py-10">
@@ -225,9 +265,11 @@ export default function Bienvenida() {
         <div className="mb-6 flex items-center gap-3">
           <FitControlLogo size={44} />
           <div>
-            <div className="text-[20px] font-extrabold tracking-[-0.3px]">¡Bienvenido, {empresa.nombre}! 🎉</div>
+            <div className="text-[20px] font-extrabold tracking-[-0.3px]">¡Bienvenido, {nombreNegocio}! 🎉</div>
             <div className="text-[12px] font-semibold text-muted">
-              {paso < total ? `Cuéntanos de tu negocio y te lo dejamos armado · paso ${paso + 1} de ${total}` : 'Tu espacio está listo'}
+              {paso < total
+                ? `Cuéntanos de tu negocio y te lo dejamos armado · paso ${paso + 1} de ${total}${pendiente ? ' · nada se crea hasta el final' : ''}`
+                : 'Tu espacio está listo'}
             </div>
           </div>
         </div>
@@ -315,8 +357,10 @@ export default function Bienvenida() {
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Dirección (para el mapa de tu página)</span>
-                  <input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Av. Principal 123, Tacna"
-                    className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange" />
+                  <DireccionAutocomplete value={direccion} onChange={setDireccion}
+                    onPick={(s) => setUbicacionSel({ lat: s.lat, lng: s.lng, direccion: s.direccion })}
+                    placeholder="Av. Principal 123, Tacna"
+                    className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-orange" />
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Horario de atención</span>
@@ -350,13 +394,9 @@ export default function Bienvenida() {
 
               {/* Logo (opcional) */}
               <div className="mt-4 flex items-center gap-4">
-                <button onClick={() => logoRef.current?.click()} disabled={subiendoLogo}
-                  className="flex h-[76px] w-[76px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-surface text-[24px] transition-colors hover:border-orange disabled:opacity-50">
-                  {subiendoLogo ? (
-                    <span className="h-6 w-6 animate-spin rounded-full border-[3px] border-orange-100 border-t-orange" />
-                  ) : logoUrl ? (
-                    <img src={logoUrl} alt="logo" className="h-full w-full object-cover" />
-                  ) : '📷'}
+                <button onClick={() => logoRef.current?.click()}
+                  className="flex h-[76px] w-[76px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-surface text-[24px] transition-colors hover:border-orange">
+                  {logoUrl ? <img src={logoUrl} alt="logo" className="h-full w-full object-cover" /> : '📷'}
                 </button>
                 <div>
                   <div className="text-[13px] font-extrabold">{logoUrl ? 'Logo cargado ✓' : 'Sube tu logo (opcional)'}</div>
@@ -397,9 +437,9 @@ export default function Bienvenida() {
                 <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Así se verá</div>
                 <div className="mt-2.5 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-[10px]" style={{ background: color }}>
-                    {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-cover" /> : <span className="text-[16px] font-extrabold text-white">{empresa.nombre?.[0]}</span>}
+                    {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-cover" /> : <span className="text-[16px] font-extrabold text-white">{nombreNegocio?.[0]}</span>}
                   </div>
-                  <span className="text-[15px] font-extrabold">{empresa.nombre}</span>
+                  <span className="text-[15px] font-extrabold">{nombreNegocio}</span>
                   <button className="ml-auto rounded-[10px] border-none px-5 py-2.5 text-[13.5px] font-extrabold text-white" style={{ background: color }}>
                     Inscríbete ahora
                   </button>
@@ -412,12 +452,12 @@ export default function Bienvenida() {
           {paso === total && (
             <div className="text-center">
               <div className="text-[52px]">🎉</div>
-              <h2 className="mt-2 text-[20px] font-extrabold">¡{empresa.nombre} está listo!</h2>
+              <h2 className="mt-2 text-[20px] font-extrabold">¡{nombreNegocio} está listo!</h2>
               <p className="mx-auto mt-2 max-w-[380px] text-[13px] font-semibold text-muted">
                 Tus {t.gente}, clases, planes y página web ya están armados con tu información. Todo se puede afinar desde el panel.
               </p>
               <div className="mt-6 flex flex-col gap-2.5">
-                <a href={`/?g=${empresa.slug}`} target="_blank" rel="noreferrer"
+                <a href={`/?g=${creada?.slug || empresa?.slug}`} target="_blank" rel="noreferrer"
                   className="rounded-[11px] border border-orange bg-orange-50 py-3 text-[14px] font-extrabold text-orange hover:bg-orange-100">
                   🌐 Ver mi página web
                 </a>
@@ -434,9 +474,10 @@ export default function Bienvenida() {
           {/* Navegación */}
           {paso < total && (
             <div className="mt-6 flex items-center justify-between">
-              <button onClick={() => navigate('/dashboard', { replace: true })}
-                className="cursor-pointer border-none bg-transparent text-[12.5px] font-extrabold text-faint hover:text-muted">
-                Configurar después
+              <button onClick={() => (pendiente ? crearYSalir() : navigate('/dashboard', { replace: true }))}
+                disabled={aplicando}
+                className="cursor-pointer border-none bg-transparent text-[12.5px] font-extrabold text-faint hover:text-muted disabled:opacity-50">
+                {pendiente ? 'Saltar — crear con lo básico' : 'Configurar después'}
               </button>
               <div className="flex gap-2">
                 {paso > 0 && (
@@ -446,7 +487,7 @@ export default function Bienvenida() {
                 <button onClick={() => (paso === total - 1 ? aplicar() : setPaso(paso + 1))}
                   disabled={aplicando}
                   className="cursor-pointer rounded-[10px] border-none bg-orange px-6 py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
-                  {paso === total - 1 ? '✨ Armar mi espacio' : 'Siguiente →'}
+                  {paso === total - 1 ? (pendiente ? '✨ Crear mi negocio' : '✨ Armar mi espacio') : 'Siguiente →'}
                 </button>
               </div>
             </div>

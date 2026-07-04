@@ -4,6 +4,7 @@ import { LoadingState, ErrorState } from '../../components/states.jsx'
 import { useRef } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useSedes, useGuardarSede, subirImagen } from '../../hooks/useConfiguracion.js'
+import DireccionAutocomplete from '../../components/forms/DireccionAutocomplete.jsx'
 import { BASE_TOKENS as T } from '../../theme/tokens.js'
 
 const EMPTY = { nombre: '', direccion: '', telefono: '', aforo_max: '', activa: true, foto_url: '' }
@@ -47,7 +48,11 @@ export default function TabSedes() {
             <Field label="Nombre" value={edit.nombre} onChange={(v) => setEdit({ ...edit, nombre: v })} />
             <Field label="Teléfono" value={edit.telefono} onChange={(v) => setEdit({ ...edit, telefono: v })} />
             <div className="col-span-2">
-              <Field label="Dirección / ubicación" value={edit.direccion} onChange={(v) => setEdit({ ...edit, direccion: v })} />
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Dirección / ubicación</span>
+                <DireccionAutocomplete value={edit.direccion || ''} onChange={(v) => setEdit({ ...edit, direccion: v })}
+                  className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+              </div>
             </div>
             <Field label="Aforo máximo" type="number" value={edit.aforo_max ?? ''} onChange={(v) => setEdit({ ...edit, aforo_max: v })} />
             <label className="flex items-end gap-2 pb-1">
