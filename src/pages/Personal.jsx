@@ -17,7 +17,103 @@ const ROLES = [
 ]
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta']]
+const BANCOS = ['BCP', 'Interbank', 'BBVA', 'Scotiabank', 'BanBif', 'Banco de la Nación', 'Caja Arequipa', 'Caja Huancayo', 'Otro']
 const MES_LABEL = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+
+// Editar el vínculo laboral del colaborador: rol, forma de pago y banco.
+// (El nombre y teléfono los edita cada quien en su perfil.)
+function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
+  const qc = useQueryClient()
+  const [f, setF] = useState({
+    rol: colaborador.rol_codigo || 'recepcion',
+    tipo_pago: colaborador.tipo_pago || 'mensual',
+    sueldo: colaborador.sueldo_mensual != null ? String(colaborador.sueldo_mensual) : '',
+    tarifa: colaborador.tarifa_clase != null ? String(colaborador.tarifa_clase) : '',
+    banco: colaborador.banco || '', cuenta: colaborador.cuenta_banco || '', cci: colaborador.cci || '',
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  async function guardar(e) {
+    e?.preventDefault()
+    setBusy(true); setError('')
+    try {
+      // Resolver el id del rol elegido (roles de sistema)
+      const { data: rol, error: errRol } = await supabase
+        .from('rol').select('id').eq('codigo', f.rol).is('empresa_id', null).single()
+      if (errRol) throw errRol
+      const { error } = await supabase.from('usuario_empresa').update({
+        rol_id: rol.id,
+        tipo_pago: f.tipo_pago,
+        sueldo_mensual: f.tipo_pago === 'mensual' && f.sueldo !== '' ? Number(f.sueldo) : colaborador.sueldo_mensual,
+        tarifa_clase: f.tipo_pago === 'por_clase' && f.tarifa !== '' ? Number(f.tarifa) : colaborador.tarifa_clase,
+        banco: f.banco || null, cuenta_banco: f.cuenta.trim() || null, cci: f.cci.trim() || null,
+      }).eq('usuario_id', colaborador.id).eq('empresa_id', empresaId)
+      if (error) throw error
+      toast.ok('Colaborador actualizado')
+      qc.invalidateQueries({ queryKey: ['personal', sedeId] })
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title="Editar colaborador" subtitle={colaborador.nombre} onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col gap-3.5">
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Rol">
+            <select value={f.rol} onChange={set('rol')} className={inputCls + ' cursor-pointer'}>
+              {ROLES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+            </select>
+          </Campo>
+          <Campo label="Forma de pago">
+            <select value={f.tipo_pago} onChange={set('tipo_pago')} className={inputCls + ' cursor-pointer'}>
+              <option value="mensual">Sueldo mensual</option>
+              <option value="por_clase">Por clases / sesiones</option>
+            </select>
+          </Campo>
+        </div>
+        {f.tipo_pago === 'mensual' ? (
+          <Campo label="Sueldo mensual (S/)">
+            <input type="number" step="0.01" min="0" value={f.sueldo} onChange={set('sueldo')} className={inputCls} placeholder="1200" />
+          </Campo>
+        ) : (
+          <Campo label="Tarifa por clase (S/)">
+            <input type="number" step="0.01" min="0" value={f.tarifa} onChange={set('tarifa')} className={inputCls} placeholder="30" />
+          </Campo>
+        )}
+
+        {/* Cuenta para transferirle el pago */}
+        <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+          <div className="mb-2.5 text-[12px] font-extrabold text-muted">🏦 Cuenta para el pago</div>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Banco">
+              <select value={f.banco} onChange={set('banco')} className={inputCls + ' cursor-pointer'}>
+                <option value="">Sin registrar</option>
+                {BANCOS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </Campo>
+            <Campo label="N.º de cuenta">
+              <input value={f.cuenta} onChange={set('cuenta')} className={inputCls} placeholder="191-2345678-0-11" />
+            </Campo>
+          </div>
+          <div className="mt-2.5">
+            <Campo label="CCI (interbancario, 20 dígitos)" hint="Para transferirle desde otro banco.">
+              <input value={f.cci} onChange={set('cci')} className={inputCls} placeholder="00219100234567801156" maxLength={20} />
+            </Campo>
+          </div>
+        </div>
+
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        <BotonesModal onCancel={onClose} busy={busy} submitLabel="Guardar cambios" />
+      </form>
+    </Modal>
+  )
+}
 
 // Sueldos pagados este mes (para marcar "✓ Pagado" y evitar dobles pagos)
 function usePagosPlanilla() {
@@ -127,6 +223,24 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
             {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Campo>
+        {/* Su cuenta a la mano para hacer la transferencia */}
+        {metodo === 'transferencia' && (colaborador.banco || colaborador.cci) && (
+          <div className="rounded-[10px] border border-line bg-[#FAFBFC] px-3.5 py-2.5 text-[12.5px] font-bold">
+            🏦 {colaborador.banco} {colaborador.cuenta_banco && <span className="font-extrabold">{colaborador.cuenta_banco}</span>}
+            {colaborador.cci && (
+              <span className="ml-2 text-muted">
+                CCI {colaborador.cci}
+                <button type="button" onClick={() => { navigator.clipboard?.writeText(colaborador.cci); toast.ok('CCI copiado') }}
+                  className="ml-1.5 cursor-pointer rounded-[7px] border border-line bg-white px-2 py-0.5 text-[10.5px] font-extrabold text-orange">Copiar</button>
+              </span>
+            )}
+          </div>
+        )}
+        {metodo === 'transferencia' && !colaborador.banco && !colaborador.cci && (
+          <p className="rounded-[10px] bg-amber-50 px-3.5 py-2.5 text-[12px] font-bold text-amber-800">
+            No tiene cuenta bancaria registrada — agrégala con el botón ✏️ del colaborador.
+          </p>
+        )}
         <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
           Se registrará como gasto de <b>planilla</b> en Finanzas y contará en los reportes del mes.
         </p>
@@ -168,7 +282,10 @@ function PagarPlanillaModal({ pendientes, sedeId, empresaId, onClose }) {
         <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
           {pendientes.map((st) => (
             <div key={st.id} className="flex items-center justify-between py-1.5 text-[13px]">
-              <span className="font-extrabold">{st.nombre}</span>
+              <span>
+                <span className="font-extrabold">{st.nombre}</span>
+                {st.banco && <span className="ml-2 text-[11px] font-bold text-faint">🏦 {st.banco} {st.cuenta_banco}</span>}
+              </span>
               <span className="font-bold text-muted">S/ {Number(st.sueldo_mensual)}</span>
             </div>
           ))}
@@ -273,6 +390,7 @@ export default function Personal() {
   const qc = useQueryClient()
   const [invitarOpen, setInvitarOpen] = useState(false)
   const [pagarA, setPagarA] = useState(null) // colaborador al que se le paga el sueldo
+  const [editarCol, setEditarCol] = useState(null) // colaborador en edición
   const [planillaOpen, setPlanillaOpen] = useState(false)
   const { data, isLoading, error, refetch } = usePersonal(sedeId)
   const invitaciones = useInvitaciones()
@@ -326,6 +444,7 @@ export default function Personal() {
       {invitarOpen && <InvitarModal sedeId={sedeId} onClose={() => setInvitarOpen(false)} />}
       {pagarA && <PagarSueldoModal colaborador={pagarA} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPagarA(null)} />}
       {planillaOpen && <PagarPlanillaModal pendientes={pendientesPlanilla} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPlanillaOpen(false)} />}
+      {editarCol && <EditarColaboradorModal colaborador={editarCol} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setEditarCol(null)} />}
 
       {isLoading && <LoadingState variant="table" rows={5} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
@@ -333,18 +452,22 @@ export default function Personal() {
 
       {(data || []).length > 0 && (
         <Card className="mt-[18px] overflow-x-auto">
-          <div className="grid min-w-[660px] grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Colaborador</div><div>Teléfono</div><div>Sueldo · {MES_LABEL.split(' ')[0]}</div><div>Estado</div><div />
+          <div className="grid min-w-[760px] grid-cols-[2fr_1fr_1fr_1.3fr_0.8fr_230px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Colaborador</div><div>Rol</div><div>Teléfono</div><div>Sueldo · {MES_LABEL.split(' ')[0]}</div><div>Estado</div><div />
           </div>
           {data.map((st) => {
             const pagado = pagosMes.data?.get(st.id)
             const porClase = st.tipo_pago === 'por_clase'
             return (
-              <div key={st.id} className="grid min-w-[660px] grid-cols-[2.2fr_1.1fr_1.1fr_0.9fr_200px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div key={st.id} className="grid min-w-[760px] grid-cols-[2fr_1fr_1fr_1.3fr_0.8fr_230px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                 <div className="flex items-center gap-2.5">
                   <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
-                  <div className="text-[13.5px] font-extrabold">{st.nombre}</div>
+                  <div className="min-w-0">
+                    <div className="truncate text-[13.5px] font-extrabold">{st.nombre}</div>
+                    {st.banco && <div className="truncate text-[10.5px] font-bold text-faint">🏦 {st.banco} {st.cuenta_banco}</div>}
+                  </div>
                 </div>
+                <div><Badge bg={T.chipNavy} color={T.navy}>{st.rol_nombre || '—'}</Badge></div>
                 <div className="text-[12.5px] font-semibold text-muted">{st.telefono || '—'}</div>
                 <div className="text-[12.5px] font-bold">
                   {porClase ? (
@@ -367,6 +490,8 @@ export default function Personal() {
                         💵 {porClase ? 'Pagar clases' : 'Pagar sueldo'}
                       </button>
                     )}
+                    <button onClick={() => setEditarCol(st)} title="Editar rol, pago y banco"
+                      className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-1.5 text-[12px] text-muted hover:border-orange hover:text-orange">✏️</button>
                     <button onClick={() => toggleActivo(st)}
                       className={`cursor-pointer rounded-[9px] border px-3 py-1.5 text-[11px] font-extrabold transition-colors ${st.activo ? 'border-line bg-white text-muted hover:border-red hover:text-red' : 'border-green-300 bg-green-50 text-green-600'}`}>
                       {st.activo ? '⏸' : '▶'}

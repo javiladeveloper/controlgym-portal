@@ -15,20 +15,25 @@ export function usePersonal(sedeId) {
           .from('usuario_sede')
           .select('usuario:usuario(id, nombre, avatar_iniciales, telefono)')
           .eq('sede_id', sedeId),
-        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual, tipo_pago, tarifa_clase'),
+        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual, tipo_pago, tarifa_clase, banco, cuenta_banco, cci, rol:rol(codigo, nombre)'),
       ])
       if (error) throw error
       const memDe = new Map((membresias || []).map((m) => [m.usuario_id, m]))
       return (data || [])
         .map((r) => r.usuario)
         .filter(Boolean)
-        .map((u) => ({
-          ...u,
-          activo: memDe.get(u.id)?.activo ?? true,
-          sueldo_mensual: memDe.get(u.id)?.sueldo_mensual ?? null,
-          tipo_pago: memDe.get(u.id)?.tipo_pago ?? 'mensual',
-          tarifa_clase: memDe.get(u.id)?.tarifa_clase ?? null,
-        }))
+        .map((u) => {
+          const ue = memDe.get(u.id) || {}
+          return {
+            ...u,
+            activo: ue.activo ?? true,
+            sueldo_mensual: ue.sueldo_mensual ?? null,
+            tipo_pago: ue.tipo_pago ?? 'mensual',
+            tarifa_clase: ue.tarifa_clase ?? null,
+            banco: ue.banco ?? '', cuenta_banco: ue.cuenta_banco ?? '', cci: ue.cci ?? '',
+            rol_codigo: ue.rol?.codigo ?? null, rol_nombre: ue.rol?.nombre ?? null,
+          }
+        })
     },
   })
 }
