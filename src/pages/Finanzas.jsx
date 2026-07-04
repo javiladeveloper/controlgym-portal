@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card, StatCard } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useFinanzas } from '../hooks/useOperaciones.js'
@@ -22,8 +23,8 @@ export default function Finanzas() {
     const { error } = await supabase.rpc('anular_movimiento_financiero', { p_id: mv.id })
     setBusyAnular(false)
     setAnulando(null)
-    if (error) alert('No se pudo anular: ' + error.message)
-    else refetch()
+    if (error) toast.error('No se pudo anular: ' + error.message)
+    else { toast.ok('Movimiento anulado con contra-asiento'); refetch() }
   }
 
   const movs = data || []

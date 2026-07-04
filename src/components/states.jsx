@@ -48,10 +48,18 @@ export function ErrorState({ error, onRetry }) {
   )
 }
 
-export function EmptyState({ message = 'Nada que mostrar aún.' }) {
+// Estado vacío que ENSEÑA el siguiente paso: icono + mensaje + acción directa.
+export function EmptyState({ message = 'Nada que mostrar aún.', icon, actionLabel, onAction }) {
   return (
-    <div className="mt-6 rounded-card border border-line bg-white px-5 py-10 text-center text-[13px] font-semibold text-muted">
-      {message}
+    <div className="mt-6 rounded-card border border-line bg-white px-5 py-10 text-center">
+      {icon && <div className="text-[38px]">{icon}</div>}
+      <div className={`text-[13px] font-semibold text-muted ${icon ? 'mt-2' : ''}`}>{message}</div>
+      {actionLabel && onAction && (
+        <button onClick={onAction}
+          className="mt-4 cursor-pointer rounded-[10px] border-none bg-orange px-5 py-2.5 text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.3)] transition-colors hover:bg-orange-600">
+          {actionLabel}
+        </button>
+      )}
     </div>
   )
 }

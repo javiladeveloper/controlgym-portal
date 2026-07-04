@@ -4,6 +4,7 @@ import { Card, Avatar, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePersonal } from '../hooks/useOperaciones.js'
@@ -173,7 +174,7 @@ export default function Personal() {
   async function revocar(inv) {
     const { error } = await supabase.from('invitacion')
       .update({ estado: 'revocada' }).eq('id', inv.id)
-    if (error) alert('No se pudo revocar: ' + error.message)
+    if (error) toast.error('No se pudo revocar: ' + error.message)
     else qc.invalidateQueries({ queryKey: ['invitaciones'] })
   }
 
@@ -183,7 +184,7 @@ export default function Personal() {
       .update({ activo: !st.activo })
       .eq('usuario_id', st.id)
       .eq('empresa_id', empresa.id)
-    if (error) alert('No se pudo actualizar: ' + error.message)
+    if (error) toast.error('No se pudo actualizar: ' + error.message)
     else refetch()
   }
 

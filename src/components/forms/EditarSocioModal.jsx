@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Modal, { Campo, BotonesModal, inputCls } from '../Modal.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
+import { toast } from '../../lib/toast.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
 
 // Editar datos del socio + acciones de ciclo de vida:
@@ -56,12 +57,21 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
 
   async function eliminar() {
     setBusy(true); setError('')
+    const estadoPrevio = socio.estado
     const { error } = await supabase.from('socio')
       .update({ deleted_at: new Date().toISOString(), estado: 'inactivo' })
       .eq('id', socio.id)
     setBusy(false)
     if (error) { setError(error.message); return }
     invalidar(); onSaved?.(); onClose()
+    // Ventana de arrepentimiento: restaura al socio tal como estaba
+    toast.undo(`${socio.nombre} eliminado`, async () => {
+      await supabase.from('socio')
+        .update({ deleted_at: null, estado: estadoPrevio })
+        .eq('id', socio.id)
+      invalidar()
+      toast.ok('Socio restaurado')
+    })
   }
 
   return (

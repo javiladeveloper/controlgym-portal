@@ -11,6 +11,7 @@ import { usePanel } from '../store.jsx'
 import { useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL } from '../hooks/useCRM.js'
 import { iniciales } from '../lib/uiHelpers.js'
 import { waLink, msgLead } from '../lib/whatsapp.js'
+import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FUENTES = ['Recepción', 'Instagram', 'Facebook', 'TikTok', 'WhatsApp', 'Referido', 'Página web', 'Otro']
@@ -53,6 +54,11 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
     setBusy(false)
     if (error) { setError(error.message); return }
     invalidar(); onClose()
+    toast.undo(`Prospecto ${lead.nombre} eliminado`, async () => {
+      await supabase.from('lead').update({ deleted_at: null }).eq('id', lead.id)
+      invalidar()
+      toast.ok('Prospecto restaurado')
+    })
   }
 
   return (

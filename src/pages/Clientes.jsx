@@ -128,7 +128,12 @@ export default function Clientes() {
 
       {isLoading && <LoadingState variant="table" rows={6} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
-      {!isLoading && !error && filtered.length === 0 && <EmptyState message="No hay socios en esta sede todavía." />}
+      {!isLoading && !error && filtered.length === 0 && (
+        q
+          ? <EmptyState icon="🔍" message={`Nadie coincide con «${q}».`} />
+          : <EmptyState icon="💪" message="Aún no tienes socios en esta sede — registra al primero y arranca."
+              actionLabel="+ Registrar mi primer socio" onAction={() => setNuevoOpen(true)} />
+      )}
 
       {!isLoading && !error && filtered.length > 0 && (
         <Card className="mt-[18px] overflow-hidden">

@@ -4,6 +4,7 @@ import { Card, Avatar } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { toast } from '../lib/toast.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useSponsors } from '../hooks/useOperaciones.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
@@ -68,14 +69,14 @@ export default function Sponsors() {
 
   async function cambiarEstado(s, estado) {
     const { error } = await supabase.from('sponsor').update({ estado }).eq('id', s.id)
-    if (error) alert('No se pudo actualizar: ' + error.message)
+    if (error) toast.error('No se pudo actualizar: ' + error.message)
     else refetch()
   }
   async function eliminar(s) {
     const { error } = await supabase.from('sponsor')
       .update({ deleted_at: new Date().toISOString() }).eq('id', s.id)
     setConfirmarDel(null)
-    if (error) alert('No se pudo eliminar: ' + error.message)
+    if (error) toast.error('No se pudo eliminar: ' + error.message)
     else refetch()
   }
 

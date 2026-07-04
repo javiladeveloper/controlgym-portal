@@ -4,6 +4,7 @@ import { Card } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { toast } from '../lib/toast.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePromociones } from '../hooks/useOperaciones.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
@@ -101,14 +102,14 @@ export default function Promociones() {
 
   async function cambiarEstado(pr, estado) {
     const { error } = await supabase.from('promocion').update({ estado }).eq('id', pr.id)
-    if (error) alert('No se pudo actualizar: ' + error.message)
+    if (error) toast.error('No se pudo actualizar: ' + error.message)
     else qc.invalidateQueries({ queryKey: ['promociones'] })
   }
   async function eliminar(pr) {
     const { error } = await supabase.from('promocion')
       .update({ deleted_at: new Date().toISOString(), estado: 'finalizada' }).eq('id', pr.id)
     setConfirmarDel(null)
-    if (error) alert('No se pudo eliminar: ' + error.message)
+    if (error) toast.error('No se pudo eliminar: ' + error.message)
     else qc.invalidateQueries({ queryKey: ['promociones'] })
   }
 

@@ -4,6 +4,7 @@ import { Card, StatCard, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { toast } from '../lib/toast.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
 import { useMaquinas, useMantenimientos } from '../hooks/useOperaciones.js'
@@ -161,7 +162,7 @@ export default function Maquinas() {
   async function cambiarEstado(mq) {
     const { error } = await supabase.from('maquina')
       .update({ estado: SIGUIENTE_ESTADO[mq.estado] || 'operativa' }).eq('id', mq.id)
-    if (error) alert('No se pudo cambiar el estado: ' + error.message)
+    if (error) toast.error('No se pudo cambiar el estado: ' + error.message)
     else qc.invalidateQueries({ queryKey: ['maquinas', sedeId] })
   }
 
@@ -170,7 +171,7 @@ export default function Maquinas() {
     const { error } = await supabase.from('mantenimiento')
       .update({ estado, fecha_realizada: estado === 'completado' ? new Date().toISOString().slice(0, 10) : null })
       .eq('id', pm.id)
-    if (error) { alert('No se pudo actualizar: ' + error.message); return }
+    if (error) { toast.error('No se pudo actualizar: ' + error.message); return }
     if (estado === 'completado' && pm.maquina_id) {
       await supabase.from('maquina').update({ estado: 'operativa' }).eq('id', pm.maquina_id)
     }
@@ -211,7 +212,10 @@ export default function Maquinas() {
 
       {maquinas.isLoading && <LoadingState variant="table" rows={5} />}
       {maquinas.error && <ErrorState error={maquinas.error} onRetry={maquinas.refetch} />}
-      {!maquinas.isLoading && data.length === 0 && <EmptyState message="Sin equipos registrados en esta sede." />}
+      {!maquinas.isLoading && data.length === 0 && (
+        <EmptyState icon="🏋️" message="Sin equipos registrados — agrega tus máquinas para controlar sus mantenimientos."
+          actionLabel="+ Agregar mi primera máquina" onAction={() => setNuevaOpen(true)} />
+      )}
 
       {data.length > 0 && (
         <div className="mt-[15px] grid grid-cols-[1.7fr_1fr] items-start gap-[15px]">

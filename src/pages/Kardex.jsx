@@ -131,6 +131,11 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
     setBusy(false)
     if (error) { setError(error.message); return }
     invalidar(); onClose()
+    toast.undo(`Producto ${producto.nombre} eliminado`, async () => {
+      await supabase.from('producto').update({ deleted_at: null, activo: true }).eq('id', producto.id)
+      invalidar()
+      toast.ok('Producto restaurado')
+    })
   }
 
   return (
@@ -224,7 +229,10 @@ export default function Kardex() {
 
       {productos.isLoading && <LoadingState variant="table" rows={5} />}
       {productos.error && <ErrorState error={productos.error} onRetry={productos.refetch} />}
-      {!productos.isLoading && (productos.data || []).length === 0 && <EmptyState message="Sin productos en esta sede." />}
+      {!productos.isLoading && (productos.data || []).length === 0 && (
+        <EmptyState icon="📦" message="Tu inventario está vacío — registra tu primera compra y el stock se arma solo."
+          actionLabel="+ Registrar movimiento" onAction={() => setMovOpen(true)} />
+      )}
 
       {(productos.data || []).length > 0 && (
         <Card className="mt-[15px] overflow-hidden">
