@@ -112,7 +112,13 @@ export default function PlanesModal({ onClose }) {
                 )}
               </div>
             ))}
-            {(planes || []).length === 0 && <div className="py-6 text-center text-[13px] font-semibold text-muted">Sin planes aún.</div>}
+            {planes === null && (
+              <div className="flex items-center justify-center gap-3 py-8">
+                <div className="h-6 w-6 animate-spin rounded-full border-[3px] border-orange-100 border-t-orange" />
+                <span className="text-[13px] font-bold text-muted">Cargando planes…</span>
+              </div>
+            )}
+            {planes !== null && planes.length === 0 && <div className="py-6 text-center text-[13px] font-semibold text-muted">Sin planes aún.</div>}
           </div>
           {error && <div className="mt-3 rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
           <button onClick={() => setEdit({ ...VACIO })}

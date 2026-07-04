@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, PrimaryButton } from '../../components/ui.jsx'
+import LoadingOverlay from '../../components/LoadingOverlay.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
 import { money } from '../../lib/uiHelpers.js'
@@ -38,6 +39,7 @@ export default function TabPlan() {
   const { empresa, usuario } = useAuth()
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
+  const [fase, setFase] = useState(null) // 'abriendo' | 'activando' — para el overlay de carga
   const [msg, setMsg] = useState(null) // { tipo: 'ok'|'error', texto }
 
   const sus = useQuery({
@@ -87,12 +89,15 @@ export default function TabPlan() {
       return
     }
     setBusy(true)
+    setFase('abriendo')
     try {
       await cargarCulqi()
       window.Culqi.publicKey = CULQI_PK
       // Callback global ANTES de configurar (Culqi lo invoca con el token o error)
       window.culqi = async function () {
         if (window.Culqi.token) {
+          try { window.Culqi.close() } catch { /* el modal no siempre existe */ }
+          setFase('activando')
           try {
             const { data: sess } = await supabase.auth.getSession()
             const res = await fetch('/api/culqi/suscribir', {
@@ -115,10 +120,12 @@ export default function TabPlan() {
             setMsg({ tipo: 'error', texto: e.message })
           } finally {
             setBusy(false)
+            setFase(null)
           }
         } else if (window.Culqi.error) {
           setMsg({ tipo: 'error', texto: window.Culqi.error.user_message || 'Tarjeta rechazada' })
           setBusy(false)
+          setFase(null)
         }
       }
       // Solo tarjeta: Yape/billeteras del checkout requieren config extra y
@@ -135,20 +142,28 @@ export default function TabPlan() {
         style: { buttonBackground: '#FF6B35' },
       })
       window.Culqi.open()
-      // Watchdog: si en 6s no apareció el modal de Culqi, liberar el botón con ayuda
-      setTimeout(() => {
+      // Cuando el modal de Culqi aparece, apagamos nuestro overlay de carga.
+      // Si en 6s no apareció, liberamos el botón con un mensaje de ayuda.
+      const inicio = Date.now()
+      const vigilar = setInterval(() => {
         const abierto = document.querySelector('iframe[src*="culqi"], #culqi-checkout, .culqi-checkout')
-        if (!abierto) {
+        if (abierto) {
+          setFase(null)
+          clearInterval(vigilar)
+        } else if (Date.now() - inicio > 6000) {
+          clearInterval(vigilar)
           setBusy(false)
+          setFase(null)
           setMsg({
             tipo: 'error',
-            texto: 'El formulario de pago no se abrió. Desactiva bloqueadores de anuncios para este sitio e inténtalo de nuevo — o abre la consola (F12) y cuéntanos qué error aparece.',
+            texto: 'El formulario de pago no se abrió. Desactiva bloqueadores de anuncios para este sitio e inténtalo de nuevo.',
           })
         }
-      }, 6000)
+      }, 300)
     } catch (e) {
       setMsg({ tipo: 'error', texto: e.message })
       setBusy(false)
+      setFase(null)
     }
   }
 
@@ -159,6 +174,8 @@ export default function TabPlan() {
 
   return (
     <div className="max-w-[720px]">
+      {fase === 'abriendo' && <LoadingOverlay texto="Abriendo pago seguro…" sub="Conectando con Culqi" />}
+      {fase === 'activando' && <LoadingOverlay texto="Activando tu suscripción…" sub="Confirmando con tu tarjeta, no cierres la ventana" />}
       <Card className="p-[19px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
