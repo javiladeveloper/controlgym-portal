@@ -6,6 +6,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
 import { estadoBadge, money } from '../lib/uiHelpers.js'
+import { waLink, msgRenovacion } from '../lib/whatsapp.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function PlanCard({ p, moneda, popular }) {
@@ -122,6 +123,14 @@ export default function Membresias() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
+                  {m.socio?.telefono && m.estado !== 'cancelada' && (
+                    <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}
+                      target="_blank" rel="noreferrer" title="Recordarle por WhatsApp que renueve"
+                      className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
+                      style={{ background: '#25D36622', color: '#1DA851' }}>
+                      💬
+                    </a>
+                  )}
                   <button
                     disabled={busy || m.estado === 'cancelada'}
                     onClick={() => renovar.mutate(m.id)}

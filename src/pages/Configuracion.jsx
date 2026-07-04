@@ -24,7 +24,11 @@ const TABS = [
 
 export default function Configuracion() {
   const { empresa } = useAuth()
-  const [tab, setTab] = useState('plan')
+  // Deep-link: /configuracion?tab=marca abre esa pestaña directo
+  const [tab, setTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab')
+    return TABS.some((x) => x.key === t) ? t : 'plan'
+  })
   const Active = TABS.find((t) => t.key === tab)?.Comp
 
   return (

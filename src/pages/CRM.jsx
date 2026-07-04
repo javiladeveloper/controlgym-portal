@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
 import { useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL } from '../hooks/useCRM.js'
 import { iniciales } from '../lib/uiHelpers.js'
+import { waLink, msgLead } from '../lib/whatsapp.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FUENTES = ['Recepción', 'Instagram', 'Facebook', 'TikTok', 'WhatsApp', 'Referido', 'Página web', 'Otro']
@@ -161,6 +162,11 @@ export default function CRM() {
                         <div className="text-[13px] font-extrabold leading-[1.25]">{ld.nombre}</div>
                         <div className="text-[10.5px] font-bold text-muted">{ld.fuente}</div>
                       </div>
+                      {ld.telefono && (
+                        <a href={waLink(ld.telefono, msgLead({ lead: ld.nombre, gym: empresa?.nombre, etapa: ld.etapa }))}
+                          target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
+                          className="rounded-md px-1 text-[13px] transition-transform hover:scale-110">💬</a>
+                      )}
                       <button onClick={() => setEditar(ld)} title="Editar prospecto"
                         className="cursor-pointer rounded-md border-none bg-transparent px-1 text-[13px] text-faint hover:text-orange">✏️</button>
                     </div>

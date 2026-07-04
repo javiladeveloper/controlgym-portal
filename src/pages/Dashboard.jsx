@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Topbar from '../components/Topbar.jsx'
+import ChecklistActivacion from '../components/ChecklistActivacion.jsx'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
 import { BoxIcon, DocIcon, ClockIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
@@ -128,6 +129,9 @@ export default function Dashboard() {
   return (
     <div className="px-7 pb-9 pt-6">
       <Topbar title={`Buen día${nombre ? ', ' + nombre : ''}`} subtitle={sedeNombre} />
+
+      {/* Primeros pasos del negocio (desaparece al completarse) */}
+      <ChecklistActivacion />
 
       {/* KPIs */}
       {kpis.isLoading && <LoadingState variant="kpis" />}

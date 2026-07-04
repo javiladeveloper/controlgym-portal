@@ -1,0 +1,18 @@
+{
+  "name": "FitControl",
+  "short_name": "FitControl",
+  "description": "El sistema operativo del fitness: gestiona tu gimnasio, academia o clientes desde cualquier lugar.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F5F6F8",
+  "theme_color": "#FF6B35",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/landing/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

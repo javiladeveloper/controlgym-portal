@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TrialBanner from './components/TrialBanner.jsx'
@@ -42,11 +44,31 @@ const PAGES = [
 ]
 
 // Layout de la app privada: sidebar + contenido.
+// En móvil el sidebar es un drawer que se abre con la hamburguesa.
 function PanelLayout({ children }) {
+  const [menuAbierto, setMenuAbierto] = useState(false)
+  const { pathname } = useLocation()
+
+  // Al navegar, cerrar el drawer (el clic en un módulo ya "eligió")
+  useEffect(() => { setMenuAbierto(false) }, [pathname])
+
   return (
     <div className="flex h-screen bg-canvas text-ink">
-      <Sidebar />
+      {/* Sidebar: fijo en escritorio, drawer en móvil */}
+      <div className={`fixed inset-y-0 left-0 z-40 transition-transform duration-200 md:static md:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
+        <Sidebar />
+      </div>
+      {menuAbierto && (
+        <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setMenuAbierto(false)} />
+      )}
+
       <main className="min-w-0 flex-1 overflow-auto">
+        {/* Barra móvil con hamburguesa */}
+        <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-white px-4 py-3 md:hidden">
+          <button onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"
+            className="cursor-pointer rounded-lg border border-line bg-white px-3 py-1.5 text-[17px]">☰</button>
+          <span className="text-[15px] font-extrabold">FitControl</span>
+        </div>
         <TrialBanner />
         {children}
       </main>

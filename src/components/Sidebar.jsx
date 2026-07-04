@@ -25,7 +25,7 @@ export default function Sidebar() {
   const marca = tema?.nombre_marca || empresa?.nombre || 'FitCore'
 
   return (
-    <aside className="flex w-[230px] flex-shrink-0 flex-col overflow-y-auto bg-navy px-3.5 py-[22px]">
+    <aside className="flex h-full w-[230px] flex-shrink-0 flex-col overflow-y-auto bg-navy px-3.5 py-[22px]">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-2.5 pb-[22px]">
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-orange">
