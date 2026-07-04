@@ -13,6 +13,7 @@ import { useDashboardKpis, useAsistenciaPorHora, useCheckins, useIngresosPorDia 
 import { useClientes } from '../hooks/useClientes.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
+import { waLink, msgCumple } from '../lib/whatsapp.js'
 
 // Check-in manual desde recepción: busca al socio y registra entrada/salida.
 function CheckinModal({ sedeId, onClose }) {
@@ -118,6 +119,15 @@ export default function Dashboard() {
   const horas = useAsistenciaPorHora(sedeId)
   const checkins = useCheckins(sedeId)
   const ingresos = useIngresosPorDia(sedeId)
+  const clientes = useClientes(sedeId)
+
+  // Cumpleaños del mes 🎂 (socios activos con fecha de nacimiento)
+  const mesActual = new Date().getMonth()
+  const diaHoy = new Date().getDate()
+  const cumpleanieros = (clientes.data || [])
+    .filter((c) => c.estado === 'activo' && c.fecha_nacimiento && new Date(c.fecha_nacimiento + 'T12:00:00').getMonth() === mesActual)
+    .map((c) => ({ ...c, dia: new Date(c.fecha_nacimiento + 'T12:00:00').getDate() }))
+    .sort((a, b) => a.dia - b.dia)
 
   const nombre = usuario?.nombre?.split(' ')[0] || ''
   const moneda = empresa?.moneda || 'PEN'
@@ -207,6 +217,32 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Cumpleaños del mes: saludarlos retiene 🎂 */}
+      {cumpleanieros.length > 0 && (
+        <Card className="mt-[15px] p-[19px]">
+          <div className="text-[14.5px] font-extrabold">🎂 Cumpleaños de {new Date().toLocaleDateString('es-PE', { month: 'long' })} ({cumpleanieros.length})</div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">Un saludo por WhatsApp retiene más que cualquier promo.</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {cumpleanieros.map((c) => {
+              const esHoy = c.dia === diaHoy
+              const wa = c.telefono && waLink(c.telefono, msgCumple({ socio: c.nombre, gym: empresa?.nombre }))
+              return (
+                <div key={c.id}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${esHoy ? 'border-orange bg-orange-50' : 'border-line bg-white'}`}>
+                  <span className="text-[12.5px] font-extrabold">{esHoy ? '🎉 ' : ''}{c.nombre}</span>
+                  <span className="text-[11px] font-bold text-faint">{c.dia} {esHoy ? '· ¡HOY!' : ''}</span>
+                  {wa && (
+                    <a href={wa} target="_blank" rel="noreferrer" title="Saludarlo por WhatsApp"
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-[12px]"
+                      style={{ background: '#25D36622', color: '#1DA851' }}>💬</a>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Ingresos por día: cuánta plata entró en las últimas 2 semanas */}
       {(ingresos.data || []).some((d) => d.total > 0) && (() => {

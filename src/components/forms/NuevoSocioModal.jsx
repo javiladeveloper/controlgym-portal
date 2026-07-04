@@ -6,6 +6,7 @@ import { usePlanes } from '../../hooks/useMembresias.js'
 import { usePromociones } from '../../hooks/useOperaciones.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { money } from '../../lib/uiHelpers.js'
+import { waLink, msgRecibo } from '../../lib/whatsapp.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
@@ -119,7 +120,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             </div>
           )}
         </div>
-        <button onClick={onClose} className="mt-4 w-full cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600">Listo</button>
+        {f.telefono && Number(exito.total) > 0 && (
+          <a href={waLink(f.telefono, msgRecibo({
+              socio: f.nombre, gym: empresa?.nombre, concepto: `Inscripción${plan ? ' ' + plan.nombre : ''}`,
+              monto: exito.total, metodo: METODOS_PAGO.find(([v]) => v === f.metodo_pago)?.[1], saldo: exito.saldo,
+            }))}
+            target="_blank" rel="noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 rounded-[10px] border-none py-2.5 text-[13px] font-extrabold text-white"
+            style={{ background: '#1DA851' }}>
+            📄 Enviar recibo por WhatsApp
+          </a>
+        )}
+        <button onClick={onClose} className="mt-2.5 w-full cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600">Listo</button>
       </Modal>
     )
   }

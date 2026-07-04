@@ -5,6 +5,7 @@ import { ChevronLeft } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
+import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
 import { estadoBadge, avatarColors, iniciales } from '../lib/uiHelpers.js'
@@ -114,6 +115,7 @@ export default function Clientes() {
   // Deep-link desde la búsqueda global: /clientes?socio=<id> abre la ficha
   const [fichaId, setFichaId] = useState(() => new URLSearchParams(window.location.search).get('socio'))
   const [nuevoOpen, setNuevoOpen] = useState(false)
+  const [importarOpen, setImportarOpen] = useState(false)
   const [editar, setEditar] = useState(null) // socio en edición rápida desde la lista
   const { data: clientes, isLoading, error, refetch } = useClientes(sedeId)
   const [q, setQ] = useState('')
@@ -156,11 +158,13 @@ export default function Clientes() {
             placeholder="Buscar por nombre o N.º de socio…"
             className="w-[290px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
           />
+          <GhostButton onClick={() => setImportarOpen(true)} title="Migra tus socios desde tu Excel en minutos">⬆ Importar</GhostButton>
           <PrimaryButton onClick={() => setNuevoOpen(true)}>Nuevo socio</PrimaryButton>
         </div>
       </div>
 
       {nuevoOpen && <NuevoSocioModal sedeId={sedeId} onClose={() => setNuevoOpen(false)} />}
+      {importarOpen && <ImportarSociosModal sedeId={sedeId} onClose={() => setImportarOpen(false)} />}
       {editar && <EditarSocioModal socio={editar} onClose={() => setEditar(null)} onSaved={refetch} />}
 
       {isLoading && <LoadingState variant="table" rows={6} />}

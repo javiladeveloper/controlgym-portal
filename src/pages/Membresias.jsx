@@ -10,7 +10,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
 import { estadoBadge, money } from '../lib/uiHelpers.js'
-import { waLink, msgRenovacion } from '../lib/whatsapp.js'
+import { waLink, msgRenovacion, msgRecibo } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
@@ -30,15 +30,41 @@ function nuevaFechaFin(m) {
 
 // El gym cobra en persona (efectivo/Yape/POS) y aquí lo deja registrado:
 // renueva la membresía y el ingreso entra a caja con su método.
-function CobrarModal({ m, moneda, renovar, onClose }) {
+function CobrarModal({ m, moneda, renovar, gym, onClose }) {
   const [metodo, setMetodo] = useState('efectivo')
+  const [exito, setExito] = useState(null) // { fecha_fin } tras cobrar
   const precio = Number(m.plan?.precio || 0)
 
   function confirmar() {
     renovar.mutate({ membresiaId: m.id, metodo }, {
-      onSuccess: () => { toast.ok(`Cobro de ${money(precio, moneda)} registrado — ${m.socio?.nombre} renovado`); onClose() },
+      onSuccess: (data) => { toast.ok(`Cobro de ${money(precio, moneda)} registrado — ${m.socio?.nombre} renovado`); setExito(data) },
       onError: (e) => toast.error('No se pudo registrar: ' + e.message),
     })
+  }
+
+  if (exito) {
+    const recibo = m.socio?.telefono && waLink(m.socio.telefono, msgRecibo({
+      socio: m.socio.nombre, gym, concepto: `Renovación ${m.plan?.nombre}`,
+      monto: precio, metodo: METODOS_PAGO.find(([v]) => v === metodo)?.[1], vence: exito.fecha_fin,
+    }))
+    return (
+      <Modal title="Cobro registrado ✓" subtitle={m.socio?.nombre} onClose={onClose} width={400}>
+        <div className="rounded-[10px] bg-green-50 p-4 text-center">
+          <div className="text-[20px] font-extrabold text-green-600">{money(precio, moneda)}</div>
+          <div className="mt-1 text-[12.5px] font-bold text-muted">
+            Membresía renovada hasta el {exito.fecha_fin ? new Date(exito.fecha_fin).toLocaleDateString('es-PE') : '—'} · registrado en caja
+          </div>
+        </div>
+        {recibo && (
+          <a href={recibo} target="_blank" rel="noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 rounded-[10px] border-none py-2.5 text-[13px] font-extrabold text-white"
+            style={{ background: '#1DA851' }}>
+            📄 Enviar recibo por WhatsApp
+          </a>
+        )}
+        <button onClick={onClose} className="mt-2.5 w-full cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Listo</button>
+      </Modal>
+    )
   }
 
   return (
@@ -71,12 +97,13 @@ function CobrarModal({ m, moneda, renovar, onClose }) {
 const saldoDe = (m) => Math.max(0, (Number(m.precio_pagado) || 0) + (Number(m.matricula_pagada) || 0) - (Number(m.monto_pagado) || 0))
 
 // Registrar un abono de una membresía con saldo (pagos en partes)
-function AbonarModal({ m, moneda, sedeId, onClose }) {
+function AbonarModal({ m, moneda, sedeId, gym, onClose }) {
   const qc = useQueryClient()
   const saldo = saldoDe(m)
   const [monto, setMonto] = useState(String(saldo))
   const [metodo, setMetodo] = useState('efectivo')
   const [busy, setBusy] = useState(false)
+  const [exito, setExito] = useState(null) // { saldo } tras abonar
   const n = Number(monto) || 0
 
   async function confirmar() {
@@ -89,7 +116,32 @@ function AbonarModal({ m, moneda, sedeId, onClose }) {
       : `¡${m.socio?.nombre} canceló su membresía completa! ✓`)
     qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
     qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
-    onClose()
+    setExito(data)
+  }
+
+  if (exito) {
+    const recibo = m.socio?.telefono && waLink(m.socio.telefono, msgRecibo({
+      socio: m.socio.nombre, gym, concepto: `Abono a membresía ${m.plan?.nombre || ''}`.trim(),
+      monto: n, metodo: METODOS_PAGO.find(([v]) => v === metodo)?.[1], saldo: exito.saldo, vence: m.fecha_fin,
+    }))
+    return (
+      <Modal title="Abono registrado ✓" subtitle={m.socio?.nombre} onClose={onClose} width={400}>
+        <div className="rounded-[10px] bg-green-50 p-4 text-center">
+          <div className="text-[20px] font-extrabold text-green-600">{money(n, moneda)}</div>
+          <div className="mt-1 text-[12.5px] font-bold text-muted">
+            {Number(exito.saldo) > 0 ? `Queda debiendo ${money(exito.saldo, moneda)}` : 'Membresía cancelada completa ✓'} · registrado en caja
+          </div>
+        </div>
+        {recibo && (
+          <a href={recibo} target="_blank" rel="noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 rounded-[10px] border-none py-2.5 text-[13px] font-extrabold text-white"
+            style={{ background: '#1DA851' }}>
+            📄 Enviar recibo por WhatsApp
+          </a>
+        )}
+        <button onClick={onClose} className="mt-2.5 w-full cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Listo</button>
+      </Modal>
+    )
   }
 
   return (
@@ -234,9 +286,9 @@ export default function Membresias() {
         )}
       </div>
       {planesOpen && <PlanesModal onClose={() => setPlanesOpen(false)} />}
-      {cobrando && <CobrarModal m={cobrando} moneda={moneda} renovar={renovar} onClose={() => setCobrando(null)} />}
+      {cobrando && <CobrarModal m={cobrando} moneda={moneda} renovar={renovar} gym={empresa?.nombre} onClose={() => setCobrando(null)} />}
       {congelando && <CongelarModal m={congelando} freeze={freeze} onClose={() => setCongelando(null)} />}
-      {abonando && <AbonarModal m={abonando} moneda={moneda} sedeId={sedeId} onClose={() => setAbonando(null)} />}
+      {abonando && <AbonarModal m={abonando} moneda={moneda} sedeId={sedeId} gym={empresa?.nombre} onClose={() => setAbonando(null)} />}
 
       {/* Control de cobros: a quién hay que cobrarle */}
       {porCobrar.length > 0 && (
