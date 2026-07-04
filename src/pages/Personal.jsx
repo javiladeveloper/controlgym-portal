@@ -18,6 +18,23 @@ const ROLES = [
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta']]
 const BANCOS = ['BCP', 'Interbank', 'BBVA', 'Scotiabank', 'BanBif', 'Banco de la Nación', 'Caja Arequipa', 'Caja Huancayo', 'Otro']
+
+// Copia al portapapeles con confirmación
+function copiar(texto, etiqueta) {
+  navigator.clipboard?.writeText(texto)
+  toast.ok(`${etiqueta} copiado: ${texto}`)
+}
+
+// Chip de dato bancario que se copia con un clic
+function ChipCopiable({ etiqueta, valor }) {
+  if (!valor) return null
+  return (
+    <button type="button" onClick={() => copiar(valor, etiqueta)} title={`Copiar ${etiqueta}`}
+      className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[11.5px] font-extrabold text-ink transition-colors hover:border-orange hover:text-orange">
+      {etiqueta}: {valor} ⧉
+    </button>
+  )
+}
 const MES_LABEL = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
 
 // Editar el vínculo laboral del colaborador: rol, forma de pago y banco.
@@ -223,17 +240,14 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
             {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Campo>
-        {/* Su cuenta a la mano para hacer la transferencia */}
-        {metodo === 'transferencia' && (colaborador.banco || colaborador.cci) && (
-          <div className="rounded-[10px] border border-line bg-[#FAFBFC] px-3.5 py-2.5 text-[12.5px] font-bold">
-            🏦 {colaborador.banco} {colaborador.cuenta_banco && <span className="font-extrabold">{colaborador.cuenta_banco}</span>}
-            {colaborador.cci && (
-              <span className="ml-2 text-muted">
-                CCI {colaborador.cci}
-                <button type="button" onClick={() => { navigator.clipboard?.writeText(colaborador.cci); toast.ok('CCI copiado') }}
-                  className="ml-1.5 cursor-pointer rounded-[7px] border border-line bg-white px-2 py-0.5 text-[10.5px] font-extrabold text-orange">Copiar</button>
-              </span>
-            )}
+        {/* Su cuenta a la mano para hacer la transferencia (clic = copiar) */}
+        {metodo === 'transferencia' && (colaborador.banco || colaborador.cuenta_banco || colaborador.cci) && (
+          <div className="rounded-[10px] border border-line bg-[#FAFBFC] px-3.5 py-2.5">
+            <div className="mb-1.5 text-[11.5px] font-extrabold text-muted">🏦 {colaborador.banco || 'Banco no registrado'} — toca para copiar</div>
+            <div className="flex flex-wrap gap-1.5">
+              <ChipCopiable etiqueta="Cuenta" valor={colaborador.cuenta_banco} />
+              <ChipCopiable etiqueta="CCI" valor={colaborador.cci} />
+            </div>
           </div>
         )}
         {metodo === 'transferencia' && !colaborador.banco && !colaborador.cci && (
@@ -282,9 +296,15 @@ function PagarPlanillaModal({ pendientes, sedeId, empresaId, onClose }) {
         <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
           {pendientes.map((st) => (
             <div key={st.id} className="flex items-center justify-between py-1.5 text-[13px]">
-              <span>
+              <span className="min-w-0">
                 <span className="font-extrabold">{st.nombre}</span>
-                {st.banco && <span className="ml-2 text-[11px] font-bold text-faint">🏦 {st.banco} {st.cuenta_banco}</span>}
+                {(st.banco || st.cuenta_banco) && (
+                  <button type="button" onClick={() => copiar(st.cci || st.cuenta_banco, st.cci ? 'CCI' : 'Cuenta')}
+                    title={`Clic para copiar ${st.cci ? 'el CCI' : 'la cuenta'}`}
+                    className="ml-2 cursor-pointer border-none bg-transparent p-0 text-[11px] font-bold text-faint hover:text-orange">
+                    🏦 {st.banco} {st.cuenta_banco} ⧉
+                  </button>
+                )}
               </span>
               <span className="font-bold text-muted">S/ {Number(st.sueldo_mensual)}</span>
             </div>
@@ -464,7 +484,13 @@ export default function Personal() {
                   <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
                   <div className="min-w-0">
                     <div className="truncate text-[13.5px] font-extrabold">{st.nombre}</div>
-                    {st.banco && <div className="truncate text-[10.5px] font-bold text-faint">🏦 {st.banco} {st.cuenta_banco}</div>}
+                    {(st.banco || st.cuenta_banco) && (
+                      <button onClick={() => copiar(st.cci || st.cuenta_banco, st.cci ? 'CCI' : 'Cuenta')}
+                        title={`Clic para copiar ${st.cci ? 'el CCI' : 'la cuenta'}`}
+                        className="block max-w-full cursor-pointer truncate border-none bg-transparent p-0 text-left text-[10.5px] font-bold text-faint hover:text-orange">
+                        🏦 {st.banco} {st.cuenta_banco} ⧉
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div><Badge bg={T.chipNavy} color={T.navy}>{st.rol_nombre || '—'}</Badge></div>
