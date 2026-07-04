@@ -310,15 +310,19 @@ export default function Landing({ slug }) {
     sedes: () => sec.sedes && data.sedes?.length > 0 && (
       <section className="bg-surface py-20">
         <div className="mx-auto max-w-[1000px] px-6">
-          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">Nuestras sedes</h2>
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 className="text-center text-[26px] font-extrabold tracking-[-0.5px]">
+            {data.sedes.length === 1 ? 'Nuestra sede' : 'Nuestras sedes'}
+          </h2>
+          {/* Con pocas sedes, las tarjetas van centradas (no huérfanas a la izquierda) */}
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
             {data.sedes.map((s) => (
-              <div key={s.nombre} className="overflow-hidden border border-line bg-white" style={{ borderRadius: rCard }}>
+              <div key={s.nombre} className="w-full max-w-[340px] overflow-hidden border border-line bg-white sm:w-[320px]" style={{ borderRadius: rCard }}>
                 {s.foto_url && <div className="aspect-[16/10] overflow-hidden"><img src={s.foto_url} alt="" className="h-full w-full object-cover" /></div>}
                 <div className="p-5">
                   <div className="text-[16px] font-extrabold">{s.nombre}</div>
-                  {s.direccion && <div className="mt-1 text-[13px] font-semibold text-muted">{s.direccion}</div>}
-                  {s.telefono && <div className="mt-2 text-[13px] font-bold" style={{ color: tema.color_primary }}>{s.telefono}</div>}
+                  {(s.direccion || data.direccion) && <div className="mt-1 text-[13px] font-semibold text-muted">📍 {s.direccion || data.direccion}</div>}
+                  {(s.telefono || data.telefono) && <div className="mt-2 text-[13px] font-bold" style={{ color: tema.color_primary }}>📞 {s.telefono || data.telefono}</div>}
+                  {data.horario_atencion && <div className="mt-1 text-[12px] font-semibold text-muted">🕐 {data.horario_atencion}</div>}
                 </div>
               </div>
             ))}
