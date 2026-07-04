@@ -1,10 +1,50 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FitControlLogo } from '../components/icons.jsx'
 import LoadingOverlay from '../components/LoadingOverlay.jsx'
-import { ROOT_DOMAIN } from '../lib/tenant.js'
+import { subirBranding } from '../hooks/useConfiguracion.js'
+
+// Extrae los colores dominantes del logo (canvas): se agrupan por tono,
+// se descartan grises/blancos/negros y se devuelven los 4 más presentes.
+function extraerColoresDeLogo(url) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const N = 48
+        const canvas = document.createElement('canvas')
+        canvas.width = N; canvas.height = N
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, N, N)
+        const { data } = ctx.getImageData(0, 0, N, N)
+        const buckets = new Map()
+        for (let i = 0; i < data.length; i += 4) {
+          const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]]
+          if (a < 128) continue // transparente
+          const max = Math.max(r, g, b), min = Math.min(r, g, b)
+          if (max - min < 28) continue // gris/blanco/negro: no sirve de color de marca
+          if (max > 245 || max < 40) continue // casi blanco o casi negro
+          // agrupar en cubos de 32 por canal
+          const key = `${r >> 5}-${g >> 5}-${b >> 5}`
+          const e = buckets.get(key) || { r: 0, g: 0, b: 0, n: 0 }
+          e.r += r; e.g += g; e.b += b; e.n++
+          buckets.set(key, e)
+        }
+        const hex = (n) => Math.round(n).toString(16).padStart(2, '0')
+        const top = [...buckets.values()]
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 4)
+          .map((e) => `#${hex(e.r / e.n)}${hex(e.g / e.n)}${hex(e.b / e.n)}`)
+        resolve(top)
+      } catch { resolve([]) }
+    }
+    img.onerror = () => resolve([])
+    img.src = url
+  })
+}
 
 // Asistente de bienvenida: 3-4 preguntas según el TIPO de negocio y armamos
 // su espacio con datos reales (disciplinas, planes con sus precios, contacto,
@@ -102,8 +142,28 @@ export default function Bienvenida() {
   const [whatsapp, setWhatsapp] = useState('')
   const [direccion, setDireccion] = useState('')
   const [sedesExtra, setSedesExtra] = useState(esCadena ? [''] : [])
-  // P4: color
+  // P4: logo + color (del logo salen sugerencias)
   const [color, setColor] = useState('#FF6B35')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [coloresLogo, setColoresLogo] = useState([])
+  const [subiendoLogo, setSubiendoLogo] = useState(false)
+  const logoRef = useRef(null)
+
+  async function onLogo(file) {
+    if (!file) return
+    setSubiendoLogo(true)
+    try {
+      const url = await subirBranding(empresa.id, 'logo', file)
+      setLogoUrl(url)
+      const sugeridos = await extraerColoresDeLogo(URL.createObjectURL(file))
+      setColoresLogo(sugeridos)
+      if (sugeridos[0]) setColor(sugeridos[0]) // el dominante como propuesta
+    } catch (e) {
+      setError('No se pudo subir el logo: ' + e.message)
+    } finally {
+      setSubiendoLogo(false)
+    }
+  }
 
   const total = 4
   const toggleDisciplina = (n, fijo) => {
@@ -143,6 +203,10 @@ export default function Bienvenida() {
 
       const { error } = await supabase.rpc('aplicar_onboarding', { p_empresa_id: empresa.id, p_config: config })
       if (error) throw error
+      // Logo (si lo subió): al tema, para el panel y la página web
+      if (logoUrl) {
+        await supabase.from('empresa_tema').update({ logo_url: logoUrl }).eq('empresa_id', empresa.id)
+      }
       await reloadBootstrap()
       setPaso(total) // pantalla final
     } catch (e) {
@@ -278,12 +342,48 @@ export default function Bienvenida() {
             </>
           )}
 
-          {/* ── PASO 4: color de marca ── */}
+          {/* ── PASO 4: logo + color de marca ── */}
           {paso === 3 && (
             <>
-              <h2 className="text-[18px] font-extrabold">El color de tu marca</h2>
-              <p className="mt-1 text-[12.5px] font-semibold text-muted">Tu panel y tu página web lo usarán en botones y detalles. (El logo lo subes después en Configuración → Marca.)</p>
-              <div className="mt-4 flex flex-wrap gap-2.5">
+              <h2 className="text-[18px] font-extrabold">Tu logo y tu color</h2>
+              <p className="mt-1 text-[12.5px] font-semibold text-muted">Sube tu logo y te sugerimos los colores que salen de él — o elige el tuyo a mano.</p>
+
+              {/* Logo (opcional) */}
+              <div className="mt-4 flex items-center gap-4">
+                <button onClick={() => logoRef.current?.click()} disabled={subiendoLogo}
+                  className="flex h-[76px] w-[76px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-surface text-[24px] transition-colors hover:border-orange disabled:opacity-50">
+                  {subiendoLogo ? (
+                    <span className="h-6 w-6 animate-spin rounded-full border-[3px] border-orange-100 border-t-orange" />
+                  ) : logoUrl ? (
+                    <img src={logoUrl} alt="logo" className="h-full w-full object-cover" />
+                  ) : '📷'}
+                </button>
+                <div>
+                  <div className="text-[13px] font-extrabold">{logoUrl ? 'Logo cargado ✓' : 'Sube tu logo (opcional)'}</div>
+                  <div className="text-[11.5px] font-semibold text-muted">
+                    {logoUrl ? 'Toca la imagen para cambiarlo.' : 'PNG o JPG. Si no lo tienes a mano, lo subes después en Configuración → Marca.'}
+                  </div>
+                </div>
+                <input ref={logoRef} type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { onLogo(e.target.files?.[0]); e.target.value = '' }} />
+              </div>
+
+              {/* Sugerencias extraídas del logo */}
+              {coloresLogo.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">🎨 Colores de tu logo</div>
+                  <div className="mt-2 flex flex-wrap gap-2.5">
+                    {coloresLogo.map((c) => (
+                      <button key={c} onClick={() => setColor(c)}
+                        className={`h-11 w-11 cursor-pointer rounded-full border-4 transition-transform hover:scale-110 ${color === c ? 'border-navy' : 'border-white shadow'}`}
+                        style={{ background: c }} title={c} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">O elige uno</div>
+              <div className="mt-2 flex flex-wrap gap-2.5">
                 {COLORES_MARCA.map((c) => (
                   <button key={c} onClick={() => setColor(c)}
                     className={`h-11 w-11 cursor-pointer rounded-full border-4 transition-transform hover:scale-110 ${color === c ? 'border-navy' : 'border-white shadow'}`}
@@ -295,9 +395,15 @@ export default function Bienvenida() {
               </div>
               <div className="mt-5 rounded-[12px] border border-line p-4">
                 <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Así se verá</div>
-                <button className="mt-2 rounded-[10px] border-none px-5 py-2.5 text-[13.5px] font-extrabold text-white" style={{ background: color }}>
-                  Inscríbete ahora
-                </button>
+                <div className="mt-2.5 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-[10px]" style={{ background: color }}>
+                    {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-cover" /> : <span className="text-[16px] font-extrabold text-white">{empresa.nombre?.[0]}</span>}
+                  </div>
+                  <span className="text-[15px] font-extrabold">{empresa.nombre}</span>
+                  <button className="ml-auto rounded-[10px] border-none px-5 py-2.5 text-[13.5px] font-extrabold text-white" style={{ background: color }}>
+                    Inscríbete ahora
+                  </button>
+                </div>
               </div>
             </>
           )}
