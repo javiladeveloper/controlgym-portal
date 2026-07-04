@@ -69,13 +69,16 @@ export default function Login() {
           </p>
 
           <div className="mt-4 border-t border-line2 pt-4 text-center text-[12.5px] font-semibold text-muted">
-            ¿Tienes un gimnasio?{' '}
+            ¿Tienes un negocio fitness?{' '}
             <a href="/registro" className="font-extrabold text-orange hover:underline">Regístralo gratis</a>
           </div>
         </div>
 
         <p className="mt-4 text-center text-[12px] font-semibold text-faint">
-          FitCore · Sistema de gestión de gimnasios
+          <a href="https://fitcorecenter.com" className="hover:text-orange">← Volver a fitcorecenter.com</a>
+        </p>
+        <p className="mt-1.5 text-center text-[11.5px] font-semibold text-faint">
+          FitControl · El sistema operativo del fitness
         </p>
       </div>
     </div>
