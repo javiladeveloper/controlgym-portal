@@ -19,7 +19,9 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   const prod = productos.find((p) => p.id === f.producto_id)
-  const montoSugerido = prod ? Number(prod.precio) * (Number(f.cantidad) || 0) : 0
+  // Sugerido = precio unitario × cantidad (también para producto nuevo, usando el precio recién escrito)
+  const precioUnit = prod ? Number(prod.precio) : Number(f.np_precio) || 0
+  const montoSugerido = precioUnit * (Number(f.cantidad) || 0)
 
   async function guardar(e) {
     e?.preventDefault()
@@ -70,7 +72,9 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
                   {['Suplementos', 'Bebidas', 'Accesorios', 'Ropa', 'Otros'].map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </Campo>
-              <Campo label={`Precio de venta (${moneda})`}><input type="number" step="0.1" value={f.np_precio} onChange={set('np_precio')} className={inputCls} /></Campo>
+              <Campo label={`Precio de venta (${moneda})`} hint="A cuánto vendes 1 unidad. Queda guardado en el producto.">
+                <input type="number" step="0.1" value={f.np_precio} onChange={set('np_precio')} className={inputCls} />
+              </Campo>
               <Campo label="Alerta de stock bajo"><input type="number" value={f.np_stockmin} onChange={set('np_stockmin')} className={inputCls} /></Campo>
             </div>
           </div>
@@ -85,7 +89,11 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
           </Campo>
           <Campo label="Cantidad"><input type="number" min="1" value={f.cantidad} onChange={set('cantidad')} className={inputCls} /></Campo>
         </div>
-        <Campo label={`Monto (${moneda})`} hint={f.tipo === 'venta' && montoSugerido ? `Sugerido: ${money(montoSugerido, moneda)} (precio × cantidad). Déjalo vacío para usarlo.` : f.tipo === 'compra' ? 'Costo total de la compra.' : undefined}>
+        <Campo label={`Total de la operación (${moneda})`}
+          hint={f.tipo === 'venta'
+            ? (montoSugerido ? `Lo que cobras en esta venta. Déjalo vacío y se usa ${money(montoSugerido, moneda)} (precio × cantidad).` : 'Lo que cobras en esta venta. Déjalo vacío y se usa precio × cantidad.')
+            : f.tipo === 'compra' ? 'Lo que le pagas al proveedor por esta compra (costo total, no el precio de venta).'
+            : 'El ajuste no mueve caja; puedes dejarlo vacío.'}>
           <input type="number" step="0.1" value={f.monto} onChange={set('monto')} className={inputCls} placeholder={montoSugerido ? String(montoSugerido) : '0'} />
         </Campo>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
