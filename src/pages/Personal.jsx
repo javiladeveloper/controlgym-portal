@@ -96,6 +96,60 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
   )
 }
 
+// Pagar de una vez a todos los pendientes con sueldo fijado
+function PagarPlanillaModal({ pendientes, sedeId, empresaId, onClose }) {
+  const qc = useQueryClient()
+  const [metodo, setMetodo] = useState('transferencia')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const total = pendientes.reduce((n, st) => n + Number(st.sueldo_mensual), 0)
+
+  async function pagar() {
+    setBusy(true); setError('')
+    const { error } = await supabase.from('movimiento_financiero').insert(
+      pendientes.map((st) => ({
+        empresa_id: empresaId, sede_id: sedeId, tipo: 'gasto', categoria: 'planilla',
+        descripcion: `Sueldo ${MES_LABEL} · ${st.nombre}`,
+        monto: Number(st.sueldo_mensual), metodo_pago: metodo, ref_tipo: 'usuario', ref_id: st.id,
+      }))
+    )
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    toast.ok(`Planilla de ${MES_LABEL} registrada: ${pendientes.length} sueldos por S/ ${total}`)
+    qc.invalidateQueries({ queryKey: ['planilla-mes'] })
+    qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+    onClose()
+  }
+
+  return (
+    <Modal title={`Pagar planilla · ${MES_LABEL}`} subtitle="Registra el sueldo de todos los pendientes" onClose={onClose}>
+      <div className="flex flex-col gap-3.5">
+        <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+          {pendientes.map((st) => (
+            <div key={st.id} className="flex items-center justify-between py-1.5 text-[13px]">
+              <span className="font-extrabold">{st.nombre}</span>
+              <span className="font-bold text-muted">S/ {Number(st.sueldo_mensual)}</span>
+            </div>
+          ))}
+          <div className="mt-1.5 flex items-center justify-between border-t border-line2 pt-2 text-[13.5px] font-extrabold">
+            <span>Total</span><span className="text-orange">S/ {total}</span>
+          </div>
+        </div>
+        <Campo label="Método de pago">
+          <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={inputCls + ' cursor-pointer'}>
+            {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Campo>
+        <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
+          Se registran {pendientes.length} gastos de <b>planilla</b> en Finanzas. Si alguien no cobra este mes, ciérralo y págale individual con su botón.
+        </p>
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        <BotonesModal onCancel={onClose} busy={busy} submitLabel={`Registrar S/ ${total}`} onSubmit={pagar} />
+      </div>
+    </Modal>
+  )
+}
+
 function useInvitaciones() {
   return useQuery({
     queryKey: ['invitaciones'],
@@ -178,9 +232,15 @@ export default function Personal() {
   const qc = useQueryClient()
   const [invitarOpen, setInvitarOpen] = useState(false)
   const [pagarA, setPagarA] = useState(null) // colaborador al que se le paga el sueldo
+  const [planillaOpen, setPlanillaOpen] = useState(false)
   const { data, isLoading, error, refetch } = usePersonal(sedeId)
   const invitaciones = useInvitaciones()
   const pagosMes = usePagosPlanilla()
+
+  // Activos con sueldo fijado que aún no cobraron este mes
+  const pendientesPlanilla = (data || []).filter(
+    (st) => st.activo && Number(st.sueldo_mensual) > 0 && pagosMes.data && !pagosMes.data.has(st.id)
+  )
 
   // Revocar una invitación pendiente (esa persona ya no podrá vincularse)
   async function revocar(inv) {
@@ -208,13 +268,22 @@ export default function Personal() {
           <p className="mt-0.5 text-[13px] font-semibold text-muted">{sedeNombre} · {data?.length ?? 0} colaboradores</p>
         </div>
         {rol === 'admin' && (
-          <button onClick={() => setInvitarOpen(true)}
-            className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Agregar colaborador</button>
+          <div className="flex items-center gap-2">
+            {pendientesPlanilla.length > 0 && (
+              <button onClick={() => setPlanillaOpen(true)}
+                className="cursor-pointer rounded-[10px] border border-green-300 bg-green-50 px-[16px] py-[11px] text-[13px] font-extrabold text-green-700 transition-colors hover:bg-green-100">
+                💵 Pagar planilla del mes ({pendientesPlanilla.length})
+              </button>
+            )}
+            <button onClick={() => setInvitarOpen(true)}
+              className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Agregar colaborador</button>
+          </div>
         )}
       </div>
 
       {invitarOpen && <InvitarModal sedeId={sedeId} onClose={() => setInvitarOpen(false)} />}
       {pagarA && <PagarSueldoModal colaborador={pagarA} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPagarA(null)} />}
+      {planillaOpen && <PagarPlanillaModal pendientes={pendientesPlanilla} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPlanillaOpen(false)} />}
 
       {isLoading && <LoadingState variant="table" rows={5} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
