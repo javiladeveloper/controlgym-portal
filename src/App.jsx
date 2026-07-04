@@ -20,6 +20,7 @@ import Configuracion from './pages/Configuracion.jsx'
 import Plataforma from './pages/Plataforma.jsx'
 import SinEmpresa from './pages/SinEmpresa.jsx'
 import RegistroGym from './pages/RegistroGym.jsx'
+import Bienvenida from './pages/Bienvenida.jsx'
 
 // slug -> componente. El guard por módulo vive en ProtectedRoute (moduleSlug).
 const PAGES = [
@@ -66,6 +67,16 @@ export default function App() {
         element={
           <ProtectedRoute allowNoEmpresa>
             <RegistroGym />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Asistente de bienvenida (post-registro): pantalla completa, sin sidebar */}
+      <Route
+        path="/bienvenida"
+        element={
+          <ProtectedRoute>
+            <Bienvenida />
           </ProtectedRoute>
         }
       />

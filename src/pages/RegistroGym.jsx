@@ -84,7 +84,7 @@ export default function RegistroGym() {
         await supabase.rpc('elegir_plan', { p_empresa_id: data.empresa_id, p_plan: plan, p_con_app: conApp })
       }
       await reloadBootstrap()
-      navigate('/dashboard', { replace: true })
+      navigate('/bienvenida', { replace: true })
     } catch (err) {
       setError(err?.message || 'No se pudo registrar el gimnasio')
     } finally {
