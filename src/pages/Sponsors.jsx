@@ -10,9 +10,14 @@ import { useSponsors } from '../hooks/useOperaciones.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
-function NuevoConvenioModal({ empresaId, onClose }) {
+// Crea un convenio o edita el existente si llega `sponsor`
+function ConvenioModal({ empresaId, sponsor, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ nombre: '', descripcion: '', tipo: 'auspicio', aporte_detalle: '', fecha_vencimiento: '' })
+  const [f, setF] = useState({
+    nombre: sponsor?.nombre || '', descripcion: sponsor?.descripcion || '',
+    tipo: sponsor?.tipo || 'auspicio', aporte_detalle: sponsor?.aporte_detalle || '',
+    fecha_vencimiento: sponsor?.fecha_vencimiento || '',
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
@@ -20,19 +25,23 @@ function NuevoConvenioModal({ empresaId, onClose }) {
   async function guardar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
-    const { error } = await supabase.from('sponsor').insert({
-      empresa_id: empresaId, nombre: f.nombre.trim(), descripcion: f.descripcion || null,
+    const valores = {
+      nombre: f.nombre.trim(), descripcion: f.descripcion || null,
       tipo: f.tipo, aporte_detalle: f.aporte_detalle || null,
-      fecha_vencimiento: f.fecha_vencimiento || null, estado: 'activo',
-    })
+      fecha_vencimiento: f.fecha_vencimiento || null,
+    }
+    const { error } = sponsor
+      ? await supabase.from('sponsor').update(valores).eq('id', sponsor.id)
+      : await supabase.from('sponsor').insert({ empresa_id: empresaId, estado: 'activo', ...valores })
     setBusy(false)
     if (error) { setError(error.message); return }
     qc.invalidateQueries({ queryKey: ['sponsors'] })
+    if (sponsor) toast.ok('Convenio actualizado')
     onClose()
   }
 
   return (
-    <Modal title="Nuevo convenio" onClose={onClose}>
+    <Modal title={sponsor ? 'Editar convenio' : 'Nuevo convenio'} subtitle={sponsor?.nombre} onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
         <Campo label="Nombre de la empresa/sponsor *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} /></Campo>
         <Campo label="Descripción"><input value={f.descripcion} onChange={set('descripcion')} className={inputCls} placeholder="Auspicio · exhibición en recepción" /></Campo>
@@ -48,7 +57,7 @@ function NuevoConvenioModal({ empresaId, onClose }) {
         </div>
         <Campo label="Aporte / beneficio"><input value={f.aporte_detalle} onChange={set('aporte_detalle')} className={inputCls} placeholder="S/ 800/mes · 15% para socios…" /></Campo>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel="Crear convenio" />
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={sponsor ? 'Guardar cambios' : 'Crear convenio'} />
       </form>
     </Modal>
   )
@@ -64,6 +73,7 @@ export default function Sponsors() {
   const { empresa } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
   const [nuevoOpen, setNuevoOpen] = useState(false)
+  const [editar, setEditar] = useState(null) // convenio en edición
   const [confirmarDel, setConfirmarDel] = useState(null)
   const { data, isLoading, error, refetch } = useSponsors()
 
@@ -91,7 +101,8 @@ export default function Sponsors() {
           className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo convenio</button>
       </div>
 
-      {nuevoOpen && <NuevoConvenioModal empresaId={empresa?.id} onClose={() => setNuevoOpen(false)} />}
+      {nuevoOpen && <ConvenioModal empresaId={empresa?.id} onClose={() => setNuevoOpen(false)} />}
+      {editar && <ConvenioModal empresaId={empresa?.id} sponsor={editar} onClose={() => setEditar(null)} />}
 
       {isLoading && <LoadingState variant="cards" rows={4} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
@@ -131,6 +142,8 @@ export default function Sponsors() {
                         <button onClick={() => cambiarEstado(s, 'activo')}
                           className="cursor-pointer rounded-[8px] border border-green-300 bg-green-50 px-2.5 py-1 text-[10.5px] font-extrabold text-green-600">▶ Activar</button>
                       )}
+                      <button onClick={() => setEditar(s)} title="Editar convenio"
+                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[12px] text-faint hover:text-orange">✏️</button>
                       <button onClick={() => setConfirmarDel(s.id)}
                         className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[11.5px] font-extrabold text-faint hover:text-red">🗑</button>
                     </div>

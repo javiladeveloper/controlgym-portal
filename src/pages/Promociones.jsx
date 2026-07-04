@@ -9,9 +9,17 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { usePromociones } from '../hooks/useOperaciones.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
-function NuevaCampanaModal({ empresaId, onClose }) {
+// Crea una campaña o edita la existente si llega `promocion`
+function CampanaModal({ empresaId, promocion, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ nombre: '', descripcion: '', canal: 'Recepción y redes', tipo: '2x1', valor: '', duracion_meses: '', fecha_inicio: '', fecha_fin: '', estado: 'activa' })
+  const [f, setF] = useState({
+    nombre: promocion?.nombre || '', descripcion: promocion?.descripcion || '',
+    canal: promocion?.canal || 'Recepción y redes', tipo: promocion?.tipo || '2x1',
+    valor: promocion?.valor != null ? String(promocion.valor) : '',
+    duracion_meses: promocion?.duracion_meses != null ? String(promocion.duracion_meses) : '',
+    fecha_inicio: promocion?.fecha_inicio || '', fecha_fin: promocion?.fecha_fin || '',
+    estado: promocion?.estado || 'activa',
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
@@ -23,21 +31,25 @@ function NuevaCampanaModal({ empresaId, onClose }) {
   async function guardar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
-    const { error } = await supabase.from('promocion').insert({
-      empresa_id: empresaId, nombre: f.nombre.trim(), descripcion: f.descripcion || null,
+    const valores = {
+      nombre: f.nombre.trim(), descripcion: f.descripcion || null,
       canal: f.canal, tipo: f.tipo, estado: f.estado,
       valor: pideValor && f.valor !== '' ? Number(f.valor) : null,
       duracion_meses: f.tipo === 'precio_especial' && f.duracion_meses !== '' ? Number(f.duracion_meses) : null,
       fecha_inicio: f.fecha_inicio || null, fecha_fin: f.fecha_fin || null,
-    })
+    }
+    const { error } = promocion
+      ? await supabase.from('promocion').update(valores).eq('id', promocion.id)
+      : await supabase.from('promocion').insert({ empresa_id: empresaId, ...valores })
     setBusy(false)
     if (error) { setError(error.message); return }
     qc.invalidateQueries({ queryKey: ['promociones'] })
+    if (promocion) toast.ok('Campaña actualizada')
     onClose()
   }
 
   return (
-    <Modal title="Nueva campaña" subtitle="Si está activa, aparece también en tu página web" onClose={onClose}>
+    <Modal title={promocion ? 'Editar campaña' : 'Nueva campaña'} subtitle="Si está activa, aparece también en tu página web" onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
         <Campo label="Nombre *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="2×1 en matrícula" /></Campo>
         <Campo label="Descripción"><textarea rows={2} value={f.descripcion} onChange={set('descripcion')} className={inputCls + ' resize-none'} /></Campo>
@@ -80,7 +92,7 @@ function NuevaCampanaModal({ empresaId, onClose }) {
           </Campo>
         </div>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel="Crear campaña" />
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={promocion ? 'Guardar cambios' : 'Crear campaña'} />
       </form>
     </Modal>
   )
@@ -97,6 +109,7 @@ export default function Promociones() {
   const { empresa } = useAuth()
   const qc = useQueryClient()
   const [nuevaOpen, setNuevaOpen] = useState(false)
+  const [editar, setEditar] = useState(null) // campaña en edición
   const [confirmarDel, setConfirmarDel] = useState(null)
   const { data, isLoading, error, refetch } = usePromociones()
 
@@ -124,7 +137,8 @@ export default function Promociones() {
           className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva campaña</button>
       </div>
 
-      {nuevaOpen && <NuevaCampanaModal empresaId={empresa?.id} onClose={() => setNuevaOpen(false)} />}
+      {nuevaOpen && <CampanaModal empresaId={empresa?.id} onClose={() => setNuevaOpen(false)} />}
+      {editar && <CampanaModal empresaId={empresa?.id} promocion={editar} onClose={() => setEditar(null)} />}
 
       {isLoading && <LoadingState variant="cards" rows={4} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
@@ -162,6 +176,8 @@ export default function Promociones() {
                         <button onClick={() => cambiarEstado(pr, 'activa')} title="Reactivar campaña"
                           className="cursor-pointer rounded-[8px] border border-green-300 bg-green-50 px-2.5 py-1 text-[10.5px] font-extrabold text-green-600">▶ Activar</button>
                       ) : null}
+                      <button onClick={() => setEditar(pr)} title="Editar campaña"
+                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[12px] text-faint hover:text-orange">✏️</button>
                       <button onClick={() => setConfirmarDel(pr.id)} title="Eliminar campaña"
                         className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[11.5px] font-extrabold text-faint hover:text-red">🗑</button>
                     </div>
