@@ -260,6 +260,21 @@ export default function Bienvenida() {
     }
   }
 
+  // Abre la página pública a prueba de demo: si el subdominio aún no tiene
+  // SSL (tarda ~1 min la primera vez), abre por /?g= que funciona al instante.
+  async function abrirPagina() {
+    const slug = creada?.slug || empresa?.slug
+    const url = urlPublica(slug)
+    const respaldo = `${window.location.origin}/?g=${slug}`
+    if (url === respaldo) { window.open(url, '_blank'); return }
+    try {
+      await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(3000) })
+      window.open(url, '_blank')
+    } catch {
+      window.open(respaldo, '_blank')
+    }
+  }
+
   if (!empresa && !pendiente) return null
 
   return (
@@ -460,12 +475,12 @@ export default function Bienvenida() {
                 Tus {t.gente}, clases, planes y página web ya están armados con tu información. Todo se puede afinar desde el panel.
               </p>
               <div className="mt-6 flex flex-col gap-2.5">
-                <a href={urlPublica(creada?.slug || empresa?.slug)} target="_blank" rel="noreferrer"
-                  className="rounded-[11px] border border-orange bg-orange-50 py-3 text-[14px] font-extrabold text-orange hover:bg-orange-100">
+                <button onClick={abrirPagina}
+                  className="cursor-pointer rounded-[11px] border border-orange bg-orange-50 py-3 text-[14px] font-extrabold text-orange hover:bg-orange-100">
                   🌐 Ver mi página web
-                </a>
+                </button>
                 <p className="-mt-1 text-[11px] font-semibold text-faint">
-                  Tu dirección se está activando: la primera vez puede tardar ~1 minuto en abrir. Si sale un error, espera un momento y recarga.
+                  Tu dirección {(creada?.slug || empresa?.slug) && <b>{(creada?.slug || empresa?.slug)}.fitcorecenter.com</b>} queda activa con SSL en ~1 minuto.
                 </p>
                 <button onClick={() => navigate('/dashboard', { replace: true })}
                   className="cursor-pointer rounded-[11px] border-none bg-orange py-3 text-[14.5px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] hover:bg-orange-600">

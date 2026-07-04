@@ -77,6 +77,9 @@ export default function RegistroGym() {
       sessionStorage.setItem('fc.registroPendiente', JSON.stringify({
         nombre: nombre.trim(), slug, categoria, plan, conApp,
       }))
+      // Pre-registra el subdominio en Vercel YA: mientras responde el wizard
+      // se emite el SSL y "Ver mi página" abre a la primera (fire-and-forget)
+      supabase.rpc('preparar_subdominio', { p_slug: slug }).then(() => {})
       navigate('/bienvenida', { replace: true })
     } catch (err) {
       setError(err?.message || 'No se pudo continuar')
