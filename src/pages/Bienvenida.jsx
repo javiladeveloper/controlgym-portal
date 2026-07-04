@@ -304,7 +304,9 @@ export default function Bienvenida() {
       {aplicando && <LoadingOverlay texto="Armando tu espacio…" sub="Creando tus clases, planes y página web" />}
       <div className="w-full max-w-[560px]">
         <div className="mb-6 flex items-center gap-3">
-          <FitControlLogo size={44} />
+          <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com" className="transition-opacity hover:opacity-75">
+            <FitControlLogo size={44} />
+          </a>
           <div>
             <div className="text-[20px] font-extrabold tracking-[-0.3px]">¡Bienvenido, {nombreNegocio}! 🎉</div>
             <div className="text-[12px] font-semibold text-muted">

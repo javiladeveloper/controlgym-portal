@@ -66,8 +66,12 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    // scope local: limpia la sesión del navegador aunque el token ya haya
+    // vencido en el servidor (el signOut global lanza 403 y dejaba todo a medias)
+    try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* ya no había sesión */ }
     setBootstrap(null)
+    // Redirección dura al login: garantiza salir de cualquier pantalla
+    window.location.href = '/login'
   }, [])
 
   // Cambia la empresa activa (multi-empresa) y refresca token + bootstrap.

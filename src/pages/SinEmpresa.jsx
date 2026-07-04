@@ -9,9 +9,10 @@ export default function SinEmpresa() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-[420px] rounded-card border border-line bg-white p-8 text-center">
-        <div className="mx-auto mb-4 flex justify-center">
+        <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com"
+          className="mx-auto mb-4 flex justify-center transition-opacity hover:opacity-75">
           <FitControlLogo size={48} />
-        </div>
+        </a>
         <h1 className="text-[18px] font-extrabold">Sin gimnasio vinculado</h1>
         <p className="mt-2 text-[13px] font-semibold text-muted">
           {usuario?.nombre ? `Hola ${usuario.nombre}. ` : ''}
