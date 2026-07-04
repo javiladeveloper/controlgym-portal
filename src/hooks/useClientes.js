@@ -9,7 +9,7 @@ export function useClientes(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('socio')
-        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_fin,plan(nombre))')
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,plan(nombre),promocion:promocion(id,nombre,tipo))')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('nombre')
@@ -27,7 +27,7 @@ export function useSocioFicha(socioId) {
     queryFn: async () => {
       const { data: socio, error } = await supabase
         .from('socio')
-        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_fin,plan(nombre))')
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,plan(nombre),promocion:promocion(id,nombre,tipo))')
         .eq('id', socioId)
         .single()
       if (error) throw error
@@ -39,7 +39,21 @@ export function useSocioFicha(socioId) {
         .order('ocurrido_en', { ascending: false })
         .limit(5)
 
-      return { ...socio, visitas: visitas || [] }
+      // Si entró con una promo de grupo (2x1 / NxM), traer con quiénes
+      let grupoPromo = []
+      const mem = socio.membresia?.[0]
+      if (mem?.promocion && ['2x1', 'grupal'].includes(mem.promocion.tipo)) {
+        const { data: grupo } = await supabase
+          .from('membresia')
+          .select('socio:socio!membresia_socio_id_fkey(id, nombre)')
+          .eq('promocion_id', mem.promocion.id)
+          .eq('fecha_inicio', mem.fecha_inicio)
+          .neq('socio_id', socioId)
+          .is('deleted_at', null)
+        grupoPromo = (grupo || []).map((g) => g.socio).filter(Boolean)
+      }
+
+      return { ...socio, visitas: visitas || [], grupoPromo }
     },
   })
 }
