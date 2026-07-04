@@ -10,11 +10,22 @@ import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso } from '../ho
 import { claseDot, DAY_NAMES } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
-function NuevaClaseModal({ sedeId, empresaId, tipos, onClose }) {
+// Alta y edición de clase (mismo formulario). Editando además permite eliminarla.
+function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ nombre: '', tipo_id: tipos[0]?.id || '', tipo_nuevo: '', dia: '1', hora: '19:00', duracion: 60, cupo: 20 })
+  const editando = !!clase
+  const [f, setF] = useState({
+    nombre: clase?.nombre || '',
+    tipo_id: clase?.tipo_clase_id || tipos[0]?.id || '',
+    tipo_nuevo: '',
+    dia: String(clase?.dia_semana || '1'),
+    hora: clase?.hora?.slice(0, 5) || '19:00',
+    duracion: clase?.duracion_min || 60,
+    cupo: clase?.cupo_max || 20,
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmarDel, setConfirmarDel] = useState(false)
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   async function guardar(e) {
@@ -30,11 +41,14 @@ function NuevaClaseModal({ sedeId, empresaId, tipos, onClose }) {
         tipoId = data.id
         qc.invalidateQueries({ queryKey: ['plan-acceso'] })
       }
-      const { error } = await supabase.from('clase').insert({
-        empresa_id: empresaId, sede_id: sedeId, tipo_clase_id: tipoId === '__nuevo__' ? null : tipoId,
+      const payload = {
+        tipo_clase_id: tipoId === '__nuevo__' ? null : tipoId,
         nombre: f.nombre.trim(), dia_semana: Number(f.dia), hora: f.hora,
-        duracion_min: Number(f.duracion) || 60, cupo_max: Number(f.cupo) || 20, activa: true,
-      })
+        duracion_min: Number(f.duracion) || 60, cupo_max: Number(f.cupo) || 20,
+      }
+      const { error } = editando
+        ? await supabase.from('clase').update(payload).eq('id', clase.id)
+        : await supabase.from('clase').insert({ ...payload, empresa_id: empresaId, sede_id: sedeId, activa: true })
       if (error) throw error
       qc.invalidateQueries({ queryKey: ['clases', sedeId] })
       onClose()
@@ -45,8 +59,23 @@ function NuevaClaseModal({ sedeId, empresaId, tipos, onClose }) {
     }
   }
 
+  async function eliminar() {
+    setBusy(true); setError('')
+    const { error } = await supabase.from('clase').delete().eq('id', clase.id)
+    setBusy(false)
+    if (error) {
+      setError(error.message.includes('foreign key')
+        ? 'No se puede eliminar: la clase tiene reservas. Puedes pausarla en su lugar.'
+        : error.message)
+      return
+    }
+    qc.invalidateQueries({ queryKey: ['clases', sedeId] })
+    onClose()
+  }
+
   return (
-    <Modal title="Nueva clase" subtitle="Se agrega al horario de la sede actual" onClose={onClose}>
+    <Modal title={editando ? 'Editar clase' : 'Nueva clase'}
+      subtitle={editando ? clase.nombre : 'Se agrega al horario de la sede actual'} onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
         <Campo label="Nombre de la clase *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Baile · Salsa" /></Campo>
         <Campo label="Tipo de servicio">
@@ -71,7 +100,23 @@ function NuevaClaseModal({ sedeId, empresaId, tipos, onClose }) {
           <Campo label="Cupo máximo"><input type="number" value={f.cupo} onChange={set('cupo')} className={inputCls} /></Campo>
         </div>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel="Crear clase" />
+        {editando && (
+          confirmarDel ? (
+            <div className="flex items-center gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.5 py-2.5">
+              <span className="flex-1 text-[12.5px] font-extrabold text-red">¿Eliminar esta clase del horario?</span>
+              <button type="button" disabled={busy} onClick={eliminar}
+                className="cursor-pointer rounded-[8px] border-none bg-red px-3 py-1.5 text-[11.5px] font-extrabold text-white disabled:opacity-50">Sí, eliminar</button>
+              <button type="button" onClick={() => setConfirmarDel(false)}
+                className="cursor-pointer rounded-[8px] border border-line bg-white px-3 py-1.5 text-[11.5px] font-extrabold text-muted">No</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmarDel(true)}
+              className="cursor-pointer self-start border-none bg-transparent p-0 text-[12.5px] font-extrabold text-red hover:underline">
+              🗑 Eliminar clase
+            </button>
+          )
+        )}
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={editando ? 'Guardar cambios' : 'Crear clase'} />
       </form>
     </Modal>
   )
@@ -134,6 +179,12 @@ function ServiciosModal({ empresaId, sedeId, tipos, onClose }) {
             <input defaultValue={t.nombre}
               onBlur={(e) => e.target.value.trim() && e.target.value !== t.nombre && actualizar(t.id, { nombre: e.target.value.trim() })}
               className="min-w-0 flex-1 rounded-[8px] border border-transparent bg-transparent px-2 py-1.5 text-[13.5px] font-extrabold outline-none focus:border-orange focus:bg-white" />
+            <label className="flex flex-shrink-0 cursor-pointer items-center gap-1 text-[10.5px] font-extrabold text-muted" title="Área sin horario ni cupos (musculación, cardio)">
+              <input type="checkbox" checked={!!t.acceso_libre}
+                onChange={(e) => actualizar(t.id, { acceso_libre: e.target.checked })}
+                className="h-3.5 w-3.5 accent-orange-600" />
+              libre
+            </label>
             <button onClick={() => eliminar(t)} disabled={busy === t.id}
               className="flex-shrink-0 cursor-pointer rounded-lg border-none bg-transparent px-2 text-[12px] font-extrabold text-red hover:bg-red-50 disabled:opacity-50">
               Eliminar
@@ -167,6 +218,7 @@ export default function Clases() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
   const [nuevaOpen, setNuevaOpen] = useState(false)
+  const [editarClase, setEditarClase] = useState(null)
   const [serviciosOpen, setServiciosOpen] = useState(false)
   const clases = useClases(sedeId)
   const toggle = useToggleClase(sedeId)
@@ -197,10 +249,25 @@ export default function Clases() {
         </div>
       </div>
 
-      {/* Leyenda dinámica de servicios */}
+      {/* Áreas de acceso libre: la base del gym (musculación, cardio) — sin horario ni cupos */}
+      {(acceso.data?.tipos || []).some((t) => t.acceso_libre) && (
+        <div className="mt-4 flex flex-wrap items-center gap-2.5 rounded-[12px] border border-line bg-white px-4 py-3">
+          <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Áreas de acceso libre</span>
+          {acceso.data.tipos.filter((t) => t.acceso_libre).map((t) => (
+            <span key={t.id} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold"
+              style={{ background: `${t.color || '#E24B4A'}18`, color: t.color || '#E24B4A' }}>
+              <span className="h-2 w-2 rounded-full" style={{ background: t.color || '#E24B4A' }} />
+              {t.nombre}
+            </span>
+          ))}
+          <span className="text-[11px] font-semibold text-faint">— disponibles todo el día, sin horario ni cupos</span>
+        </div>
+      )}
+
+      {/* Leyenda dinámica de servicios con horario */}
       {(acceso.data?.tipos || []).length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-4">
-          {acceso.data.tipos.map((t) => (
+          {acceso.data.tipos.filter((t) => !t.acceso_libre).map((t) => (
             <div key={t.id} className="flex items-center gap-1.5 text-[12px] font-extrabold text-muted">
               <span className="h-[9px] w-[9px] rounded-full" style={{ background: t.color || claseDot(t.nombre) }} />
               {t.nombre}
@@ -213,7 +280,10 @@ export default function Clases() {
       )}
 
       {nuevaOpen && (
-        <NuevaClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} onClose={() => setNuevaOpen(false)} />
+        <ClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} onClose={() => setNuevaOpen(false)} />
+      )}
+      {editarClase && (
+        <ClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} clase={editarClase} onClose={() => setEditarClase(null)} />
       )}
       {serviciosOpen && (
         <ServiciosModal empresaId={empresa?.id} sedeId={sedeId} tipos={acceso.data?.tipos || []} onClose={() => setServiciosOpen(false)} />
@@ -231,8 +301,12 @@ export default function Clases() {
                 const paused = !cs.activa
                 return (
                   <div key={cs.id} onClick={() => toggle.mutate({ id: cs.id, activa: !cs.activa })}
-                    className="cursor-pointer rounded-xl border border-line bg-white p-3 transition hover:border-orange" style={{ opacity: paused ? 0.55 : 1 }}>
-                    <div className="text-[11.5px] font-extrabold text-muted">{cs.hora?.slice(0, 5)}</div>
+                    className="group cursor-pointer rounded-xl border border-line bg-white p-3 transition hover:border-orange" style={{ opacity: paused ? 0.55 : 1 }}>
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11.5px] font-extrabold text-muted">{cs.hora?.slice(0, 5)}</div>
+                      <button onClick={(e) => { e.stopPropagation(); setEditarClase(cs) }} title="Editar clase"
+                        className="cursor-pointer rounded border-none bg-transparent px-1 text-[11px] text-faint opacity-0 transition-opacity hover:text-orange group-hover:opacity-100">✏️</button>
+                    </div>
                     <div className="mt-[5px] flex items-center gap-1.5">
                       <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: cs.tipo?.color || claseDot(cs.nombre) }} />
                       <div className="text-[13px] font-extrabold leading-[1.25]">{cs.nombre}</div>

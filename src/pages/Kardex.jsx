@@ -94,13 +94,100 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
   )
 }
 
+// Editar producto (precio, categoría, alerta de stock) y eliminarlo (soft).
+function ProductoModal({ producto, sedeId, moneda, onClose }) {
+  const qc = useQueryClient()
+  const [f, setF] = useState({
+    nombre: producto.nombre || '', categoria: producto.categoria || 'Otros',
+    precio: String(producto.precio ?? ''), stock_minimo: String(producto.stock_minimo ?? 0),
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [confirmarDel, setConfirmarDel] = useState(false)
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  function invalidar() {
+    qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
+    qc.invalidateQueries({ queryKey: ['kardex-movs', sedeId] })
+  }
+
+  async function guardar(e) {
+    e?.preventDefault()
+    setBusy(true); setError('')
+    const { error } = await supabase.from('producto').update({
+      nombre: f.nombre.trim(), categoria: f.categoria,
+      precio: Number(f.precio) || 0, stock_minimo: Number(f.stock_minimo) || 0,
+    }).eq('id', producto.id)
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    invalidar(); onClose()
+  }
+
+  async function eliminar() {
+    setBusy(true); setError('')
+    const { error } = await supabase.from('producto')
+      .update({ deleted_at: new Date().toISOString(), activo: false }).eq('id', producto.id)
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    invalidar(); onClose()
+  }
+
+  return (
+    <Modal title="Editar producto" subtitle={producto.nombre} onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col gap-3.5">
+        <Campo label="Nombre *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} /></Campo>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Categoría">
+            <select value={f.categoria} onChange={set('categoria')} className={inputCls + ' cursor-pointer'}>
+              {['Suplementos', 'Bebidas', 'Accesorios', 'Ropa', 'Otros'].map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </Campo>
+          <Campo label={`Precio de venta (${moneda})`}><input type="number" step="0.1" min="0" value={f.precio} onChange={set('precio')} className={inputCls} /></Campo>
+        </div>
+        <Campo label="Alerta de stock bajo (unidades)"><input type="number" min="0" value={f.stock_minimo} onChange={set('stock_minimo')} className={inputCls} /></Campo>
+        {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        {confirmarDel ? (
+          <div className="flex items-center gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.5 py-2.5">
+            <span className="flex-1 text-[12.5px] font-extrabold text-red">¿Eliminar este producto? Su historial de movimientos se conserva.</span>
+            <button type="button" disabled={busy} onClick={eliminar}
+              className="cursor-pointer rounded-[8px] border-none bg-red px-3 py-1.5 text-[11.5px] font-extrabold text-white disabled:opacity-50">Sí</button>
+            <button type="button" onClick={() => setConfirmarDel(false)}
+              className="cursor-pointer rounded-[8px] border border-line bg-white px-3 py-1.5 text-[11.5px] font-extrabold text-muted">No</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setConfirmarDel(true)}
+            className="cursor-pointer self-start border-none bg-transparent p-0 text-[12.5px] font-extrabold text-red hover:underline">
+            🗑 Eliminar producto
+          </button>
+        )}
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel="Guardar cambios" />
+      </form>
+    </Modal>
+  )
+}
+
 export default function Kardex() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
+  const qc = useQueryClient()
   const moneda = empresa?.moneda || 'PEN'
   const [movOpen, setMovOpen] = useState(false)
+  const [editarProd, setEditarProd] = useState(null)
+  const [anulando, setAnulando] = useState(null) // movimiento en confirmación
+  const [busyAnular, setBusyAnular] = useState(false)
   const productos = useProductos(sedeId)
   const movs = useMovimientosInventario(sedeId)
+
+  async function anularMov(m) {
+    setBusyAnular(true)
+    const { error } = await supabase.rpc('anular_mov_inventario', { p_id: m.id })
+    setBusyAnular(false)
+    setAnulando(null)
+    if (error) { alert('No se pudo anular: ' + error.message); return }
+    qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
+    qc.invalidateQueries({ queryKey: ['kardex-movs', sedeId] })
+    qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+  }
 
   const bajos = (productos.data || []).filter((p) => p.bajo).length
   const ventasHoy = (movs.data || []).filter((m) => m.tipo === 'venta' && new Date(m.fecha).toDateString() === new Date().toDateString())
@@ -122,6 +209,9 @@ export default function Kardex() {
       {movOpen && (
         <MovimientoModal sedeId={sedeId} empresaId={empresa?.id} productos={productos.data || []} moneda={moneda} onClose={() => setMovOpen(false)} />
       )}
+      {editarProd && (
+        <ProductoModal producto={editarProd} sedeId={sedeId} moneda={moneda} onClose={() => setEditarProd(null)} />
+      )}
 
       <div className="mt-5 grid grid-cols-4 gap-[15px]">
         <StatCard label="Productos en inventario" value={productos.data?.length ?? 0} />
@@ -136,16 +226,18 @@ export default function Kardex() {
 
       {(productos.data || []).length > 0 && (
         <Card className="mt-[15px] overflow-hidden">
-          <div className="grid grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Producto</div><div>Categoría</div><div>Stock</div><div>Precio</div><div>Estado</div>
+          <div className="grid grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Producto</div><div>Categoría</div><div>Stock</div><div>Precio</div><div>Estado</div><div />
           </div>
           {productos.data.map((k) => (
-            <div key={k.id} className="grid grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+            <div key={k.id} className="grid grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
               <div className="text-[13.5px] font-extrabold">{k.nombre}</div>
               <div className="text-[12.5px] font-bold text-muted">{k.categoria}</div>
               <div className="text-[13px] font-extrabold" style={{ color: k.bajo ? T.danger : T.navy }}>{k.stock} uds.</div>
               <div className="text-[13px] font-bold">{money(k.precio, moneda)}</div>
               <div><Badge bg={k.bajo ? T.dangerBg : T.successBg} color={k.bajo ? T.danger : T.success}>{k.bajo ? 'Stock bajo' : 'OK'}</Badge></div>
+              <button onClick={() => setEditarProd(k)} title="Editar producto"
+                className="cursor-pointer rounded-lg border-none bg-transparent px-2 py-1 text-[13px] text-faint hover:text-orange">✏️</button>
             </div>
           ))}
         </Card>
@@ -159,14 +251,14 @@ export default function Kardex() {
               Compra = <b>entra stock, sale de caja</b> · Venta = <b>sale stock, entra a caja</b>
             </div>
           </div>
-          <div className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Stock</div><div>Caja</div>
+          <div className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Stock</div><div>Caja</div><div />
           </div>
           {movs.data.slice(0, 12).map((m) => {
             const venta = m.tipo === 'venta'
             const ajuste = m.tipo === 'ajuste'
             return (
-              <div key={m.id} className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              <div key={m.id} className="grid grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                 <div className="text-[12.5px] font-bold text-muted">{new Date(m.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
                 <div className="text-[13.5px] font-extrabold">{m.producto?.nombre}</div>
                 <div><Badge bg={venta ? T.successBg : ajuste ? T.line2 : T.chipNavy} color={venta ? T.success : ajuste ? T.muted : T.navy} className="capitalize">{m.tipo}</Badge></div>
@@ -178,6 +270,19 @@ export default function Kardex() {
                 <div className="text-[13px] font-extrabold" style={{ color: ajuste ? T.faint : venta ? T.success : T.danger }}>
                   {ajuste ? '—' : (venta ? '+' : '−') + money(m.monto, moneda)}
                 </div>
+                {anulando === m.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <button disabled={busyAnular} onClick={() => anularMov(m)}
+                      className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1.5 text-[10.5px] font-extrabold text-white disabled:opacity-50">Anular</button>
+                    <button onClick={() => setAnulando(null)}
+                      className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[10.5px] font-extrabold text-muted">No</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAnulando(m.id)} title="Anular: revierte stock y caja"
+                    className="cursor-pointer justify-self-end rounded-lg border-none bg-transparent px-2 py-1 text-[11.5px] font-extrabold text-faint hover:text-red">
+                    Anular
+                  </button>
+                )}
               </div>
             )
           })}

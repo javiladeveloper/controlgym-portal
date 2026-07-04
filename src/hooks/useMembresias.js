@@ -54,6 +54,26 @@ export function useToggleFreeze(sedeId) {
   })
 }
 
+// Anular membresía (RPC: estado cancelada; opcional devolución a caja).
+export function useAnularMembresia(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ membresiaId, devolver }) => {
+      const { data, error } = await supabase.rpc('anular_membresia', {
+        p_membresia_id: membresiaId,
+        p_devolver: !!devolver,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
+      qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas'] })
+    },
+  })
+}
+
 // Renovar (RPC crea el ingreso en caja).
 export function useRenovar(sedeId) {
   const qc = useQueryClient()

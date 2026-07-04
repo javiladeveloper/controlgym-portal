@@ -9,7 +9,7 @@ export function useClases(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clase')
-        .select('id, nombre, dia_semana, hora, cupo_max, activa, instructor:usuario(nombre), tipo:tipo_clase(nombre, color)')
+        .select('id, nombre, dia_semana, hora, cupo_max, activa, duracion_min, tipo_clase_id, instructor:usuario(nombre), tipo:tipo_clase(nombre, color)')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('dia_semana').order('hora')
@@ -45,7 +45,7 @@ export function usePlanAcceso() {
     queryFn: async () => {
       const [{ data: planes }, { data: tipos }, { data: acceso }] = await Promise.all([
         supabase.from('plan').select('id, nombre').is('deleted_at', null).order('orden'),
-        supabase.from('tipo_clase').select('id, nombre, color').order('nombre'),
+        supabase.from('tipo_clase').select('id, nombre, color, acceso_libre').order('nombre'),
         supabase.from('plan_acceso_clase').select('plan_id, tipo_clase_id, incluido'),
       ])
       return { planes: planes || [], tipos: tipos || [], acceso: acceso || [] }

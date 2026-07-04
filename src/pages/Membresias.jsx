@@ -4,7 +4,7 @@ import { LoadingState, ErrorState } from '../components/states.jsx'
 import PlanesModal from '../components/forms/PlanesModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { usePlanes, useMembresias, useToggleFreeze, useRenovar } from '../hooks/useMembresias.js'
+import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
 import { estadoBadge, money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
@@ -44,7 +44,16 @@ export default function Membresias() {
   const membresias = useMembresias(sedeId)
   const freeze = useToggleFreeze(sedeId)
   const renovar = useRenovar(sedeId)
+  const anular = useAnularMembresia(sedeId)
   const [planesOpen, setPlanesOpen] = useState(false)
+  const [anulando, setAnulando] = useState(null) // membresía en confirmación de anulación
+
+  function onAnular(m, devolver) {
+    anular.mutate({ membresiaId: m.id, devolver }, {
+      onSuccess: () => setAnulando(null),
+      onError: (e) => { alert('No se pudo anular: ' + e.message); setAnulando(null) },
+    })
+  }
 
   const populares = new Set((planes.data || []).filter((p) => p.badge).map((p) => p.id))
 
@@ -101,26 +110,46 @@ export default function Membresias() {
               <div className="text-[12.5px] font-bold text-muted">
                 {m.fecha_fin ? new Date(m.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={busy}
-                  onClick={() => renovar.mutate(m.id)}
-                  className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-50"
-                >
-                  Renovar
-                </button>
-                {dias ? (
+              {anulando === m.id ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10.5px] font-extrabold text-red">¿Anular?</span>
+                  <button disabled={anular.isPending} onClick={() => onAnular(m, false)}
+                    className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1.5 text-[10.5px] font-extrabold text-white disabled:opacity-50">Sí</button>
+                  <button disabled={anular.isPending} onClick={() => onAnular(m, true)}
+                    className="cursor-pointer rounded-[8px] border border-red bg-white px-2.5 py-1.5 text-[10.5px] font-extrabold text-red disabled:opacity-50">Sí + devolver S/</button>
+                  <button onClick={() => setAnulando(null)}
+                    className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[10.5px] font-extrabold text-muted">No</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
                   <button
-                    disabled={busy}
-                    onClick={() => freeze.mutate({ membresiaId: m.id, dias: frozen ? null : 15 })}
-                    className="cursor-pointer rounded-[9px] border border-[#C6CBD4] bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-ink transition-colors hover:border-ink hover:bg-surface disabled:opacity-50"
+                    disabled={busy || m.estado === 'cancelada'}
+                    onClick={() => renovar.mutate(m.id)}
+                    className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-50"
                   >
-                    {frozen ? 'Reactivar' : 'Congelar'}
+                    Renovar
                   </button>
-                ) : (
-                  <span className="text-[11px] font-bold text-faint">Sin congelamiento</span>
-                )}
-              </div>
+                  {dias && m.estado !== 'cancelada' ? (
+                    <button
+                      disabled={busy}
+                      onClick={() => freeze.mutate({ membresiaId: m.id, dias: frozen ? null : 15 })}
+                      className="cursor-pointer rounded-[9px] border border-[#C6CBD4] bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-ink transition-colors hover:border-ink hover:bg-surface disabled:opacity-50"
+                    >
+                      {frozen ? 'Reactivar' : 'Congelar'}
+                    </button>
+                  ) : null}
+                  {m.estado !== 'cancelada' && (
+                    <button
+                      disabled={busy}
+                      onClick={() => setAnulando(m.id)}
+                      title="Anular membresía"
+                      className="cursor-pointer rounded-[9px] border border-line bg-transparent px-2.5 py-2 text-[11.5px] font-extrabold text-muted transition-colors hover:border-red hover:text-red disabled:opacity-50"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}

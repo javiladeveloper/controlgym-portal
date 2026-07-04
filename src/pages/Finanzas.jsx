@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Card, StatCard } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
+import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useFinanzas } from '../hooks/useOperaciones.js'
@@ -8,9 +10,21 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 export default function Finanzas() {
   const { sedeId, sedeNombre } = usePanel()
-  const { empresa } = useAuth()
+  const { empresa, rol } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
   const { data, isLoading, error, refetch } = useFinanzas(sedeId)
+  const [anulando, setAnulando] = useState(null)
+  const [busyAnular, setBusyAnular] = useState(false)
+
+  // Anular = contra-asiento que lo neutraliza (nada se borra de la caja)
+  async function anular(mv) {
+    setBusyAnular(true)
+    const { error } = await supabase.rpc('anular_movimiento_financiero', { p_id: mv.id })
+    setBusyAnular(false)
+    setAnulando(null)
+    if (error) alert('No se pudo anular: ' + error.message)
+    else refetch()
+  }
 
   const movs = data || []
   const esteMes = (m) => new Date(m.fecha).getMonth() === new Date().getMonth()
@@ -50,8 +64,25 @@ export default function Finanzas() {
                   {mv.metodo_pago && <span className="ml-1.5 rounded-full bg-surface px-2 py-0.5 text-[10px] font-extrabold text-muted">{mv.metodo_pago}</span>}
                 </div>
               </div>
-              <div className="flex-shrink-0 text-[13px] font-extrabold" style={{ color: mv.tipo === 'ingreso' ? T.success : T.danger }}>
-                {mv.tipo === 'ingreso' ? '+' : '−'}{money(mv.monto, moneda)}
+              <div className="flex flex-shrink-0 items-center gap-2.5">
+                <div className="text-[13px] font-extrabold" style={{ color: mv.tipo === 'ingreso' ? T.success : T.danger }}>
+                  {mv.tipo === 'ingreso' ? '+' : '−'}{money(mv.monto, moneda)}
+                </div>
+                {rol === 'admin' && !(mv.descripcion || '').startsWith('ANULACIÓN:') && (
+                  anulando === mv.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <button disabled={busyAnular} onClick={() => anular(mv)}
+                        className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1.5 text-[10.5px] font-extrabold text-white disabled:opacity-50">Anular</button>
+                      <button onClick={() => setAnulando(null)}
+                        className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[10.5px] font-extrabold text-muted">No</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setAnulando(mv.id)} title="Anular con contra-asiento (auditable, nada se borra)"
+                      className="cursor-pointer rounded-lg border-none bg-transparent px-1.5 text-[11.5px] font-extrabold text-faint hover:text-red">
+                      ✕
+                    </button>
+                  )
+                )}
               </div>
             </div>
           ))}

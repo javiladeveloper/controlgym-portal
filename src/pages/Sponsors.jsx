@@ -63,7 +63,21 @@ export default function Sponsors() {
   const { empresa } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
   const [nuevoOpen, setNuevoOpen] = useState(false)
+  const [confirmarDel, setConfirmarDel] = useState(null)
   const { data, isLoading, error, refetch } = useSponsors()
+
+  async function cambiarEstado(s, estado) {
+    const { error } = await supabase.from('sponsor').update({ estado }).eq('id', s.id)
+    if (error) alert('No se pudo actualizar: ' + error.message)
+    else refetch()
+  }
+  async function eliminar(s) {
+    const { error } = await supabase.from('sponsor')
+      .update({ deleted_at: new Date().toISOString() }).eq('id', s.id)
+    setConfirmarDel(null)
+    if (error) alert('No se pudo eliminar: ' + error.message)
+    else refetch()
+  }
 
   return (
     <div className="px-7 pb-9 pt-6">
@@ -96,13 +110,30 @@ export default function Sponsors() {
                   </div>
                   <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
                 </div>
-                <div className="mt-3.5 flex justify-between border-t border-line2 pt-[13px]">
+                <div className="mt-3.5 flex items-center justify-between border-t border-line2 pt-[13px]">
                   <div className="text-[12.5px] font-bold text-muted">
                     Aporte: <span className="font-extrabold text-ink">{s.aporte_detalle || (s.aporte_monto ? money(s.aporte_monto, moneda) : '—')}</span>
+                    {s.fecha_vencimiento ? <span className="ml-2">· vence {new Date(s.fecha_vencimiento).toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })}</span> : ''}
                   </div>
-                  <div className="text-[12.5px] font-bold text-muted">
-                    {s.fecha_vencimiento ? `Vence: ${new Date(s.fecha_vencimiento).toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })}` : ''}
-                  </div>
+                  {confirmarDel === s.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10.5px] font-extrabold text-red">¿Eliminar?</span>
+                      <button onClick={() => eliminar(s)} className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1 text-[10.5px] font-extrabold text-white">Sí</button>
+                      <button onClick={() => setConfirmarDel(null)} className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-muted">No</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      {s.estado === 'activo' ? (
+                        <button onClick={() => cambiarEstado(s, 'pausado')}
+                          className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-muted hover:border-amber-400 hover:text-amber-600">⏸ Pausar</button>
+                      ) : (
+                        <button onClick={() => cambiarEstado(s, 'activo')}
+                          className="cursor-pointer rounded-[8px] border border-green-300 bg-green-50 px-2.5 py-1 text-[10.5px] font-extrabold text-green-600">▶ Activar</button>
+                      )}
+                      <button onClick={() => setConfirmarDel(s.id)}
+                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[11.5px] font-extrabold text-faint hover:text-red">🗑</button>
+                    </div>
+                  )}
                 </div>
               </Card>
             )

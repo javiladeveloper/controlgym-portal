@@ -10,12 +10,19 @@ export function usePersonal(sedeId) {
     queryFn: async () => {
       // Staff = usuarios de la empresa con acceso a esta sede (via usuario_sede),
       // con su rol. Simplificado: traemos usuario_sede -> usuario + rol de la empresa.
-      const { data, error } = await supabase
-        .from('usuario_sede')
-        .select('usuario:usuario(id, nombre, avatar_iniciales, activo, telefono)')
-        .eq('sede_id', sedeId)
+      const [{ data, error }, { data: membresias }] = await Promise.all([
+        supabase
+          .from('usuario_sede')
+          .select('usuario:usuario(id, nombre, avatar_iniciales, telefono)')
+          .eq('sede_id', sedeId),
+        supabase.from('usuario_empresa').select('usuario_id, activo'),
+      ])
       if (error) throw error
-      return (data || []).map((r) => r.usuario).filter(Boolean)
+      const activoDe = new Map((membresias || []).map((m) => [m.usuario_id, m.activo]))
+      return (data || [])
+        .map((r) => r.usuario)
+        .filter(Boolean)
+        .map((u) => ({ ...u, activo: activoDe.get(u.id) ?? true }))
     },
   })
 }
@@ -78,8 +85,9 @@ export function useMantenimientos(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('mantenimiento')
-        .select('id, tipo, detalle, fecha_programada, estado, maquina:maquina(nombre)')
+        .select('id, tipo, detalle, fecha_programada, estado, maquina_id, maquina:maquina(nombre)')
         .eq('sede_id', sedeId)
+        .in('estado', ['programado', 'en_proceso'])
         .order('fecha_programada')
         .limit(6)
       if (error) throw error

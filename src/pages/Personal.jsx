@@ -81,10 +81,29 @@ function InvitarModal({ sedeId, onClose }) {
 
 export default function Personal() {
   const { sedeId, sedeNombre } = usePanel()
-  const { rol } = useAuth()
+  const { rol, empresa } = useAuth()
+  const qc = useQueryClient()
   const [invitarOpen, setInvitarOpen] = useState(false)
   const { data, isLoading, error, refetch } = usePersonal(sedeId)
   const invitaciones = useInvitaciones()
+
+  // Revocar una invitación pendiente (esa persona ya no podrá vincularse)
+  async function revocar(inv) {
+    const { error } = await supabase.from('invitacion')
+      .update({ estado: 'revocada' }).eq('id', inv.id)
+    if (error) alert('No se pudo revocar: ' + error.message)
+    else qc.invalidateQueries({ queryKey: ['invitaciones'] })
+  }
+
+  // Activar/desactivar el acceso de un colaborador a la empresa
+  async function toggleActivo(st) {
+    const { error } = await supabase.from('usuario_empresa')
+      .update({ activo: !st.activo })
+      .eq('usuario_id', st.id)
+      .eq('empresa_id', empresa.id)
+    if (error) alert('No se pudo actualizar: ' + error.message)
+    else refetch()
+  }
 
   return (
     <div className="px-7 pb-9 pt-6">
@@ -107,17 +126,23 @@ export default function Personal() {
 
       {(data || []).length > 0 && (
         <Card className="mt-[18px] overflow-hidden">
-          <div className="grid grid-cols-[2.5fr_1.5fr_1fr] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Colaborador</div><div>Teléfono</div><div>Estado</div>
+          <div className="grid grid-cols-[2.5fr_1.5fr_1fr_120px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Colaborador</div><div>Teléfono</div><div>Estado</div><div />
           </div>
           {data.map((st) => (
-            <div key={st.id} className="grid grid-cols-[2.5fr_1.5fr_1fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+            <div key={st.id} className="grid grid-cols-[2.5fr_1.5fr_1fr_120px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
               <div className="flex items-center gap-2.5">
                 <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
                 <div className="text-[13.5px] font-extrabold">{st.nombre}</div>
               </div>
               <div className="text-[12.5px] font-semibold text-muted">{st.telefono || '—'}</div>
               <div><Badge bg={st.activo ? T.successBg : T.line2} color={st.activo ? T.success : T.muted}>{st.activo ? 'Activo' : 'Inactivo'}</Badge></div>
+              {rol === 'admin' ? (
+                <button onClick={() => toggleActivo(st)}
+                  className={`cursor-pointer justify-self-end rounded-[9px] border px-3 py-1.5 text-[11px] font-extrabold transition-colors ${st.activo ? 'border-line bg-white text-muted hover:border-red hover:text-red' : 'border-green-300 bg-green-50 text-green-600'}`}>
+                  {st.activo ? '⏸ Suspender' : '▶ Reactivar'}
+                </button>
+              ) : <div />}
             </div>
           ))}
         </Card>
@@ -136,7 +161,15 @@ export default function Personal() {
                 <div className="text-[13.5px] font-extrabold">{inv.email}</div>
                 <div className="text-[11.5px] font-semibold text-muted">{inv.rol?.nombre} · invitado el {new Date(inv.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
               </div>
-              <Badge bg={T.primaryBg} color={T.primary}>Pendiente</Badge>
+              <div className="flex items-center gap-2">
+                <Badge bg={T.primaryBg} color={T.primary}>Pendiente</Badge>
+                {rol === 'admin' && (
+                  <button onClick={() => revocar(inv)} title="Revocar invitación"
+                    className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-1.5 text-[11px] font-extrabold text-muted hover:border-red hover:text-red">
+                    Revocar
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </Card>
