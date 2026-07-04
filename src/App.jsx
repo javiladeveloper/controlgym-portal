@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import TrialBanner from './components/TrialBanner.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Clientes from './pages/Clientes.jsx'
@@ -44,7 +45,10 @@ function PanelLayout({ children }) {
   return (
     <div className="flex h-screen bg-canvas text-ink">
       <Sidebar />
-      <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+      <main className="min-w-0 flex-1 overflow-auto">
+        <TrialBanner />
+        {children}
+      </main>
     </div>
   )
 }
