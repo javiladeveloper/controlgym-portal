@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/supabaseClient.js'
 import { Card, Badge, GhostButton } from '../components/ui.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
 import PlanesModal from '../components/forms/PlanesModal.jsx'
@@ -65,6 +67,38 @@ function CobrarModal({ m, moneda, renovar, onClose }) {
   )
 }
 
+// Congelar pidiendo cuántos días, con el tope anual que permite el plan.
+// La BD valida el acumulado del año y el vencimiento se extiende al reactivar.
+function CongelarModal({ m, freeze, onClose }) {
+  const tope = Number(m.plan?.dias_congelamiento_anio || 0)
+  const [dias, setDias] = useState(String(Math.min(15, tope)))
+  const n = Number(dias) || 0
+
+  function confirmar() {
+    freeze.mutate({ membresiaId: m.id, dias: n }, {
+      onSuccess: () => { toast.ok(`Membresía de ${m.socio?.nombre} congelada ${n} día${n === 1 ? '' : 's'}`); onClose() },
+      onError: (e) => toast.error('No se pudo congelar: ' + e.message),
+    })
+  }
+
+  return (
+    <Modal title="Congelar membresía" subtitle={m.socio?.nombre} onClose={onClose} width={400}>
+      <div className="flex flex-col gap-3.5">
+        <Campo label="¿Cuántos días?" hint={`Su plan ${m.plan?.nombre} permite hasta ${tope} días de congelamiento por año (acumulado).`}>
+          <input type="number" min="1" max={tope} value={dias} onChange={(e) => setDias(e.target.value)}
+            className={inputCls} autoFocus />
+        </Campo>
+        <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
+          Mientras esté congelada no puede hacer check-in, y al reactivarla su vencimiento
+          se corre los días realmente congelados (no pierde lo pagado).
+        </p>
+        <BotonesModal onCancel={onClose} busy={freeze.isPending} disabled={n < 1 || n > tope}
+          submitLabel={`Congelar ${n || ''} día${n === 1 ? '' : 's'}`} onSubmit={confirmar} />
+      </div>
+    </Modal>
+  )
+}
+
 function PlanCard({ p, moneda, popular }) {
   if (popular) {
     return (
@@ -103,17 +137,33 @@ export default function Membresias() {
   const freeze = useToggleFreeze(sedeId)
   const renovar = useRenovar(sedeId)
   const anular = useAnularMembresia(sedeId)
+  const qc = useQueryClient()
   const [planesOpen, setPlanesOpen] = useState(false)
   const [anulando, setAnulando] = useState(null) // membresía en confirmación de anulación
   const [cobrando, setCobrando] = useState(null) // membresía a la que se le registra el cobro
+  const [congelando, setCongelando] = useState(null) // membresía a congelar (pide días)
+  const [dandoBaja, setDandoBaja] = useState(null) // socio en confirmación de baja
 
-  // Control de cobros: vencidas y por vencer en ≤7 días (el gym cobra en persona)
+  // Control de cobros: vencidas y por vencer en ≤7 días (el gym cobra en persona).
+  // Los socios dados de baja ya no se persiguen.
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
   const diasPara = (f) => Math.ceil((new Date(f) - hoy) / 86400000)
   const porCobrar = (membresias.data || [])
-    .filter((m) => !['cancelada', 'congelada'].includes(m.estado) && m.fecha_fin && diasPara(m.fecha_fin) <= 7)
+    .filter((m) => !['cancelada', 'congelada'].includes(m.estado) && m.socio?.estado !== 'inactivo'
+      && m.fecha_fin && diasPara(m.fecha_fin) <= 7)
     .sort((a, b) => new Date(a.fecha_fin) - new Date(b.fecha_fin))
   const totalPorCobrar = porCobrar.reduce((n, m) => n + Number(m.plan?.precio || 0), 0)
+
+  // El socio no responde y no volverá: se cierra su membresía y pasa a inactivo
+  async function darBaja(m) {
+    const { error } = await supabase.rpc('dar_baja_socio', { p_socio_id: m.socio.id })
+    setDandoBaja(null)
+    if (error) { toast.error('No se pudo dar de baja: ' + error.message); return }
+    toast.ok(`${m.socio.nombre} dado de baja — su membresía quedó cerrada`)
+    qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
+    qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
+    qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+  }
 
   function onAnular(m, devolver) {
     anular.mutate({ membresiaId: m.id, devolver }, {
@@ -137,6 +187,7 @@ export default function Membresias() {
       </div>
       {planesOpen && <PlanesModal onClose={() => setPlanesOpen(false)} />}
       {cobrando && <CobrarModal m={cobrando} moneda={moneda} renovar={renovar} onClose={() => setCobrando(null)} />}
+      {congelando && <CongelarModal m={congelando} freeze={freeze} onClose={() => setCongelando(null)} />}
 
       {/* Control de cobros: a quién hay que cobrarle */}
       {porCobrar.length > 0 && (
@@ -173,6 +224,20 @@ export default function Membresias() {
                     className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
                     Cobré — renovar
                   </button>
+                  {dandoBaja === m.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10.5px] font-extrabold text-red">¿Dar de baja?</span>
+                      <button onClick={() => darBaja(m)}
+                        className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1.5 text-[10.5px] font-extrabold text-white">Sí</button>
+                      <button onClick={() => setDandoBaja(null)}
+                        className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[10.5px] font-extrabold text-muted">No</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDandoBaja(m.id)} title="No volverá: cierra su membresía y lo pasa a inactivo (si vuelve, Renovar lo revive)"
+                      className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-2 text-[11px] font-extrabold text-muted hover:border-red hover:text-red">
+                      No volverá
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -252,7 +317,7 @@ export default function Membresias() {
                   {dias && m.estado !== 'cancelada' ? (
                     <button
                       disabled={busy}
-                      onClick={() => freeze.mutate({ membresiaId: m.id, dias: frozen ? null : 15 })}
+                      onClick={() => (frozen ? freeze.mutate({ membresiaId: m.id, dias: null }) : setCongelando(m))}
                       className="cursor-pointer rounded-[9px] border border-[#C6CBD4] bg-transparent px-3 py-2 text-[11.5px] font-extrabold text-ink transition-colors hover:border-ink hover:bg-surface disabled:opacity-50"
                     >
                       {frozen ? 'Reactivar' : 'Congelar'}
