@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, Avatar } from '../components/ui.jsx'
+import { subirImagen } from '../hooks/useConfiguracion.js'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
@@ -17,10 +18,26 @@ function ConvenioModal({ empresaId, sponsor, onClose }) {
     nombre: sponsor?.nombre || '', descripcion: sponsor?.descripcion || '',
     tipo: sponsor?.tipo || 'auspicio', aporte_detalle: sponsor?.aporte_detalle || '',
     fecha_vencimiento: sponsor?.fecha_vencimiento || '',
+    logo_url: sponsor?.logo_url || '', mostrar_en_web: sponsor?.mostrar_en_web ?? false,
   })
   const [busy, setBusy] = useState(false)
+  const [subiendo, setSubiendo] = useState(false)
   const [error, setError] = useState('')
+  const logoRef = useRef(null)
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  async function subirLogo(file) {
+    if (!file) return
+    setSubiendo(true)
+    try {
+      const url = await subirImagen(empresaId, 'sponsor', file)
+      setF((s) => ({ ...s, logo_url: url, mostrar_en_web: true }))
+    } catch (err) {
+      setError('No se pudo subir el logo: ' + err.message)
+    } finally {
+      setSubiendo(false)
+    }
+  }
 
   async function guardar(e) {
     e?.preventDefault()
@@ -29,6 +46,7 @@ function ConvenioModal({ empresaId, sponsor, onClose }) {
       nombre: f.nombre.trim(), descripcion: f.descripcion || null,
       tipo: f.tipo, aporte_detalle: f.aporte_detalle || null,
       fecha_vencimiento: f.fecha_vencimiento || null,
+      logo_url: f.logo_url || null, mostrar_en_web: !!f.mostrar_en_web && !!f.logo_url,
     }
     const { error } = sponsor
       ? await supabase.from('sponsor').update(valores).eq('id', sponsor.id)
@@ -56,6 +74,30 @@ function ConvenioModal({ empresaId, sponsor, onClose }) {
           <Campo label="Vence"><input type="date" value={f.fecha_vencimiento} onChange={set('fecha_vencimiento')} className={inputCls} /></Campo>
         </div>
         <Campo label="Aporte / beneficio"><input value={f.aporte_detalle} onChange={set('aporte_detalle')} className={inputCls} placeholder="S/ 800/mes · 15% para socios…" /></Campo>
+
+        {/* Logo del sponsor: sale en la franja "Nos respaldan" de la página web */}
+        <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-white">
+              {f.logo_url ? <img src={f.logo_url} alt="" className="h-full w-full object-contain" /> : <span className="text-[10px] font-bold text-faint">sin logo</span>}
+            </div>
+            <button type="button" onClick={() => logoRef.current?.click()} disabled={subiendo}
+              className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+              {subiendo ? 'Subiendo…' : f.logo_url ? 'Cambiar logo' : 'Subir logo'}
+            </button>
+            {f.logo_url && (
+              <button type="button" onClick={() => setF((s) => ({ ...s, logo_url: '', mostrar_en_web: false }))}
+                className="cursor-pointer border-none bg-transparent text-[12px] font-extrabold text-red">Quitar</button>
+            )}
+            <input ref={logoRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { subirLogo(e.target.files?.[0]); e.target.value = '' }} />
+          </div>
+          <label className="mt-2.5 flex items-center gap-2">
+            <input type="checkbox" checked={!!f.mostrar_en_web} disabled={!f.logo_url}
+              onChange={(e) => setF((s) => ({ ...s, mostrar_en_web: e.target.checked }))} className="h-4 w-4 accent-orange-600" />
+            <span className="text-[12.5px] font-bold">Mostrar en mi página web <span className="font-semibold text-muted">(franja "Nos respaldan")</span></span>
+          </label>
+        </div>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={sponsor ? 'Guardar cambios' : 'Crear convenio'} />
       </form>
@@ -115,9 +157,11 @@ export default function Sponsors() {
             return (
               <Card key={s.id} className="p-[19px]">
                 <div className="flex items-center gap-3">
-                  <Avatar ini={iniciales(s.nombre)} bg={T.chipNavy} color={T.navy} size={44} fontSize={15} />
+                  {s.logo_url
+                    ? <div className="flex h-11 w-[72px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-line bg-white"><img src={s.logo_url} alt="" className="h-full w-full object-contain" /></div>
+                    : <Avatar ini={iniciales(s.nombre)} bg={T.chipNavy} color={T.navy} size={44} fontSize={15} />}
                   <div className="flex-1">
-                    <div className="text-[15px] font-extrabold">{s.nombre}</div>
+                    <div className="text-[15px] font-extrabold">{s.nombre} {s.mostrar_en_web && <span title="Visible en tu página web" className="text-[11px]">🌐</span>}</div>
                     <div className="text-[12px] font-semibold text-muted">{s.descripcion}</div>
                   </div>
                   <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>

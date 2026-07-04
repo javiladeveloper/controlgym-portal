@@ -35,7 +35,7 @@ const BTN_RADIUS = { pill: 999, suave: 12, recto: 5 }
 // Radio de tarjetas (landing.estilo.tarjetas)
 const CARD_RADIUS = { redonda: 22, suave: 14, recta: 6 }
 // Orden por defecto de las secciones de la página
-const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'sponsors', 'galeria', 'sedes', 'mapa']
 
 // Iconos de redes sociales para el footer
 const ICONO_RED = {
@@ -275,9 +275,21 @@ export default function Landing({ slug }) {
           {L.logros.map((lg, i) => (
             <div key={i} className="border border-line bg-white p-5 text-center" style={{ borderRadius: rCard }}>
               <div className="text-[36px] leading-none">{lg.icono || '🏆'}</div>
-              <div className="mt-2.5 text-[15px] font-extrabold leading-tight" style={{ color: tema.color_navy }}>{lg.titulo}</div>
+              <div className="mt-2.5 text-[15px] font-extrabold leading-tight" style={{ color: dark ? '#F2F4F8' : tema.color_navy }}>{lg.titulo}</div>
               {lg.detalle && <div className="mt-1 text-[12px] font-semibold leading-snug text-muted">{lg.detalle}</div>}
             </div>
+          ))}
+        </div>
+      </section>
+    ),
+    // Franja de auspiciadores: los sponsors con logo que el gym marcó para la web
+    sponsors: () => sec.sponsors !== false && (data.sponsors || []).length > 0 && (
+      <section className="mx-auto max-w-[900px] px-6 py-14">
+        <h2 className="text-center !text-[14px] font-extrabold uppercase tracking-[2.5px] text-muted">Nos respaldan</h2>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-5">
+          {data.sponsors.map((sp) => (
+            <img key={sp.nombre} src={sp.logo_url} alt={sp.nombre} title={sp.nombre}
+              className="h-12 max-w-[170px] rounded-lg object-contain" loading="lazy" />
           ))}
         </div>
       </section>

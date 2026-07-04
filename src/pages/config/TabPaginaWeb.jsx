@@ -6,7 +6,8 @@ import { urlPublica } from '../../lib/tenant.js'
 
 const SECCIONES = [
   ['promociones', 'Ofertas y promociones'], ['planes', 'Planes'], ['clases', 'Clases'],
-  ['logros', 'Logros'], ['testimonios', 'Testimonios'], ['sedes', 'Sedes'], ['galeria', 'Galería'],
+  ['logros', 'Logros'], ['testimonios', 'Testimonios'], ['sponsors', 'Sponsors (Nos respaldan)'],
+  ['sedes', 'Sedes'], ['galeria', 'Galería'],
   ['stats', 'Estadísticas'], ['mapa', 'Mapa de ubicación'],
 ]
 
@@ -15,10 +16,11 @@ const MAX_LOGROS = 6
 
 const MAX_GALERIA = 12 // tope de fotos en la galería
 
-const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'galeria', 'sedes', 'mapa']
+const DEFAULT_ORDEN = ['stats', 'logros', 'promociones', 'planes', 'clases', 'testimonios', 'sponsors', 'galeria', 'sedes', 'mapa']
 const ETIQUETA_SECCION = {
   stats: 'Estadísticas', logros: 'Logros', promociones: 'Ofertas y promociones', planes: 'Planes',
-  clases: 'Clases', testimonios: 'Testimonios', galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
+  clases: 'Clases', testimonios: 'Testimonios', sponsors: 'Sponsors (Nos respaldan)',
+  galeria: 'Galería', sedes: 'Sedes', mapa: 'Mapa de ubicación',
 }
 
 // Fuentes disponibles para la página (se cargan solas desde Google Fonts).

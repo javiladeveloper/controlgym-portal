@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
+  <rect width="200" height="60" rx="12" fill="#FAFAF9"/>
+  <path d="M18 38 L34 22 l8 8 -16 16z M40 16 l6 6 -4 4 -6 -6z" fill="#EA580C"/>
+  <text x="56" y="40" font-family="Arial, Helvetica" font-weight="800" font-size="19" fill="#1C1917" font-style="italic">SportGear</text>
+</svg>

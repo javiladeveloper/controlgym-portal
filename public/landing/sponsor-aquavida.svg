@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
+  <rect width="200" height="60" rx="12" fill="#F0F9FF"/>
+  <path d="M30 16 C38 26 42 32 42 38 a12 12 0 0 1 -24 0 c0-6 4-12 12-22z" fill="#0EA5E9"/>
+  <text x="54" y="40" font-family="Arial, Helvetica" font-weight="800" font-size="20" fill="#0369A1">AquaVida</text>
+</svg>
