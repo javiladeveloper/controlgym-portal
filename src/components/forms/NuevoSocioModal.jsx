@@ -20,16 +20,26 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const [f, setF] = useState({
     nombre: prefill.nombre || '', telefono: prefill.telefono || '', email: prefill.email || '',
     documento: '', fecha_nacimiento: '', objetivo: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
-    inv_nombre: '', inv_telefono: '', inv_documento: '',
   })
+  const [invitados, setInvitados] = useState([]) // acompañantes de promos 2x1/grupal
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(null) // { codigo, total, promo }
 
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+  const setInv = (i, k) => (e) => setInvitados((arr) => {
+    const copia = [...arr]
+    copia[i] = { ...(copia[i] || {}), [k]: e.target.value }
+    return copia
+  })
   const plan = (planes.data || []).find((p) => p.id === f.plan_id)
   const promosActivas = (promos.data || []).filter((p) => p.estado === 'activa')
   const promo = promosActivas.find((p) => p.id === f.promocion_id)
+
+  // Promos de grupo: cuántos vienen y cuántos pagan
+  const esGrupo = plan && promo && ['2x1', 'grupal'].includes(promo.tipo)
+  const nInvitados = !esGrupo ? 0 : promo.tipo === '2x1' ? 1 : Math.max(1, (Number(promo.grupo_personas) || 3) - 1)
+  const pagan = !esGrupo ? 1 : promo.tipo === '2x1' ? 1 : Math.min(Number(promo.grupo_pagan) || 2, nInvitados + 1)
 
   // Cálculo del total con promoción (espejo de la lógica del RPC)
   let precio = plan ? Number(plan.precio) : 0
@@ -40,6 +50,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     else if (promo.tipo === 'descuento_monto') { precio = Math.max(0, precio - Number(promo.valor || 0)); promoNota = `−${money(promo.valor, empresa?.moneda)}` }
     else if (promo.tipo === 'semana_gratis') { promoNota = '+7 días de membresía' }
     else if (promo.tipo === '2x1') { promoNota = 'la segunda persona entra gratis' }
+    else if (promo.tipo === 'grupal') { promoNota = `vienen ${nInvitados + 1}, pagan ${pagan}` }
     else if (promo.tipo === 'precio_especial') {
       precio = Number(promo.valor || precio)
       promoNota = promo.duracion_meses
@@ -47,8 +58,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         : `precio especial ${money(promo.valor, empresa?.moneda)}`
     }
   }
-  const total = precio + matricula
-  const es2x1 = plan && promo?.tipo === '2x1'
+  const total = precio * pagan + matricula
 
   async function guardar(e) {
     e?.preventDefault()
@@ -63,13 +73,15 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       p_lead_id: leadId,
       p_promocion_id: f.promocion_id || null,
       p_metodo_pago: f.metodo_pago,
-      p_invitado_nombre: es2x1 ? f.inv_nombre.trim() || null : null,
-      p_invitado_telefono: es2x1 ? f.inv_telefono || null : null,
-      p_invitado_documento: es2x1 ? f.inv_documento || null : null,
+      p_invitados: esGrupo
+        ? invitados.slice(0, nInvitados)
+            .filter((i) => i?.nombre?.trim())
+            .map((i) => ({ nombre: i.nombre.trim(), telefono: i.telefono || null, documento: i.documento || null }))
+        : null,
     })
     setBusy(false)
     if (error) { setError(error.message); return }
-    setExito({ codigo: data.codigo, total: data.total_cobrado, promo: data.promo_aplicada, invitadoCodigo: data.invitado_codigo })
+    setExito({ codigo: data.codigo, total: data.total_cobrado, promo: data.promo_aplicada, codigosInvitados: data.codigos_invitados || [] })
     qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
     qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
     qc.invalidateQueries({ queryKey: ['socios-select', sedeId] })
@@ -80,16 +92,16 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
 
   if (exito) {
     return (
-      <Modal title={exito.invitadoCodigo ? '¡2 socios inscritos! 🎉' : '¡Socio inscrito! 🎉'} onClose={onClose} width={400}>
+      <Modal title={exito.codigosInvitados?.length ? `¡${1 + exito.codigosInvitados.length} socios inscritos! 🎉` : '¡Socio inscrito! 🎉'} onClose={onClose} width={400}>
         <div className="rounded-[10px] bg-green-50 p-4 text-center">
           <div className="text-[15px] font-extrabold text-green-600">{f.nombre}</div>
           <div className="mt-1 text-[13px] font-bold text-muted">Socio N.º {exito.codigo}</div>
-          {exito.invitadoCodigo && (
-            <>
-              <div className="mt-2 text-[15px] font-extrabold text-green-600">{f.inv_nombre}</div>
-              <div className="mt-1 text-[13px] font-bold text-muted">Socio N.º {exito.invitadoCodigo} · entra gratis por el 2×1</div>
-            </>
-          )}
+          {(exito.codigosInvitados || []).map((cod, i) => (
+            <div key={cod} className="mt-2">
+              <div className="text-[15px] font-extrabold text-green-600">{invitados[i]?.nombre}</div>
+              <div className="mt-0.5 text-[13px] font-bold text-muted">Socio N.º {cod}{i + 1 >= pagan ? ' · entra gratis' : ''}</div>
+            </div>
+          ))}
           {Number(exito.total) > 0 && (
             <div className="mt-2 text-[14px] font-extrabold">Cobrado: {money(exito.total, empresa?.moneda)} <span className="text-[11px] font-semibold text-muted">({METODOS_PAGO.find(([m]) => m === f.metodo_pago)?.[1]} · registrado en caja)</span></div>
           )}
@@ -139,22 +151,31 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
                 </select>
               </Campo>
             </div>
-            {es2x1 && (
+            {esGrupo && (
               <div className="rounded-[10px] border border-orange/40 bg-orange/5 p-3">
-                <div className="mb-2 text-[12px] font-extrabold text-orange">🎁 2×1 — la segunda persona (entra gratis con el mismo plan)</div>
-                <Campo label="Nombre completo *">
-                  <input required value={f.inv_nombre} onChange={set('inv_nombre')} className={inputCls} placeholder="Ana Torres" />
-                </Campo>
-                <div className="mt-2.5 grid grid-cols-2 gap-3">
-                  <Campo label="Teléfono"><input value={f.inv_telefono} onChange={set('inv_telefono')} className={inputCls} /></Campo>
-                  <Campo label="Documento (DNI)"><input value={f.inv_documento} onChange={set('inv_documento')} className={inputCls} /></Campo>
+                <div className="mb-2 text-[12px] font-extrabold text-orange">
+                  🎁 {promo.tipo === '2x1'
+                    ? '2×1 — la segunda persona (entra gratis con el mismo plan)'
+                    : `${nInvitados + 1}×${pagan} — las otras ${nInvitados} personas del grupo (mismo plan; pagan ${pagan} en total)`}
                 </div>
+                {Array.from({ length: nInvitados }).map((_, i) => (
+                  <div key={i} className={i > 0 ? 'mt-3 border-t border-orange/20 pt-3' : ''}>
+                    <Campo label={`Persona ${i + 2} — Nombre completo *`}>
+                      <input required value={invitados[i]?.nombre || ''} onChange={setInv(i, 'nombre')} className={inputCls} placeholder="Ana Torres" />
+                    </Campo>
+                    <div className="mt-2.5 grid grid-cols-2 gap-3">
+                      <Campo label="Teléfono"><input value={invitados[i]?.telefono || ''} onChange={setInv(i, 'telefono')} className={inputCls} /></Campo>
+                      <Campo label="Documento (DNI)"><input value={invitados[i]?.documento || ''} onChange={setInv(i, 'documento')} className={inputCls} /></Campo>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {/* Resumen del cobro */}
             <div className="rounded-[10px] bg-surface px-3.5 py-3">
               <div className="flex justify-between text-[12.5px] font-bold text-muted">
-                <span>Mensualidad {plan.nombre}</span><span>{money(precio, empresa?.moneda)}</span>
+                <span>Mensualidad {plan.nombre}{esGrupo && pagan > 1 ? ` × ${pagan}` : ''}</span>
+                <span>{money(precio * pagan, empresa?.moneda)}</span>
               </div>
               {matricula > 0 && (
                 <div className="mt-1 flex justify-between text-[12.5px] font-bold text-muted">

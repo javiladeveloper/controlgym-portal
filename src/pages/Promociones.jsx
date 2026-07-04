@@ -17,6 +17,8 @@ function CampanaModal({ empresaId, promocion, onClose }) {
     canal: promocion?.canal || 'Recepción y redes', tipo: promocion?.tipo || '2x1',
     valor: promocion?.valor != null ? String(promocion.valor) : '',
     duracion_meses: promocion?.duracion_meses != null ? String(promocion.duracion_meses) : '',
+    grupo_personas: promocion?.grupo_personas != null ? String(promocion.grupo_personas) : '3',
+    grupo_pagan: promocion?.grupo_pagan != null ? String(promocion.grupo_pagan) : '2',
     fecha_inicio: promocion?.fecha_inicio || '', fecha_fin: promocion?.fecha_fin || '',
     estado: promocion?.estado || 'activa',
   })
@@ -36,7 +38,12 @@ function CampanaModal({ empresaId, promocion, onClose }) {
       canal: f.canal, tipo: f.tipo, estado: f.estado,
       valor: pideValor && f.valor !== '' ? Number(f.valor) : null,
       duracion_meses: f.tipo === 'precio_especial' && f.duracion_meses !== '' ? Number(f.duracion_meses) : null,
+      grupo_personas: f.tipo === 'grupal' ? Number(f.grupo_personas) || 3 : null,
+      grupo_pagan: f.tipo === 'grupal' ? Number(f.grupo_pagan) || 2 : null,
       fecha_inicio: f.fecha_inicio || null, fecha_fin: f.fecha_fin || null,
+    }
+    if (f.tipo === 'grupal' && valores.grupo_pagan >= valores.grupo_personas) {
+      setBusy(false); setError('En una promo grupal deben pagar MENOS personas de las que vienen (ej. vienen 3, pagan 2).'); return
     }
     const { error } = promocion
       ? await supabase.from('promocion').update(valores).eq('id', promocion.id)
@@ -56,7 +63,9 @@ function CampanaModal({ empresaId, promocion, onClose }) {
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Tipo">
             <select value={f.tipo} onChange={set('tipo')} className={inputCls + ' cursor-pointer'}>
-              <option value="2x1">2×1 (dos personas, paga una)</option><option value="descuento_pct">Descuento %</option>
+              <option value="2x1">2×1 (dos personas, paga una)</option>
+              <option value="grupal">Grupal (3×2, 4×3…)</option>
+              <option value="descuento_pct">Descuento %</option>
               <option value="descuento_monto">Descuento fijo</option><option value="semana_gratis">Semana gratis</option>
               <option value="precio_especial">Precio especial (paquete)</option>
               <option value="otro">Otro</option>
@@ -81,6 +90,21 @@ function CampanaModal({ empresaId, promocion, onClose }) {
           <p className="-mt-1 text-[11.5px] font-semibold text-faint">
             Ej.: "Paga S/500 y entrena todo el año" → precio 500, duración 12. Al inscribir con esta promo, la membresía usa este precio y duración (pisa al plan).
           </p>
+        )}
+        {f.tipo === 'grupal' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Vienen (personas) *">
+                <input required type="number" min="2" max="10" value={f.grupo_personas} onChange={set('grupo_personas')} className={inputCls} />
+              </Campo>
+              <Campo label="Pagan *">
+                <input required type="number" min="1" max="9" value={f.grupo_pagan} onChange={set('grupo_pagan')} className={inputCls} />
+              </Campo>
+            </div>
+            <p className="-mt-1 text-[11.5px] font-semibold text-faint">
+              Ej. 3×2: vienen 3 y pagan 2. Al inscribir, el modal pedirá los datos de las {Math.max(0, (Number(f.grupo_personas) || 3) - 1)} personas adicionales y en caja entra un solo pago de {Number(f.grupo_pagan) || 2} membresías.
+            </p>
+          </>
         )}
         <div className="grid grid-cols-3 gap-3">
           <Campo label="Inicio"><input type="date" value={f.fecha_inicio} onChange={set('fecha_inicio')} className={inputCls} /></Campo>
