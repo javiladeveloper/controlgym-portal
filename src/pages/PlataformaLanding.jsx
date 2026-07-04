@@ -125,7 +125,8 @@ const FAQS = [
   ['¿Necesito instalar algo o comprar equipos?', 'No. FitControl funciona desde el navegador de tu compu, tablet o celular. Los torniquetes y lectores de huella son opcionales y se integran cuando los necesites.'],
   ['¿Cómo funciona la página web de mi gimnasio?', 'Al registrarte eliges tu dirección (tugym.' + ROOT_DOMAIN + ') y tu página se genera sola con tus planes, horario, fotos y colores. Eliges entre 8 diseños y todo lo editas desde el panel, sin programadores.'],
   ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitControl registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
-  ['¿Sirve si solo doy clases (yoga, baile, funcional)?', 'Sí. Al crear tu cuenta eliges tu tipo de negocio y el sistema se adapta: si no usas máquinas ni rutinas de pesas, esos módulos no te estorban.'],
+  ['¿Sirve si solo doy clases (yoga, baile, box, dojo)?', 'Sí, con plan propio: Academia a S/49/mes con un panel a tu medida — clases, alumnos, reservas y tu página web, sin módulos que no usas.'],
+  ['Soy personal trainer, ¿me sirve?', 'Sí — es nuestro plan más accesible (S/29/mes): tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes. Y cuando salga la app, apareces en las búsquedas de tu zona sin costo extra.'],
   ['¿Qué incluye la app para socios y cuánto cuesta?', 'Es un adicional fijo por gimnasio (no por socio): tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. Cuesta desde S/ 30 extra al mes según tu plan, cubre a todos tus socios y está disponible muy pronto.'],
   ['¿Qué pasa cuando termina mi mes de prueba?', 'Eliges el plan que te acomode y sigues donde quedaste. Tus datos nunca se borran ni se bloquean de un día para otro.'],
   ['¿Puedo cambiar de plan o cancelar?', 'Cuando quieras, sin permanencia ni penalidades. Subes o bajas de plan según crece tu gimnasio.'],
@@ -209,7 +210,7 @@ export default function PlataformaLanding() {
             <span className="text-[17px] font-extrabold tracking-[-0.3px]">FitControl</span>
           </div>
           <nav className="hidden items-center gap-1 md:flex">
-            {[['Funciones', '#funciones'], ['Tu página web', '#pagina-web'], ['Precios', '#precios'], ['Preguntas', '#faq']].map(([l, h]) => (
+            {[['Funciones', '#funciones'], ['Tu página web', '#pagina-web'], ['Precios', '#precios'], ['La app', '#app'], ['Preguntas', '#faq']].map(([l, h]) => (
               <a key={h} href={h} className="px-3 py-2 text-[13px] font-bold transition-colors hover:text-white" style={{ color: C.muted }}>{l}</a>
             ))}
           </nav>
@@ -245,15 +246,16 @@ export default function PlataformaLanding() {
         <div className="relative mx-auto grid max-w-[1100px] items-center gap-12 px-6 py-20 md:grid-cols-[1.05fr_1fr] md:py-24">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11.5px] font-extrabold uppercase tracking-[1.5px]" style={{ border: C.border, color: C.muted }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: C.primary }} /> El sistema operativo para gimnasios
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: C.primary }} /> El sistema operativo del fitness
             </div>
             <h1 className="text-[44px] font-extrabold leading-[1.06] tracking-[-1.5px]">
               Control total.<br />
               <span style={{ color: C.primary }}>Máxima retención.</span>
             </h1>
             <p className="mt-5 max-w-[480px] text-[16px] font-semibold leading-relaxed" style={{ color: C.muted }}>
-              Accesos, cobros, socios y tu página web en una sola plataforma limpia.
-              Elimina la fricción administrativa y haz crecer tu membresía sin esfuerzo.
+              Gimnasios, academias, gyms para niños y personal trainers: accesos, cobros,
+              clientes y tu página web en una sola plataforma. Y pronto, la app donde
+              las personas te encuentran y entrenan contigo.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a href={`${APP_URL}/registro`}
@@ -504,8 +506,46 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
+      {/* La app que viene: marketplace + app del socio */}
+      <section id="app" className="lp-rev relative overflow-hidden py-16" style={{ background: C.surface }}>
+        <div className="pointer-events-none absolute -right-32 top-10 h-[380px] w-[380px] rounded-full opacity-[0.10] blur-3xl" style={{ background: C.primary }} />
+        <div className="relative mx-auto max-w-[1100px] px-6">
+          <div className="text-center">
+            <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[1.5px]" style={{ background: 'rgba(255,107,53,0.12)', color: C.primary }}>
+              📱 Próximamente
+            </span>
+            <h2 className="mt-4 text-[30px] font-extrabold tracking-[-0.8px]">La app que cambia el juego</h2>
+            <p className="mx-auto mt-2 max-w-[560px] text-[14.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+              Una sola app para todo el fitness: las personas encuentran dónde entrenar,
+              y tus clientes viven tu negocio desde su celular.
+            </p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['🗺️', 'Te encuentran a ti', 'Las personas buscarán gimnasios, academias y personal trainers cerca de ellas. Estar suscrito a FitControl te pone en el mapa — sin costo extra.'],
+              ['📲', 'Tu negocio en su bolsillo', 'Tus socios ven su rutina, su dieta, su membresía y reservan tus clases — con tu marca y tus colores.'],
+              ['🎥', 'Papás tranquilos', 'En gyms para niños, el apoderado verá la asistencia de su hijo y las cámaras de la clase en vivo.'],
+              ['🏋️', 'Modo entrenador', 'Tus trainers y nutricionistas asignan rutinas y dietas desde su celular, en el piso del gym.'],
+            ].map(([ic, t, d]) => (
+              <div key={t} className="rounded-lg p-5" style={{ background: C.bg, border: C.border }}>
+                <div className="text-[26px]">{ic}</div>
+                <div className="mt-2.5 text-[14.5px] font-extrabold">{t}</div>
+                <div className="mt-1.5 text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{d}</div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-8 text-center text-[13px] font-semibold" style={{ color: C.muted }}>
+            Aparecer en la app está <b className="text-white">incluido con tu suscripción</b>. Las funciones para tus
+            clientes son un adicional <b style={{ color: C.primary }}>desde S/ 20/mes</b> — puedes reservarlo desde hoy
+            y se cobra recién cuando la app esté activa.
+          </p>
+        </div>
+      </section>
+
       {/* FAQ */}
-      <section id="faq" className="lp-rev mx-auto max-w-[760px] px-6 pb-16 pt-4">
+      <section id="faq" className="lp-rev mx-auto max-w-[760px] px-6 pb-16 pt-16">
         <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Preguntas frecuentes</h2>
         <div className="mt-8 space-y-2.5">
           {FAQS.map(([q, a]) => (
@@ -556,7 +596,7 @@ export default function PlataformaLanding() {
               <span className="text-[16px] font-extrabold">FitControl</span>
             </div>
             <p className="mt-3 max-w-[240px] text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
-              El sistema operativo para gimnasios. Panel de gestión, página web y captación de clientes en una sola plataforma.
+              El sistema operativo del fitness: gimnasios, academias, gyms para niños y personal trainers en una sola plataforma.
             </p>
             <p className="mt-3 text-[12px] font-semibold" style={{ color: C.muted }}>🇵🇪 Hecho en Perú</p>
           </div>
