@@ -67,7 +67,7 @@ export default async function handler(req, res) {
         first_name: nombre[0] || 'Admin',
         last_name: nombre.slice(1).join(' ') || sus.empresa_nombre || 'FitControl',
         email: mail,
-        address: 'Lima',
+        address: 'Lima, Peru',
         address_city: 'Lima',
         country_code: 'PE',
         phone_number: '999999999',
