@@ -56,7 +56,7 @@ function CampanaModal({ empresaId, promocion, onClose }) {
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Tipo">
             <select value={f.tipo} onChange={set('tipo')} className={inputCls + ' cursor-pointer'}>
-              <option value="2x1">2×1 (matrícula gratis)</option><option value="descuento_pct">Descuento %</option>
+              <option value="2x1">2×1 (dos personas, paga una)</option><option value="descuento_pct">Descuento %</option>
               <option value="descuento_monto">Descuento fijo</option><option value="semana_gratis">Semana gratis</option>
               <option value="precio_especial">Precio especial (paquete)</option>
               <option value="otro">Otro</option>
