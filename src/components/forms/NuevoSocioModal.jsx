@@ -22,6 +22,8 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     documento: '', fecha_nacimiento: '', objetivo: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
   })
   const [invitados, setInvitados] = useState([]) // acompañantes de promos 2x1/grupal
+  const [enPartes, setEnPartes] = useState(false) // paga una parte hoy, el resto después
+  const [montoInicial, setMontoInicial] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(null) // { codigo, total, promo }
@@ -59,6 +61,10 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     }
   }
   const total = precio * pagan + matricula
+  // Pago en partes: solo sin promo de grupo (un pago compartido no se disgrega)
+  const puedePartes = plan && !esGrupo && total > 0
+  const inicial = enPartes && puedePartes ? Math.max(0, Math.min(Number(montoInicial) || 0, total)) : total
+  const saldo = total - inicial
 
   async function guardar(e) {
     e?.preventDefault()
@@ -78,10 +84,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             .filter((i) => i?.nombre?.trim())
             .map((i) => ({ nombre: i.nombre.trim(), telefono: i.telefono || null, documento: i.documento || null }))
         : null,
+      p_monto_inicial: enPartes && puedePartes ? inicial : null,
     })
     setBusy(false)
     if (error) { setError(error.message); return }
-    setExito({ codigo: data.codigo, total: data.total_cobrado, promo: data.promo_aplicada, codigosInvitados: data.codigos_invitados || [] })
+    setExito({ codigo: data.codigo, total: data.total_cobrado, saldo: Number(data.saldo || 0), promo: data.promo_aplicada, codigosInvitados: data.codigos_invitados || [] })
     qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
     qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
     qc.invalidateQueries({ queryKey: ['socios-select', sedeId] })
@@ -106,6 +113,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             <div className="mt-2 text-[14px] font-extrabold">Cobrado: {money(exito.total, empresa?.moneda)} <span className="text-[11px] font-semibold text-muted">({METODOS_PAGO.find(([m]) => m === f.metodo_pago)?.[1]} · registrado en caja)</span></div>
           )}
           {exito.promo && <div className="mt-1 text-[12px] font-extrabold text-orange">🎁 {exito.promo}</div>}
+          {exito.saldo > 0 && (
+            <div className="mt-2 rounded-[9px] bg-amber-50 px-3 py-2 text-[12px] font-extrabold text-amber-800">
+              Queda debiendo {money(exito.saldo, empresa?.moneda)} — regístralo con "Abonar" en Membresías cuando pague.
+            </div>
+          )}
         </div>
         <button onClick={onClose} className="mt-4 w-full cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600">Listo</button>
       </Modal>
@@ -190,11 +202,33 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
               <div className="mt-2 flex justify-between border-t border-line pt-2 text-[14px] font-extrabold">
                 <span>Total a cobrar</span><span>{money(total, empresa?.moneda)}</span>
               </div>
+
+              {/* Pago en partes: cobra una parte hoy y el resto queda como saldo */}
+              {puedePartes && (
+                <div className="mt-2.5 border-t border-line pt-2.5">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" checked={enPartes} onChange={(e) => { setEnPartes(e.target.checked); if (e.target.checked && !montoInicial) setMontoInicial(String(total)) }}
+                      className="h-4 w-4 accent-orange-600" />
+                    <span className="text-[12.5px] font-bold">Paga en partes <span className="font-semibold text-muted">(hoy una parte, el resto queda como saldo)</span></span>
+                  </label>
+                  {enPartes && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                      <span className="text-[12.5px] font-bold">Paga hoy S/</span>
+                      <input type="number" step="0.01" min="0" max={total} value={montoInicial}
+                        onChange={(e) => setMontoInicial(e.target.value)} autoFocus
+                        className="w-[100px] rounded-[8px] border border-line bg-white px-2 py-1.5 text-[13px] font-extrabold outline-none focus:border-orange" />
+                      <span className={`text-[12px] font-extrabold ${saldo > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        {saldo > 0 ? `queda debiendo ${money(saldo, empresa?.moneda)}` : 'pagado completo ✓'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={f.plan_id ? `Inscribir y cobrar ${money(total, empresa?.moneda)}` : 'Inscribir'} />
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={f.plan_id ? `Inscribir y cobrar ${money(inicial, empresa?.moneda)}` : 'Inscribir'} />
       </form>
     </Modal>
   )

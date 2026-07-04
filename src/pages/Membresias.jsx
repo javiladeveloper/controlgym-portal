@@ -67,6 +67,53 @@ function CobrarModal({ m, moneda, renovar, onClose }) {
   )
 }
 
+// Saldo pendiente de una membresía pagada en partes
+const saldoDe = (m) => Math.max(0, (Number(m.precio_pagado) || 0) + (Number(m.matricula_pagada) || 0) - (Number(m.monto_pagado) || 0))
+
+// Registrar un abono de una membresía con saldo (pagos en partes)
+function AbonarModal({ m, moneda, sedeId, onClose }) {
+  const qc = useQueryClient()
+  const saldo = saldoDe(m)
+  const [monto, setMonto] = useState(String(saldo))
+  const [metodo, setMetodo] = useState('efectivo')
+  const [busy, setBusy] = useState(false)
+  const n = Number(monto) || 0
+
+  async function confirmar() {
+    setBusy(true)
+    const { data, error } = await supabase.rpc('abonar_membresia', { p_membresia_id: m.id, p_monto: n, p_metodo_pago: metodo })
+    setBusy(false)
+    if (error) { toast.error('No se pudo registrar: ' + error.message); return }
+    toast.ok(Number(data.saldo) > 0
+      ? `Abono de ${money(n, moneda)} registrado — ${m.socio?.nombre} queda debiendo ${money(data.saldo, moneda)}`
+      : `¡${m.socio?.nombre} canceló su membresía completa! ✓`)
+    qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
+    qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+    onClose()
+  }
+
+  return (
+    <Modal title="Registrar abono" subtitle={m.socio?.nombre} onClose={onClose} width={400}>
+      <div className="flex flex-col gap-3.5">
+        <div className="flex justify-between rounded-[10px] bg-amber-50 px-3.5 py-2.5 text-[13px] font-extrabold text-amber-800">
+          <span>Saldo pendiente</span><span>{money(saldo, moneda)}</span>
+        </div>
+        <Campo label="¿Cuánto abona hoy? (S/)">
+          <input type="number" step="0.01" min="0.01" max={saldo} value={monto} onChange={(e) => setMonto(e.target.value)}
+            className={inputCls} autoFocus />
+        </Campo>
+        <Campo label="¿Cómo pagó?">
+          <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={inputCls + ' cursor-pointer'}>
+            {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Campo>
+        <BotonesModal onCancel={onClose} busy={busy} disabled={n <= 0 || n > saldo}
+          submitLabel={n >= saldo ? `Cancelar saldo ${money(n, moneda)} ✓` : `Abonar ${money(n, moneda)}`} onSubmit={confirmar} />
+      </div>
+    </Modal>
+  )
+}
+
 // Congelar pidiendo cuántos días, con el tope anual que permite el plan.
 // La BD valida el acumulado del año y el vencimiento se extiende al reactivar.
 function CongelarModal({ m, freeze, onClose }) {
@@ -142,6 +189,7 @@ export default function Membresias() {
   const [anulando, setAnulando] = useState(null) // membresía en confirmación de anulación
   const [cobrando, setCobrando] = useState(null) // membresía a la que se le registra el cobro
   const [congelando, setCongelando] = useState(null) // membresía a congelar (pide días)
+  const [abonando, setAbonando] = useState(null) // membresía con saldo a la que se abona
   const [dandoBaja, setDandoBaja] = useState(null) // socio en confirmación de baja
 
   // Control de cobros: vencidas y por vencer en ≤7 días (el gym cobra en persona).
@@ -150,9 +198,9 @@ export default function Membresias() {
   const diasPara = (f) => Math.ceil((new Date(f) - hoy) / 86400000)
   const porCobrar = (membresias.data || [])
     .filter((m) => !['cancelada', 'congelada'].includes(m.estado) && m.socio?.estado !== 'inactivo'
-      && m.fecha_fin && diasPara(m.fecha_fin) <= 7)
+      && ((m.fecha_fin && diasPara(m.fecha_fin) <= 7) || saldoDe(m) > 0))
     .sort((a, b) => new Date(a.fecha_fin) - new Date(b.fecha_fin))
-  const totalPorCobrar = porCobrar.reduce((n, m) => n + Number(m.plan?.precio || 0), 0)
+  const totalPorCobrar = porCobrar.reduce((n, m) => n + (saldoDe(m) > 0 ? saldoDe(m) : Number(m.plan?.precio || 0)), 0)
 
   // El socio no responde y no volverá: se cierra su membresía y pasa a inactivo
   async function darBaja(m) {
@@ -188,6 +236,7 @@ export default function Membresias() {
       {planesOpen && <PlanesModal onClose={() => setPlanesOpen(false)} />}
       {cobrando && <CobrarModal m={cobrando} moneda={moneda} renovar={renovar} onClose={() => setCobrando(null)} />}
       {congelando && <CongelarModal m={congelando} freeze={freeze} onClose={() => setCongelando(null)} />}
+      {abonando && <AbonarModal m={abonando} moneda={moneda} sedeId={sedeId} onClose={() => setAbonando(null)} />}
 
       {/* Control de cobros: a quién hay que cobrarle */}
       {porCobrar.length > 0 && (
@@ -204,8 +253,11 @@ export default function Membresias() {
           </div>
           {porCobrar.map((m) => {
             const d = diasPara(m.fecha_fin)
-            const etiqueta = d < 0 ? `Vencida hace ${-d} día${-d === 1 ? '' : 's'}` : d === 0 ? 'Vence HOY' : `Vence en ${d} día${d === 1 ? '' : 's'}`
-            const rojo = d <= 0
+            const saldo = saldoDe(m)
+            const soloSaldo = saldo > 0 && d > 7
+            const etiqueta = soloSaldo ? `Debe ${money(saldo, moneda)}`
+              : d < 0 ? `Vencida hace ${-d} día${-d === 1 ? '' : 's'}` : d === 0 ? 'Vence HOY' : `Vence en ${d} día${d === 1 ? '' : 's'}`
+            const rojo = !soloSaldo && d <= 0
             return (
               <div key={m.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line2 px-4 py-3 hover:bg-[#FAFBFC] sm:px-5">
                 <div className="min-w-0">
@@ -213,17 +265,26 @@ export default function Membresias() {
                   <div className="text-[11.5px] font-semibold text-muted">{m.plan?.nombre} · {money(m.plan?.precio, moneda)}</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge bg={rojo ? T.dangerBg : T.primaryBg} color={rojo ? T.danger : T.primary}>{etiqueta}</Badge>
+                  <Badge bg={soloSaldo ? '#FEF3C7' : rojo ? T.dangerBg : T.primaryBg} color={soloSaldo ? '#92400E' : rojo ? T.danger : T.primary}>{etiqueta}</Badge>
+                  {!soloSaldo && saldo > 0 && <Badge bg="#FEF3C7" color="#92400E">Debe {money(saldo, moneda)}</Badge>}
                   {m.socio?.telefono && (
                     <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}
                       target="_blank" rel="noreferrer" title="Recordarle por WhatsApp"
                       className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
                       style={{ background: '#25D36622', color: '#1DA851' }}>💬</a>
                   )}
-                  <button onClick={() => setCobrando(m)}
-                    className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
-                    Cobré — renovar
-                  </button>
+                  {saldo > 0 && (
+                    <button onClick={() => setAbonando(m)}
+                      className="cursor-pointer rounded-[9px] border-none bg-amber-500 px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-amber-600">
+                      Abonar
+                    </button>
+                  )}
+                  {!soloSaldo && (
+                    <button onClick={() => setCobrando(m)}
+                      className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
+                      Cobré — renovar
+                    </button>
+                  )}
                   {dandoBaja === m.id ? (
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10.5px] font-extrabold text-red">¿Dar de baja?</span>
@@ -282,7 +343,14 @@ export default function Membresias() {
               </div>
               <div>
                 <div className="text-[13px] font-bold">{m.plan?.nombre}</div>
-                <div className="text-[10.5px] font-extrabold text-faint">{dias ? `Congela hasta ${dias} días/año` : 'Sin congelamiento'}</div>
+                {saldoDe(m) > 0 ? (
+                  <button onClick={() => setAbonando(m)} title="Pagó en partes — clic para registrar un abono"
+                    className="cursor-pointer rounded-full border-none bg-amber-100 px-2 py-0.5 text-[10.5px] font-extrabold text-amber-800 hover:bg-amber-200">
+                    Debe {money(saldoDe(m), moneda)} · Abonar
+                  </button>
+                ) : (
+                  <div className="text-[10.5px] font-extrabold text-faint">{dias ? `Congela hasta ${dias} días/año` : 'Sin congelamiento'}</div>
+                )}
               </div>
               <div><Badge bg={st.bg} color={st.color}>{st.label}</Badge></div>
               <div className="text-[12.5px] font-bold text-muted">

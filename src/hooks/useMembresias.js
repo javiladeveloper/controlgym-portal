@@ -25,7 +25,7 @@ export function useMembresias(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membresia')
-        .select('id, estado, fecha_fin, socio:socio!membresia_socio_id_fkey(id, nombre, codigo, telefono, estado), plan:plan(nombre, precio, unidad, dias_congelamiento_anio)')
+        .select('id, estado, fecha_fin, precio_pagado, matricula_pagada, monto_pagado, socio:socio!membresia_socio_id_fkey(id, nombre, codigo, telefono, estado), plan:plan(nombre, precio, unidad, dias_congelamiento_anio)')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('fecha_fin')
