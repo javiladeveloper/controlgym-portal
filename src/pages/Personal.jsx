@@ -102,7 +102,7 @@ function useInvitaciones() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('invitacion')
-        .select('id, email, estado, created_at, rol:rol(nombre)')
+        .select('id, email, nombre, telefono, estado, created_at, rol:rol(nombre)')
         .eq('estado', 'pendiente')
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -113,16 +113,19 @@ function useInvitaciones() {
 
 function InvitarModal({ sedeId, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ email: '', rol: 'recepcion' })
+  const [f, setF] = useState({ email: '', rol: 'recepcion', nombre: '', telefono: '', sueldo: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [ok, setOk] = useState(false)
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   async function invitar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
     const { error } = await supabase.rpc('invitar_colaborador', {
       p_email: f.email.trim().toLowerCase(), p_rol_codigo: f.rol, p_sede_id: sedeId,
+      p_nombre: f.nombre.trim() || null, p_telefono: f.telefono.trim() || null,
+      p_sueldo: f.sueldo === '' ? null : Number(f.sueldo),
     })
     setBusy(false)
     if (error) { setError(error.message); return }
@@ -146,13 +149,22 @@ function InvitarModal({ sedeId, onClose }) {
     <Modal title="Agregar colaborador" subtitle="Se le da acceso al panel por invitación" onClose={onClose}>
       <form onSubmit={invitar} className="flex flex-col gap-3.5">
         <Campo label="Correo de Google *" hint="Con este correo iniciará sesión en el panel.">
-          <input type="email" required value={f.email} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} className={inputCls} placeholder="colaborador@gmail.com" />
+          <input type="email" required value={f.email} onChange={set('email')} className={inputCls} placeholder="colaborador@gmail.com" />
         </Campo>
-        <Campo label="Rol">
-          <select value={f.rol} onChange={(e) => setF((s) => ({ ...s, rol: e.target.value }))} className={inputCls + ' cursor-pointer'}>
-            {ROLES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
-          </select>
-        </Campo>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Nombre"><input value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="María López" /></Campo>
+          <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} placeholder="999 888 777" /></Campo>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Rol">
+            <select value={f.rol} onChange={set('rol')} className={inputCls + ' cursor-pointer'}>
+              {ROLES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+            </select>
+          </Campo>
+          <Campo label="Sueldo mensual (S/)" hint="Opcional; se usa en Planilla.">
+            <input type="number" step="0.01" min="0" value={f.sueldo} onChange={set('sueldo')} className={inputCls} placeholder="1200" />
+          </Campo>
+        </div>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         <BotonesModal onCancel={onClose} busy={busy} disabled={!f.email.trim()} submitLabel="Invitar" />
       </form>
@@ -260,8 +272,8 @@ export default function Personal() {
           {invitaciones.data.map((inv) => (
             <div key={inv.id} className="flex items-center justify-between border-t border-line2 px-5 py-3">
               <div>
-                <div className="text-[13.5px] font-extrabold">{inv.email}</div>
-                <div className="text-[11.5px] font-semibold text-muted">{inv.rol?.nombre} · invitado el {new Date(inv.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
+                <div className="text-[13.5px] font-extrabold">{inv.nombre ? `${inv.nombre} · ${inv.email}` : inv.email}</div>
+                <div className="text-[11.5px] font-semibold text-muted">{inv.rol?.nombre}{inv.telefono ? ` · ${inv.telefono}` : ''} · invitado el {new Date(inv.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge bg={T.primaryBg} color={T.primary}>Pendiente</Badge>
