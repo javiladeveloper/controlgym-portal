@@ -13,12 +13,7 @@ function normalizaSlug(s) {
     .replace(/-+/g, '-').replace(/^-|-$/g, '')
 }
 
-// Planes comerciales (mismos montos que la landing de fitcorecenter.com)
-const PLANES = [
-  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Yoga, pilates, baile y gyms pequeños' },
-  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'Para captar y crecer', popular: true },
-  { slug: 'cadena', nombre: 'Cadena', base: 179, conApp: 229, para: 'Multi-sede y franquicias' },
-]
+import { planesPorCategoria } from '../config/planesComerciales.js'
 
 export default function RegistroGym() {
   const navigate = useNavigate()
@@ -29,6 +24,19 @@ export default function RegistroGym() {
   const [categoria, setCategoria] = useState('fitness')
   const [plan, setPlan] = useState('crecimiento')
   const [conApp, setConApp] = useState(false)
+
+  // Planes disponibles según el tipo de negocio elegido
+  const planesDisponibles = planesPorCategoria(categoria)
+  const planActual = planesDisponibles.find((p) => p.slug === plan) || planesDisponibles[0]
+
+  function onCategoria(codigo) {
+    setCategoria(codigo)
+    const disponibles = planesPorCategoria(codigo)
+    // Si el plan elegido no aplica al nuevo segmento, tomar el default
+    if (!disponibles.some((p) => p.slug === plan)) {
+      setPlan(disponibles.find((p) => p.popular)?.slug || disponibles[0].slug)
+    }
+  }
   const [acepta, setAcepta] = useState(false)
   const [check, setCheck] = useState(null) // null | 'checking' | 'ok' | 'taken'
   const [busy, setBusy] = useState(false)
@@ -125,7 +133,7 @@ export default function RegistroGym() {
                 <label key={c.codigo}
                   className={`flex cursor-pointer items-start gap-3 rounded-[10px] border p-3 transition-colors ${categoria === c.codigo ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
                   <input type="radio" name="categoria" value={c.codigo} checked={categoria === c.codigo}
-                    onChange={() => setCategoria(c.codigo)} className="mt-0.5 accent-orange-600" />
+                    onChange={() => onCategoria(c.codigo)} className="mt-0.5 accent-orange-600" />
                   <span>
                     <span className="block text-[13.5px] font-extrabold">{c.nombre}</span>
                     <span className="block text-[11.5px] font-semibold text-muted">{c.descripcion}</span>
@@ -140,8 +148,8 @@ export default function RegistroGym() {
               <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Tu plan</span>
               <span className="text-[11px] font-bold text-faint">1 mes de prueba gratis en todos</span>
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {PLANES.map((p) => (
+            <div className={`mt-2 grid gap-2 ${planesDisponibles.length === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}>
+              {planesDisponibles.map((p) => (
                 <label key={p.slug}
                   className={`relative flex cursor-pointer flex-col rounded-[10px] border p-2.5 text-center transition-colors ${plan === p.slug ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
                   {p.popular && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-orange px-2 py-[1px] text-[8.5px] font-extrabold uppercase text-white">Popular</span>}
@@ -155,11 +163,9 @@ export default function RegistroGym() {
             <label className="mt-2.5 flex items-start gap-2">
               <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />
               <span className="text-[12.5px] font-bold">
-                📱 App para mis socios{' '}
-                <b className="text-orange">
-                  +S/ {(PLANES.find((p) => p.slug === plan)?.conApp ?? 0) - (PLANES.find((p) => p.slug === plan)?.base ?? 0)}/mes
-                </b>{' '}
-                <span className="font-semibold text-muted">— cubre a todos tus socios (disponible muy pronto; se cobra recién cuando la actives)</span>
+                📱 App para mis {categoria === 'personal_trainer' ? 'clientes' : categoria === 'ninos' ? 'apoderados' : 'socios'}{' '}
+                <b className="text-orange">+S/ {(planActual?.conApp ?? 0) - (planActual?.base ?? 0)}/mes</b>{' '}
+                <span className="font-semibold text-muted">— cubre a todos (disponible muy pronto; se cobra recién cuando la actives)</span>
               </span>
             </label>
           </div>

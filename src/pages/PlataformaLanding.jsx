@@ -480,6 +480,28 @@ export default function PlataformaLanding() {
         <p className="mt-6 text-center text-[12px] font-semibold" style={{ color: C.muted }}>
           Todos los planes incluyen 1 mes de prueba gratis, sin tarjeta. Cambia de plan cuando quieras.
         </p>
+
+        {/* Segmentos especiales: no todo negocio fitness es un gimnasio clásico */}
+        <div className="mx-auto mt-10 max-w-[1000px] rounded-xl p-6" style={{ background: C.surface, border: C.border }}>
+          <div className="text-center text-[16px] font-extrabold">¿No eres un gimnasio clásico? También tenemos tu plan</div>
+          <p className="mt-1 text-center text-[12.5px] font-semibold" style={{ color: C.muted }}>
+            Un panel a tu medida, sin módulos que no usas — con tu página web incluida.
+          </p>
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              ['💪', 'Personal Trainer', 29, 'Tus clientes, tus paquetes de sesiones y tu página personal'],
+              ['🥋', 'Academia / Estudio', 49, 'Dojos, yoga, baile, box: clases, alumnos y reservas'],
+              ['👦', 'Gym para Niños', 69, 'Alumnos con apoderados y clases por edades'],
+            ].map(([ic, t, precio, d]) => (
+              <a key={t} href={`${APP_URL}/registro`} className="rounded-lg p-4 transition-colors hover:bg-white/5" style={{ border: C.border }}>
+                <div className="text-[22px]">{ic}</div>
+                <div className="mt-1.5 text-[14px] font-extrabold">{t}</div>
+                <div className="text-[18px] font-extrabold" style={{ color: C.primary }}>S/ {precio}<span className="text-[11px] font-semibold" style={{ color: C.muted }}>/mes</span></div>
+                <div className="mt-1 text-[11.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{d}</div>
+              </a>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* FAQ */}

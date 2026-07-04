@@ -6,13 +6,12 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
 import { money } from '../../lib/uiHelpers.js'
 
-// Mi plan: suscripción del gimnasio a FitControl.
+import { PLANES_GYM, planPorSlug } from '../../config/planesComerciales.js'
+
+// Mi plan: suscripción del negocio a FitControl.
 // Trial de 30 días sin tarjeta → activar pago automático con Culqi.
-const PLANES = [
-  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Yoga, pilates, baile y gyms pequeños' },
-  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'Para captar y crecer' },
-  { slug: 'cadena', nombre: 'Cadena', base: 179, conApp: 229, para: 'Multi-sede y franquicias' },
-]
+// Los gimnasios pueden cambiar entre sus 3 tamaños; los segmentos
+// (academia/niños/trainer) tienen plan único.
 
 const ESTADOS = {
   prueba: { label: 'En prueba gratis', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -225,36 +224,50 @@ export default function TabPlan() {
         )}
       </Card>
 
-      {/* Cambiar de plan (solo antes de activar el pago) */}
-      <Card className="mt-4 p-[19px]">
-        <div className="text-[13.5px] font-extrabold">Cambiar de plan</div>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {PLANES.map((p) => {
-            const seleccionado = s.plan_slug === p.slug
-            return (
-              <button key={p.slug} onClick={() => cambiarPlan(p.slug, s.con_app)}
-                className={`rounded-[10px] border p-3 text-center transition-colors ${seleccionado ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
-                <div className="text-[13px] font-extrabold">{p.nombre}</div>
-                <div className="text-[15px] font-extrabold text-orange">S/ {s.con_app ? p.conApp : p.base}<span className="text-[10px] text-muted">/mes</span></div>
-                <div className="mt-0.5 text-[10px] font-semibold leading-tight text-muted">{p.para}</div>
-              </button>
-            )
-          })}
-        </div>
-        <label className="mt-3 flex items-start gap-2">
-          <input type="checkbox" checked={!!s.con_app} disabled={activa}
-            onChange={(e) => cambiarPlan(s.plan_slug, e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-orange-600" />
-          <span className="text-[12.5px] font-bold">
-            📱 App para mis socios{' '}
-            <b className="text-orange">
-              +S/ {(PLANES.find((p) => p.slug === s.plan_slug)?.conApp ?? 0) - (PLANES.find((p) => p.slug === s.plan_slug)?.base ?? 0)}/mes
-            </b>{' '}
-            <span className="font-semibold text-muted">— cubre a todos tus socios (muy pronto; se cobra recién cuando la actives)</span>
-          </span>
-        </label>
-        {activa && <p className="mt-2 text-[11.5px] font-semibold text-faint">Con el pago activo, los cambios de plan se coordinan por WhatsApp para ajustar el cobro.</p>}
-      </Card>
+      {/* Cambiar de plan: gimnasios eligen entre 3 tamaños; segmentos tienen plan único */}
+      {(() => {
+        const esGym = PLANES_GYM.some((p) => p.slug === s.plan_slug)
+        const planFicha = planPorSlug(s.plan_slug)
+        return (
+          <Card className="mt-4 p-[19px]">
+            <div className="text-[13.5px] font-extrabold">{esGym ? 'Cambiar de plan' : 'Tu plan'}</div>
+            {esGym ? (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {PLANES_GYM.map((p) => {
+                  const seleccionado = s.plan_slug === p.slug
+                  return (
+                    <button key={p.slug} onClick={() => cambiarPlan(p.slug, s.con_app)}
+                      className={`rounded-[10px] border p-3 text-center transition-colors ${seleccionado ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
+                      <div className="text-[13px] font-extrabold">{p.nombre}</div>
+                      <div className="text-[15px] font-extrabold text-orange">S/ {s.con_app ? p.conApp : p.base}<span className="text-[10px] text-muted">/mes</span></div>
+                      <div className="mt-0.5 text-[10px] font-semibold leading-tight text-muted">{p.para}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-[10px] border border-orange bg-orange-50 p-3.5">
+                <div className="text-[13.5px] font-extrabold">{planFicha?.nombre}</div>
+                <div className="text-[16px] font-extrabold text-orange">S/ {s.con_app ? planFicha?.conApp : planFicha?.base}<span className="text-[10.5px] text-muted">/mes</span></div>
+                <div className="mt-0.5 text-[11px] font-semibold text-muted">{planFicha?.para}</div>
+              </div>
+            )}
+            <label className="mt-3 flex items-start gap-2">
+              <input type="checkbox" checked={!!s.con_app} disabled={activa}
+                onChange={(e) => cambiarPlan(s.plan_slug, e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-orange-600" />
+              <span className="text-[12.5px] font-bold">
+                📱 App incluida{' '}
+                <b className="text-orange">
+                  +S/ {(planFicha?.conApp ?? 0) - (planFicha?.base ?? 0)}/mes
+                </b>{' '}
+                <span className="font-semibold text-muted">— cubre a todos (muy pronto; se cobra recién cuando la actives)</span>
+              </span>
+            </label>
+            {activa && <p className="mt-2 text-[11.5px] font-semibold text-faint">Con el pago activo, los cambios de plan se coordinan por WhatsApp para ajustar el cobro.</p>}
+          </Card>
+        )
+      })()}
 
       {/* Historial de pagos */}
       <Card className="mt-4 p-[19px]">

@@ -14,7 +14,35 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
 const DIA_LETRA = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' }
 
+// El módulo completo llega junto con la app del socio: crear rutinas/dietas
+// aquí y que el socio las vea en su celular. Sin app, el flujo queda cojo,
+// así que se muestra como próximamente (el código de abajo queda listo).
+const EN_CONSTRUCCION = true
+
+function RutinasEnConstruccion() {
+  return (
+    <div className="flex min-h-[70vh] items-center justify-center px-7">
+      <div className="max-w-[440px] text-center">
+        <div className="text-[56px]">🏗️</div>
+        <h1 className="mt-3 text-[22px] font-extrabold tracking-[-0.3px]">Rutinas y dietas, muy pronto</h1>
+        <p className="mt-2 text-[13.5px] font-semibold leading-relaxed text-muted">
+          Este módulo se lanza junto con la <b className="text-ink">app del socio</b>: tu entrenador arma la rutina
+          y el plan de alimentación desde aquí, y tu socio los ve al instante en su celular.
+        </p>
+        <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-orange bg-orange-50 px-4 py-2 text-[12px] font-extrabold text-orange">
+          📱 Llega con la app — ya puedes reservarla en Configuración → Mi plan
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Rutinas() {
+  if (EN_CONSTRUCCION) return <RutinasEnConstruccion />
+  return <RutinasImpl />
+}
+
+function RutinasImpl() {
   const location = useLocation()
   const { sedeId } = usePanel()
   const socios = useSociosSelect(sedeId)
