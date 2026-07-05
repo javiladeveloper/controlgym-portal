@@ -13,6 +13,7 @@ import {
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
 } from '../hooks/useRutinas.js'
 import { toast } from '../lib/toast.js'
+import { useProductos } from '../hooks/useOperaciones.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
@@ -189,6 +190,10 @@ function RutinasImpl() {
   const agregarComida = useAgregarComida(socioId, empresa?.id)
   const eliminarComida = useEliminarComida(socioId)
   const guardarSuplementos = useGuardarSuplementos(socioId)
+  // Suplementos con stock en el Kardex del gym: recomendar lo que SÍ se puede
+  // comprar en recepción (y de paso, venta cruzada)
+  const productos = useProductos(sedeId)
+  const suplementosStock = (productos.data || []).filter((p) => p.categoria === 'Suplementos' && p.stock > 0)
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
@@ -386,7 +391,18 @@ function RutinasImpl() {
                 </button>
               </div>
             )}
-            <div className="mt-4 flex flex-col gap-2.5">
+            {/* Cabeceras: el chip de día arma el plan SEMANAL (Todos = diario) */}
+            {meals.length > 0 && (
+              <div className="mt-4 hidden flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.5px] text-faint sm:flex">
+                <span className="w-[118px]">Comida</span>
+                <span className="w-[92px]">Hora</span>
+                <span className="w-[104px]" title="Todos = se come a diario; un día = solo ese día (plan semanal)">¿Qué día? ⓘ</span>
+                <span className="min-w-[160px] flex-1">Qué come</span>
+                <span className="w-[72px] text-right">Calorías</span>
+                <span className="w-[40px]" />
+              </div>
+            )}
+            <div className="mt-1.5 flex flex-col gap-2.5">
               {meals.map((m) => (
                 <ComidaFila key={m.id} comida={m}
                   onGuardar={(c) => { guardarComida.mutate(c, { onError: (e) => toast.error(e.message) }); setEnviado(false) }}
@@ -409,6 +425,26 @@ function RutinasImpl() {
                   placeholder="Ej.: Proteína whey 1 scoop post-entreno · Creatina 5g diarios con agua · Dormir 7-8 horas…"
                   className="w-full resize-none rounded-[9px] border border-line bg-white px-3 py-2.5 text-[13px] font-semibold outline-none focus:border-orange" />
                 <p className="mt-1 text-[10.5px] font-bold text-faint">El socio lo ve en su app como tarjeta 💊 junto a su plan de hoy.</p>
+                {/* Lo que el gym tiene en stock: un clic lo recomienda (venta cruzada) */}
+                {suplementosStock.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10.5px] font-extrabold uppercase text-faint">En stock del gym:</span>
+                    {suplementosStock.map((p) => (
+                      <button key={p.id} type="button"
+                        onClick={() => {
+                          const linea = `${p.nombre} — disponible en recepción (S/ ${Number(p.precio)})`
+                          if (suplementos.includes(p.nombre)) return
+                          const nuevo = suplementos ? `${suplementos}\n· ${linea}` : `· ${linea}`
+                          setSuplementos(nuevo)
+                          guardarSuplementos.mutate({ dietaId: dieta.data.id, suplementos: nuevo })
+                          setEnviado(false)
+                        }}
+                        className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition-colors ${suplementos.includes(p.nombre) ? 'border-green-300 bg-green-50 text-green-700' : 'border-line bg-white text-muted hover:border-orange hover:text-orange'}`}>
+                        {suplementos.includes(p.nombre) ? '✓ ' : '+ '}{p.nombre} <span className="font-bold text-faint">({p.stock})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </Card>
