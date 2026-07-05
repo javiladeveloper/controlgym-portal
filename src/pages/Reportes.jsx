@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient.js'
 import { descargarCSV } from '../lib/csv.js'
 import { usePanel } from '../store.jsx'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import DesempenoTrainers from '../components/DesempenoTrainers.jsx'
 
 const fmtF = (d) => (d ? new Date(d).toLocaleDateString('es-PE') : '')
 const fmtFH = (d) => (d ? new Date(d).toLocaleString('es-PE') : '')
@@ -195,6 +196,10 @@ export default function Reportes() {
       <p className="mt-0.5 text-[13px] font-semibold text-muted">
         Descarga los datos reales de {sedeNombre} en Excel (CSV).
       </p>
+
+      <div className="mt-5">
+        <DesempenoTrainers />
+      </div>
 
       <div className="mt-5 grid grid-cols-1 gap-[15px] lg:grid-cols-3">
         {REPORTES.map((r) => (

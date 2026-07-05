@@ -175,19 +175,31 @@ export function useGuardarEjercicio(rutinaId, empresaId) {
         descanso: ej.descanso || null, notas: ej.notas || null,
       }
       if (!campos.nombre) throw new Error('El ejercicio necesita nombre')
+
+      // Resolver el ejercicio en el BANCO (crearlo si no existe) y quedarnos con
+      // su id: así el ejercicio asignado queda ENLAZADO al banco (ejercicio_id),
+      // y la app puede mostrarle al socio la guía (video/descripción) de ese
+      // ejercicio. El banco crece solo y hereda del maestro por trigger.
+      let ejercicioId = null
+      const { data: existe } = await supabase.from('ejercicio')
+        .select('id').eq('empresa_id', empresaId).ilike('nombre', campos.nombre).limit(1)
+      if (existe?.length) {
+        ejercicioId = existe[0].id
+      } else {
+        const { data: creado } = await supabase.from('ejercicio')
+          .insert({ empresa_id: empresaId, nombre: campos.nombre })
+          .select('id').single()
+        ejercicioId = creado?.id || null
+      }
+
       if (ej.id) {
-        const { error } = await supabase.from('rutina_ejercicio').update(campos).eq('id', ej.id)
+        const { error } = await supabase.from('rutina_ejercicio')
+          .update({ ...campos, ejercicio_id: ejercicioId }).eq('id', ej.id)
         if (error) throw error
       } else {
         const { error } = await supabase.from('rutina_ejercicio')
-          .insert({ ...campos, empresa_id: empresaId, rutina_dia_id: ej.rutina_dia_id, orden: ej.orden ?? 99 })
+          .insert({ ...campos, ejercicio_id: ejercicioId, empresa_id: empresaId, rutina_dia_id: ej.rutina_dia_id, orden: ej.orden ?? 99 })
         if (error) throw error
-      }
-      // El banco crece solo: si el ejercicio no existe en el catálogo, se agrega
-      const { data: existe } = await supabase.from('ejercicio')
-        .select('id').eq('empresa_id', empresaId).ilike('nombre', campos.nombre).limit(1)
-      if (!existe?.length) {
-        await supabase.from('ejercicio').insert({ empresa_id: empresaId, nombre: campos.nombre })
       }
     },
     onSuccess: () => {
