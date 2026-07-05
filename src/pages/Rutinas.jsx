@@ -321,6 +321,22 @@ function RutinasImpl() {
               <div className="flex flex-wrap gap-2.5">
                 <Chip label="Talla:" value={socio.talla_m ? `${socio.talla_m} m` : '—'} />
                 <Chip label="Peso:" value={socio.peso_kg ? `${socio.peso_kg} kg` : '—'} />
+                {(() => {
+                  // IMC = peso / talla² — el punto de partida del especialista
+                  const t = Number(socio.talla_m), p = Number(socio.peso_kg)
+                  if (!t || !p) return null
+                  const imc = p / (t * t)
+                  const [etiqueta, color, bg] =
+                    imc < 18.5 ? ['Bajo peso', '#B45309', '#FEF3C7']
+                    : imc < 25 ? ['Normal', '#1D9E75', '#E7F6F0']
+                    : imc < 30 ? ['Sobrepeso', '#B45309', '#FEF3C7']
+                    : ['Obesidad', '#E24B4A', '#FDECEC']
+                  return (
+                    <div className="rounded-[10px] px-[15px] py-2.5 text-[12.5px] font-bold" style={{ background: bg, color }}>
+                      IMC: <span className="font-extrabold">{imc.toFixed(1)}</span> · {etiqueta}
+                    </div>
+                  )
+                })()}
                 <Chip label="Objetivo:" value={socio.objetivo || '—'} accent />
               </div>
             </div>
