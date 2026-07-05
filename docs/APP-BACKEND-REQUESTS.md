@@ -472,8 +472,19 @@ cargar datos.
 >   - YouTube → `https://www.youtube.com/embed/<ID>` (thumb:
 >     `https://img.youtube.com/vi/<ID>/hqdefault.jpg`).
 >   - Vimeo → `https://player.vimeo.com/video/<ID>`.
+>   - **`yt-search:<términos>`** (formato nuevo, 2026-07-05): algunos videos
+>     genéricos usan búsqueda embebida en vez de un ID fijo (así no se caen si
+>     borran un video). Conviértelo a
+>     `https://www.youtube.com/embed?listType=search&list=<términos url-encoded>`
+>     y embébelo igual. Ya está en `parseVideo` del panel.
 > Si `video_url` es null pero hay `foto_url`, muestra la foto. Si no hay
 > ninguno, solo la `descripcion`.
+>
+> **✅ Semilla completa (2026-07-05):** los **376 ejercicios de TODOS los gyms**
+> ya traen `descripcion` + `video_url` genéricos (43 con ID directo verificado
+> vía oembed + 4 con `yt-search:`). Es el banco de ENTRADA; cada gym puede
+> reemplazar/agregar lo suyo desde el panel sin afectar a otros (cada fila de
+> `ejercicio` es por `empresa_id`). La app los muestra tal cual lea la columna.
 >
 > Próximo número libre para ti sigue siendo **`20260704000020`**.
 
