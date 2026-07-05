@@ -41,17 +41,23 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const promosActivas = (promos.data || []).filter((p) => p.estado === 'activa')
   const promo = promosActivas.find((p) => p.id === f.promocion_id)
 
-  // Verificación de DNI contra el padrón (con debounce): valida identidad
-  // y autocompleta el nombre si aún no lo escribieron
+  // Verificación de DNI contra el padrón (con debounce). Al verificar, el
+  // nombre OFICIAL COMPLETO se escribe solo en el campo Nombre (recepción
+  // solo tipea 8 dígitos). Si el usuario luego edita el nombre, se le avisa
+  // si deja de coincidir.
   useEffect(() => {
     const dni = f.documento.replace(/\D/g, '')
     if (dni.length !== 8) { setVerif(null); return }
+    // No re-consultar si el nombre ya ES el oficial de este mismo DNI
+    if (verif?.encontrado && verif._dni === dni && f.nombre === verif.nombre_oficial) return
     setVerif({ buscando: true })
     const t = setTimeout(async () => {
       const v = await verificarDni({ dni, nombre: f.nombre })
-      setVerif(v)
-      if (v.encontrado && !f.nombre.trim()) {
-        setF((s) => (s.nombre.trim() ? s : { ...s, nombre: v.nombre_oficial }))
+      setVerif({ ...v, _dni: dni })
+      if (v.encontrado && v.nombre_oficial && f.nombre !== v.nombre_oficial) {
+        // Pisa lo tipeado con el nombre del padrón (es el dato legal)
+        setF((s) => ({ ...s, nombre: v.nombre_oficial }))
+        setVerif({ ...v, _dni: dni, coincide: true, similitud: 1 })
       }
     }, 500)
     return () => clearTimeout(t)

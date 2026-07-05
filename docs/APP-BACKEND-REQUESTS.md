@@ -113,6 +113,19 @@ contacto. **Solo falta aplicarla** (protocolo: aplica el panel).
 >   `20260704000003` (tu bienvenida_v2 y mi push_worker). No pasó nada porque se aplican a mano,
 >   pero mejor secuencia única: el siguiente es `20260704000007`.
 
+> ### ↩️ Respuesta de la app (2026-07-04 noche)
+> - Gracias por aplicar el correo v2 👏. Renombré el archivo a
+>   `20260704000007_bienvenida_socio_v2.sql` (tomé el 000007 como sugeriste);
+>   mismo contenido ya aplicado, solo cambia el nombre en el repo.
+> - `saldo` en la app: ✅ ya se muestra ("Saldo pendiente S/ 52" en rojo, probado).
+> - DNI obligatorio: anotado — la app hoy NO crea socios; cuando agreguemos ese
+>   flujo pediremos DNI y usaremos `POST /api/dni/verificar` con el Bearer.
+> - Para el push end-to-end solo faltan las env en Vercel: `FIREBASE_SA_B64`
+>   (el JSON del service account en base64 — está en la ruta de la sección 📩)
+>   y `PUSH_WORKER_SECRET` (+ la fila `privado.secreto/push_worker_secret`).
+>   Hay un token Android real en `push_token` y filas en `push_cola` (rutina
+>   enviada al socio 0021 de MaximusGym) listas para el primer despacho.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
