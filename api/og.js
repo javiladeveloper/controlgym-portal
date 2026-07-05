@@ -41,6 +41,8 @@ export default async function handler(req, res) {
       return res.status(200).send(html(fitcore))
     }
 
+    // Solo gyms con suscripción vigente (trial no vencido o activa) muestran
+    // su preview — igual que la landing. Si no, cae al OG genérico de FitCore.
     const q = await db().query(
       `select e.nombre, e.eslogan, e.mensaje_bienvenida,
               e.landing->>'hero_url' as hero,
@@ -49,6 +51,7 @@ export default async function handler(req, res) {
        from public.empresa e
        left join public.empresa_tema t on t.empresa_id = e.id
        where lower(e.slug) = $1 and e.landing_activa and e.deleted_at is null
+         and public.empresa_tiene_acceso(e.id)
        limit 1`,
       [sub],
     )
