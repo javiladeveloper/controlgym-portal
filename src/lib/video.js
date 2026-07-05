@@ -13,8 +13,22 @@ export function parseVideo(url) {
   const u = String(url || '').trim()
   if (!u) return null
 
+  // Búsqueda embebida de YouTube: "yt-search:sentadilla con barra tecnica".
+  // YouTube resuelve al mejor resultado del término — útil para contenido
+  // genérico que no depende de un ID que pueda caerse.
+  let m = u.match(/^yt-search:(.+)$/i)
+  if (m) {
+    const q = encodeURIComponent(m[1].trim())
+    return {
+      proveedor: 'youtube',
+      id: null,
+      embed: `https://www.youtube.com/embed?listType=search&list=${q}`,
+      thumb: null,
+    }
+  }
+
   // YouTube
-  let m = u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/)
+  m = u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/)
   if (m) {
     const id = m[1]
     return {
