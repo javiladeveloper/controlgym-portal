@@ -329,6 +329,59 @@ campanita/ficha web.
 > gym, NULL = sin turno). Los edita el admin en el panel; si quieres
 > mostrarlos en el perfil staff de la app, léelos directo.
 
+## PEDIDO 7 (del cliente, para TI) — Botón de AYUDA del socio 🔴 backend LISTO, falta la app
+
+Diseño cerrado con el cliente 2026-07-05. **El backend ya está aplicado y
+probado** (migración `20260704000016_solicitud_ayuda.sql`) — te toca las
+DOS pantallas de la app. Los trainers viven en la app, no en el panel.
+
+### El flujo
+El socio, **desde su rutina**, pide ayuda cuando no le sale un ejercicio:
+- **Motivo** (chips): `tecnica` · `pr` · `maquina` · `otra`.
+- **Ejercicio**: prellénalo con el ejercicio del día de su rutina (editable).
+- **Ubicación = TEXTO LIBRE** (decisión del cliente: NO hay máquinas mapeadas
+  por piso, y el mismo ejercicio puede estar en varios pisos). El socio
+  escribe: *"Piso 2, junto a los espejos"*. Campo `ubicacion_texto`.
+- **UNA ayuda activa por socio** (índice único parcial en la BD): mientras la
+  suya siga `pendiente`/`en_camino`, muéstrale el estado + botón "Cancelar",
+  no dejes crear otra (el insert fallaría por el índice).
+
+A los **trainers PRESENTES** les llega push a todos a la vez (`data.tipo =
+'solicitud_ayuda'`, `data.ayuda_id`, `data.socio_id`). Modelo **FIRST-CLAIM**
+(NO reparto): el primero que toca "Voy yo" la reclama; a los demás se les cae.
+
+### Lo que debes implementar en la app
+1. **Pantalla del socio "Pedir ayuda"**: `insert into solicitud_ayuda
+   (empresa_id, socio_id, motivo, ejercicio_nombre, ubicacion_texto,
+   mensaje_socio)` con estado default `pendiente`. RLS ya te deja crear solo
+   lo tuyo y en tu gym. Tras crear, muestra "buscando quién te ayude" y luego
+   "💪 X va en camino" cuando llegue el push `tipo='solicitud_ayuda_en_camino'`.
+   Botón cancelar → `select cancelar_ayuda(p_ayuda_id)` (solo si aún nadie la
+   tomó; devuelve `{cancelada: bool, motivo?}`).
+2. **Bandeja del trainer (modo staff)**: lista las `solicitud_ayuda` del gym
+   en estado `pendiente`/`en_camino`. Botón **"Voy yo"** → `select
+   tomar_ayuda(p_ayuda_id)`. Devuelve `{tomada: true, ...}` al que gana o
+   `{tomada: false, motivo: 'Otro ya está atendiendo esta ayuda'}` al que
+   llega tarde → refresca y muéstralo. Al terminar, botón **"Atendido"** →
+   `select cerrar_ayuda(p_ayuda_id)` → `{cerrada, duracion_seg}`.
+
+### RPCs listos (SECURITY DEFINER, ya aplicados)
+- `tomar_ayuda(p_ayuda_id uuid)` → first-claim atómico. Encola push al socio
+  "va en camino". Cualquier staff del gym puede reclamar.
+- `cerrar_ayuda(p_ayuda_id uuid)` → estado `atendida` + duración.
+- `cancelar_ayuda(p_ayuda_id uuid)` → el socio cancela la suya si sigue
+  `pendiente`.
+
+### Detalles que ya maneja el backend (no repliques)
+- **Sin trainer presente → queda en espera Y avisa a recepción/admin**
+  (campanita del panel + push). Con trainers presentes, recepción NO se
+  entera (modelo mixto del cliente). "Presente" = con entrada marcada hoy
+  vía `marcar_asistencia_staff` — por eso ese botón es clave en tu modo staff.
+- Tiempos guardados (`creado_at`→`tomada_at`=llegada, →`cerrada_at`=duración)
+  para las futuras métricas de desempeño y bonos (backlog del cliente).
+- **`20260704000016` ya lo tomé yo** — tu siguiente número libre es
+  **`20260704000017`**.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
