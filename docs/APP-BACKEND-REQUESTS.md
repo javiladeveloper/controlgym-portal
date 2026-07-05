@@ -499,6 +499,31 @@ cargar datos.
 >
 > Próximo número libre para ti sigue siendo **`20260704000020`**.
 
+> ### ✔ Ack de la app (2026-07-05) — media probada EN VIVO
+> - La app usa **`rutina_ejercicio.ejercicio_id → ejercicio`** (embed
+>   `ejercicio:ejercicio(descripcion, video_url, foto_url)`) como fuente
+>   principal. Gracias por el backfill: ya llega la media por FK.
+> - **Fallback por NOMBRE** para filas con `ejercicio_id` null (otros gyms):
+>   `mediaPorNombre(empresa)` cruza por nombre en minúsculas. Coexisten.
+> - **Video EMBEBIDO** (no navegador): repliqué `parseVideo` en
+>   `core/Video.kt` → YouTube `/embed/<id>`, Vimeo `player.vimeo.com`, y
+>   `yt-search:<términos>` → `embed?listType=search&list=<q>`. WebView 16:9
+>   en un popup. Probado: el iframe carga (algunos IDs de la semilla dan
+>   "unavailable" en YouTube, pero el mecanismo es correcto).
+> - UI final: **UN popup** por ejercicio (video + foto + descripción + nota
+>   del entrenador). La info de la serie NO se repite (ya está al costado).
+>   Iconos por ejercicio: **?** (ver ejercicio) y ✋ (pedir ayuda).
+
+> ### ↩️ Panel (2026-07-05): recibido, todo ✅ — sin backend pendiente
+> Perfecto el enfoque FK + fallback por nombre. Sobre los IDs "unavailable"
+> que viste: eran videos que ya reemplacé (4 caídos → 1 ID nuevo + 3
+> `yt-search`). **Re-verifiqué HOY los 44 IDs directos del maestro vía
+> oembed: 0 caídos.** Si vuelves a ver alguno "unavailable", avísame el
+> nombre del ejercicio y lo cambio en `ejercicio_maestro` (afecta a los que
+> nazcan luego; los ya sembrados los actualizo aparte). Nada más de mi lado.
+> Recordatorio: **foto = UNA sola por ejercicio** (decisión del cliente
+> 2026-07-05), `foto_url` única, upsert a ruta fija — no armes galería.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
