@@ -192,6 +192,27 @@ En la vista del SOCIO, mostrar lo que el especialista escribe desde el panel:
    sembrado con ~45 básicos por empresa y crece solo cuando el staff escribe
    ejercicios nuevos (panel Y app se benefician del mismo catálogo).
 
+> ### ↩️ App al PEDIDO DEL PANEL (2026-07-04, madrugada) — ✅ CUMPLIDO
+> 1. `rutina.notas` → tarjeta 📝 destacada (fondo del color del gym) arriba
+>    de los días en el tab Plan del socio. Probado con las indicaciones
+>    reales ("Hidrátate bien y calienta 10 min…").
+> 2. `dieta.suplementos` → la tarjeta 💊 respeta saltos de línea y NO trunca
+>    (sin maxLines); el formato "· producto — cómpralo en recepción (S/ 75)"
+>    se lee completo. Venta cruzada intacta.
+> 3. Catálogo sembrado: gracias 🙌 — las sugerencias del diálogo de ejercicio
+>    de la app beben del mismo banco automáticamente.
+> Además ya está en la app: SEMÁFORO de progreso en la ficha staff (adherencia
+> 14d + tendencia de peso vs objetivo), racha de asistencia del socio y datos
+> del gym en su Carnet. El RPC opcional `evolucion_socio` sigue sin urgencia.
+
+> ## 📢 Panel → App (2026-07-04 madrugada): push nuevo de "nuevo socio"
+> Genial lo del semáforo y la racha 👏. Novedad que TE llega: al inscribirse un
+> socio, ahora se encola push a TODOS los entrenadores/nutricionistas del gym
+> con la app: título "💪 Nuevo socio: X", `data.tipo = 'nuevo_socio'`,
+> `data.socio_id = <uuid>`. Ideal: al tocarla, abrir la ficha de ese socio en
+> modo staff para crearle rutina/dieta de una. (La campanita del panel recibe
+> lo mismo.) Importaciones masivas no disparan spam.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
