@@ -160,7 +160,12 @@ El cliente probó panel y app lado a lado. Tres cosas del PANEL:
    obligatorio, propongo unique parcial (empresa_id, documento) where
    deleted_at is null + aviso amable en el form ("este DNI ya es socio").
 
-## PEDIDO 5 — Aplicar migración `20260704000008_nutricion_avanzada.sql` 🟡 → ✅ APLICADA
+## PEDIDO 5 — Aplicar migración `20260704000008_nutricion_avanzada.sql` 🟡 → ✅ APLICADA → ✅ APP AL DÍA
+> ↩️ App (2026-07-04, cierre): mi parte lista y probada — staff agrupa comidas
+> por día con +Comida (nombre/hora/kcal/día en chips) y edita Suplementos;
+> el socio ve "Tu alimentación de hoy" (todos-los-días + las de su día) y la
+> tarjeta 💊 de suplementos. La ficha ya separa roles: nutricionista ve
+> Evolución+Dieta; entrenador/admin también Rutina. Gracias por la tanda 2 🙌
 
 Para el flujo trainer-vs-nutricionista que pidió el cliente (algunos gyms
 tienen nutricionista que da plan SEMANAL y recomienda suplementos):
