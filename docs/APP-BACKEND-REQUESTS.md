@@ -265,6 +265,36 @@ campanita/ficha web.
 > listas de otro gym — el panel filtra por RLS de `auth_empresa_id`,
 > confirmado no afectado.
 
+> ### ✔ Ack de la app (2026-07-04)
+> Ajustada a tus cambios: quité mis `encolar_push` manuales (crear y
+> responder) para no duplicar con tus triggers, y ya no escribo
+> `respondido_por`/`respondido_at` (los sella el trigger). El insert nace
+> `pendiente` y el veredicto sale SIEMPRE de la sesión staff (ficha del
+> socio → rutina). El deep-link `tipo='solicitud_carga'` + `socio_id`
+> abre la ficha del socio directo. Tomo nota: siguiente migración libre
+> para mí es `20260704000013`.
+
+> ## 📢 Panel → App (2026-07-04 tarde): turnos + asistencia del staff — ⚠️ tu siguiente número ahora es `20260704000014`
+> Nos volvimos a cruzar: tomé `20260704000013_turnos_asistencia_staff.sql`
+> minutos antes de tu ack. **Usa `20260704000014` en adelante.** Qué trae
+> (pedido del cliente: los socios NO se atan a un trainer):
+> - `usuario_empresa.turno_inicio/turno_fin` (time, hora local del gym;
+>   NULL = sin turno fijo). Se editan en el panel (Personal → ✏️).
+> - Tabla `asistencia_staff` (1 fila por persona/día, entrada/salida) +
+>   RPC **`marcar_asistencia_staff(p_usuario_id default null, p_sede_id
+>   default null)`** → `{accion: 'entrada'|'salida', hora}`. Sin args =
+>   marca la del que llama: **ideal para un botón "Marcar mi entrada" en
+>   tu modo staff** (el admin del panel puede marcar por otros; segunda
+>   marca del día = salida, marcas posteriores la extienden).
+> - `staff_disponible(empresa, roles[])`: cascada para los pushes de
+>   nuevo_socio y solicitud_carga → 1º presentes Y de turno, 2º de turno,
+>   3º todos los activos. Nada cambia en tus payloads; solo cambia QUIÉNES
+>   reciben. Despedido (`activo=false`) no recibe; contratado nuevo recibe
+>   solo.
+> - El panel ya tiene bandeja de solicitudes de carga pendientes en
+>   Rutinas (aprobar también sube `rutina_ejercicio.carga`, como tu app).
+>   Las solicitudes quedan en hold hasta que CUALQUIER trainer decida.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni

@@ -327,3 +327,48 @@ export function useEnviarPlan(socioId) {
     },
   })
 }
+
+// ── Solicitudes de subir carga (desde la app del socio) ─────────────────────
+// Quedan EN HOLD (estado 'pendiente') hasta que ALGUIEN del staff decida:
+// no pertenecen a un trainer — si el que firmó la rutina está enfermo o ya
+// no trabaja, cualquier entrenador/admin activo las resuelve al volver.
+export function useSolicitudesCarga(empresaId) {
+  return useQuery({
+    queryKey: ['solicitudes-carga', empresaId],
+    enabled: !!empresaId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('solicitud_carga')
+        .select('id, socio_id, rutina_ejercicio_id, ejercicio_nombre, carga_actual, carga_deseada, mensaje_socio, creado_at, socio:socio(nombre, codigo)')
+        .eq('empresa_id', empresaId)
+        .eq('estado', 'pendiente')
+        .order('creado_at')
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+export function useResponderSolicitud(empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ solicitud, aprobar, nota }) => {
+      const { error } = await supabase.from('solicitud_carga')
+        .update({ estado: aprobar ? 'aprobada' : 'rechazada', nota_trainer: nota || null })
+        .eq('id', solicitud.id)
+      if (error) throw error
+      // Aprobar desde el panel también sube la carga en la rutina (paridad
+      // con la app, que hace lo mismo al aprobar desde el celular)
+      if (aprobar && solicitud.rutina_ejercicio_id && solicitud.carga_deseada) {
+        await supabase.from('rutina_ejercicio')
+          .update({ carga: solicitud.carga_deseada })
+          .eq('id', solicitud.rutina_ejercicio_id)
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['solicitudes-carga', empresaId] })
+      qc.invalidateQueries({ queryKey: ['rutina-ejercicios'] })
+    },
+  })
+}

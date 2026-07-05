@@ -15,7 +15,7 @@ export function usePersonal(sedeId) {
           .from('usuario_sede')
           .select('usuario:usuario(id, nombre, avatar_iniciales, telefono)')
           .eq('sede_id', sedeId),
-        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual, tipo_pago, tarifa_clase, banco, cuenta_banco, cci, rol:rol(codigo, nombre)'),
+        supabase.from('usuario_empresa').select('usuario_id, activo, sueldo_mensual, tipo_pago, tarifa_clase, banco, cuenta_banco, cci, turno_inicio, turno_fin, rol:rol(codigo, nombre)'),
       ])
       if (error) throw error
       const memDe = new Map((membresias || []).map((m) => [m.usuario_id, m]))
@@ -31,6 +31,7 @@ export function usePersonal(sedeId) {
             tipo_pago: ue.tipo_pago ?? 'mensual',
             tarifa_clase: ue.tarifa_clase ?? null,
             banco: ue.banco ?? '', cuenta_banco: ue.cuenta_banco ?? '', cci: ue.cci ?? '',
+            turno_inicio: ue.turno_inicio ?? null, turno_fin: ue.turno_fin ?? null,
             rol_codigo: ue.rol?.codigo ?? null, rol_nombre: ue.rol?.nombre ?? null,
           }
         })

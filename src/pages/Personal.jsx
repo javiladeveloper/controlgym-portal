@@ -47,6 +47,7 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
     sueldo: colaborador.sueldo_mensual != null ? String(colaborador.sueldo_mensual) : '',
     tarifa: colaborador.tarifa_clase != null ? String(colaborador.tarifa_clase) : '',
     banco: colaborador.banco || '', cuenta: colaborador.cuenta_banco || '', cci: colaborador.cci || '',
+    turno_inicio: colaborador.turno_inicio?.slice(0, 5) || '', turno_fin: colaborador.turno_fin?.slice(0, 5) || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -66,6 +67,7 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
         sueldo_mensual: f.tipo_pago === 'mensual' && f.sueldo !== '' ? Number(f.sueldo) : colaborador.sueldo_mensual,
         tarifa_clase: f.tipo_pago === 'por_clase' && f.tarifa !== '' ? Number(f.tarifa) : colaborador.tarifa_clase,
         banco: f.banco || null, cuenta_banco: f.cuenta.trim() || null, cci: f.cci.trim() || null,
+        turno_inicio: f.turno_inicio || null, turno_fin: f.turno_fin || null,
       }).eq('usuario_id', colaborador.id).eq('empresa_id', empresaId)
       if (error) throw error
       toast.ok('Colaborador actualizado')
@@ -104,6 +106,20 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
           </Campo>
         )}
 
+        {/* Turno: los avisos (nuevo socio, subir carga) llegan primero al que
+            está de turno; si nadie lo está, a todos los activos */}
+        <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+          <div className="mb-2.5 text-[12px] font-extrabold text-muted">🕐 Turno de trabajo <span className="font-semibold">(vacío = sin turno fijo: recibe avisos a toda hora)</span></div>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Entra">
+              <input type="time" value={f.turno_inicio} onChange={set('turno_inicio')} className={inputCls} />
+            </Campo>
+            <Campo label="Sale">
+              <input type="time" value={f.turno_fin} onChange={set('turno_fin')} className={inputCls} />
+            </Campo>
+          </div>
+        </div>
+
         {/* Cuenta para transferirle el pago */}
         <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
           <div className="mb-2.5 text-[12px] font-extrabold text-muted">🏦 Cuenta para el pago</div>
@@ -131,6 +147,27 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
     </Modal>
   )
 }
+
+// Asistencia del staff HOY (quién marcó entrada y sigue presente)
+function useAsistenciaHoy(empresaId) {
+  const hoy = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD local
+  return useQuery({
+    queryKey: ['asistencia-staff', empresaId, hoy],
+    enabled: !!empresaId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('asistencia_staff')
+        .select('usuario_id, entrada_at, salida_at')
+        .eq('empresa_id', empresaId)
+        .eq('fecha', hoy)
+      if (error) throw error
+      return new Map((data || []).map((a) => [a.usuario_id, a]))
+    },
+  })
+}
+
+const horaDe = (ts) => new Date(ts).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
 
 // Sueldos pagados este mes (para marcar "✓ Pagado" y evitar dobles pagos)
 function usePagosPlanilla() {
@@ -415,6 +452,17 @@ export default function Personal() {
   const { data, isLoading, error, refetch } = usePersonal(sedeId)
   const invitaciones = useInvitaciones()
   const pagosMes = usePagosPlanilla()
+  const asistencia = useAsistenciaHoy(empresa?.id)
+
+  // Marcar entrada/salida de un colaborador (RPC valida que sea admin)
+  async function marcarAsistencia(st) {
+    const { data: r, error } = await supabase.rpc('marcar_asistencia_staff', {
+      p_usuario_id: st.id, p_sede_id: sedeId,
+    })
+    if (error) { toast.error('No se pudo marcar: ' + error.message); return }
+    toast.ok(r.accion === 'entrada' ? `Entrada de ${st.nombre}: ${horaDe(r.hora)}` : `Salida de ${st.nombre}: ${horaDe(r.hora)}`)
+    qc.invalidateQueries({ queryKey: ['asistencia-staff'] })
+  }
 
   // Activos de sueldo FIJO que aún no cobraron este mes (los de pago por
   // clase no entran al lote: se les paga según lo que dictaron)
@@ -472,7 +520,7 @@ export default function Personal() {
 
       {(data || []).length > 0 && (
         <Card className="mt-[18px] overflow-x-auto">
-          <div className="grid min-w-[760px] grid-cols-[2fr_1fr_1fr_1.3fr_0.8fr_230px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+          <div className="grid min-w-[860px] grid-cols-[2fr_1fr_1fr_1.3fr_0.9fr_300px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
             <div>Colaborador</div><div>Rol</div><div>Teléfono</div><div>Sueldo · {MES_LABEL.split(' ')[0]}</div><div>Estado</div><div />
           </div>
           {data.map((st) => {
@@ -481,7 +529,7 @@ export default function Personal() {
             return (
               <div key={st.id}
                 onClick={(e) => { if (rol !== 'admin' || e.target.closest('button,a')) return; setEditarCol(st) }}
-                className={`grid min-w-[760px] grid-cols-[2fr_1fr_1fr_1.3fr_0.8fr_230px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC] ${rol === 'admin' ? 'cursor-pointer' : ''}`}>
+                className={`grid min-w-[860px] grid-cols-[2fr_1fr_1fr_1.3fr_0.9fr_300px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC] ${rol === 'admin' ? 'cursor-pointer' : ''}`}>
                 <div className="flex items-center gap-2.5">
                   <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
                   <div className="min-w-0">
@@ -509,9 +557,28 @@ export default function Personal() {
                       ? <span className="text-muted">S/ {Number(st.sueldo_mensual)} pendiente</span>
                       : <span className="text-faint">sin sueldo fijado</span>}
                 </div>
-                <div><Badge bg={st.activo ? T.successBg : T.line2} color={st.activo ? T.success : T.muted}>{st.activo ? 'Activo' : 'Inactivo'}</Badge></div>
+                <div>
+                  <Badge bg={st.activo ? T.successBg : T.line2} color={st.activo ? T.success : T.muted}>{st.activo ? 'Activo' : 'Inactivo'}</Badge>
+                  {(() => {
+                    const a = asistencia.data?.get(st.id)
+                    if (a && !a.salida_at) return <div className="mt-1 text-[10.5px] font-extrabold text-green-600">● presente desde {horaDe(a.entrada_at)}</div>
+                    if (a?.salida_at) return <div className="mt-1 text-[10.5px] font-bold text-faint">salió {horaDe(a.salida_at)}</div>
+                    if (st.turno_inicio && st.turno_fin) return <div className="mt-1 text-[10.5px] font-bold text-faint">🕐 turno {st.turno_inicio.slice(0, 5)}–{st.turno_fin.slice(0, 5)}</div>
+                    return null
+                  })()}
+                </div>
                 {rol === 'admin' ? (
                   <div className="flex items-center justify-end gap-1.5">
+                    {st.activo && (() => {
+                      const presente = asistencia.data?.get(st.id) && !asistencia.data.get(st.id).salida_at
+                      return (
+                        <button onClick={() => marcarAsistencia(st)}
+                          title={presente ? 'Marcar su salida' : 'Marcar su entrada de hoy'}
+                          className={`cursor-pointer rounded-[9px] border px-2.5 py-1.5 text-[11px] font-extrabold transition-colors ${presente ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100' : 'border-line bg-white text-muted hover:border-green-400 hover:text-green-600'}`}>
+                          🕐 {presente ? 'Salida' : 'Entrada'}
+                        </button>
+                      )
+                    })()}
                     {(porClase || pagado == null) && st.activo && (
                       <button onClick={() => setPagarA(st)}
                         className="cursor-pointer rounded-[9px] border border-green-300 bg-green-50 px-3 py-1.5 text-[11px] font-extrabold text-green-700 hover:bg-green-100">

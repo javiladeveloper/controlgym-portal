@@ -11,6 +11,7 @@ import {
   useEjerciciosRutina, useGuardarEjercicio, useEliminarEjercicio,
   useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
+  useSolicitudesCarga, useResponderSolicitud,
 } from '../hooks/useRutinas.js'
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
@@ -216,6 +217,70 @@ export default function Rutinas() {
   return <RutinasImpl />
 }
 
+const haceCuanto = (ts) => {
+  const h = (Date.now() - new Date(ts).getTime()) / 3600000
+  return h < 1 ? 'hace minutos' : h < 24 ? `hace ${Math.round(h)} h` : `hace ${Math.round(h / 24)} día${Math.round(h / 24) === 1 ? '' : 's'}`
+}
+
+// Bandeja de solicitudes "quiero subir de carga" que llegan desde la app.
+// Quedan EN ESPERA hasta que cualquier trainer/admin decida — si el que
+// firmó la rutina no está (enfermo, otro turno, ya no trabaja), otro las
+// toma, o él mismo las encuentra aquí cuando vuelva.
+function SolicitudesCarga({ empresaId, onIrSocio }) {
+  const solicitudes = useSolicitudesCarga(empresaId)
+  const responder = useResponderSolicitud(empresaId)
+  const [rechazando, setRechazando] = useState(null) // solicitud a la que se le escribe el "aún no"
+  const [nota, setNota] = useState('')
+  if (!solicitudes.data?.length) return null
+  return (
+    <Card className="mt-[18px] p-[19px]" style={{ borderLeft: '4px solid #FF6B35' }}>
+      <div className="text-[14.5px] font-extrabold">🏋️ Solicitudes de subir carga ({solicitudes.data.length})</div>
+      <div className="mt-0.5 text-[12px] font-semibold text-muted">
+        Pedidas desde la app del socio. Esperan aquí hasta que un trainer decida — cualquiera del equipo puede responder.
+      </div>
+      {solicitudes.data.map((s) => (
+        <div key={s.id} className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-[10px] bg-surface px-3.5 py-3">
+          <div className="min-w-0">
+            <button onClick={() => onIrSocio(s.socio_id)} title="Ver su rutina"
+              className="cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-extrabold text-ink hover:text-orange">
+              {s.socio?.nombre} <span className="text-[11px] font-bold text-faint">N.º {s.socio?.codigo} · {haceCuanto(s.creado_at)}</span>
+            </button>
+            <div className="text-[12.5px] font-bold text-muted">
+              {s.ejercicio_nombre || 'Su rutina'}{s.carga_actual && s.carga_deseada ? `: ${s.carga_actual} → ${s.carga_deseada}` : ''}
+              {s.mensaje_socio && <span className="font-semibold text-faint"> — "{s.mensaje_socio}"</span>}
+            </div>
+          </div>
+          {rechazando === s.id ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input autoFocus value={nota} onChange={(e) => setNota(e.target.value)} placeholder="¿Por qué aún no? (le llega al socio)"
+                className="w-[230px] rounded-[9px] border border-line bg-white px-3 py-1.5 text-[12px] outline-none focus:border-orange" />
+              <button disabled={responder.isPending}
+                onClick={() => responder.mutate({ solicitud: s, aprobar: false, nota }, { onSuccess: () => { setRechazando(null); setNota('') } })}
+                className="cursor-pointer rounded-[9px] border-none bg-amber-500 px-3 py-1.5 text-[11.5px] font-extrabold text-white disabled:opacity-50">
+                Enviar
+              </button>
+              <button onClick={() => { setRechazando(null); setNota('') }}
+                className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-1.5 text-[11.5px] font-extrabold text-muted">✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button disabled={responder.isPending}
+                onClick={() => responder.mutate({ solicitud: s, aprobar: true })}
+                className="cursor-pointer rounded-[9px] border-none bg-green-600 px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">
+                ✓ Aprobar{s.carga_deseada ? ` ${s.carga_deseada}` : ''}
+              </button>
+              <button onClick={() => { setRechazando(s.id); setNota('') }}
+                className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[11.5px] font-extrabold text-muted hover:border-amber-500 hover:text-amber-600">
+                Aún no
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </Card>
+  )
+}
+
 function RutinasImpl() {
   const location = useLocation()
   const { sedeId } = usePanel()
@@ -289,6 +354,11 @@ function RutinasImpl() {
     <div className="max-w-[1020px] px-7 pb-9 pt-6">
       <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Rutinas y dietas</h1>
       <p className="mt-0.5 text-[13px] font-semibold text-muted">Genera el plan y envíalo a la app del socio</p>
+
+      {veRutina && (
+        <SolicitudesCarga empresaId={empresa?.id}
+          onIrSocio={(id) => { setSocioId(id); setBusqueda(''); setDiaSel(null); setEnviado(false) }} />
+      )}
 
       {socios.isLoading && <LoadingState variant="cards" rows={2} />}
       {socios.error && <ErrorState error={socios.error} onRetry={socios.refetch} />}
