@@ -20,8 +20,21 @@ function CheckinModal({ sedeId, onClose }) {
   const qc = useQueryClient()
   const { data: clientes } = useClientes(sedeId)
   const [q, setQ] = useState('')
+  const [qr, setQr] = useState('')
   const [resultado, setResultado] = useState(null) // { resultado, motivo, socio }
   const [busy, setBusy] = useState(false)
+
+  // Valida el carnet QR de la app (firma + expiración) y registra la entrada
+  async function validarQr() {
+    setBusy(true)
+    const { data, error } = await supabase.rpc('validar_qr', { p_qr: qr.trim(), p_sede_id: sedeId })
+    setBusy(false)
+    setQr('')
+    if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: 'Carnet QR' }); return }
+    setResultado(data)
+    qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
+    qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+  }
 
   const matches = (clientes || []).filter(
     (c) => q.trim() && (c.nombre.toLowerCase().includes(q.toLowerCase()) || c.codigo?.includes(q)),
@@ -64,6 +77,14 @@ function CheckinModal({ sedeId, onClose }) {
         </div>
       ) : (
         <div>
+          {/* Carnet QR de la app: el lector USB "tipea" el código y da Enter */}
+          <input value={qr} onChange={(e) => setQr(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && qr.trim()) validarQr() }}
+            className={inputCls + ' border-dashed'}
+            placeholder="📷 Escanea el carnet QR de la app aquí (o pega el código)…" />
+          <div className="my-2.5 flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.5px] text-faint">
+            <span className="h-px flex-1 bg-line" />o busca manual<span className="h-px flex-1 bg-line" />
+          </div>
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} className={inputCls}
             placeholder="Nombre o N.º de socio…" />
           <div className="mt-2.5 flex flex-col gap-1.5">

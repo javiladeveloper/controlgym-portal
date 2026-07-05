@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { supabase } from '../lib/supabaseClient.js'
@@ -9,6 +10,128 @@ import { useFinanzas } from '../hooks/useOperaciones.js'
 import { money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
+// ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
+// esperado = fondo inicial + ingresos en efectivo − gastos en efectivo (hoy)
+function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
+  const qc = useQueryClient()
+  const hoy = new Date().toISOString().slice(0, 10)
+  const [montoApertura, setMontoApertura] = useState('')
+  const [contado, setContado] = useState('')
+  const [abriendo, setAbriendo] = useState(false)
+  const [cerrando, setCerrando] = useState(false)
+
+  const caja = useQuery({
+    queryKey: ['caja', sedeId, hoy],
+    enabled: !!sedeId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('caja')
+        .select('*').eq('sede_id', sedeId).eq('fecha', hoy).maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+
+  const esHoy = (m) => new Date(m.fecha).toDateString() === new Date().toDateString()
+  const efectivoHoy = movs.filter((m) => esHoy(m) && (m.metodo_pago === 'efectivo' || !m.metodo_pago))
+    .reduce((n, m) => n + (m.tipo === 'ingreso' ? 1 : -1) * Number(m.monto || 0), 0)
+  const c = caja.data
+  const esperado = c ? Number(c.saldo_inicial || 0) + efectivoHoy : null
+  const diferencia = c?.estado === 'cerrada' ? Number(c.saldo_final || 0) - esperado
+    : contado !== '' ? Number(contado) - esperado : null
+
+  async function abrir() {
+    setAbriendo(true)
+    const { error } = await supabase.from('caja').insert({
+      empresa_id: empresaId, sede_id: sedeId, fecha: hoy,
+      saldo_inicial: Number(montoApertura) || 0, estado: 'abierta', abierta_por: usuarioId,
+    })
+    setAbriendo(false)
+    if (error) { toast.error('No se pudo abrir la caja: ' + error.message); return }
+    toast.ok('Caja abierta — ¡buen turno! 💪')
+    qc.invalidateQueries({ queryKey: ['caja', sedeId, hoy] })
+  }
+
+  async function cerrar() {
+    setCerrando(true)
+    const { error } = await supabase.from('caja')
+      .update({ saldo_final: Number(contado) || 0, estado: 'cerrada', cerrada_por: usuarioId })
+      .eq('id', c.id)
+    setCerrando(false)
+    if (error) { toast.error('No se pudo cerrar: ' + error.message); return }
+    toast.ok('Caja cerrada y cuadrada')
+    qc.invalidateQueries({ queryKey: ['caja', sedeId, hoy] })
+  }
+
+  if (caja.isLoading) return null
+
+  return (
+    <Card className="mt-5 p-[19px]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-[14.5px] font-extrabold">
+            🧰 Caja del día {c?.estado === 'cerrada' ? '· cerrada ✓' : c ? '· abierta' : ''}
+          </div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">
+            {new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} · solo efectivo (Yape/tarjeta cuadran solos)
+          </div>
+        </div>
+
+        {!c && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[12.5px] font-bold">Fondo inicial S/</span>
+            <input type="number" step="0.01" min="0" value={montoApertura} onChange={(e) => setMontoApertura(e.target.value)}
+              placeholder="100" className="w-[90px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
+            <button onClick={abrir} disabled={abriendo || montoApertura === ''}
+              className="cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2 text-[12.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+              Abrir caja
+            </button>
+          </div>
+        )}
+      </div>
+
+      {c && (
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line2 pt-3">
+          <div><span className="text-[11px] font-extrabold uppercase text-muted">Fondo inicial</span>
+            <div className="text-[15px] font-extrabold">{money(c.saldo_inicial, moneda)}</div></div>
+          <div><span className="text-[11px] font-extrabold uppercase text-muted">Efectivo del día</span>
+            <div className="text-[15px] font-extrabold" style={{ color: efectivoHoy >= 0 ? T.success : T.danger }}>
+              {efectivoHoy >= 0 ? '+' : ''}{money(efectivoHoy, moneda)}</div></div>
+          <div><span className="text-[11px] font-extrabold uppercase text-muted">Debe haber en caja</span>
+            <div className="text-[15px] font-extrabold text-orange">{money(esperado, moneda)}</div></div>
+
+          {c.estado === 'abierta' ? (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <span className="text-[12.5px] font-bold">Conté S/</span>
+              <input type="number" step="0.01" min="0" value={contado} onChange={(e) => setContado(e.target.value)}
+                placeholder={String(esperado)} className="w-[100px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
+              {diferencia !== null && (
+                <span className={`text-[12px] font-extrabold ${Math.abs(diferencia) < 0.01 ? 'text-green-600' : 'text-red'}`}>
+                  {Math.abs(diferencia) < 0.01 ? 'cuadra ✓' : (diferencia > 0 ? 'sobran ' : 'faltan ') + money(Math.abs(diferencia), moneda)}
+                </span>
+              )}
+              <button onClick={cerrar} disabled={cerrando || contado === ''}
+                className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+                Cerrar caja
+              </button>
+            </div>
+          ) : (
+            <div className="ml-auto text-right">
+              <span className="text-[11px] font-extrabold uppercase text-muted">Contado al cierre</span>
+              <div className="text-[15px] font-extrabold">
+                {money(c.saldo_final, moneda)}{' '}
+                <span className={`text-[12px] ${Math.abs(diferencia) < 0.01 ? 'text-green-600' : 'text-red'}`}>
+                  ({Math.abs(diferencia) < 0.01 ? 'cuadró ✓' : (diferencia > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(diferencia), moneda)})
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {!c && !esAdmin && null}
+    </Card>
+  )
+}
+
 const CAT_LABEL = {
   membresia: 'Membresías', venta_kardex: 'Venta de productos', compra: 'Compra de productos',
   planilla: 'Planilla (sueldos)', mantenimiento: 'Mantenimiento',
@@ -17,7 +140,7 @@ const catLabel = (c) => CAT_LABEL[c] || (c ? c.charAt(0).toUpperCase() + c.slice
 
 export default function Finanzas() {
   const { sedeId, sedeNombre } = usePanel()
-  const { empresa, rol } = useAuth()
+  const { empresa, rol, usuario } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
   const { data, isLoading, error, refetch } = useFinanzas(sedeId)
   const [anulando, setAnulando] = useState(null)
@@ -58,6 +181,10 @@ export default function Finanzas() {
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Finanzas</h1>
       <p className="mt-0.5 text-[13px] font-semibold text-muted">{sedeNombre}</p>
+
+      {/* Caja del día: la rutina de recepción para cuadrar el efectivo */}
+      <CajaDelDia sedeId={sedeId} empresaId={empresa?.id} usuarioId={usuario?.id}
+        movs={movs} moneda={moneda} esAdmin={rol === 'admin'} />
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         <StatCard label="Ingresos del mes" value={money(ingresos, moneda)} delta=" " deltaColor={T.success} />

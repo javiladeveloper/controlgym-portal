@@ -17,7 +17,7 @@ const DIA_LETRA = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' }
 // El módulo completo llega junto con la app del socio: crear rutinas/dietas
 // aquí y que el socio las vea en su celular. Sin app, el flujo queda cojo,
 // así que se muestra como próximamente (el código de abajo queda listo).
-const EN_CONSTRUCCION = true
+const EN_CONSTRUCCION = false // la app del socio ya existe: módulo activo
 
 function RutinasEnConstruccion() {
   return (

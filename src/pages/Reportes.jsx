@@ -71,6 +71,26 @@ const REPORTES = [
     },
   },
   {
+    key: 'deudores', name: 'Deudores (pagos en partes)', desc: 'Socios con saldo pendiente: cuánto pagaron, cuánto deben y su contacto',
+    iconBg: '#FEF3C7', iconColor: '#B45309',
+    fetch: async (sedeId) => {
+      const { data, error } = await supabase.from('membresia')
+        .select('estado, fecha_fin, precio_pagado, matricula_pagada, monto_pagado, socio:socio!membresia_socio_id_fkey(nombre, codigo, telefono, estado), plan:plan(nombre)')
+        .eq('sede_id', sedeId).is('deleted_at', null)
+      if (error) throw error
+      return data
+        .map((m) => ({ ...m, total: Number(m.precio_pagado || 0) + Number(m.matricula_pagada || 0) }))
+        .map((m) => ({ ...m, saldo: Math.max(0, m.total - Number(m.monto_pagado || 0)) }))
+        .filter((m) => m.saldo > 0 && m.socio?.estado === 'activo')
+        .sort((a, b) => b.saldo - a.saldo)
+        .map((m) => ({
+          Socio: m.socio?.nombre || '—', 'N.º': m.socio?.codigo || '', 'Teléfono': m.socio?.telefono || '',
+          Plan: m.plan?.nombre || '', 'Total del trato': m.total, Pagado: Number(m.monto_pagado || 0),
+          'SALDO PENDIENTE': m.saldo, 'Membresía': m.estado, Vence: fmtF(m.fecha_fin),
+        }))
+    },
+  },
+  {
     key: 'inventario', name: 'Inventario Kardex', desc: 'Stock actual por producto con alerta de quiebre',
     iconBg: T.chipNavy, iconColor: T.navy,
     fetch: async (sedeId) => {
