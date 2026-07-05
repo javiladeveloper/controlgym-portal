@@ -6,7 +6,36 @@ import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useQuery } from '@tanstack/react-query'
 import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso } from '../hooks/useClases.js'
+
+// Reservas vigentes por clase (desde la app del socio): la señal de demanda
+// que le dice al gym qué clases jalan y cuáles no
+function useReservasPorClase(sedeId) {
+  return useQuery({
+    queryKey: ['reservas-clase', sedeId],
+    enabled: !!sedeId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reserva_clase')
+        .select('clase_id, fecha')
+        .eq('sede_id', sedeId)
+        .eq('estado', 'reservada')
+        .gte('fecha', new Date().toISOString().slice(0, 10))
+      if (error) throw error
+      const porClase = {}
+      for (const r of data || []) {
+        porClase[r.clase_id] = porClase[r.clase_id] || { total: 0, proxima: null }
+        porClase[r.clase_id].total++
+        if (!porClase[r.clase_id].proxima || r.fecha < porClase[r.clase_id].proxima) {
+          porClase[r.clase_id].proxima = r.fecha
+        }
+      }
+      return porClase
+    },
+  })
+}
 import { usePersonal } from '../hooks/useOperaciones.js'
 import { claseDot, DAY_NAMES } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
@@ -241,6 +270,7 @@ export default function Clases() {
   const [editarClase, setEditarClase] = useState(null)
   const [serviciosOpen, setServiciosOpen] = useState(false)
   const clases = useClases(sedeId)
+  const reservas = useReservasPorClase(sedeId)
   const toggle = useToggleClase(sedeId)
   const acceso = usePlanAcceso()
   const toggleAcceso = useToggleAcceso()
@@ -341,6 +371,12 @@ export default function Clases() {
                         {paused ? 'Pausada' : 'Activa'}
                       </span>
                     </div>
+                    {/* Demanda real: reservas hechas desde la app del socio */}
+                    {reservas.data?.[cs.id]?.total > 0 && (
+                      <div className="mt-1.5 rounded-[7px] bg-orange-50 px-2 py-1 text-[10px] font-extrabold text-orange">
+                        📅 {reservas.data[cs.id].total} reserva{reservas.data[cs.id].total === 1 ? '' : 's'} · próx. {new Date(reservas.data[cs.id].proxima + 'T12:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
