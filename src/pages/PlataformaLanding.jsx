@@ -253,7 +253,7 @@ function SlideMockDibujo({ tipo }) {
     <div key={i} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: C.border }}>
       <span className="h-7 w-7 flex-shrink-0 rounded-full" style={{ background: 'rgba(255,107,53,0.22)' }} />
       <div className="flex-1 space-y-1.5">{barra('60%', false)}{barra('35%', false)}</div>
-      <span className="rounded-full px-2 py-0.5 text-[8px] font-extrabold text-white" style={{ background: C.primary }}>{['membresias', 'finanzas'].includes(tipo) ? 'S/' : 'OK'}</span>
+      <span className="rounded-full px-2 py-0.5 text-[8px] font-extrabold" style={{ background: 'rgba(255,107,53,0.15)', color: C.primary }}>{['membresias', 'finanzas'].includes(tipo) ? 'S/' : 'OK'}</span>
     </div>
   )
   // Contenido específico por módulo
@@ -290,7 +290,7 @@ function SlideMockDibujo({ tipo }) {
           ))}
         </div>
         <div className="mt-3 flex h-[70px] items-end gap-1.5">
-          {barras.map((h, i) => <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: h > 75 ? C.primary : 'rgba(255,107,53,0.3)' }} />)}
+          {barras.map((h, i) => <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: h > 75 ? 'rgba(255,107,53,0.75)' : 'rgba(255,255,255,0.12)' }} />)}
         </div>
       </div>
     )
@@ -300,7 +300,7 @@ function SlideMockDibujo({ tipo }) {
     <div className="w-full max-w-[440px] space-y-2 rounded-xl p-4" style={{ background: C.surface, border: C.border }}>
       <div className="mb-2 flex items-center gap-2">
         <div className="h-8 flex-1 rounded-lg px-3 text-[10px] font-bold leading-8" style={{ background: 'rgba(255,255,255,0.05)', color: C.muted }}>🔍 Buscar…</div>
-        <span className="rounded-lg px-3 py-1.5 text-[9px] font-extrabold text-white" style={{ background: C.primary }}>+ Nuevo</span>
+        <span className="rounded-lg px-3 py-1.5 text-[9px] font-extrabold" style={{ background: 'rgba(255,107,53,0.15)', color: C.primary }}>+ Nuevo</span>
       </div>
       {[0, 1, 2, 3].map(fila)}
     </div>
@@ -317,7 +317,7 @@ function CarruselModulos() {
 
   useEffect(() => {
     if (pausado) return
-    const t = setInterval(() => setI((v) => (v + 1) % n), 4500)
+    const t = setInterval(() => setI((v) => (v + 1) % n), 6000)
     return () => clearInterval(t)
   }, [pausado, n])
 
@@ -326,32 +326,29 @@ function CarruselModulos() {
     <div onMouseEnter={() => setPausado(true)} onMouseLeave={() => setPausado(false)}
       onTouchStart={(e) => { touchX.x = e.touches[0].clientX }}
       onTouchEnd={(e) => { const d = e.changedTouches[0].clientX - touchX.x; if (Math.abs(d) > 40) ir(i + (d < 0 ? 1 : -1)) }}>
-      {/* Chips de navegación por módulo */}
-      <div className="mb-8 flex flex-wrap justify-center gap-2">
+      {/* Navegación por módulo: texto discreto, se resalta el activo */}
+      <div className="mb-9 flex flex-wrap justify-center gap-x-5 gap-y-2">
         {SLIDES.map((sl, idx) => (
           <button key={sl.clave} onClick={() => ir(idx)}
-            className="rounded-full px-3.5 py-1.5 text-[11.5px] font-extrabold transition-all"
-            style={idx === i
-              ? { background: C.primary, color: '#fff' }
-              : { background: 'rgba(255,255,255,0.05)', color: C.muted, border: C.border }}>
-            {sl.icon} {sl.clave}
+            className="text-[12px] font-bold transition-colors"
+            style={{ color: idx === i ? '#fff' : 'rgba(142,154,168,0.6)' }}>
+            {sl.clave}
           </button>
         ))}
       </div>
 
-      <div className="relative grid items-center gap-10 rounded-2xl p-8 md:grid-cols-[1fr_1.1fr] md:p-10"
-        style={{ background: 'rgba(255,255,255,0.02)', border: C.border }}>
+      <div className="relative grid items-center gap-12 md:grid-cols-[1fr_1.05fr]">
         {/* Texto */}
         <div key={s.clave} className="lp-fade">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[1.5px]" style={{ border: C.border, color: C.primary }}>
-            {s.icon} {s.clave}
+          <div className="mb-3 text-[11px] font-extrabold uppercase tracking-[2px]" style={{ color: C.primary }}>
+            {s.clave}
           </div>
-          <h3 className="text-[26px] font-extrabold leading-[1.15] tracking-[-0.5px]">{s.titulo}</h3>
-          <p className="mt-3.5 max-w-[440px] text-[14px] font-semibold leading-relaxed" style={{ color: C.muted }}>{s.desc}</p>
-          <ul className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <h3 className="text-[25px] font-extrabold leading-[1.15] tracking-[-0.5px]">{s.titulo}</h3>
+          <p className="mt-3.5 max-w-[440px] text-[14px] font-medium leading-relaxed" style={{ color: C.muted }}>{s.desc}</p>
+          <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {s.puntos.map((p) => (
-              <li key={p} className="flex items-center gap-2 text-[12.5px] font-bold">
-                <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[9px] text-white" style={{ background: C.primary }}>✓</span>
+              <li key={p} className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>
+                <span className="text-[11px]" style={{ color: C.primary }}>✓</span>
                 {p}
               </li>
             ))}
@@ -362,21 +359,21 @@ function CarruselModulos() {
           <SlideMock tipo={s.mock} />
         </div>
 
-        {/* Flechas */}
+        {/* Flechas discretas */}
         <button onClick={() => ir(i - 1)} aria-label="Anterior"
-          className="absolute -left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-[18px] font-extrabold text-white transition-transform hover:scale-110 md:flex"
-          style={{ background: C.surface, border: C.border }}>‹</button>
+          className="absolute -left-1 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[16px] font-bold transition-colors hover:text-white md:flex"
+          style={{ color: 'rgba(142,154,168,0.5)' }}>‹</button>
         <button onClick={() => ir(i + 1)} aria-label="Siguiente"
-          className="absolute -right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-[18px] font-extrabold text-white transition-transform hover:scale-110 md:flex"
-          style={{ background: C.surface, border: C.border }}>›</button>
+          className="absolute -right-1 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[16px] font-bold transition-colors hover:text-white md:flex"
+          style={{ color: 'rgba(142,154,168,0.5)' }}>›</button>
       </div>
 
-      {/* Puntos de progreso */}
-      <div className="mt-6 flex justify-center gap-2">
+      {/* Puntos de progreso finos */}
+      <div className="mt-8 flex justify-center gap-1.5">
         {SLIDES.map((_, idx) => (
           <button key={idx} onClick={() => ir(idx)} aria-label={`Ir al módulo ${idx + 1}`}
-            className="h-2 rounded-full transition-all"
-            style={{ width: idx === i ? 26 : 8, background: idx === i ? C.primary : 'rgba(255,255,255,0.18)' }} />
+            className="h-1 rounded-full transition-all"
+            style={{ width: idx === i ? 20 : 6, background: idx === i ? C.primary : 'rgba(255,255,255,0.14)' }} />
         ))}
       </div>
     </div>
