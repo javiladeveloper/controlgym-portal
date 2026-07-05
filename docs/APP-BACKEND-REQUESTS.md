@@ -524,6 +524,37 @@ cargar datos.
 > Recordatorio: **foto = UNA sola por ejercicio** (decisión del cliente
 > 2026-07-05), `foto_url` única, upsert a ruta fija — no armes galería.
 
+## PEDIDO 9 (del panel, para TI) — Soportar TikTok en el reproductor 🔴 el genérico cambió
+
+Contexto: los videos de YouTube con **ID directo daban error 152** ("This
+video is unavailable" — el dueño BLOQUEA el embed). No se puede predecir a
+ciegas cuál bloquea. Decisión del cliente (2026-07-05):
+
+1. **El contenido GENÉRICO ahora usa `yt-search:`** (búsqueda embebida) en vez
+   de IDs directos. **Migré los 384 ejercicios** (maestro + todos los gyms):
+   ninguno tiene ya un ID de YouTube que pueda dar 152 — todos son
+   `yt-search:<nombre> tecnica correcta ejercicio`. Tu `parseVideo` ya lo
+   maneja (`embed?listType=search&list=`), así que **esto ya debería
+   reproducir** en tu WebView sin el 152. **Confírmalo.**
+2. **Se agregó TikTok** como proveedor válido (el admin del gym puede pegar
+   TikTok, y es lo RECOMENDADO por reproducir siempre). Tu reproductor debe
+   soportarlo:
+   - `parseVideo` (en `src/lib/video.js` del panel) ahora reconoce
+     `tiktok.com/@usuario/video/<ID>` → `{proveedor:'tiktok', id,
+     embed:'https://www.tiktok.com/player/v1/<ID>'}`.
+   - **Replica esa rama en tu `core/Video.kt`** y embebe ese player en el
+     WebView. Ojo: TikTok es **vertical (9:16)**, no 16:9 — ajusta el
+     aspecto del popup según `proveedor`.
+   - Link corto `vm.tiktok.com/XXXX` NO trae el ID; si el gym pega uno, hay
+     que resolver el redirect para sacar el ID numérico (puedo hacerlo en un
+     endpoint del panel si lo necesitas — avísame).
+3. **YouTube con ID directo sigue permitido** pero "bajo responsabilidad del
+   admin": si el gym pega un YouTube que bloquea embed, es su elección (el
+   panel le avisa con la vista previa). El genérico ya NO usa IDs directos.
+
+Próximo número libre para ti: **`20260704000020`** (no toqué BD en esto, es
+solo data + UI).
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
@@ -531,5 +562,24 @@ cargar datos.
   schema. Cuando el panel agregue esa pantalla, leerá lo mismo.
 - La app usa `maquina.estado = 'operativa'` como filtro de sugerencias — si el
   panel cambia estados de máquina, las sugerencias de la app lo reflejan solo.
+
+## PEDIDO 9 — Videos muertos en la semilla (IDs directos de YouTube) 🟡 dato del panel
+
+Probando la media en la app, el video de varios ejercicios sale **"This video
+is unavailable · Error 152-4"**. NO es la app (el reproductor embebido carga
+bien el iframe 16:9, el `/embed/` es correcto) — es que el **`video_url` de la
+semilla apunta a un ID de YouTube que ya no existe** (borrado/restringido).
+
+Ejemplo real: `ejercicio "Jalón al pecho"` (MaximusGym) →
+`video_url = https://www.youtube.com/watch?v=CAwf7n6Luuc` → ese video está
+caído en YouTube. Stats de la semilla: **360 ejercicios con ID directo**
+(frágiles) vs solo **24 con `yt-search:`** (robustos, nunca mueren).
+
+Como ya previeron ustedes ("`yt-search:` así no se caen si borran un video"),
+lo ideal: **migrar la semilla genérica de IDs directos a `yt-search:<términos>`**
+(la app ya lo renderiza — lo convierte a `embed?listType=search&list=<q>`), o
+validar/reemplazar los IDs muertos vía oembed. Es solo dato (UPDATE de la
+columna `ejercicio.video_url`), sin migración de schema. Cada gym igual puede
+sobreescribir con su propio link desde el panel.
 
 _Actualizado: 2026-07-05 por la sesión de la app._

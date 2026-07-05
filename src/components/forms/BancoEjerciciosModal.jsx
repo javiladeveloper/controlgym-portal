@@ -42,7 +42,7 @@ export default function BancoEjerciciosModal({ onClose }) {
   }
 
   function onGuardar() {
-    if (videoInvalido) { toast.error('El link de video debe ser de YouTube o Vimeo'); return }
+    if (videoInvalido) { toast.error('El link de video debe ser de TikTok, YouTube o Vimeo'); return }
     guardar.mutate({ id: edit.id, ...f }, {
       onSuccess: () => { toast.ok(`Media de "${edit.nombre}" guardada`); setEdit(null) },
       onError: (e) => toast.error(e.message),
@@ -64,19 +64,25 @@ export default function BancoEjerciciosModal({ onClose }) {
             <textarea rows={3} value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })}
               className={inputCls + ' resize-none'} placeholder="Espalda recta, baja controlado, codos pegados…" />
           </Campo>
-          <Campo label="Video de técnica (YouTube o Vimeo)" hint="Pega el link; se muestra embebido en la app del socio.">
+          <Campo label="Video de técnica (TikTok, YouTube o Vimeo)" hint="Recomendamos TikTok: reproduce siempre embebido. YouTube funciona, pero algunos videos no se dejan incrustar.">
             <input value={f.video_url} onChange={(e) => setF({ ...f, video_url: e.target.value })}
-              className={inputCls} placeholder="https://youtu.be/…" />
+              className={inputCls} placeholder="https://tiktok.com/@…/video/…  ·  https://youtu.be/…" />
           </Campo>
           {videoInvalido && (
             <p className="-mt-1.5 rounded-[8px] bg-red-50 px-3 py-1.5 text-[11.5px] font-extrabold text-red">
-              No reconozco ese link — debe ser de YouTube o Vimeo.
+              No reconozco ese link — debe ser de TikTok, YouTube o Vimeo (pega el enlace completo del video).
             </p>
           )}
-          {/* Vista previa EMBEBIDA: el gym confirma que se ve bien */}
+          {vid?.proveedor === 'youtube' && vid.id && (
+            <p className="-mt-1.5 rounded-[8px] bg-amber-50 px-3 py-1.5 text-[11.5px] font-semibold text-amber-800">
+              ⚠️ Algunos videos de YouTube no permiten reproducirse dentro de apps. Revisa la vista previa: si sale "video no disponible", usa un TikTok o busca otro video.
+            </p>
+          )}
+          {/* Vista previa EMBEBIDA: el gym confirma que se ve bien.
+              TikTok es vertical (9:16); YouTube/Vimeo horizontal (16:9). */}
           {vid && (
-            <div className="overflow-hidden rounded-[12px] border border-line bg-black">
-              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+            <div className={`mx-auto overflow-hidden rounded-[12px] border border-line bg-black ${vid.proveedor === 'tiktok' ? 'max-w-[280px]' : ''}`}>
+              <div className="relative w-full" style={{ paddingTop: vid.proveedor === 'tiktok' ? '160%' : '56.25%' }}>
                 <iframe src={vid.embed} title="Vista previa" allowFullScreen
                   className="absolute inset-0 h-full w-full" style={{ border: 0 }}
                   allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />

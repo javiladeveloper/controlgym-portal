@@ -51,7 +51,22 @@ export function parseVideo(url) {
     }
   }
 
-  return null // no reconocido: no es YouTube ni Vimeo
+  // TikTok: https://www.tiktok.com/@usuario/video/1234567890123456789
+  // (o el link corto vm.tiktok.com/XXXX, que hay que resolver aparte).
+  // TikTok NO embebe por iframe simple: usa su player oficial por ID de video.
+  m = u.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/)(\d+)/)
+  if (m) {
+    const id = m[1]
+    return {
+      proveedor: 'tiktok',
+      id,
+      // Player oficial de TikTok (v1) — se puede meter en un iframe/WebView.
+      embed: `https://www.tiktok.com/player/v1/${id}`,
+      thumb: null,
+    }
+  }
+
+  return null // no reconocido
 }
 
 // ¿Es un link de video válido y embebible?
