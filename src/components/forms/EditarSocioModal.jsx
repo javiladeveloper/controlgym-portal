@@ -30,14 +30,26 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
   async function guardar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
+
+    // Talla en metros; si escriben en centímetros (190) se convierte solo (1.90)
+    let talla = f.talla_m === '' ? null : Number(f.talla_m)
+    if (talla !== null && talla > 3) talla = Math.round(talla) / 100
+    if (talla !== null && (talla < 0.5 || talla > 2.6)) {
+      setBusy(false); setError('Revisa la talla: va en metros (ej. 1.75) — se aceptan también centímetros (175).'); return
+    }
+    const peso = f.peso_kg === '' ? null : Number(f.peso_kg)
+    if (peso !== null && (peso < 10 || peso > 400)) {
+      setBusy(false); setError('Revisa el peso: va en kilogramos (ej. 82.5).'); return
+    }
+
     const { error } = await supabase.from('socio').update({
       nombre: f.nombre.trim(),
       telefono: f.telefono.trim() || null,
       email: f.email.trim() || null,
       documento: f.documento.trim() || null,
       fecha_nacimiento: f.fecha_nacimiento || null,
-      talla_m: f.talla_m === '' ? null : Number(f.talla_m),
-      peso_kg: f.peso_kg === '' ? null : Number(f.peso_kg),
+      talla_m: talla,
+      peso_kg: peso,
       objetivo: f.objetivo || null,
     }).eq('id', socio.id)
     setBusy(false)
@@ -87,7 +99,9 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <div className="grid grid-cols-3 gap-3">
           <Campo label="Nacimiento"><input type="date" value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
-          <Campo label="Talla (m)"><input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder="1.70" /></Campo>
+          <Campo label="Talla (m)" hint={Number(f.talla_m) > 3 ? `Se guardará como ${(Math.round(Number(f.talla_m)) / 100).toFixed(2)} m` : undefined}>
+            <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder="1.70" />
+          </Campo>
           <Campo label="Peso (kg)"><input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder="70" /></Campo>
         </div>
         <Campo label="Objetivo">
