@@ -244,19 +244,170 @@ function SlideMock({ tipo }) {
   return <SlideMockDibujo tipo={tipo} />
 }
 
-// Respaldo dibujado (mientras no haya captura real subida).
+// Respaldo dibujado (mientras no haya captura real subida). Cada módulo tiene
+// su propio diseño reconocible — nada de listas genéricas repetidas.
 function SlideMockDibujo({ tipo }) {
-  const barra = (w, on) => (
-    <div className="h-2 rounded-full" style={{ width: w, background: on ? C.primary : 'rgba(255,255,255,0.12)' }} />
+  const Caja = ({ children, className = '' }) => (
+    <div className={`w-full max-w-[440px] rounded-xl p-4 ${className}`} style={{ background: C.surface, border: C.border }}>{children}</div>
   )
-  const fila = (i) => (
-    <div key={i} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: C.border }}>
-      <span className="h-7 w-7 flex-shrink-0 rounded-full" style={{ background: 'rgba(255,107,53,0.22)' }} />
-      <div className="flex-1 space-y-1.5">{barra('60%', false)}{barra('35%', false)}</div>
-      <span className="rounded-full px-2 py-0.5 text-[8px] font-extrabold" style={{ background: 'rgba(255,107,53,0.15)', color: C.primary }}>{['membresias', 'finanzas'].includes(tipo) ? 'S/' : 'OK'}</span>
-    </div>
+  const chip = (txt, on) => (
+    <span className="rounded-full px-2 py-0.5 text-[8px] font-extrabold"
+      style={on ? { background: 'rgba(255,107,53,0.15)', color: C.primary } : { background: 'rgba(255,255,255,0.06)', color: C.muted }}>{txt}</span>
   )
-  // Contenido específico por módulo
+
+  // ── CLIENTES: ficha de socio con avatar, datos y mini-evolución ───────────
+  if (tipo === 'clientes') {
+    return (
+      <Caja>
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full text-[13px] font-extrabold text-white" style={{ background: 'rgba(255,107,53,0.25)', color: C.primary }}>CM</span>
+          <div className="flex-1">
+            <div className="text-[13px] font-extrabold text-white">Carlos Mendoza</div>
+            <div className="text-[9.5px] font-semibold" style={{ color: C.muted }}>DNI 44·· · N.º 0031 · ✓ verificado</div>
+          </div>
+          {chip('Activo', true)}
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {[['Asistencias', '18'], ['IMC', '23.4'], ['Antigüedad', '8 m']].map(([l, v]) => (
+            <div key={l} className="rounded-lg p-2" style={{ border: C.border }}>
+              <div className="text-[7.5px] font-extrabold uppercase" style={{ color: C.muted }}>{l}</div>
+              <div className="mt-0.5 text-[13px] font-extrabold text-white">{v}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-end gap-1" style={{ height: 34 }}>
+          {[30, 55, 45, 70, 60, 85, 75, 90].map((h, i) => <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: 'rgba(255,107,53,0.5)' }} />)}
+        </div>
+      </Caja>
+    )
+  }
+
+  // ── MEMBRESÍAS: lista de cobros con estados (rojo vencido, ámbar por vencer) ─
+  if (tipo === 'membresias') {
+    const rows = [
+      ['Lucía Ramos', 'Premium · vence en 2 días', 'por vencer'],
+      ['Diego Soto', 'Vencida hace 3 días · debe S/60', 'vencido'],
+      ['Ana Torres', 'Mensual · al día', 'ok'],
+    ]
+    return (
+      <Caja>
+        <div className="mb-2.5 text-[10px] font-extrabold uppercase tracking-wide" style={{ color: C.muted }}>Cobros pendientes</div>
+        <div className="space-y-2">
+          {rows.map(([n, d, st]) => (
+            <div key={n} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5"
+              style={{ background: st === 'vencido' ? 'rgba(226,75,74,0.12)' : 'rgba(255,255,255,0.04)', border: C.border }}>
+              <div className="flex-1">
+                <div className="text-[11px] font-extrabold text-white">{n}</div>
+                <div className="text-[9px] font-semibold" style={{ color: st === 'vencido' ? '#E88' : C.muted }}>{d}</div>
+              </div>
+              <span className="rounded-md px-2 py-1 text-[8.5px] font-extrabold text-white"
+                style={{ background: st === 'ok' ? 'rgba(255,255,255,0.08)' : C.primary }}>{st === 'ok' ? '✓' : 'Cobrar'}</span>
+            </div>
+          ))}
+        </div>
+      </Caja>
+    )
+  }
+
+  // ── PERSONAL: equipo con roles, turno y ranking de desempeño ──────────────
+  if (tipo === 'personal') {
+    const staff = [['LP', 'Lucía Paredes', 'Entrenadora · presente', '🥇'], ['DR', 'Diego Ramos', 'Entrenador · turno tarde', '🥈'], ['AS', 'Andrés Soto', 'Nutricionista', '🥉']]
+    return (
+      <Caja>
+        <div className="mb-2.5 flex items-center justify-between">
+          <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: C.muted }}>🏅 Desempeño del equipo</span>
+        </div>
+        <div className="space-y-2">
+          {staff.map(([ini, n, r, m]) => (
+            <div key={ini} className="flex items-center gap-2.5">
+              <span className="w-4 text-center text-[12px]">{m}</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full text-[9px] font-extrabold" style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{ini}</span>
+              <div className="flex-1">
+                <div className="text-[11px] font-extrabold text-white">{n}</div>
+                <div className="text-[9px] font-semibold" style={{ color: C.muted }}>{r}</div>
+              </div>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: r.includes('presente') ? '#3FCB9C' : 'rgba(255,255,255,0.2)' }} />
+            </div>
+          ))}
+        </div>
+      </Caja>
+    )
+  }
+
+  // ── RUTINAS: plan del día con ejercicios y video ──────────────────────────
+  if (tipo === 'rutinas') {
+    const ejs = [['Press banca', '4×10 · 50kg'], ['Jalón al pecho', '4×12 · 35kg'], ['Curl bíceps', '3×12 · 10kg']]
+    return (
+      <Caja>
+        <div className="mb-2.5 flex items-center gap-2">
+          <span className="text-[11px] font-extrabold text-white">Lunes · Pecho y espalda</span>
+          <span className="ml-auto rounded-full px-2 py-0.5 text-[8px] font-extrabold" style={{ background: 'rgba(255,107,53,0.15)', color: C.primary }}>Enviar a la app ↗</span>
+        </div>
+        <div className="space-y-2">
+          {ejs.map(([n, s]) => (
+            <div key={n} className="flex items-center gap-2.5 rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)', border: C.border }}>
+              <span className="flex h-7 w-7 items-center justify-center rounded-md text-[11px]" style={{ background: 'rgba(255,107,53,0.15)' }}>▶</span>
+              <div className="flex-1">
+                <div className="text-[10.5px] font-extrabold text-white">{n}</div>
+                <div className="text-[9px] font-semibold" style={{ color: C.muted }}>{s}</div>
+              </div>
+              <span className="text-[9px]" style={{ color: C.muted }}>🎬</span>
+            </div>
+          ))}
+        </div>
+      </Caja>
+    )
+  }
+
+  // ── KARDEX: productos con stock y precio ──────────────────────────────────
+  if (tipo === 'kardex') {
+    const prods = [['🥤 Proteína Whey', '12 en stock', 'S/130'], ['🍫 Barra energética', '38 en stock', 'S/8'], ['💊 Creatina', '3 · bajo stock', 'S/95']]
+    return (
+      <Caja>
+        <div className="mb-2.5 flex items-center justify-between text-[10px] font-extrabold uppercase" style={{ color: C.muted }}>
+          <span>Inventario</span><span>Vendido hoy: S/ 340</span>
+        </div>
+        <div className="space-y-2">
+          {prods.map(([n, s, p]) => (
+            <div key={n} className="flex items-center gap-2.5 rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)', border: C.border }}>
+              <div className="flex-1">
+                <div className="text-[10.5px] font-extrabold text-white">{n}</div>
+                <div className="text-[9px] font-semibold" style={{ color: s.includes('bajo') ? '#E88' : C.muted }}>{s}</div>
+              </div>
+              <span className="text-[11px] font-extrabold" style={{ color: C.primary }}>{p}</span>
+            </div>
+          ))}
+        </div>
+      </Caja>
+    )
+  }
+
+  // ── FINANZAS: KPIs + gráfico de ingresos vs gastos ────────────────────────
+  if (tipo === 'finanzas') {
+    const barras = [40, 65, 50, 80, 60, 92, 70]
+    return (
+      <Caja className="p-5">
+        <div className="grid grid-cols-3 gap-2.5">
+          {[['Ingresos hoy', 'S/ 2,340'], ['Gastos', 'S/ 810'], ['Neto', 'S/ 1,530']].map(([l, v]) => (
+            <div key={l} className="rounded-lg p-2.5" style={{ border: C.border }}>
+              <div className="text-[8px] font-extrabold uppercase" style={{ color: C.muted }}>{l}</div>
+              <div className="mt-1 text-[15px] font-extrabold text-white">{v}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex h-[70px] items-end gap-1.5">
+          {barras.map((h, i) => <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: h > 75 ? 'rgba(255,107,53,0.75)' : 'rgba(255,255,255,0.12)' }} />)}
+        </div>
+        <div className="mt-2 flex justify-between text-[8px] font-bold" style={{ color: C.muted }}>
+          <span>Caja del día ✓ cuadrada</span><span>Deudores: 4</span>
+        </div>
+      </Caja>
+    )
+  }
+
+  if (tipo === 'web') return <GymPageMockup />
+
+  // ── APP: teléfono con carnet QR ───────────────────────────────────────────
   if (tipo === 'app') {
     return (
       <div className="mx-auto w-[190px] overflow-hidden rounded-[26px] p-2.5" style={{ background: '#0C1220', border: '6px solid #263149', boxShadow: '0 30px 70px rgba(0,0,0,0.5)' }}>
@@ -276,35 +427,8 @@ function SlideMockDibujo({ tipo }) {
       </div>
     )
   }
-  if (tipo === 'web') return <GymPageMockup />
-  if (tipo === 'finanzas' || tipo === 'membresias') {
-    const barras = [40, 65, 50, 80, 60, 92, 70]
-    return (
-      <div className="w-full max-w-[440px] rounded-xl p-5" style={{ background: C.surface, border: C.border }}>
-        <div className="grid grid-cols-3 gap-2.5">
-          {[[tipo === 'finanzas' ? 'Ingresos hoy' : 'Por cobrar', 'S/ 2,340'], [tipo === 'finanzas' ? 'Gastos' : 'Vencen hoy', tipo === 'finanzas' ? 'S/ 810' : '6'], ['Neto', 'S/ 1,530']].map(([l, v]) => (
-            <div key={l} className="rounded-lg p-2.5" style={{ border: C.border }}>
-              <div className="text-[8px] font-extrabold uppercase" style={{ color: C.muted }}>{l}</div>
-              <div className="mt-1 text-[15px] font-extrabold text-white">{v}</div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 flex h-[70px] items-end gap-1.5">
-          {barras.map((h, i) => <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: h > 75 ? 'rgba(255,107,53,0.75)' : 'rgba(255,255,255,0.12)' }} />)}
-        </div>
-      </div>
-    )
-  }
-  // clientes / personal / rutinas / kardex → lista de filas
-  return (
-    <div className="w-full max-w-[440px] space-y-2 rounded-xl p-4" style={{ background: C.surface, border: C.border }}>
-      <div className="mb-2 flex items-center gap-2">
-        <div className="h-8 flex-1 rounded-lg px-3 text-[10px] font-bold leading-8" style={{ background: 'rgba(255,255,255,0.05)', color: C.muted }}>🔍 Buscar…</div>
-        <span className="rounded-lg px-3 py-1.5 text-[9px] font-extrabold" style={{ background: 'rgba(255,107,53,0.15)', color: C.primary }}>+ Nuevo</span>
-      </div>
-      {[0, 1, 2, 3].map(fila)}
-    </div>
-  )
+
+  return <Caja><div className="py-8 text-center text-[11px] font-semibold" style={{ color: C.muted }}>Vista del módulo</div></Caja>
 }
 
 // Carrusel auto-avanzable de módulos (el visitante puede navegar manualmente).
