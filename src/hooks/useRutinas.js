@@ -98,6 +98,58 @@ export function useSetFoco(socioId) {
   })
 }
 
+// Ejercicios de todos los días de la rutina (la app y el panel comparten filas)
+export function useEjerciciosRutina(rutinaId, diasIds) {
+  return useQuery({
+    queryKey: ['rutina-ejercicios', rutinaId],
+    enabled: !!rutinaId && (diasIds?.length ?? 0) > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rutina_ejercicio')
+        .select('id, rutina_dia_id, nombre, series, reps, carga, descanso, notas, orden')
+        .in('rutina_dia_id', diasIds)
+        .order('orden')
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+// Crear/actualizar un ejercicio del día
+export function useGuardarEjercicio(rutinaId, empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (ej) => {
+      const campos = {
+        nombre: (ej.nombre || '').trim(), series: Number(ej.series) || null,
+        reps: ej.reps || null, carga: ej.carga || null,
+        descanso: ej.descanso || null, notas: ej.notas || null,
+      }
+      if (!campos.nombre) throw new Error('El ejercicio necesita nombre')
+      if (ej.id) {
+        const { error } = await supabase.from('rutina_ejercicio').update(campos).eq('id', ej.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('rutina_ejercicio')
+          .insert({ ...campos, empresa_id: empresaId, rutina_dia_id: ej.rutina_dia_id, orden: ej.orden ?? 99 })
+        if (error) throw error
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rutina-ejercicios', rutinaId] }),
+  })
+}
+
+export function useEliminarEjercicio(rutinaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('rutina_ejercicio').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rutina-ejercicios', rutinaId] }),
+  })
+}
+
 const COMIDAS_DEFAULT = [
   { nombre: 'Desayuno', hora: '07:00', descripcion: 'Avena con plátano y claras', kcal: 420, orden: 1 },
   { nombre: 'Media mañana', hora: '10:00', descripcion: 'Yogur griego y almendras', kcal: 180, orden: 2 },

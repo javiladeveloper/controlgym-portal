@@ -126,6 +126,49 @@ contacto. **Solo falta aplicarla** (protocolo: aplica el panel).
 >   Hay un token Android real en `push_token` y filas en `push_cola` (rutina
 >   enviada al socio 0021 de MaximusGym) listas para el primer despacho.
 
+> ## ✅ RESPUESTA DEL PANEL a PEDIDOS 4 y 5 (2026-07-04 noche, tanda 2)
+> - **PEDIDO 5** ✔ `20260704000008_nutricion_avanzada.sql` APLICADA (dieta.suplementos +
+>   comida.dia_semana). Dale con tu parte.
+> - **PEDIDO 4.1** ✔ El panel ahora tiene el editor completo: foco de texto LIBRE con
+>   sugerencias (respeta "Espalda, hombro y cardio"), día clicable, y edición inline de
+>   `rutina_ejercicio` (nombre/series/reps/carga/descanso/notas, guarda on-blur, agrega
+>   con Enter, elimina) — mismas filas que escribes tú.
+> - **PEDIDO 4.2** ✔ Buscador de socio con typeahead en Rutinas (adiós dropdown).
+> - **PEDIDO 4.3** ✔ Índice único `(empresa_id, documento)` where deleted_at is null
+>   (`20260704000009`) + aviso en el form ("este DNI ya es socio: X") con botón bloqueado.
+>   OJO app: si insertas socios, maneja el error de unique `uq_socio_documento_empresa`.
+> - **Tu nota de push está vencida**: el worker YA corre (envs puestas, cron cada minuto).
+>   Tus 2 filas de push_cola (incluida "🥋 Prueba FitCore") **ya fueron despachadas** ✓ —
+>   revisa el emulador.
+
+## PEDIDO 4 — Panel: paridad de rutinas + calidad de datos 🔴 → ✅ RESUELTO (ver respuesta arriba)
+
+El cliente probó panel y app lado a lado. Tres cosas del PANEL:
+
+1. **Editor completo de rutina en "Rutinas y dietas"**: hoy el panel solo edita
+   el foco del día (select con opciones fijas) — no muestra ni edita los
+   EJERCICIOS (`rutina_ejercicio`: nombre, series, reps, carga, descanso,
+   notas) que la app ya escribe, y los focos personalizados (p. ej. "Espalda,
+   hombro y cardio") ni siquiera aparecen en el select (cae en la primera
+   opción — se ve como dato incorrecto). La app ya define el contrato; es
+   leer/escribir las mismas filas. Cita del cliente: "todo eso debe poder
+   hacerse desde el panel Y desde la app".
+2. **Buscador de socio** en la página Rutinas y dietas (hoy solo hay un
+   dropdown — con 17+ socios no escala).
+3. **Prevención de duplicados de socios**: había DOS "jonathan avila" en
+   MaximusGym (limpié el 0020 de prueba con soft-delete). Con el DNI ahora
+   obligatorio, propongo unique parcial (empresa_id, documento) where
+   deleted_at is null + aviso amable en el form ("este DNI ya es socio").
+
+## PEDIDO 5 — Aplicar migración `20260704000008_nutricion_avanzada.sql` 🟡 → ✅ APLICADA
+
+Para el flujo trainer-vs-nutricionista que pidió el cliente (algunos gyms
+tienen nutricionista que da plan SEMANAL y recomienda suplementos):
+- `dieta.suplementos text` (recomendaciones del nutricionista)
+- `comida.dia_semana int null` (NULL = todos los días → 100% retrocompatible)
+La app implementará su parte (rol nutricionista con vista de nutrición,
+plan por día, suplementos) apenas confirmes ✔ aplicada.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni

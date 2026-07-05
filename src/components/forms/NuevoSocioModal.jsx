@@ -24,6 +24,19 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     documento: prefill.documento || '', fecha_nacimiento: '', objetivo: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
   })
   const [verif, setVerif] = useState(null) // resultado de la verificación de DNI (MAXFIND)
+  const [dupSocio, setDupSocio] = useState(null) // ya existe un socio con este documento
+
+  // Anti-duplicados: si el documento ya es de un socio del gym, avisar y frenar
+  useEffect(() => {
+    const doc = f.documento.trim()
+    if (doc.length < 8) { setDupSocio(null); return }
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from('socio')
+        .select('id, nombre, codigo').eq('documento', doc).is('deleted_at', null).limit(1)
+      setDupSocio(data?.[0] || null)
+    }, 400)
+    return () => clearTimeout(t)
+  }, [f.documento])
   const [invitados, setInvitados] = useState([]) // acompañantes de promos 2x1/grupal
   const [enPartes, setEnPartes] = useState(false) // paga una parte hoy, el resto después
   const [montoInicial, setMontoInicial] = useState('')
@@ -174,6 +187,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             <input required value={f.documento} onChange={set('documento')} className={inputCls} maxLength={12} />
           </Campo>
         </div>
+        {dupSocio && (
+          <p className="-mt-1.5 rounded-[8px] bg-red-50 px-3 py-1.5 text-[11.5px] font-extrabold text-red">
+            ⚠️ Este documento ya es socio: {dupSocio.nombre} (N.º {dupSocio.codigo}) — búscalo en Clientes en vez de duplicarlo.
+          </p>
+        )}
         {/* Resultado de la verificación de identidad (MAXFIND) */}
         {verif?.buscando && <p className="-mt-1.5 text-[11.5px] font-bold text-faint">Verificando DNI en el padrón…</p>}
         {(() => {
@@ -278,7 +296,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
           </>
         )}
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim()} submitLabel={f.plan_id ? `Inscribir y cobrar ${money(inicial, empresa?.moneda)}` : 'Inscribir'} />
+        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim() || !!dupSocio} submitLabel={dupSocio ? 'Documento duplicado' : f.plan_id ? `Inscribir y cobrar ${money(inicial, empresa?.moneda)}` : 'Inscribir'} />
       </form>
     </Modal>
   )
