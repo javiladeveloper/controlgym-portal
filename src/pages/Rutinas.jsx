@@ -72,6 +72,51 @@ function InputEjercicio({ value, onChange, onBlur, onKeyDown, placeholder, class
   )
 }
 
+// Suplementos frecuentes para autocompletar (además de los del Kardex del gym)
+const SUPLEMENTOS_BASE = [
+  'Proteína whey', 'Creatina monohidrato', 'Pre-entreno', 'BCAA', 'Glutamina',
+  'Multivitamínico', 'Omega 3', 'Cafeína', 'Magnesio', 'Colágeno', 'Vitamina D',
+  'Caseína', 'Ganador de masa (mass gainer)', 'Electrolitos', 'Zinc',
+]
+
+// Escribe 2+ letras y sugiere: primero lo que el gym TIENE EN STOCK (con
+// precio, para venta cruzada), luego los frecuentes. Elegir agrega la línea.
+function InputSuplemento({ enStock, onPick }) {
+  const [q, setQ] = useState('')
+  const [foco, setFoco] = useState(false)
+  const ql = q.trim().toLowerCase()
+  const sugerencias = ql.length < 2 ? [] : [
+    ...enStock.filter((p) => p.nombre.toLowerCase().includes(ql))
+      .map((p) => ({ nombre: p.nombre, stock: p.stock, precio: p.precio })),
+    ...SUPLEMENTOS_BASE.filter((n) => n.toLowerCase().includes(ql)
+      && !enStock.some((p) => p.nombre.toLowerCase().includes(n.toLowerCase())))
+      .map((n) => ({ nombre: n })),
+  ].slice(0, 6)
+  return (
+    <div className="relative">
+      <input value={q} onChange={(e) => setQ(e.target.value)}
+        onFocus={() => setFoco(true)} onBlur={() => setTimeout(() => setFoco(false), 120)}
+        placeholder="＋ Escribe un suplemento (ej. crea…) y elígelo"
+        className="w-full rounded-[9px] border border-dashed border-line bg-white px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange"
+        autoComplete="off" />
+      {foco && sugerencias.length > 0 && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-[10px] border border-line bg-white shadow-lg">
+          {sugerencias.map((s) => (
+            <button key={s.nombre} type="button"
+              onMouseDown={(ev) => { ev.preventDefault(); onPick(s); setQ('') }}
+              className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-left text-[12.5px] font-bold hover:bg-[#FFF4EC]">
+              <span>{s.stock != null ? '🏪 ' : ''}{s.nombre}</span>
+              {s.stock != null
+                ? <span className="text-[10.5px] font-extrabold text-green-600">en stock · S/ {Number(s.precio)}</span>
+                : <span className="text-[10.5px] font-extrabold text-faint">frecuente</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Fila editable de una comida del plan (guarda al salir del campo).
 // El chip de día define si aplica TODOS los días o uno específico (plan semanal).
 function ComidaFila({ comida, onGuardar, onEliminar }) {
@@ -411,7 +456,7 @@ function RutinasImpl() {
               {dieta.data?.id && (
                 <button onClick={() => agregarComida.mutate({ dietaId: dieta.data.id, orden: meals.length + 1 })}
                   className="cursor-pointer self-start rounded-[9px] border border-dashed border-line bg-white px-3.5 py-2 text-[12px] font-extrabold text-muted hover:border-orange hover:text-orange">
-                  + Comida (usa el chip de día para el plan semanal)
+                  + Agregar comida
                 </button>
               )}
             </div>
@@ -425,6 +470,20 @@ function RutinasImpl() {
                   placeholder="Ej.: Proteína whey 1 scoop post-entreno · Creatina 5g diarios con agua · Dormir 7-8 horas…"
                   className="w-full resize-none rounded-[9px] border border-line bg-white px-3 py-2.5 text-[13px] font-semibold outline-none focus:border-orange" />
                 <p className="mt-1 text-[10.5px] font-bold text-faint">El socio lo ve en su app como tarjeta 💊 junto a su plan de hoy.</p>
+                {/* Autocompletado: en stock primero (venta cruzada), luego frecuentes */}
+                <div className="mt-2">
+                  <InputSuplemento enStock={suplementosStock}
+                    onPick={(s) => {
+                      if (suplementos.includes(s.nombre)) return
+                      const linea = s.stock != null
+                        ? `· ${s.nombre} — lo tenemos en el gym, cómpralo en recepción (S/ ${Number(s.precio)})`
+                        : `· ${s.nombre} — [indica dosis y momento]`
+                      const nuevo = suplementos ? `${suplementos}\n${linea}` : linea
+                      setSuplementos(nuevo)
+                      guardarSuplementos.mutate({ dietaId: dieta.data.id, suplementos: nuevo })
+                      setEnviado(false)
+                    }} />
+                </div>
                 {/* Lo que el gym tiene en stock: un clic lo recomienda (venta cruzada) */}
                 {suplementosStock.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
