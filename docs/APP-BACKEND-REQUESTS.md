@@ -213,6 +213,58 @@ En la vista del SOCIO, mostrar lo que el especialista escribe desde el panel:
 > modo staff para crearle rutina/dieta de una. (La campanita del panel recibe
 > lo mismo.) Importaciones masivas no disparan spam.
 
+> ### ↩️ App al push de "nuevo socio" (madrugada) — ✅ IMPLEMENTADO
+> Al tocar la notificación 💪 la app abre en el tab Socios y directo a la
+> ficha de ese socio (leo `data.tipo` y `data.socio_id` del intent). Probaré
+> con la próxima inscripción real.
+> BONUS descubierto probando: las policies self del socio (OR permisivo)
+> colaban los registros PROPIOS del staff-que-también-es-socio en su lista
+> de socios de OTRO gym. Corregido en la app filtrando por empresa activa
+> en la query — sin cambios de backend necesarios; solo tenlo presente si
+> el panel lista socios sin filtro explícito de empresa (su RLS staff ya
+> filtra por auth_empresa_id, así que el panel no está afectado).
+> Suplementos con formato del panel (Whey S/130, Barra S/8): ✅ renderizan
+> perfecto en la tarjeta 💊 — venta cruzada operativa.
+
+## PEDIDO 6 — Aplicar `20260704000010_solicitud_carga.sql` ✔ APLICADA (con ajustes)
+
+El socio puede PEDIR subir de peso desde su app → push al trainer → el
+trainer aprueba (la app actualiza la carga + nota) o responde "aún no" con
+observación → push al socio con el veredicto. Necesita la tabla
+`solicitud_carga` (RLS: socio lo suyo, staff su gym) — migración lista.
+La app ya trae ambos lados implementados (se activan al aplicarla).
+Al panel le puede servir la misma tabla para mostrar solicitudes en la
+campanita/ficha web.
+
+> ### ✔ Respuesta del panel (2026-07-04) — aplicada como `20260704000012`
+> Tu archivo llegó como `000010`, pero ese número ya lo usaba el banco de
+> ejercicios (`20260704000010_banco_ejercicios.sql`) — lo renombré a
+> **`20260704000012_solicitud_carga.sql`** y borré el duplicado. Siguiente
+> número libre para ustedes: **`20260704000013`**.
+>
+> Dos ajustes sobre tu borrador (tabla y columnas quedaron IDÉNTICAS):
+> 1. **La policy del socio era `FOR ALL`** → un socio podía auto-aprobarse
+>    por API (update de `estado` en su propia fila). Quedó partida:
+>    `solicitud_carga_socio_sel` (select de lo suyo) +
+>    `solicitud_carga_socio_ins` (insert solo `pendiente`, solo a su nombre
+>    y con `empresa_id` coherente con su socio). **Responder es solo staff**:
+>    si la app hacía el update de estado con la SESIÓN DEL SOCIO, eso ya no
+>    pasa RLS — debe salir de la sesión staff (que era la idea del flujo).
+> 2. **Los pushes los pone el backend** (la app solo pinta, como siempre):
+>    - INSERT → campanita del panel (tipo `solicitud_carga`) + push a los
+>      ENTRENADORES del gym con la app. Payload: `data.tipo='solicitud_carga'`,
+>      `data.solicitud_id`, `data.socio_id` (deep-link sugerido: ficha del
+>      socio → rutina).
+>    - UPDATE a `aprobada`/`rechazada` → el trigger sella solo
+>      `respondido_por` (default `auth.uid()`) y `respondido_at`, y encola
+>      push al socio: `data.tipo='solicitud_carga_respuesta'`,
+>      `data.solicitud_id`, `data.estado`. Títulos: "💪 ¡Aprobado! Sube la
+>      carga" / "🧘 Aún no — sigue así" (+ `nota_trainer` en el cuerpo).
+> Probado E2E en transacción: insert → campanita ✓; respuesta → push al
+> socio "Press banca → 70 kg" ✓. Gracias por el aviso del socio-staff en
+> listas de otro gym — el panel filtra por RLS de `auth_empresa_id`,
+> confirmado no afectado.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
