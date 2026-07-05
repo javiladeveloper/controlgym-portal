@@ -9,6 +9,7 @@ import TabRedes from './config/TabRedes.jsx'
 import TabRegional from './config/TabRegional.jsx'
 import TabTextos from './config/TabTextos.jsx'
 import TabPlan from './config/TabPlan.jsx'
+import TabAcceso from './config/TabAcceso.jsx'
 
 const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
@@ -16,6 +17,7 @@ const TABS = [
   { key: 'sitio', label: 'Sitio web', Comp: TabSitio },
   { key: 'pagina', label: 'Página web', Comp: TabPaginaWeb },
   { key: 'sedes', label: 'Sedes', Comp: TabSedes },
+  { key: 'acceso', label: 'Control de acceso', Comp: TabAcceso },
   { key: 'contacto', label: 'Contacto', Comp: TabContacto },
   { key: 'redes', label: 'Redes sociales', Comp: TabRedes },
   { key: 'regional', label: 'Regional', Comp: TabRegional },
