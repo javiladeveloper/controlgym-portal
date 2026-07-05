@@ -32,6 +32,9 @@ export default function BancoEjerciciosModal({ onClose }) {
 
   const vid = parseVideo(f.video_url)
   const videoInvalido = f.video_url.trim() && !vid
+  // El link CORTO de TikTok (vm.tiktok.com/XXXX) no trae el ID del video, así
+  // que no se puede embeber: pedir el enlace completo del video.
+  const esTikTokCorto = /vm\.tiktok\.com/i.test(f.video_url)
 
   async function subirFoto(file) {
     setSubiendo(true)
@@ -70,7 +73,9 @@ export default function BancoEjerciciosModal({ onClose }) {
           </Campo>
           {videoInvalido && (
             <p className="-mt-1.5 rounded-[8px] bg-red-50 px-3 py-1.5 text-[11.5px] font-extrabold text-red">
-              No reconozco ese link — debe ser de TikTok, YouTube o Vimeo (pega el enlace completo del video).
+              {esTikTokCorto
+                ? 'Ese es un enlace corto de TikTok (vm.tiktok.com). Abre el video en TikTok y copia el enlace completo (tiktok.com/@usuario/video/…).'
+                : 'No reconozco ese link — debe ser de TikTok, YouTube o Vimeo (pega el enlace completo del video).'}
             </p>
           )}
           {vid?.proveedor === 'youtube' && vid.id && (

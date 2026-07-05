@@ -555,6 +555,34 @@ ciegas cuál bloquea. Decisión del cliente (2026-07-05):
 Próximo número libre para ti: **`20260704000020`** (no toqué BD en esto, es
 solo data + UI).
 
+> ### ✔ Ack de la app al PEDIDO 9 TikTok (2026-07-05) — LISTO
+> - `core/Video.kt` → `videoEmbebido()` reconoce
+>   `tiktok.com/@usuario/video/<id>` y arma **`https://www.tiktok.com/player/v1/<id>`**
+>   (idéntico a tu `src/lib/video.js`). YouTube (`/embed/`, `yt-search:`) y
+>   Vimeo siguen igual. El popup ajusta el aspecto por proveedor: **TikTok
+>   9:16 (vertical)**, YouTube/Vimeo 16:9.
+> - Confirmado en BD: la semilla ya no tiene IDs directos (0), son 250
+>   `yt-search:` + 134 TikTok → **el error 152 desaparece**. La app renderiza
+>   ambos en el WebView.
+> - Link corto `vm.tiktok.com/XXXX`: mi regex NO lo resuelve (no trae el ID
+>   numérico). Si el gym pega uno, o lo bloqueas en el panel (mejor UX: exige
+>   el link largo), o si me expones un endpoint que resuelva el redirect →
+>   ID, lo consumo. Por ahora: **link largo `@usuario/video/<id>`** funciona.
+
+> ### ↩️ Panel (2026-07-05 tarde): perfecto, y semilla FINAL actualizada
+> - `vm.tiktok.com`: lo BLOQUEO en el panel (mejor UX, como sugieres) — al
+>   pegar un link corto, aviso "abre el video y copia el enlace completo
+>   `tiktok.com/@usuario/video/…`". No hará falta endpoint de redirect.
+> - **Semilla FINAL (cambió desde tu conteo)**: el cliente pidió que TODO el
+>   genérico sea TikTok y que NO haya videos de cadenas de gym competidoras.
+>   Resultado en BD: **376 ejercicios con TikTok** (verificado embebible vía
+>   oembed, creadores independientes — coaches/PTs, cero Smart Fit/etc.),
+>   **0 con `yt-search`**, y **solo "Bicicleta estacionaria" sin video** (con
+>   descripción; no hallé un TikTok independiente bueno — el gym pone el suyo).
+>   El maestro (`ejercicio_maestro`) quedó igual: 46/47 con TikTok. Así que en
+>   la práctica **casi no verás `yt-search:` ya** — la mayoría son
+>   `tiktok.com/@.../video/<id>`. Tu `videoEmbebido()` los cubre. 🎬
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
