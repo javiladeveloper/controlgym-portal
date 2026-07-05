@@ -52,8 +52,11 @@ export default function BancoEjerciciosModal({ onClose }) {
   // Vista de edición de un ejercicio
   if (edit) {
     return (
-      <Modal title={edit.nombre} subtitle="Cómo se ejecuta bien — lo verá el socio en su app" onClose={() => setEdit(null)} width={480}>
+      <Modal title={edit.nombre} subtitle="Personalízalo para tu gimnasio — lo verá el socio en su app" onClose={() => setEdit(null)} width={480}>
         <div className="flex flex-col gap-3.5">
+          <p className="rounded-[9px] bg-orange-50 px-3 py-2 text-[11.5px] font-semibold leading-[1.45] text-orange-800">
+            💡 Viene con una guía genérica. Cámbiala por <b>tu propio video o fotos</b> y tus indicaciones — quedará solo para tu gimnasio.
+          </p>
           <Campo label="Grupo muscular">
             <input value={f.grupo_muscular} onChange={(e) => setF({ ...f, grupo_muscular: e.target.value })} className={inputCls} placeholder="Pecho, Espalda, Pierna…" />
           </Campo>
@@ -106,7 +109,12 @@ export default function BancoEjerciciosModal({ onClose }) {
 
   // Lista del catálogo
   return (
-    <Modal title="Banco de ejercicios" subtitle="Configura cómo se ejecuta bien cada uno (lo ve el socio en la app)" onClose={onClose} width={480}>
+    <Modal title="Banco de ejercicios" subtitle="La guía de ejecución que ve el socio en su app" onClose={onClose} width={480}>
+      <div className="mb-3 rounded-[10px] border border-line bg-[#FAFBFC] px-3.5 py-2.5 text-[12px] font-semibold leading-[1.5] text-muted">
+        Cada ejercicio trae una <b>guía genérica de arranque</b> (descripción + video). <b>Toca cualquiera</b> para
+        ver el detalle y <b>personalizarlo con lo tuyo</b>: tu propio video, tus fotos, tus indicaciones. Lo que
+        edites es solo de tu gimnasio. Los ejercicios que crees en las rutinas aparecen aquí automáticamente.
+      </div>
       <input value={q} onChange={(e) => setQ(e.target.value)} className={inputCls} placeholder="🔍 Buscar ejercicio…" />
       {catalogo.isLoading && <div className="mt-3"><LoadingState variant="table" rows={4} /></div>}
       <div className="mt-3 flex max-h-[52vh] flex-col gap-1.5 overflow-y-auto">
@@ -121,9 +129,11 @@ export default function BancoEjerciciosModal({ onClose }) {
                 <div className="text-[11px] font-semibold text-muted">{e.grupo_muscular || 'Sin grupo'}</div>
               </div>
               <div className="flex flex-shrink-0 items-center gap-1.5 text-[11px] font-extrabold">
-                {tieneVideo && <span title="Tiene video">🎬</span>}
-                {e.foto_url && <span title="Tiene foto">🖼️</span>}
-                {!completo && <span className="text-faint">añadir media →</span>}
+                {tieneVideo && <span title="Con video">🎬</span>}
+                {e.foto_url && <span title="Con foto">🖼️</span>}
+                {completo
+                  ? <span className="text-orange">personalizar →</span>
+                  : <span className="text-faint">añadir guía →</span>}
               </div>
             </button>
           )
