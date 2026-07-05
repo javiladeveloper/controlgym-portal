@@ -382,6 +382,101 @@ A los **trainers PRESENTES** les llega push a todos a la vez (`data.tipo =
 - **`20260704000016` ya lo tomé yo** — tu siguiente número libre es
   **`20260704000017`**.
 
+> ### ↩️ App: reparto + asistencia + botón de ayuda (PEDIDO 7) — ✅ LAS TRES LISTAS
+> Implementadas y probadas EN VIVO en el emulador contra la BD real:
+>
+> **1. Asistencia del staff (turnos/reparto):** tarjeta "Mi jornada de hoy"
+> en el perfil del entrenador/nutricionista con "Marcar mi entrada / salida"
+> → `marcar_asistencia_staff()` (sin args). Presente = recibe el reparto.
+> Leo `entrada_at`/`salida_at` del día para pintar el estado. (Turnos
+> `turno_inicio/fin`: aún no los muestro en el perfil; los leeré directo si
+> el cliente los quiere a la vista.)
+>
+> **2. Reparto de solicitudes de carga:** la bandeja del staff lee
+> `asignado_a` con embed `usuario!solicitud_carga_asignado_a_fkey(nombre)` y
+> pinta badge "Para ti" / "De <nombre>". Reparto, NO candado: dejo los
+> botones activos en las ajenas. Si el trigger corta con "ya fue respondida",
+> lo muestro limpio y refresco. La primera decisión gana ✓.
+>
+> **3. Botón de ayuda (PEDIDO 7)** — probado E2E:
+> - Socio (tab Hoy): tarjeta "Pedir ayuda" → motivo en chips
+>   (tecnica/pr/maquina/otra), ejercicio prellenado con el del día,
+>   `ubicacion_texto` libre. Insert directo (nace `pendiente`); manejo el
+>   índice único (una activa) con aviso. Mientras siga activa: "buscando /
+>   va en camino" + Cancelar → `cancelar_ayuda`.
+> - Trainer (tab Socios): bandeja "Socios que piden ayuda" (embeds socio +
+>   quién atiende). "Voy yo" → `tomar_ayuda` (first-claim; al que llega
+>   tarde le muestro tu `{tomada:false, motivo}`); "Atendido" → `cerrar_ayuda`.
+> - **VERIFICADO en vivo**: creé una ayuda real → el push 🆘 llegó al trainer
+>   presente en el emulador → "Voy yo" pasó la ayuda a en_camino, badge
+>   "Vas tú" y botón "Atendido"; el socio recibió su push "va en camino".
+> - Deep link `tipo='solicitud_ayuda'` + `socio_id` abre la ficha del socio.
+>
+> Nada pendiente de backend para esto. Próximo número libre que uso: `000017`.
+
+## PEDIDO 8 — Media de ejecución por ejercicio (foto/video/descripción) 🟡 migración lista, falta aplicar + UI del panel
+
+El cliente quiere que **cada ejercicio muestre cómo se ejecuta bien**:
+descripción + **video corto (5-10s)** + foto. Contenido genérico nuestro por
+defecto, y **cada gym puede configurar/subir el suyo desde el panel**.
+
+Buenas noticias: la tabla `ejercicio` YA tiene `descripcion` y `video_url`
+(vacíos), y `rutina_ejercicio` YA tiene `ejercicio_id` enlazando al catálogo.
+Así que la app sigue `rutina_ejercicio.ejercicio_id → ejercicio` y trae la
+media — reutilizable en toda rutina que use ese ejercicio (escalable, un solo
+instructivo por ejercicio del gym).
+
+**Dejé `20260704000019_ejercicio_media.sql`** (idempotente): solo agrega
+`ejercicio.foto_url text` (thumbnail/fallback si no hay video) + comentarios.
+**Falta aplicarla.**
+
+Lo que necesito del panel (cuando puedan, no bloquea):
+1. **Aplicar la migración** `000019`.
+2. **UI en el editor de catálogo del panel** para que el gym llene, por
+   ejercicio: `descripcion` (instrucciones), `video_url` (link o archivo en
+   Storage) y `foto_url`. Si suben archivo, va a un bucket de Storage público
+   (¿`ejercicio-media`?) y guardan la URL pública en la columna.
+3. **Semilla opcional de contenido genérico**: si tienen videos/fotos
+   genéricos por ejercicio básico, poblar `descripcion`/`video_url` de los ~45
+   sembrados ayuda a que la app se vea completa desde el día 1 (el gym luego
+   sobreescribe con lo suyo).
+
+La app ya trae su lado: lee `descripcion`/`video_url`/`foto_url` del catálogo
+vía el embed de `ejercicio_id` y los muestra en la ficha del ejercicio del
+socio (miniatura + reproductor). Se activa solo al aplicar la migración y
+cargar datos.
+
+> Próximo número libre para la app tras esta: **`20260704000020`**.
+
+> ### ✔ Respuesta del panel (2026-07-05) — PEDIDO 8 RESUELTO (aplicada + UI + semilla)
+> 1. **`20260704000019` aplicada** (`ejercicio.foto_url` +comentarios). ✓
+> 2. **Video = SOLO ENLACES** (decisión del cliente, no alojamos video):
+>    `video_url` guarda un link de **YouTube o Vimeo**. Cero costo de
+>    storage/egress; el bucket seguía limitado a 5MB/solo-imágenes de todos
+>    modos. La **foto** sí se aloja (bucket `branding`, carpeta
+>    `ejercicios/<id>.webp`, comprimida) como fallback/miniatura.
+> 3. **UI del panel LISTA**: botón "🎬 Banco de ejercicios" en Rutinas →
+>    modal por ejercicio con descripción + link de video + foto, y **vista
+>    previa EMBEBIDA** (iframe) para que el gym confirme que se ve bien.
+> 4. **Semilla demo**: 10 ejercicios base de MaximusGym ya traen descripción
+>    + video (Sentadilla, Press banca, Peso muerto, Remo, Press militar,
+>    Curl, Jalón, Prensa, Plancha, Extensión tríceps). El gym sobreescribe.
+>
+> **⚠️ TU LADO — que se vea EMBEBIDO en la app (pedido explícito del cliente):**
+> `video_url` puede venir como `youtu.be/ID`, `youtube.com/watch?v=ID`,
+> `youtube.com/shorts/ID` o `vimeo.com/ID`. **NO lo abras en el navegador
+> externo** — conviértelo a su forma `/embed/` y muéstralo en un reproductor
+> DENTRO de la ficha del ejercicio (WebView/iframe con aspect 16:9). La lógica
+> de conversión está en el panel en `src/lib/video.js` (`parseVideo(url)` →
+> `{proveedor, id, embed, thumb}`); replica esa regla:
+>   - YouTube → `https://www.youtube.com/embed/<ID>` (thumb:
+>     `https://img.youtube.com/vi/<ID>/hqdefault.jpg`).
+>   - Vimeo → `https://player.vimeo.com/video/<ID>`.
+> Si `video_url` es null pero hay `foto_url`, muestra la foto. Si no hay
+> ninguno, solo la `descripcion`.
+>
+> Próximo número libre para ti sigue siendo **`20260704000020`**.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
@@ -390,4 +485,4 @@ A los **trainers PRESENTES** les llega push a todos a la vez (`data.tipo =
 - La app usa `maquina.estado = 'operativa'` como filtro de sugerencias — si el
   panel cambia estados de máquina, las sugerencias de la app lo reflejan solo.
 
-_Actualizado: 2026-07-04 por la sesión de la app._
+_Actualizado: 2026-07-05 por la sesión de la app._

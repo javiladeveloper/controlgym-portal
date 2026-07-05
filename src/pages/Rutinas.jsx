@@ -15,6 +15,7 @@ import {
 } from '../hooks/useRutinas.js'
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
+import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
@@ -323,6 +324,7 @@ function RutinasImpl() {
   const productos = useProductos(sedeId)
   const suplementosStock = (productos.data || []).filter((p) => p.categoria === 'Suplementos' && p.stock > 0)
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
+  const [bancoOpen, setBancoOpen] = useState(false) // gestión del banco de ejercicios (media)
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
   const diasIds = (rutina.data?.dias || []).map((d) => d.id)
@@ -357,8 +359,20 @@ function RutinasImpl() {
 
   return (
     <div className="max-w-[1020px] px-7 pb-9 pt-6">
-      <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Rutinas y dietas</h1>
-      <p className="mt-0.5 text-[13px] font-semibold text-muted">Genera el plan y envíalo a la app del socio</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Rutinas y dietas</h1>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">Genera el plan y envíalo a la app del socio</p>
+        </div>
+        {veRutina && (
+          <button onClick={() => setBancoOpen(true)}
+            className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
+            🎬 Banco de ejercicios
+          </button>
+        )}
+      </div>
+
+      {bancoOpen && <BancoEjerciciosModal onClose={() => setBancoOpen(false)} />}
 
       {veRutina && (
         <SolicitudesCarga empresaId={empresa?.id}
