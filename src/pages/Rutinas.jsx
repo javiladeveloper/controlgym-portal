@@ -34,6 +34,43 @@ function FocoInput({ dia, onGuardar }) {
   )
 }
 
+// Autocompletado de ejercicios: sugiere SOLO mientras se escribe (2+ letras,
+// máx. 6) — nada de listas kilométricas al hacer clic. Si no existe, se
+// avisa que quedará agregado al banco al guardar.
+function InputEjercicio({ value, onChange, onBlur, onKeyDown, placeholder, className, banco }) {
+  const [foco, setFoco] = useState(false)
+  const q = (value || '').trim().toLowerCase()
+  const sug = foco && q.length >= 2
+    ? banco.filter((e) => e.nombre.toLowerCase().includes(q)).slice(0, 6)
+    : []
+  const existe = banco.some((e) => e.nombre.toLowerCase() === q)
+  return (
+    <div className="relative min-w-[150px] flex-1">
+      <input value={value || ''} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder}
+        onFocus={() => setFoco(true)}
+        onBlur={(e) => { setTimeout(() => setFoco(false), 120); onBlur?.(e) }}
+        className={className + ' w-full'} autoComplete="off" />
+      {foco && q.length >= 2 && (sug.length > 0 || !existe) && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-[10px] border border-line bg-white shadow-lg">
+          {sug.filter((e) => e.nombre.toLowerCase() !== q).map((e) => (
+            <button key={e.id} type="button"
+              onMouseDown={(ev) => { ev.preventDefault(); onChange({ target: { value: e.nombre } }) }}
+              className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-left text-[12.5px] font-bold hover:bg-[#FFF4EC]">
+              {e.nombre}
+              {e.grupo_muscular && <span className="text-[10.5px] font-extrabold text-faint">{e.grupo_muscular}</span>}
+            </button>
+          ))}
+          {!existe && (
+            <div className="border-t border-line2 px-3 py-1.5 text-[10.5px] font-bold text-faint">
+              ✚ "{value}" es nuevo — se agregará al banco al guardar
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Fila editable de una comida del plan (guarda al salir del campo).
 // El chip de día define si aplica TODOS los días o uno específico (plan semanal).
 function ComidaFila({ comida, onGuardar, onEliminar }) {
@@ -71,7 +108,7 @@ function ComidaFila({ comida, onGuardar, onEliminar }) {
 }
 
 // Fila editable de un ejercicio (guarda al salir del campo)
-function EjercicioFila({ ej, onGuardar, onEliminar }) {
+function EjercicioFila({ ej, banco, onGuardar, onEliminar }) {
   const [e, setE] = useState(ej)
   useEffect(() => { setE(ej) }, [ej])
   const set = (k) => (ev) => setE((s) => ({ ...s, [k]: ev.target.value }))
@@ -79,8 +116,8 @@ function EjercicioFila({ ej, onGuardar, onEliminar }) {
   const cls = 'rounded-[8px] border border-line bg-white px-2 py-1.5 text-[12px] font-bold outline-none focus:border-orange'
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-t border-line2 py-1.5 first:border-0">
-      <input list="banco-ejercicios" value={e.nombre || ''} onChange={set('nombre')} onBlur={commit} placeholder="Ejercicio"
-        className={cls + ' min-w-[150px] flex-1 font-extrabold'} />
+      <InputEjercicio value={e.nombre} onChange={set('nombre')} onBlur={commit} placeholder="Ejercicio"
+        banco={banco} className={cls + ' font-extrabold'} />
       <input value={e.series ?? ''} onChange={set('series')} onBlur={commit} placeholder="Ser." type="number" min="1" title="Series" className={cls + ' w-[52px] text-center'} />
       <input value={e.reps || ''} onChange={set('reps')} onBlur={commit} placeholder="Reps" title="Repeticiones" className={cls + ' w-[64px] text-center'} />
       <input value={e.carga || ''} onChange={set('carga')} onBlur={commit} placeholder="Carga" title="Carga (40kg, banda…)" className={cls + ' w-[76px] text-center'} />
@@ -226,13 +263,6 @@ function RutinasImpl() {
             </div>
           </Card>
 
-          {/* Banco de ejercicios: alimenta el autocompletado de todos los inputs */}
-          <datalist id="banco-ejercicios">
-            {(banco.data || []).map((e2) => (
-              <option key={e2.id} value={e2.nombre}>{e2.grupo_muscular || ''}</option>
-            ))}
-          </datalist>
-
           {/* Rutina semanal — la da el entrenador (el nutricionista no la ve) */}
           {veRutina && (
           <Card className="mt-[15px] p-[19px]">
@@ -299,7 +329,7 @@ function RutinasImpl() {
                   </div>
                 </div>
                 {ejsDelDia.map((ej) => (
-                  <EjercicioFila key={ej.id} ej={ej}
+                  <EjercicioFila key={ej.id} ej={ej} banco={banco.data || []}
                     onGuardar={(e) => guardarEj.mutate(e, { onError: (er) => toast.error(er.message) })}
                     onEliminar={(id) => eliminarEj.mutate(id)} />
                 ))}
@@ -307,10 +337,10 @@ function RutinasImpl() {
                   <div className="py-2 text-[12px] font-semibold text-faint">Sin ejercicios aún — agrega el primero:</div>
                 )}
                 <div className="mt-2 flex gap-2 border-t border-line2 pt-2.5">
-                  <input list="banco-ejercicios" value={nuevoEj} onChange={(e) => setNuevoEj(e.target.value)}
+                  <InputEjercicio value={nuevoEj} onChange={(e) => setNuevoEj(e.target.value)} banco={banco.data || []}
                     onKeyDown={(e) => { if (e.key === 'Enter' && nuevoEj.trim()) { guardarEj.mutate({ rutina_dia_id: diaSel, nombre: nuevoEj.trim(), series: 3, reps: '12', descanso: '60s', orden: ejsDelDia.length + 1 }); setNuevoEj('') } }}
                     placeholder="Nuevo ejercicio (ej. Press banca) y Enter…"
-                    className="flex-1 rounded-[9px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange" />
+                    className="rounded-[9px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange" />
                   <button onClick={() => { if (nuevoEj.trim()) { guardarEj.mutate({ rutina_dia_id: diaSel, nombre: nuevoEj.trim(), series: 3, reps: '12', descanso: '60s', orden: ejsDelDia.length + 1 }); setNuevoEj('') } }}
                     className="cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600">
                     + Agregar
