@@ -9,6 +9,8 @@ import {
   useSociosSelect, useDietaSocio, useEnviarPlan,
   useRutinaSocio, useCrearRutina, useSetFoco, useCrearDieta,
   useEjerciciosRutina, useGuardarEjercicio, useEliminarEjercicio,
+  useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
+  useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
 } from '../hooks/useRutinas.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
@@ -32,6 +34,42 @@ function FocoInput({ dia, onGuardar }) {
   )
 }
 
+// Fila editable de una comida del plan (guarda al salir del campo).
+// El chip de día define si aplica TODOS los días o uno específico (plan semanal).
+function ComidaFila({ comida, onGuardar, onEliminar }) {
+  const [c, setC] = useState(comida)
+  useEffect(() => { setC(comida) }, [comida])
+  const set = (k) => (ev) => setC((s) => ({ ...s, [k]: ev.target.value }))
+  const commit = (patch = {}) => {
+    const final = { ...c, ...patch }
+    if (JSON.stringify(final) !== JSON.stringify(comida)) onGuardar(final)
+  }
+  const cls = 'rounded-[9px] border border-line bg-[#FAFBFC] px-2.5 py-2.5 text-[13px] font-semibold text-ink outline-none focus:border-orange focus:bg-white'
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input value={c.nombre || ''} onChange={set('nombre')} onBlur={() => commit()} placeholder="Comida"
+        className={cls + ' w-[118px] font-extrabold'} />
+      <input type="time" value={(c.hora || '').slice(0, 5)} onChange={set('hora')} onBlur={() => commit()}
+        className={cls + ' w-[92px]'} />
+      <select value={c.dia_semana ?? ''} title="¿Qué día aplica?"
+        onChange={(e) => { const v = e.target.value === '' ? null : Number(e.target.value); setC((s) => ({ ...s, dia_semana: v })); commit({ dia_semana: v }) }}
+        className={cls + ' w-[104px] cursor-pointer font-extrabold ' + (c.dia_semana ? 'text-orange' : 'text-muted')}>
+        <option value="">Todos</option>
+        {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((d, i) => (
+          <option key={d} value={i + 1}>{d}</option>
+        ))}
+      </select>
+      <input value={c.descripcion || ''} onChange={set('descripcion')} onBlur={() => commit()} placeholder="Qué come…"
+        className={cls + ' min-w-[160px] flex-1'} />
+      <input type="number" value={c.kcal ?? 0} onChange={set('kcal')} onBlur={() => commit()}
+        className={cls + ' w-[72px] text-right font-extrabold'} />
+      <span className="text-[11px] font-extrabold text-muted">kcal</span>
+      <button onClick={() => onEliminar(comida.id)} title="Quitar comida"
+        className="cursor-pointer rounded-[7px] border-none bg-transparent px-1 text-[12px] text-faint hover:text-red">🗑</button>
+    </div>
+  )
+}
+
 // Fila editable de un ejercicio (guarda al salir del campo)
 function EjercicioFila({ ej, onGuardar, onEliminar }) {
   const [e, setE] = useState(ej)
@@ -41,7 +79,7 @@ function EjercicioFila({ ej, onGuardar, onEliminar }) {
   const cls = 'rounded-[8px] border border-line bg-white px-2 py-1.5 text-[12px] font-bold outline-none focus:border-orange'
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-t border-line2 py-1.5 first:border-0">
-      <input value={e.nombre || ''} onChange={set('nombre')} onBlur={commit} placeholder="Ejercicio"
+      <input list="banco-ejercicios" value={e.nombre || ''} onChange={set('nombre')} onBlur={commit} placeholder="Ejercicio"
         className={cls + ' min-w-[150px] flex-1 font-extrabold'} />
       <input value={e.series ?? ''} onChange={set('series')} onBlur={commit} placeholder="Ser." type="number" min="1" title="Series" className={cls + ' w-[52px] text-center'} />
       <input value={e.reps || ''} onChange={set('reps')} onBlur={commit} placeholder="Reps" title="Repeticiones" className={cls + ' w-[64px] text-center'} />
@@ -93,7 +131,10 @@ function RutinasImpl() {
     if (!socioId && socios.data?.length) setSocioId(socios.data[0].id)
   }, [socios.data, socioId])
 
-  const { empresa } = useAuth()
+  const { empresa, rol } = useAuth()
+  // Cada especialista lo suyo: el nutricionista no toca la rutina;
+  // entrenador y admin ven ambas (gyms sin nutricionista)
+  const veRutina = rol !== 'nutricionista'
   const socio = socios.data?.find((s) => s.id === socioId)
   const dieta = useDietaSocio(socioId)
   const enviar = useEnviarPlan(socioId)
@@ -104,6 +145,13 @@ function RutinasImpl() {
   const [meals, setMeals] = useState([])
   const [enviado, setEnviado] = useState(false)
   const [busqueda, setBusqueda] = useState('')
+  const [suplementos, setSuplementos] = useState('')
+  const [notasRutina, setNotasRutina] = useState('')
+  const guardarNotas = useGuardarNotasRutina(socioId)
+  const guardarComida = useGuardarComida(socioId)
+  const agregarComida = useAgregarComida(socioId, empresa?.id)
+  const eliminarComida = useEliminarComida(socioId)
+  const guardarSuplementos = useGuardarSuplementos(socioId)
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
@@ -112,9 +160,14 @@ function RutinasImpl() {
   const guardarEj = useGuardarEjercicio(rutina.data?.id, empresa?.id)
   const eliminarEj = useEliminarEjercicio(rutina.data?.id)
   const [nuevoEj, setNuevoEj] = useState('')
+  const banco = useBancoEjercicios(empresa?.id) // catálogo para autocompletar
+  const agregarDia = useAgregarDia(socioId, empresa?.id)
+  const eliminarDia = useEliminarDia(socioId)
+  const diasFaltantes = [1, 2, 3, 4, 5, 6, 7].filter((n) => !(rutina.data?.dias || []).some((d) => d.dia_semana === n))
 
   useEffect(() => {
     if (!diaSel && rutina.data?.dias?.length) setDiaSel(rutina.data.dias[0].id)
+    setNotasRutina(rutina.data?.notas || '')
   }, [rutina.data, diaSel])
 
   const diaActivo = (rutina.data?.dias || []).find((d) => d.id === diaSel)
@@ -127,6 +180,7 @@ function RutinasImpl() {
   useEffect(() => {
     if (dieta.data?.comida) setMeals(dieta.data.comida)
     else setMeals([])
+    setSuplementos(dieta.data?.suplementos || '')
   }, [dieta.data])
 
   const kcalTotal = meals.reduce((n, m) => n + (Number(m.kcal) || 0), 0)
@@ -172,7 +226,15 @@ function RutinasImpl() {
             </div>
           </Card>
 
-          {/* Rutina semanal */}
+          {/* Banco de ejercicios: alimenta el autocompletado de todos los inputs */}
+          <datalist id="banco-ejercicios">
+            {(banco.data || []).map((e2) => (
+              <option key={e2.id} value={e2.nombre}>{e2.grupo_muscular || ''}</option>
+            ))}
+          </datalist>
+
+          {/* Rutina semanal — la da el entrenador (el nutricionista no la ve) */}
+          {veRutina && (
           <Card className="mt-[15px] p-[19px]">
             <div className="flex items-center justify-between">
               <div>
@@ -206,6 +268,20 @@ function RutinasImpl() {
               </div>
             )}
 
+            {/* Sumar los días que falten (martes, jueves…) */}
+            {rutina.data?.id && diasFaltantes.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11.5px] font-extrabold text-muted">+ Agregar día:</span>
+                {diasFaltantes.map((n) => (
+                  <button key={n} disabled={agregarDia.isPending}
+                    onClick={() => agregarDia.mutate({ rutinaId: rutina.data.id, diaSemana: n }, { onSuccess: (d) => setDiaSel(d.id) })}
+                    className="cursor-pointer rounded-full border border-dashed border-line bg-white px-3 py-1.5 text-[11.5px] font-extrabold text-muted hover:border-orange hover:text-orange disabled:opacity-50">
+                    {DIA_NOMBRE[n]}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Ejercicios del día seleccionado — mismas filas que edita la app */}
             {diaActivo && (
               <div className="mt-4 rounded-xl border border-line bg-white p-[13px]">
@@ -214,7 +290,13 @@ function RutinasImpl() {
                     Ejercicios del {['', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][diaActivo.dia_semana]}
                     <span className="ml-1.5 font-bold text-muted">· {diaActivo.foco || 'sin foco'}</span>
                   </div>
-                  <span className="text-[10.5px] font-bold text-faint">serie · reps · carga · descanso — se guarda al salir del campo</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10.5px] font-bold text-faint">serie · reps · carga · descanso — se guarda al salir del campo</span>
+                    <button onClick={() => { if (window.confirm(`¿Quitar el ${DIA_NOMBRE[diaActivo.dia_semana]} y sus ${ejsDelDia.length} ejercicios de la rutina?`)) { eliminarDia.mutate(diaSel); setDiaSel(null) } }}
+                      className="cursor-pointer rounded-[7px] border border-line bg-white px-2 py-1 text-[10.5px] font-extrabold text-muted hover:border-red hover:text-red">
+                      🗑 Quitar día
+                    </button>
+                  </div>
                 </div>
                 {ejsDelDia.map((ej) => (
                   <EjercicioFila key={ej.id} ej={ej}
@@ -225,7 +307,7 @@ function RutinasImpl() {
                   <div className="py-2 text-[12px] font-semibold text-faint">Sin ejercicios aún — agrega el primero:</div>
                 )}
                 <div className="mt-2 flex gap-2 border-t border-line2 pt-2.5">
-                  <input value={nuevoEj} onChange={(e) => setNuevoEj(e.target.value)}
+                  <input list="banco-ejercicios" value={nuevoEj} onChange={(e) => setNuevoEj(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && nuevoEj.trim()) { guardarEj.mutate({ rutina_dia_id: diaSel, nombre: nuevoEj.trim(), series: 3, reps: '12', descanso: '60s', orden: ejsDelDia.length + 1 }); setNuevoEj('') } }}
                     placeholder="Nuevo ejercicio (ej. Press banca) y Enter…"
                     className="flex-1 rounded-[9px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange" />
@@ -239,7 +321,19 @@ function RutinasImpl() {
             {!rutina.data && !rutina.isLoading && (
               <div className="mt-3 text-[12.5px] font-semibold text-muted">Este socio aún no tiene rutina. Créala y ajusta cada día.</div>
             )}
+
+            {/* Indicaciones generales del plan (el socio las ve en su app) */}
+            {rutina.data?.id && (
+              <div className="mt-4">
+                <div className="mb-1.5 text-[12.5px] font-extrabold">📝 Indicaciones generales</div>
+                <textarea rows={2} value={notasRutina} onChange={(e) => { setNotasRutina(e.target.value); setEnviado(false) }}
+                  onBlur={() => guardarNotas.mutate({ rutinaId: rutina.data.id, notas: notasRutina })}
+                  placeholder="Ej.: Calentar 10 min antes de empezar · Hidratarse entre series · Si hay dolor articular, parar y avisar…"
+                  className="w-full resize-none rounded-[9px] border border-line bg-[#FAFBFC] px-3 py-2.5 text-[13px] font-semibold outline-none focus:border-orange focus:bg-white" />
+              </div>
+            )}
           </Card>
+          )}
 
           {/* Plan de comidas */}
           <Card className="mt-[15px] p-[19px]">
@@ -263,25 +357,35 @@ function RutinasImpl() {
               </div>
             )}
             <div className="mt-4 flex flex-col gap-2.5">
-              {meals.map((m, i) => (
-                <div key={m.id || i} className="flex items-center gap-3">
-                  <div className="w-[130px] flex-shrink-0">
-                    <div className="text-[12px] font-extrabold">{m.nombre}</div>
-                    <div className="text-[10.5px] font-semibold text-muted">{m.hora?.slice(0, 5)}</div>
-                  </div>
-                  <input value={m.descripcion || ''} onChange={(e) => { const v = e.target.value; setMeals((ms) => ms.map((x, j) => j === i ? { ...x, descripcion: v } : x)); setEnviado(false) }}
-                    className="flex-1 rounded-[9px] border border-line bg-[#FAFBFC] px-[13px] py-2.5 text-[13px] font-semibold text-ink outline-none focus:border-orange focus:bg-white" />
-                  <input type="number" value={m.kcal ?? 0} onChange={(e) => { const v = Number(e.target.value) || 0; setMeals((ms) => ms.map((x, j) => j === i ? { ...x, kcal: v } : x)); setEnviado(false) }}
-                    className="w-[76px] rounded-[9px] border border-line bg-[#FAFBFC] px-2 py-2.5 text-right text-[13px] font-extrabold text-ink outline-none focus:border-orange focus:bg-white" />
-                  <div className="w-[26px] text-[11px] font-extrabold text-muted">kcal</div>
-                </div>
+              {meals.map((m) => (
+                <ComidaFila key={m.id} comida={m}
+                  onGuardar={(c) => { guardarComida.mutate(c, { onError: (e) => toast.error(e.message) }); setEnviado(false) }}
+                  onEliminar={(id) => { eliminarComida.mutate(id); setEnviado(false) }} />
               ))}
+              {dieta.data?.id && (
+                <button onClick={() => agregarComida.mutate({ dietaId: dieta.data.id, orden: meals.length + 1 })}
+                  className="cursor-pointer self-start rounded-[9px] border border-dashed border-line bg-white px-3.5 py-2 text-[12px] font-extrabold text-muted hover:border-orange hover:text-orange">
+                  + Comida (usa el chip de día para el plan semanal)
+                </button>
+              )}
             </div>
+
+            {/* Suplementos recomendados: el plus del especialista */}
+            {dieta.data?.id && (
+              <div className="mt-4 rounded-xl border border-line bg-[#FAFBFC] p-[13px]">
+                <div className="mb-1.5 text-[12.5px] font-extrabold">💊 Suplementos y recomendaciones</div>
+                <textarea rows={2} value={suplementos} onChange={(e) => { setSuplementos(e.target.value); setEnviado(false) }}
+                  onBlur={() => guardarSuplementos.mutate({ dietaId: dieta.data.id, suplementos })}
+                  placeholder="Ej.: Proteína whey 1 scoop post-entreno · Creatina 5g diarios con agua · Dormir 7-8 horas…"
+                  className="w-full resize-none rounded-[9px] border border-line bg-white px-3 py-2.5 text-[13px] font-semibold outline-none focus:border-orange" />
+                <p className="mt-1 text-[10.5px] font-bold text-faint">El socio lo ve en su app como tarjeta 💊 junto a su plan de hoy.</p>
+              </div>
+            )}
           </Card>
 
           <div className="mt-[18px] flex items-center gap-3.5">
-            <button disabled={!dieta.data?.id || enviar.isPending}
-              onClick={() => enviar.mutate({ dietaId: dieta.data.id, comidas: meals }, { onSuccess: () => setEnviado(true) })}
+            <button disabled={(!dieta.data?.id && !rutina.data?.id) || enviar.isPending}
+              onClick={() => enviar.mutate({ dietaId: dieta.data?.id, rutinaId: veRutina ? rutina.data?.id : null, comidas: meals }, { onSuccess: () => setEnviado(true) })}
               className="cursor-pointer rounded-[11px] border-none bg-orange px-6 py-[13px] text-[14px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] transition-colors hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50">
               {enviar.isPending ? 'Enviando…' : 'Enviar a la app del socio'}
             </button>
