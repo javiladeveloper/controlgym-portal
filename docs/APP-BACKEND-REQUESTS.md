@@ -486,6 +486,17 @@ cargar datos.
 > reemplazar/agregar lo suyo desde el panel sin afectar a otros (cada fila de
 > `ejercicio` es por `empresa_id`). La app los muestra tal cual lea la columna.
 >
+> **🔗 CRÍTICO — `rutina_ejercicio.ejercicio_id` ahora SÍ se llena (2026-07-05):**
+> Antes el panel guardaba los ejercicios asignados SIN `ejercicio_id` (estaba
+> null en el 100% de las filas) → la app no podía linkear a la media. **Ya
+> corregido**: al asignar/editar un ejercicio, el panel resuelve/crea su fila
+> en `ejercicio` y guarda el `ejercicio_id`. Backfill hecho de todos los
+> sueltos. **Confirma que la app sigue `rutina_ejercicio.ejercicio_id →
+> ejercicio` para traer descripcion/video_url/foto_url** — si hoy leías la
+> media por nombre, cambia al FK (más fiable; el nombre puede tener variantes).
+> Ojo: puede haber `ejercicio_id` null en filas viejas de OTROS gyms no
+> tocadas — cae a buscar por nombre como fallback si el FK viene null.
+>
 > Próximo número libre para ti sigue siendo **`20260704000020`**.
 
 ## Notas / no urgente
