@@ -1,7 +1,7 @@
 // Edge Middleware: los crawlers de redes sociales (WhatsApp, Facebook…) no
 // ejecutan JS, así que se les enruta a /api/og, que responde los meta Open
 // Graph del GYM del subdominio (su nombre, eslogan y foto) en vez de la marca
-// FitControl. Los usuarios reales siguen recibiendo la SPA sin tocar.
+// FitCore. Los usuarios reales siguen recibiendo la SPA sin tocar.
 import { rewrite, next } from '@vercel/edge'
 
 const BOTS = /facebookexternalhit|whatsapp|twitterbot|linkedinbot|telegrambot|slackbot|discordbot|pinterestbot|skypeuripreview/i

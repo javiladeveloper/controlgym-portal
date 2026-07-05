@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { FitControlLogo } from '../components/icons.jsx'
+import { FitCoreLogo } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
 function normalizaSlug(s) {
@@ -93,7 +93,7 @@ export default function RegistroGym() {
       <div className="w-full max-w-[480px]">
         <div className="mb-6 flex items-center gap-3">
           <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com" className="transition-opacity hover:opacity-75">
-            <FitControlLogo size={44} />
+            <FitCoreLogo size={44} />
           </a>
           <div>
             <div className="text-[20px] font-extrabold tracking-[-0.3px]">Registra tu gimnasio</div>

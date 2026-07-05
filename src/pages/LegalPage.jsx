@@ -1,4 +1,4 @@
-import { FitControlLogo } from '../components/icons.jsx'
+import { FitCoreLogo } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
 // Páginas legales de la plataforma (fitcorecenter.com/terminos · /privacidad).
@@ -6,10 +6,10 @@ import { ROOT_DOMAIN } from '../lib/tenant.js'
 const C = { bg: '#141B2E', surface: '#1F293D', primary: '#FF6B35', muted: '#8E9AA8', border: '1px solid rgba(255,255,255,0.08)' }
 
 const TERMINOS = [
-  ['1. El servicio', 'FitControl es una plataforma en línea para la gestión de gimnasios y centros deportivos: socios, membresías, cobros, clases, inventario, página web y captación de clientes. El servicio se ofrece bajo suscripción mensual por gimnasio (empresa).'],
-  ['2. Tu cuenta', 'Para usar FitControl necesitas una cuenta de Google válida. Eres responsable de la actividad realizada con tu cuenta y de mantener el acceso restringido a tu personal autorizado. Cada colaborador debe usar su propia cuenta con el rol que le asignes.'],
+  ['1. El servicio', 'FitCore es una plataforma en línea para la gestión de gimnasios y centros deportivos: socios, membresías, cobros, clases, inventario, página web y captación de clientes. El servicio se ofrece bajo suscripción mensual por gimnasio (empresa).'],
+  ['2. Tu cuenta', 'Para usar FitCore necesitas una cuenta de Google válida. Eres responsable de la actividad realizada con tu cuenta y de mantener el acceso restringido a tu personal autorizado. Cada colaborador debe usar su propia cuenta con el rol que le asignes.'],
   ['3. Prueba gratuita y pagos', 'Todos los planes incluyen un período de prueba gratuito de 30 días, sin tarjeta. Al finalizar, eliges un plan de pago para continuar. Puedes cambiar de plan o cancelar en cualquier momento; no hay permanencia mínima ni penalidades.'],
-  ['4. Tus datos son tuyos', 'La información que registras (socios, cobros, inventario, etc.) te pertenece. FitControl no vende tus datos ni los de tus socios, y no cobra comisión por las membresías que gestionas en la plataforma.'],
+  ['4. Tus datos son tuyos', 'La información que registras (socios, cobros, inventario, etc.) te pertenece. FitCore no vende tus datos ni los de tus socios, y no cobra comisión por las membresías que gestionas en la plataforma.'],
   ['5. Uso aceptable', 'Te comprometes a usar la plataforma conforme a la ley peruana, a no intentar vulnerar su seguridad y a registrar únicamente información de personas que han dado su consentimiento (por ejemplo, tus socios e interesados).'],
   ['6. Disponibilidad', 'Trabajamos para mantener el servicio disponible de forma continua, pero no garantizamos disponibilidad ininterrumpida. Realizamos copias de seguridad periódicas de la base de datos.'],
   ['7. Cancelación', 'Si cancelas, tu información se conserva por 90 días por si decides volver; luego puede ser eliminada de forma definitiva. Puedes solicitar la exportación de tus datos escribiendo a soporte@' + ROOT_DOMAIN + '.'],
@@ -28,7 +28,7 @@ const PRIVACIDAD = [
 ]
 
 const DEVOLUCIONES = [
-  ['1. Naturaleza del servicio', 'FitControl es un servicio de software por suscripción mensual (SaaS). No vendemos productos físicos: no hay envíos ni cambios de mercadería. Esta política regula los cobros de la suscripción.'],
+  ['1. Naturaleza del servicio', 'FitCore es un servicio de software por suscripción mensual (SaaS). No vendemos productos físicos: no hay envíos ni cambios de mercadería. Esta política regula los cobros de la suscripción.'],
   ['2. Prueba gratuita', 'Todos los planes incluyen 30 días de prueba gratis sin tarjeta. Durante la prueba no se realiza ningún cobro, por lo que no hay nada que devolver: puedes dejar de usar el servicio sin costo alguno.'],
   ['3. Cancelación', 'Puedes cancelar tu suscripción en cualquier momento, sin penalidad ni permanencia mínima, desde tu panel o escribiendo a soporte@' + ROOT_DOMAIN + '. Al cancelar, mantienes acceso hasta el final del ciclo ya pagado y no se generan nuevos cobros.'],
   ['4. Devoluciones', 'Reembolsamos el 100% del cobro en un máximo de 7 días hábiles, al mismo medio de pago, en estos casos: (a) cobro duplicado o por un monto distinto al contratado; (b) cobros posteriores a una cancelación confirmada; (c) primer cobro luego de la prueba, si nos lo solicitas dentro de los 7 días siguientes y no usaste el servicio en ese período.'],
@@ -50,8 +50,8 @@ export default function LegalPage({ doc = 'terminos' }) {
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: 'rgba(20,27,46,0.85)', borderBottom: C.border }}>
         <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
           <a href="/" className="flex items-center gap-2.5">
-            <FitControlLogo size={32} />
-            <span className="text-[16px] font-extrabold tracking-[-0.3px]">FitControl</span>
+            <FitCoreLogo size={32} />
+            <span className="text-[16px] font-extrabold tracking-[-0.3px]">FitCore</span>
           </a>
           <a href="/" className="text-[13px] font-extrabold transition-colors hover:text-white" style={{ color: C.muted }}>← Volver</a>
         </div>

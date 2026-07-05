@@ -17,11 +17,11 @@ export function LogoMark({ size = 19, color = '#FFFFFF' }) {
   )
 }
 
-// Marca de FitControl (la plataforma): mancuerna que se convierte en flecha de
+// Marca de FitCore (la plataforma): mancuerna que se convierte en flecha de
 // crecimiento. Redibujo vectorial del logo — navy + naranja sobre cualquier fondo.
-// Logo FitControl: mancuerna cuya barra es una línea de pulso (fitness + control
+// Logo FitCore: mancuerna cuya barra es una línea de pulso (fitness + control
 // en vivo). Placa naranja redondeada con discos y pulso en blanco.
-export function FitControlLogo({ size = 22, orange = '#FF6B35', ink = '#FFFFFF', badge = true }) {
+export function FitCoreLogo({ size = 22, orange = '#FF6B35', ink = '#FFFFFF', badge = true }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
       {badge && <rect width="48" height="48" rx="10.5" fill={orange} />}

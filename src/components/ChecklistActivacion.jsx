@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 
-// Checklist de activación: guía los primeros pasos del negocio en FitControl.
+// Checklist de activación: guía los primeros pasos del negocio en FitCore.
 // Se muestra en el Dashboard hasta completarse (o hasta que lo oculten).
 // Cada ítem detecta solo si ya está hecho y lleva al lugar exacto.
 export default function ChecklistActivacion() {

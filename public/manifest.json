@@ -1,6 +1,6 @@
 {
-  "name": "FitControl",
-  "short_name": "FitControl",
+  "name": "FitCore",
+  "short_name": "FitCore",
   "description": "El sistema operativo del fitness: gestiona tu gimnasio, academia o clientes desde cualquier lugar.",
   "start_url": "/dashboard",
   "display": "standalone",

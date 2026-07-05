@@ -1,14 +1,14 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { canAccessModule } from '../config/modules.js'
-import { FitControlLogo } from './icons.jsx'
+import { FitCoreLogo } from './icons.jsx'
 
 function Splash() {
   return (
     <div className="flex h-screen items-center justify-center bg-canvas">
       <div className="flex flex-col items-center gap-3">
         <div className="animate-pulseDot">
-          <FitControlLogo size={48} />
+          <FitCoreLogo size={48} />
         </div>
         <div className="text-[13px] font-bold text-muted">Cargando…</div>
       </div>

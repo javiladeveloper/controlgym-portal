@@ -70,7 +70,7 @@ function PanelLayout({ children }) {
         <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-white px-4 py-3 md:hidden">
           <button onClick={() => setMenuAbierto(true)} aria-label="Abrir menú"
             className="cursor-pointer rounded-lg border border-line bg-white px-3 py-1.5 text-[17px]">☰</button>
-          <span className="text-[15px] font-extrabold">FitControl</span>
+          <span className="text-[15px] font-extrabold">FitCore</span>
         </div>
         <TrialBanner />
         <BloqueoPlan>{children}</BloqueoPlan>

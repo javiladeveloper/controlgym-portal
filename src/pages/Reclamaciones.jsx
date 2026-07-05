@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FitControlLogo } from '../components/icons.jsx'
+import { FitCoreLogo } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 import { supabase } from '../lib/supabaseClient.js'
 
@@ -59,8 +59,8 @@ export default function Reclamaciones() {
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: 'rgba(20,27,46,0.85)', borderBottom: C.border }}>
         <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
           <a href="/" className="flex items-center gap-2.5">
-            <FitControlLogo size={32} />
-            <span className="text-[16px] font-extrabold tracking-[-0.3px]">FitControl</span>
+            <FitCoreLogo size={32} />
+            <span className="text-[16px] font-extrabold tracking-[-0.3px]">FitCore</span>
           </a>
           <a href="/" className="text-[13px] font-extrabold transition-colors hover:text-white" style={{ color: C.muted }}>← Volver</a>
         </div>
@@ -77,7 +77,7 @@ export default function Reclamaciones() {
           </div>
         </div>
         <p className="mt-4 text-[13.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
-          Razón social: <b className="text-white">FitControl · {ROOT_DOMAIN}</b> · Lima, Perú ·
+          Razón social: <b className="text-white">FitCore · {ROOT_DOMAIN}</b> · Lima, Perú ·
           soporte@{ROOT_DOMAIN} · WhatsApp +51 986 110 558.
           Responderemos tu {f.tipo === 'queja' ? 'queja' : 'reclamo'} en un plazo máximo de <b className="text-white">15 días hábiles</b>.
         </p>

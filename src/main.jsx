@@ -22,7 +22,7 @@ const Cargando = () => (
 )
 
 // Enrutado de nivel raíz por host:
-//  · Dominio raíz (fitcorecenter.com) → landing de la PLATAFORMA FitControl.
+//  · Dominio raíz (fitcorecenter.com) → landing de la PLATAFORMA FitCore.
 //  · Subdominio de gym (o ?g=) sin pedir portal → landing PÚBLICA del gym.
 //  · En cualquier otro caso → el portal/app (con providers de auth).
 const slug = getTenantSlug()

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { FitControlLogo } from '../components/icons.jsx'
+import { FitCoreLogo } from '../components/icons.jsx'
 import LoadingOverlay from '../components/LoadingOverlay.jsx'
 import { subirBranding } from '../hooks/useConfiguracion.js'
 import DireccionAutocomplete from '../components/forms/DireccionAutocomplete.jsx'
@@ -305,7 +305,7 @@ export default function Bienvenida() {
       <div className="w-full max-w-[560px]">
         <div className="mb-6 flex items-center gap-3">
           <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com" className="transition-opacity hover:opacity-75">
-            <FitControlLogo size={44} />
+            <FitCoreLogo size={44} />
           </a>
           <div>
             <div className="text-[20px] font-extrabold tracking-[-0.3px]">¡Bienvenido, {nombreNegocio}! 🎉</div>

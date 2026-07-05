@@ -1,4 +1,4 @@
-// Catálogo comercial de FitControl: qué plan(es) puede contratar cada
+// Catálogo comercial de FitCore: qué plan(es) puede contratar cada
 // segmento de negocio y a qué precio. Espejo de precio_plan() en la BD.
 //
 // Gimnasios (categoría fitness) eligen entre 3 tamaños; los demás segmentos

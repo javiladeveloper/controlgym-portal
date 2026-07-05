@@ -8,7 +8,7 @@ import { money } from '../../lib/uiHelpers.js'
 
 import { PLANES_GYM, planPorSlug } from '../../config/planesComerciales.js'
 
-// Mi plan: suscripción del negocio a FitControl.
+// Mi plan: suscripción del negocio a FitCore.
 // Trial de 30 días sin tarjeta → activar pago automático con Culqi.
 // Los gimnasios pueden cambiar entre sus 3 tamaños; los segmentos
 // (academia/niños/trainer) tienen plan único.
@@ -156,7 +156,7 @@ export default function TabPlan() {
       // Solo tarjeta: Yape/billeteras del checkout requieren config extra y
       // hacen que el modal no abra si no están habilitadas en la cuenta.
       window.Culqi.settings({
-        title: 'FitControl',
+        title: 'FitCore',
         currency: 'PEN',
         amount: Math.round(Number(s.monto) * 100),
       })
@@ -204,7 +204,7 @@ export default function TabPlan() {
       <Card className="p-[19px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-[14.5px] font-extrabold">Tu suscripción a FitControl</div>
+            <div className="text-[14.5px] font-extrabold">Tu suscripción a FitCore</div>
             <p className="mt-0.5 text-[12px] font-semibold text-muted">
               Plan <b className="text-ink capitalize">{s.plan_slug}</b>{s.con_app ? ' + App del socio' : ''} · {money(Number(s.monto))} al mes
             </p>

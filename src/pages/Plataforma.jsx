@@ -7,7 +7,7 @@ import { money } from '../lib/uiHelpers.js'
 import { urlPublica } from '../lib/tenant.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
-// Dashboard global de FitControl: solo para el dueño de la plataforma.
+// Dashboard global de FitCore: solo para el dueño de la plataforma.
 function usePlataforma() {
   return useQuery({
     queryKey: ['plataforma-dashboard'],
@@ -36,7 +36,7 @@ export default function Plataforma() {
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy text-[16px]">⚡</div>
         <div>
-          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">FitControl · Dashboard global</h1>
+          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">FitCore · Dashboard global</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">
             Hola {usuario?.nombre?.split(' ')[0]} — así va tu plataforma hoy.
           </p>
@@ -58,7 +58,7 @@ export default function Plataforma() {
               delta={k.socios_mes ? `+${k.socios_mes} este mes` : ' '} deltaColor={T.success} />
             <StatCard label="Check-ins hoy" value={k.checkins_hoy ?? 0} delta="en todos los gyms" variant="accent" />
           </div>
-          {/* Facturación de FitControl */}
+          {/* Facturación de FitCore */}
           <div className="mt-[15px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
             <div className="rounded-card border border-line bg-navy p-[17px]">
               <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-faint">MRR (suscripciones activas)</div>

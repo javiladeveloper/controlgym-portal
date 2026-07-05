@@ -1,7 +1,7 @@
 // Tarjeta para compartir (Open Graph) por gimnasio.
 // Los crawlers de WhatsApp/Facebook/etc. no ejecutan JS, así que vercel.json
 // los enruta aquí: devolvemos un HTML mínimo con los meta del GYM del
-// subdominio (su nombre, eslogan y su foto) en vez de la marca FitControl.
+// subdominio (su nombre, eslogan y su foto) en vez de la marca FitCore.
 import { db, env } from './_lib/db.js'
 
 const ROOT = 'fitcorecenter.com'
@@ -28,8 +28,8 @@ function html({ titulo, descripcion, imagen, url }) {
 export default async function handler(req, res) {
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase()
   const sub = host.endsWith('.' + ROOT) ? host.slice(0, -(ROOT.length + 1)) : ''
-  const fitcontrol = {
-    titulo: 'FitControl · El sistema operativo del fitness',
+  const fitcore = {
+    titulo: 'FitCore · El sistema operativo del fitness',
     descripcion: 'Gimnasios, academias, gyms para niños y personal trainers: gestión, página web propia y captación de clientes.',
     imagen: `https://${ROOT}/landing/og.jpg`,
     url: `https://${ROOT}/`,
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   try {
     if (!sub || RESERVADOS.has(sub)) {
       res.setHeader('content-type', 'text/html; charset=utf-8')
-      return res.status(200).send(html(fitcontrol))
+      return res.status(200).send(html(fitcore))
     }
 
     const q = await db().query(
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     const g = q.rows[0]
     if (!g) {
       res.setHeader('content-type', 'text/html; charset=utf-8')
-      return res.status(200).send(html(fitcontrol))
+      return res.status(200).send(html(fitcore))
     }
 
     res.setHeader('content-type', 'text/html; charset=utf-8')
@@ -63,12 +63,12 @@ export default async function handler(req, res) {
     return res.status(200).send(html({
       titulo: g.eslogan ? `${g.nombre} — ${g.eslogan}` : g.nombre,
       descripcion: g.mensaje_bienvenida || `Planes, horarios e inscripciones de ${g.nombre}. Reserva tu primera clase.`,
-      imagen: g.hero || g.foto1 || g.logo_url || fitcontrol.imagen,
+      imagen: g.hero || g.foto1 || g.logo_url || fitcore.imagen,
       url: `https://${host}/`,
     }))
   } catch (err) {
     console.error('og error', err)
     res.setHeader('content-type', 'text/html; charset=utf-8')
-    return res.status(200).send(html(fitcontrol))
+    return res.status(200).send(html(fitcore))
   }
 }

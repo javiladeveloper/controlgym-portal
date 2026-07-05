@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FitControlLogo, WhatsAppIcon } from '../components/icons.jsx'
+import { FitCoreLogo, WhatsAppIcon } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
@@ -10,7 +10,7 @@ const IS_DEV_HOST = ['localhost', '127.0.0.1'].includes(window.location.hostname
 const APP_URL = IS_DEV_HOST ? '' : `https://app.${ROOT_DOMAIN}`
 // Contacto oficial de la plataforma
 const WA_NUM = '+51 986 110 558'
-const WA_LINK = 'https://wa.me/51986110558?text=' + encodeURIComponent('Hola, quiero información sobre FitControl para mi gimnasio')
+const WA_LINK = 'https://wa.me/51986110558?text=' + encodeURIComponent('Hola, quiero información sobre FitCore para mi gimnasio')
 const MAIL_HOLA = `hola@${ROOT_DOMAIN}`
 const MAIL_SOPORTE = `soporte@${ROOT_DOMAIN}`
 const C = {
@@ -27,7 +27,7 @@ function DashboardMockup() {
       {/* barra de ventana */}
       <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: C.border }}>
         <span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.primary }} />
-        <span className="ml-2 text-[11px] font-bold" style={{ color: C.muted }}>FitControl · Panel</span>
+        <span className="ml-2 text-[11px] font-bold" style={{ color: C.muted }}>FitCore · Panel</span>
         <span className="ml-auto rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white" style={{ background: C.primary }}>En vivo</span>
       </div>
       <div className="p-4">
@@ -122,9 +122,9 @@ const ANTES_DESPUES = [
 ]
 
 const FAQS = [
-  ['¿Necesito instalar algo o comprar equipos?', 'No. FitControl funciona desde el navegador de tu compu, tablet o celular. Los torniquetes y lectores de huella son opcionales y se integran cuando los necesites.'],
+  ['¿Necesito instalar algo o comprar equipos?', 'No. FitCore funciona desde el navegador de tu compu, tablet o celular. Los torniquetes y lectores de huella son opcionales y se integran cuando los necesites.'],
   ['¿Cómo funciona la página web de mi gimnasio?', 'Al registrarte eliges tu dirección (tugym.' + ROOT_DOMAIN + ') y tu página se genera sola con tus planes, horario, fotos y colores. Eliges entre 8 diseños y todo lo editas desde el panel, sin programadores.'],
-  ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitControl registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
+  ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitCore registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
   ['¿Sirve si solo doy clases (yoga, baile, box, dojo)?', 'Sí, con plan propio: Academia a S/49/mes con un panel a tu medida — clases, alumnos, reservas y tu página web, sin módulos que no usas.'],
   ['Soy personal trainer, ¿me sirve?', 'Sí — es nuestro plan más accesible (S/29/mes): tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes. Y cuando salga la app, apareces en las búsquedas de tu zona sin costo extra.'],
   ['¿Qué incluye la app para socios y cuánto cuesta?', 'Es un adicional fijo por gimnasio (no por socio): tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. Cuesta desde S/ 30 extra al mes según tu plan, cubre a todos tus socios y está disponible muy pronto.'],
@@ -153,6 +153,59 @@ const PASOS = [
   ['3', 'Comparte y crece', 'Tu página en WhatsApp e Instagram. Los interesados caen a tu CRM.'],
 ]
 
+// Carrusel de módulos: un slide por funcionalidad, con un mini-mockup visual.
+// Auto-avanza y el visitante puede navegar (flechas, puntos, swipe).
+const SLIDES = [
+  {
+    icon: '👥', clave: 'Gestión de clientes', titulo: 'Todos tus socios en un solo lugar',
+    desc: 'Ficha completa por socio: datos, DNI verificado, membresía, asistencia y evolución. Búscalo por nombre o DNI en segundos.',
+    puntos: ['Alta con DNI verificado', 'Historial de asistencia', 'Constancia de 8 semanas', 'Cumpleaños del mes'],
+    mock: 'clientes',
+  },
+  {
+    icon: '💳', clave: 'Membresías y cobros', titulo: 'Que no se te escape ningún vencimiento',
+    desc: 'Cobros pendientes a la vista, renovación en un clic, pagos en partes, congelamientos y el moroso en rojo.',
+    puntos: ['Vencidos y por vencer al frente', 'Cobra y renueva en 1 clic', 'Pagos en partes con saldo', 'Recordatorio por WhatsApp'],
+    mock: 'membresias',
+  },
+  {
+    icon: '👔', clave: 'Gestión de personal', titulo: 'Tu equipo, turnos y planilla',
+    desc: 'Colaboradores con sueldo o pago por clase, turnos, asistencia del staff y planilla del mes en lote. Y premia al más eficiente.',
+    puntos: ['Sueldo o pago por clase', 'Turnos y asistencia del staff', 'Planilla del mes en lote', 'Ranking de desempeño'],
+    mock: 'personal',
+  },
+  {
+    icon: '📋', clave: 'Rutinas y nutrición', titulo: 'Planes que el socio ve en su celular',
+    desc: 'El entrenador arma la rutina y el nutricionista la dieta con detalle, banco de ejercicios con video, y se envían a la app del socio.',
+    puntos: ['Rutina por día con series y carga', 'Dieta con suplementos del gym', 'Banco de ejercicios con video', 'Se envía a la app del socio'],
+    mock: 'rutinas',
+  },
+  {
+    icon: '📦', clave: 'Kardex e inventario', titulo: 'Stock y ventas conectados a tu caja',
+    desc: 'Controla productos y suplementos, registra ventas y compras, y todo se refleja solo en tus finanzas.',
+    puntos: ['Stock por sede', 'Ventas y compras', 'Suplementos para recomendar', 'Conectado a la caja'],
+    mock: 'kardex',
+  },
+  {
+    icon: '📊', clave: 'Finanzas', titulo: 'Sabes exactamente cuánto entra y sale',
+    desc: 'Caja del día, ingresos por membresías y kardex, gastos y planilla, con filtros y reporte de deudores.',
+    puntos: ['Caja del día con cuadre', 'Ingresos vs gastos', 'Reporte de deudores', 'Todo exportable a Excel'],
+    mock: 'finanzas',
+  },
+  {
+    icon: '🌐', clave: 'Tu propia página web', titulo: 'Tu web con tu marca, no la nuestra',
+    desc: 'tugym.fitcorecenter.com con tus colores, fotos, planes y ubicación. Los interesados caen directo a tu CRM.',
+    puntos: ['Dirección web propia', 'Tus colores y fotos', 'Planes y horario', 'Interesados directo al CRM'],
+    mock: 'web',
+  },
+  {
+    icon: '📱', clave: 'La App para tus socios', titulo: 'Tu gimnasio en el bolsillo del socio',
+    desc: 'Carnet QR, su rutina y dieta con video, reserva de clases, saldo y avisos. Con tu marca, en Android y iOS.',
+    puntos: ['Carnet QR para el ingreso', 'Rutina y dieta con video', 'Reserva de clases', 'Con la marca de tu gym'],
+    mock: 'app',
+  },
+]
+
 // Cada plan tiene 2 precios: solo panel, o panel + app para socios (adicional).
 const PLANES = [
   {
@@ -174,6 +227,161 @@ const PLANES = [
     no: [],
   },
 ]
+
+// Slide visual: si existe la CAPTURA REAL del módulo en
+// /landing/capturas/<tipo>.jpg la muestra (basta con subir el archivo — sin
+// tocar código); si no, cae a un mini-mockup dibujado como respaldo.
+function SlideMock({ tipo }) {
+  const [sinFoto, setSinFoto] = useState(false)
+  if (!sinFoto) {
+    return (
+      <img src={`/landing/capturas/${tipo}.jpg`} alt={`Vista de ${tipo} en FitCore`}
+        onError={() => setSinFoto(true)} loading="lazy"
+        className="w-full max-w-[480px] rounded-xl"
+        style={{ border: C.border, boxShadow: '0 30px 70px rgba(0,0,0,0.45)' }} />
+    )
+  }
+  return <SlideMockDibujo tipo={tipo} />
+}
+
+// Respaldo dibujado (mientras no haya captura real subida).
+function SlideMockDibujo({ tipo }) {
+  const barra = (w, on) => (
+    <div className="h-2 rounded-full" style={{ width: w, background: on ? C.primary : 'rgba(255,255,255,0.12)' }} />
+  )
+  const fila = (i) => (
+    <div key={i} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: C.border }}>
+      <span className="h-7 w-7 flex-shrink-0 rounded-full" style={{ background: 'rgba(255,107,53,0.22)' }} />
+      <div className="flex-1 space-y-1.5">{barra('60%', false)}{barra('35%', false)}</div>
+      <span className="rounded-full px-2 py-0.5 text-[8px] font-extrabold text-white" style={{ background: C.primary }}>{['membresias', 'finanzas'].includes(tipo) ? 'S/' : 'OK'}</span>
+    </div>
+  )
+  // Contenido específico por módulo
+  if (tipo === 'app') {
+    return (
+      <div className="mx-auto w-[190px] overflow-hidden rounded-[26px] p-2.5" style={{ background: '#0C1220', border: '6px solid #263149', boxShadow: '0 30px 70px rgba(0,0,0,0.5)' }}>
+        <div className="rounded-[18px] p-3" style={{ background: 'linear-gradient(160deg,#1F293D,#141B2E)' }}>
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
+          <div className="mb-2 text-center text-[11px] font-extrabold text-white">Hola, Carlos 👋</div>
+          <div className="mb-2.5 rounded-xl p-2.5 text-center" style={{ background: 'rgba(255,107,53,0.18)' }}>
+            <div className="text-[8px] font-bold" style={{ color: C.primary }}>TU CARNET</div>
+            <div className="mx-auto mt-1.5 grid h-14 w-14 grid-cols-4 grid-rows-4 gap-0.5">
+              {Array.from({ length: 16 }).map((_, i) => <span key={i} className="rounded-[1px]" style={{ background: i % 3 ? '#fff' : 'transparent' }} />)}
+            </div>
+          </div>
+          {['🏋️ Mi rutina de hoy', '🥗 Mi dieta', '📅 Reservar clase'].map((t) => (
+            <div key={t} className="mb-1.5 rounded-lg px-2.5 py-2 text-[9.5px] font-bold text-white" style={{ background: 'rgba(255,255,255,0.05)' }}>{t}</div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (tipo === 'web') return <GymPageMockup />
+  if (tipo === 'finanzas' || tipo === 'membresias') {
+    const barras = [40, 65, 50, 80, 60, 92, 70]
+    return (
+      <div className="w-full max-w-[440px] rounded-xl p-5" style={{ background: C.surface, border: C.border }}>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[[tipo === 'finanzas' ? 'Ingresos hoy' : 'Por cobrar', 'S/ 2,340'], [tipo === 'finanzas' ? 'Gastos' : 'Vencen hoy', tipo === 'finanzas' ? 'S/ 810' : '6'], ['Neto', 'S/ 1,530']].map(([l, v]) => (
+            <div key={l} className="rounded-lg p-2.5" style={{ border: C.border }}>
+              <div className="text-[8px] font-extrabold uppercase" style={{ color: C.muted }}>{l}</div>
+              <div className="mt-1 text-[15px] font-extrabold text-white">{v}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex h-[70px] items-end gap-1.5">
+          {barras.map((h, i) => <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: h > 75 ? C.primary : 'rgba(255,107,53,0.3)' }} />)}
+        </div>
+      </div>
+    )
+  }
+  // clientes / personal / rutinas / kardex → lista de filas
+  return (
+    <div className="w-full max-w-[440px] space-y-2 rounded-xl p-4" style={{ background: C.surface, border: C.border }}>
+      <div className="mb-2 flex items-center gap-2">
+        <div className="h-8 flex-1 rounded-lg px-3 text-[10px] font-bold leading-8" style={{ background: 'rgba(255,255,255,0.05)', color: C.muted }}>🔍 Buscar…</div>
+        <span className="rounded-lg px-3 py-1.5 text-[9px] font-extrabold text-white" style={{ background: C.primary }}>+ Nuevo</span>
+      </div>
+      {[0, 1, 2, 3].map(fila)}
+    </div>
+  )
+}
+
+// Carrusel auto-avanzable de módulos (el visitante puede navegar manualmente).
+function CarruselModulos() {
+  const [i, setI] = useState(0)
+  const [pausado, setPausado] = useState(false)
+  const touchX = useState({ x: 0 })[0]
+  const n = SLIDES.length
+  const ir = (idx) => setI((idx + n) % n)
+
+  useEffect(() => {
+    if (pausado) return
+    const t = setInterval(() => setI((v) => (v + 1) % n), 4500)
+    return () => clearInterval(t)
+  }, [pausado, n])
+
+  const s = SLIDES[i]
+  return (
+    <div onMouseEnter={() => setPausado(true)} onMouseLeave={() => setPausado(false)}
+      onTouchStart={(e) => { touchX.x = e.touches[0].clientX }}
+      onTouchEnd={(e) => { const d = e.changedTouches[0].clientX - touchX.x; if (Math.abs(d) > 40) ir(i + (d < 0 ? 1 : -1)) }}>
+      {/* Chips de navegación por módulo */}
+      <div className="mb-8 flex flex-wrap justify-center gap-2">
+        {SLIDES.map((sl, idx) => (
+          <button key={sl.clave} onClick={() => ir(idx)}
+            className="rounded-full px-3.5 py-1.5 text-[11.5px] font-extrabold transition-all"
+            style={idx === i
+              ? { background: C.primary, color: '#fff' }
+              : { background: 'rgba(255,255,255,0.05)', color: C.muted, border: C.border }}>
+            {sl.icon} {sl.clave}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative grid items-center gap-10 rounded-2xl p-8 md:grid-cols-[1fr_1.1fr] md:p-10"
+        style={{ background: 'rgba(255,255,255,0.02)', border: C.border }}>
+        {/* Texto */}
+        <div key={s.clave} className="lp-fade">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[1.5px]" style={{ border: C.border, color: C.primary }}>
+            {s.icon} {s.clave}
+          </div>
+          <h3 className="text-[26px] font-extrabold leading-[1.15] tracking-[-0.5px]">{s.titulo}</h3>
+          <p className="mt-3.5 max-w-[440px] text-[14px] font-semibold leading-relaxed" style={{ color: C.muted }}>{s.desc}</p>
+          <ul className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {s.puntos.map((p) => (
+              <li key={p} className="flex items-center gap-2 text-[12.5px] font-bold">
+                <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[9px] text-white" style={{ background: C.primary }}>✓</span>
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {/* Mockup */}
+        <div key={s.mock} className="lp-fade flex justify-center">
+          <SlideMock tipo={s.mock} />
+        </div>
+
+        {/* Flechas */}
+        <button onClick={() => ir(i - 1)} aria-label="Anterior"
+          className="absolute -left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-[18px] font-extrabold text-white transition-transform hover:scale-110 md:flex"
+          style={{ background: C.surface, border: C.border }}>‹</button>
+        <button onClick={() => ir(i + 1)} aria-label="Siguiente"
+          className="absolute -right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-[18px] font-extrabold text-white transition-transform hover:scale-110 md:flex"
+          style={{ background: C.surface, border: C.border }}>›</button>
+      </div>
+
+      {/* Puntos de progreso */}
+      <div className="mt-6 flex justify-center gap-2">
+        {SLIDES.map((_, idx) => (
+          <button key={idx} onClick={() => ir(idx)} aria-label={`Ir al módulo ${idx + 1}`}
+            className="h-2 rounded-full transition-all"
+            style={{ width: idx === i ? 26 : 8, background: idx === i ? C.primary : 'rgba(255,255,255,0.18)' }} />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function PlataformaLanding() {
   // Precios: alterna entre solo panel y panel + app para socios
@@ -199,6 +407,8 @@ export default function PlataformaLanding() {
         html { scroll-behavior: smooth; }
         .lp-rev { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
         .lp-rev-in { opacity: 1; transform: none; }
+        .lp-fade { animation: lpFade .5s ease; }
+        @keyframes lpFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
         details.lp-faq summary::-webkit-details-marker { display: none; }
         details.lp-faq[open] .lp-faq-chevron { transform: rotate(180deg); }
       `}</style>
@@ -206,8 +416,8 @@ export default function PlataformaLanding() {
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: 'rgba(20,27,46,0.85)', borderBottom: C.border }}>
         <div className="mx-auto flex max-w-[1100px] items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2.5">
-            <FitControlLogo size={36} />
-            <span className="text-[17px] font-extrabold tracking-[-0.3px]">FitControl</span>
+            <FitCoreLogo size={36} />
+            <span className="text-[17px] font-extrabold tracking-[-0.3px]">FitCore</span>
           </div>
           <nav className="hidden items-center gap-1 md:flex">
             {[['Funciones', '#funciones'], ['Tu página web', '#pagina-web'], ['Precios', '#precios'], ['La app', '#app'], ['Preguntas', '#faq']].map(([l, h]) => (
@@ -300,7 +510,7 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
-      {/* Antes / Con FitControl */}
+      {/* Antes / Con FitCore */}
       <section className="lp-rev mx-auto max-w-[1100px] px-6 pt-14">
         <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Deja el cuaderno y el Excel</h2>
         <div className="mx-auto mt-9 grid max-w-[900px] grid-cols-1 gap-3">
@@ -321,17 +531,12 @@ export default function PlataformaLanding() {
 
       {/* Features compactos */}
       <section id="funciones" className="lp-rev mx-auto max-w-[1100px] px-6 py-16">
-        <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Todo lo demás, también incluido</h2>
-        <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map(([icon, t, d]) => (
-            <div key={t} className="flex items-start gap-3.5 rounded-lg p-4" style={{ border: C.border }}>
-              <span className="text-[20px]">{icon}</span>
-              <div>
-                <div className="text-[14px] font-extrabold">{t}</div>
-                <div className="mt-0.5 text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{d}</div>
-              </div>
-            </div>
-          ))}
+        <h2 className="text-center text-[28px] font-extrabold tracking-[-0.5px]">Todo lo que tu gimnasio necesita, en un solo lugar</h2>
+        <p className="mx-auto mt-3 max-w-[560px] text-center text-[14px] font-semibold" style={{ color: C.muted }}>
+          Recórrelo módulo por módulo — o déjalo pasar solo.
+        </p>
+        <div className="mt-10">
+          <CarruselModulos />
         </div>
       </section>
 
@@ -350,7 +555,7 @@ export default function PlataformaLanding() {
               Tu página web profesional,<br />sin pagar un diseñador
             </h2>
             <p className="mt-4 max-w-[460px] text-[14.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
-              Cada gimnasio en FitControl recibe su propia página con dirección propia,
+              Cada gimnasio en FitCore recibe su propia página con dirección propia,
               lista para compartir en redes y recibir interesados directo a tu CRM.
             </p>
             <p className="mt-3 max-w-[460px] rounded-lg px-4 py-3 text-[13px] font-semibold leading-relaxed" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.25)' }}>
@@ -523,7 +728,7 @@ export default function PlataformaLanding() {
 
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ['🗺️', 'Te encuentran a ti', 'Las personas buscarán gimnasios, academias y personal trainers cerca de ellas. Estar suscrito a FitControl te pone en el mapa — sin costo extra.'],
+              ['🗺️', 'Te encuentran a ti', 'Las personas buscarán gimnasios, academias y personal trainers cerca de ellas. Estar suscrito a FitCore te pone en el mapa — sin costo extra.'],
               ['📲', 'Tu negocio en su bolsillo', 'Tus socios ven su rutina, su dieta, su membresía y reservan tus clases — con tu marca y tus colores.'],
               ['🎥', 'Papás tranquilos', 'En gyms para niños, el apoderado verá la asistencia de su hijo y las cámaras de la clase en vivo.'],
               ['🏋️', 'Modo entrenador', 'Tus trainers y nutricionistas asignan rutinas y dietas desde su celular, en el piso del gym.'],
@@ -592,8 +797,8 @@ export default function PlataformaLanding() {
         <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <FitControlLogo size={34} />
-              <span className="text-[16px] font-extrabold">FitControl</span>
+              <FitCoreLogo size={34} />
+              <span className="text-[16px] font-extrabold">FitCore</span>
             </div>
             <p className="mt-3 max-w-[240px] text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
               El sistema operativo del fitness: gimnasios, academias, gyms para niños y personal trainers en una sola plataforma.
@@ -641,7 +846,7 @@ export default function PlataformaLanding() {
         </div>
 
         <div className="mx-auto mt-12 flex max-w-[1100px] flex-col items-center justify-between gap-3 pt-6 sm:flex-row" style={{ borderTop: C.border }}>
-          <div className="text-[11.5px] font-semibold" style={{ color: 'rgba(142,154,168,0.5)' }}>© 2026 FitControl. Todos los derechos reservados.</div>
+          <div className="text-[11.5px] font-semibold" style={{ color: 'rgba(142,154,168,0.5)' }}>© 2026 FitCore. Todos los derechos reservados.</div>
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[12px] font-bold">
             <a href="/terminos" className="transition-colors hover:text-white" style={{ color: C.muted }}>Términos y condiciones</a>
             <a href="/privacidad" className="transition-colors hover:text-white" style={{ color: C.muted }}>Privacidad</a>

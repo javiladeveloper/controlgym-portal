@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { FitControlLogo } from '../components/icons.jsx'
+import { FitCoreLogo } from '../components/icons.jsx'
 
 function GoogleIcon() {
   return (
@@ -39,9 +39,9 @@ export default function Login() {
       <div className="w-full max-w-[400px]">
         <a href="https://fitcorecenter.com" title="Ir a fitcorecenter.com"
           className="mb-6 flex items-center gap-3 transition-opacity hover:opacity-75">
-          <FitControlLogo size={44} />
+          <FitCoreLogo size={44} />
           <div>
-            <div className="text-[20px] font-extrabold tracking-[-0.3px]">FitControl</div>
+            <div className="text-[20px] font-extrabold tracking-[-0.3px]">FitCore</div>
             <div className="text-[12px] font-semibold text-muted">Panel de gestión</div>
           </div>
         </a>
@@ -79,7 +79,7 @@ export default function Login() {
           <a href="https://fitcorecenter.com" className="hover:text-orange">← Volver a fitcorecenter.com</a>
         </p>
         <p className="mt-1.5 text-center text-[11.5px] font-semibold text-faint">
-          FitControl · El sistema operativo del fitness
+          FitCore · El sistema operativo del fitness
         </p>
       </div>
     </div>

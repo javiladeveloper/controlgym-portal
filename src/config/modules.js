@@ -7,7 +7,7 @@
 
 // Orden y etiqueta de los grupos del sidebar.
 export const GRUPOS = [
-  { key: 'plataforma', label: 'FitControl' }, // solo super-admin de la plataforma
+  { key: 'plataforma', label: 'FitCore' }, // solo super-admin de la plataforma
   { key: 'general', label: 'General' },
   { key: 'socios', label: 'Socios' },
   { key: 'operacion', label: 'Operación' },

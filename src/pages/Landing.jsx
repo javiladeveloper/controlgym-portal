@@ -770,13 +770,13 @@ export default function Landing({ slug }) {
             </div>
           )}
           {/* Publicidad de la plataforma: otros dueños que visiten esta página
-              descubren FitControl (con atribución de qué gym los trajo) */}
+              descubren FitCore (con atribución de qué gym los trajo) */}
           <a href={`https://${ROOT_DOMAIN}/?utm_source=landing-gym&utm_campaign=${data.slug}`}
             target="_blank" rel="noreferrer"
             className="group flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 transition-colors hover:bg-white/20">
             <span className="text-[13px]">⚡</span>
             <span className="text-[11.5px] font-bold text-white/70 group-hover:text-white">
-              Página creada con <b className="text-white">FitControl</b> — ¿tienes un gym? Crea la tuya gratis
+              Página creada con <b className="text-white">FitCore</b> — ¿tienes un gym? Crea la tuya gratis
             </span>
           </a>
           <div className="flex items-center gap-3 text-[11px] font-semibold text-white/40">

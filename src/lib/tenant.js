@@ -51,7 +51,7 @@ export function isPlataformaHost() {
 }
 
 // ¿Es el dominio raíz de la plataforma (fitcorecenter.com / www)? Ahí vive la
-// landing de FitControl que vende el SaaS a los gimnasios.
+// landing de FitCore que vende el SaaS a los gimnasios.
 // En dev se previsualiza con ?home
 export function isPlataformaHome() {
   const host = window.location.hostname

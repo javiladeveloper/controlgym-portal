@@ -1,5 +1,5 @@
 // POST /api/culqi/suscribir — activa el pago automático de la suscripción
-// de FitControl para una empresa (la del admin que llama).
+// de FitCore para una empresa (la del admin que llama).
 //
 // Body: { empresa_id, token_id, email }
 //   token_id: token de tarjeta generado por Culqi Checkout en el navegador.
@@ -58,14 +58,14 @@ export default async function handler(req, res) {
     if (!planId) return res.status(500).json({ error: `Plan Culqi no configurado: ${planKey}` })
 
     const mail = email || user.email
-    const nombre = (user.user_metadata?.full_name || 'Admin FitControl').split(' ')
+    const nombre = (user.user_metadata?.full_name || 'Admin FitCore').split(' ')
 
     // 1) Cliente (si ya existe para ese email, Culqi devuelve error → reintentar solo con lo mínimo no aplica; guardamos el nuestro)
     let customerId = sus.proveedor_customer_id
     if (!customerId) {
       const customer = await culqi('/customers', {
         first_name: nombre[0] || 'Admin',
-        last_name: nombre.slice(1).join(' ') || sus.empresa_nombre || 'FitControl',
+        last_name: nombre.slice(1).join(' ') || sus.empresa_nombre || 'FitCore',
         email: mail,
         address: 'Lima, Peru',
         address_city: 'Lima',
