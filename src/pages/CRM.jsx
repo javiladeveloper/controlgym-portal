@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
 import { CheckIcon } from '../components/icons.jsx'
@@ -6,6 +6,7 @@ import { LoadingState, ErrorState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import CampanaWhatsAppModal from '../components/forms/CampanaWhatsAppModal.jsx'
+import { verificarDni, textoVerificacion } from '../lib/dni.js'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
@@ -23,12 +24,23 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
   const editando = !!lead
   const [f, setF] = useState({
     nombre: lead?.nombre || '', telefono: lead?.telefono || '', email: lead?.email || '',
-    fuente: lead?.fuente || 'Recepción', nota: lead?.nota || '',
+    fuente: lead?.fuente || 'Recepción', nota: lead?.nota || '', documento: lead?.documento || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmarDel, setConfirmarDel] = useState(false)
+  const [verif, setVerif] = useState(null) // verificación del DNI vs padrón (MAXFIND)
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  // Aquí SÍ se valida el DNI que el interesado dejó en la página del gym:
+  // el gym ve al revisar la solicitud si nombre y documento corresponden
+  useEffect(() => {
+    const dni = (f.documento || '').replace(/\D/g, '')
+    if (dni.length !== 8 || !f.nombre.trim()) { setVerif(null); return }
+    setVerif({ buscando: true })
+    const t = setTimeout(async () => setVerif(await verificarDni({ dni, nombre: f.nombre })), 400)
+    return () => clearTimeout(t)
+  }, [f.documento, f.nombre])
 
   function invalidar() { qc.invalidateQueries({ queryKey: ['leads', sedeId] }) }
 
@@ -37,7 +49,7 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
     setBusy(true); setError('')
     const payload = {
       nombre: f.nombre.trim(), telefono: f.telefono || null, email: f.email || null,
-      fuente: f.fuente, nota: f.nota || null,
+      fuente: f.fuente, nota: f.nota || null, documento: f.documento.replace(/\D/g, '') || null,
     }
     const q = editando
       ? supabase.from('lead').update(payload).eq('id', lead.id)
@@ -71,6 +83,16 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
           <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} /></Campo>
           <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         </div>
+        <Campo label="DNI (para verificar identidad)">
+          <input value={f.documento} onChange={set('documento')} className={inputCls} maxLength={8} inputMode="numeric" />
+        </Campo>
+        {verif?.buscando && <p className="-mt-2 text-[11.5px] font-bold text-faint">Verificando contra el padrón…</p>}
+        {(() => {
+          const t = textoVerificacion(verif)
+          if (!t) return null
+          const cls = t.tipo === 'ok' ? 'bg-green-50 text-green-700' : t.tipo === 'alerta' ? 'bg-red-50 text-red' : 'bg-amber-50 text-amber-800'
+          return <p className={`-mt-2 rounded-[8px] px-3 py-1.5 text-[11.5px] font-extrabold ${cls}`}>{t.texto}</p>
+        })()}
         <Campo label="¿Cómo nos conoció?">
           <select value={f.fuente} onChange={set('fuente')} className={inputCls + ' cursor-pointer'}>
             {FUENTES.map((x) => <option key={x} value={x}>{x}</option>)}
@@ -144,7 +166,7 @@ export default function CRM() {
         <NuevoSocioModal
           sedeId={sedeId}
           leadId={convertir.id}
-          prefill={{ nombre: convertir.nombre, telefono: convertir.telefono, email: convertir.email }}
+          prefill={{ nombre: convertir.nombre, telefono: convertir.telefono, email: convertir.email, documento: convertir.documento }}
           onClose={() => setConvertir(null)}
         />
       )}

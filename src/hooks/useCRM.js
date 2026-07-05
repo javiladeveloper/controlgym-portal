@@ -11,7 +11,7 @@ export function useLeads(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead')
-        .select('id, nombre, telefono, email, fuente, etapa, nota, socio_id, created_at')
+        .select('id, nombre, telefono, email, documento, fuente, etapa, nota, socio_id, created_at')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Modal, { Campo, BotonesModal, inputCls } from '../Modal.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
@@ -7,6 +7,7 @@ import { usePromociones } from '../../hooks/useOperaciones.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { money } from '../../lib/uiHelpers.js'
 import { waLink, msgRecibo } from '../../lib/whatsapp.js'
+import { verificarDni, textoVerificacion } from '../../lib/dni.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
@@ -20,8 +21,9 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const promos = usePromociones()
   const [f, setF] = useState({
     nombre: prefill.nombre || '', telefono: prefill.telefono || '', email: prefill.email || '',
-    documento: '', fecha_nacimiento: '', objetivo: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
+    documento: prefill.documento || '', fecha_nacimiento: '', objetivo: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
   })
+  const [verif, setVerif] = useState(null) // resultado de la verificación de DNI (MAXFIND)
   const [invitados, setInvitados] = useState([]) // acompañantes de promos 2x1/grupal
   const [enPartes, setEnPartes] = useState(false) // paga una parte hoy, el resto después
   const [montoInicial, setMontoInicial] = useState('')
@@ -38,6 +40,22 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const plan = (planes.data || []).find((p) => p.id === f.plan_id)
   const promosActivas = (promos.data || []).filter((p) => p.estado === 'activa')
   const promo = promosActivas.find((p) => p.id === f.promocion_id)
+
+  // Verificación de DNI contra el padrón (con debounce): valida identidad
+  // y autocompleta el nombre si aún no lo escribieron
+  useEffect(() => {
+    const dni = f.documento.replace(/\D/g, '')
+    if (dni.length !== 8) { setVerif(null); return }
+    setVerif({ buscando: true })
+    const t = setTimeout(async () => {
+      const v = await verificarDni({ dni, nombre: f.nombre })
+      setVerif(v)
+      if (v.encontrado && !f.nombre.trim()) {
+        setF((s) => (s.nombre.trim() ? s : { ...s, nombre: v.nombre_oficial }))
+      }
+    }, 500)
+    return () => clearTimeout(t)
+  }, [f.documento, f.nombre]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Promos de grupo: cuántos vienen y cuántos pagan
   const esGrupo = plan && promo && ['2x1', 'grupal'].includes(promo.tipo)
@@ -89,6 +107,10 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     })
     setBusy(false)
     if (error) { setError(error.message); return }
+    // Si el DNI no estaba en el padrón, lo aportamos a MAXFIND (fire-and-forget)
+    if (verif?.encontrado === false && f.documento && f.nombre.trim()) {
+      verificarDni({ dni: f.documento, nombre: f.nombre, alimentar: true })
+    }
     setExito({ codigo: data.codigo, total: data.total_cobrado, saldo: Number(data.saldo || 0), promo: data.promo_aplicada, codigosInvitados: data.codigos_invitados || [] })
     qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
     qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
@@ -142,8 +164,16 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         <Campo label="Nombre completo *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Carlos Mendoza" /></Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} placeholder="999 888 777" /></Campo>
-          <Campo label="Documento (DNI)"><input value={f.documento} onChange={set('documento')} className={inputCls} /></Campo>
+          <Campo label="Documento (DNI)"><input value={f.documento} onChange={set('documento')} className={inputCls} maxLength={8} /></Campo>
         </div>
+        {/* Resultado de la verificación de identidad (MAXFIND) */}
+        {verif?.buscando && <p className="-mt-1.5 text-[11.5px] font-bold text-faint">Verificando DNI en el padrón…</p>}
+        {(() => {
+          const t = textoVerificacion(verif)
+          if (!t) return null
+          const cls = t.tipo === 'ok' ? 'bg-green-50 text-green-700' : t.tipo === 'alerta' ? 'bg-red-50 text-red' : 'bg-amber-50 text-amber-800'
+          return <p className={`-mt-1.5 rounded-[8px] px-3 py-1.5 text-[11.5px] font-extrabold ${cls}`}>{t.texto}</p>
+        })()}
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
           <Campo label="Fecha de nacimiento"><input type="date" value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>

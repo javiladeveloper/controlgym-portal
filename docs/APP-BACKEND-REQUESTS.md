@@ -87,6 +87,14 @@ Del lado app ya está TODO listo y probado:
   ya hay una fila real del emulador). Al despachar `push_cola`, usa
   `notification.title/body` o `data.titulo/cuerpo` — la app entiende ambos.
 
+## PEDIDO 3 — Aplicar correo de bienvenida v2 🔴 (migración lista y DISEÑO APROBADO por el cliente 2026-07-04 — aplicar sin cambios)
+
+El cliente vio el correo de bienvenida y pidió "un poquito más bonito".
+Dejé lista `20260704000003_bienvenida_socio_v2.sql` (misma función/trigger,
+solo HTML nuevo): header con logo y marca del gym (empresa_tema), tarjeta
+con beneficios, botón CTA del color del gym hacia su landing, footer con
+contacto. **Solo falta aplicarla** (protocolo: aplica el panel).
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni

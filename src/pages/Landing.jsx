@@ -821,6 +821,7 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
   const [email, setEmail] = useState('')
+  const [dni, setDni] = useState('')
   const [cuando, setCuando] = useState('')
   const [turno, setTurno] = useState('')
   const [mensaje, setMensaje] = useState('')
@@ -842,6 +843,7 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
     const { error } = await supabase.rpc('crear_lead_publico', {
       p_slug: slug, p_nombre: nombre, p_telefono: telefono, p_email: email, p_nota: nota,
       p_fuente: fuente || null,
+      p_documento: dni || null, // no se valida aquí: cero fricción para el visitante
     })
     setBusy(false)
     if (error) setError(error.message)
@@ -874,6 +876,9 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
               <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre *" className={inputCls} />
               <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono / WhatsApp" className={inputCls} />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo (opcional)" className={inputCls} />
+              <input inputMode="numeric" maxLength={8} value={dni}
+                onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+                placeholder="DNI (opcional — agiliza tu inscripción)" className={inputCls} />
 
               <div>
                 <div className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿Cuándo te gustaría empezar?</div>
