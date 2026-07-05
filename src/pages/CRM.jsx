@@ -125,8 +125,23 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
 export default function CRM() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
+  const qc = useQueryClient()
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [campanaOpen, setCampanaOpen] = useState(false)
+  const [sobreCol, setSobreCol] = useState(null) // columna resaltada durante el drag
+
+  // Drag & drop: soltar la tarjeta en una columna la mueve a ESA etapa
+  // (en cualquier dirección, no solo avanzar) con actualización optimista
+  async function moverLead(id, etapa) {
+    const lead = (leads.data || []).find((l) => l.id === id)
+    if (!lead || lead.etapa === etapa) return
+    qc.setQueryData(['leads', sedeId], (old) => (old || []).map((l) => (l.id === id ? { ...l, etapa } : l)))
+    const { error } = await supabase.from('lead').update({ etapa }).eq('id', id)
+    if (error) {
+      toast.error('No se pudo mover: ' + error.message)
+      qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+    }
+  }
   const [editar, setEditar] = useState(null) // lead en edición
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
   const leads = useLeads(sedeId)
@@ -184,7 +199,16 @@ export default function CRM() {
       {leads.data && (
         <div className="mt-[15px] grid grid-cols-4 items-start gap-3 max-lg:flex max-lg:snap-x max-lg:overflow-x-auto max-lg:pb-2 max-lg:[&>div]:w-[78vw] max-lg:[&>div]:flex-shrink-0 max-lg:[&>div]:snap-start">
           {cols.map((col) => (
-            <div key={col.etapa} className="flex flex-col gap-2.5">
+            <div key={col.etapa}
+              onDragOver={(e) => { e.preventDefault(); setSobreCol(col.etapa) }}
+              onDragLeave={() => setSobreCol((s) => (s === col.etapa ? null : s))}
+              onDrop={(e) => {
+                e.preventDefault()
+                setSobreCol(null)
+                const id = e.dataTransfer.getData('lead')
+                if (id) moverLead(id, col.etapa)
+              }}
+              className={`flex min-h-[120px] flex-col gap-2.5 rounded-[12px] transition-colors ${sobreCol === col.etapa ? 'bg-orange/10 outline-dashed outline-2 outline-orange/50' : ''}`}>
               <div className="flex items-center justify-between rounded-[10px] bg-navy px-[13px] py-[9px]">
                 <span className="text-[12.5px] font-extrabold text-white">{col.label}</span>
                 <span className="text-[11px] font-extrabold text-orange">{col.items.length}</span>
@@ -192,7 +216,10 @@ export default function CRM() {
               {col.items.map((ld) => {
                 const last = ld.etapa === 'inscrito'
                 return (
-                  <Card key={ld.id} className="p-[13px] hover:border-orange">
+                  <Card key={ld.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('lead', ld.id); e.dataTransfer.effectAllowed = 'move' }}
+                    className="cursor-grab p-[13px] hover:border-orange active:cursor-grabbing">
                     <div className="flex items-center gap-2.5">
                       <Avatar ini={iniciales(ld.nombre)} bg={T.chipNavy} color={T.navy} size={30} fontSize={11} />
                       <div className="min-w-0 flex-1">
