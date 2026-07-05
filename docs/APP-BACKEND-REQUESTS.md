@@ -36,8 +36,13 @@ comidas, "Enviar al socio" (`enviado_at`), sugerencias de ejercicios desde
 >
 > **Push**: `push_token (usuario_id, token, plataforma)` con RLS self — regístralo con upsert.
 > Cola `push_cola` alimentada por: trigger de `enviado_at` en rutina/dieta (al toque), y job diario
-> 15:05 UTC (vence hoy/3d + cumpleaños). ⚠️ **El ENVÍO FCM real está pendiente**: necesito la
-> service account de Firebase de tu proyecto (que el cliente me la pase) para armar el worker.
+> 15:05 UTC (vence hoy/3d + cumpleaños).
+> ✅ **WORKER FCM OPERATIVO (2026-07-04 noche)**: `api/push/enviar` en Vercel (FCM HTTP v1, JWT
+> firmado con la service account que dejaste — subida como env, jamás al repo), disparado por
+> pg_cron **cada minuto solo si hay cola**. Tokens muertos (UNREGISTERED) se limpian solos;
+> fallidos reintentan hasta 2 días. **Probado end-to-end**: push real "🎉 FitControl conectado"
+> enviado al token de tu emulador y marcado `enviado_at` ✓. Manda `notification` + `data`
+> (titulo/cuerpo como strings), `android.priority=high`. No necesitas hacer nada más.
 >
 > **Adherencia (PEDIDO 2)**: tablas `registro_entreno (socio_id, rutina_dia_id, fecha, completado)`
 > y `registro_comida (socio_id, comida_id, fecha, cumplida)` con unique por día, socio escribe lo
@@ -87,13 +92,26 @@ Del lado app ya está TODO listo y probado:
   ya hay una fila real del emulador). Al despachar `push_cola`, usa
   `notification.title/body` o `data.titulo/cuerpo` — la app entiende ambos.
 
-## PEDIDO 3 — Aplicar correo de bienvenida v2 🔴 (migración lista y DISEÑO APROBADO por el cliente 2026-07-04 — aplicar sin cambios)
+## PEDIDO 3 — Aplicar correo de bienvenida v2 → ✅ APLICADA (2026-07-04 noche, sin cambios — buen diseño 👏)
 
 El cliente vio el correo de bienvenida y pidió "un poquito más bonito".
 Dejé lista `20260704000003_bienvenida_socio_v2.sql` (misma función/trigger,
 solo HTML nuevo): header con logo y marca del gym (empresa_tema), tarjeta
 con beneficios, botón CTA del color del gym hacia su landing, footer con
 contacto. **Solo falta aplicarla** (protocolo: aplica el panel).
+
+> ## 📢 Novedades del panel que te afectan (2026-07-04 noche)
+> - **DNI ahora es OBLIGATORIO al crear socio** (panel) y en el formulario público del gym.
+>   Si la app crea/edita socios en algún flujo, considera pedirlo. Con 8 dígitos, el panel lo
+>   verifica contra MAXFIND (padrón) vía `POST /api/dni/verificar` — si la app quiere el mismo
+>   badge de verificación, usa ese endpoint (auth: Bearer del access_token de Supabase).
+> - `membresia.monto_pagado` + saldo: los socios pueden pagar EN PARTES. El bootstrap ya te
+>   devuelve `saldo` — muéstralo en la app ("debes S/300").
+> - `dar_baja_socio(socio_id)` existe (socio estado 'inactivo'); `vencer_membresias()` corre a
+>   diario: los estados de membresía que leas ya vencen solos.
+> - Convención de migraciones: usa el siguiente número LIBRE — hubo colisión de prefijo
+>   `20260704000003` (tu bienvenida_v2 y mi push_worker). No pasó nada porque se aplican a mano,
+>   pero mejor secuencia única: el siguiente es `20260704000007`.
 
 ## Notas / no urgente
 
