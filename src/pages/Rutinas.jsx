@@ -14,7 +14,7 @@ import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
-const DIA_LETRA = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D' }
+const DIA_NOMBRE = { 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo' }
 
 // Foco del día como texto LIBRE (con sugerencias): la app escribe focos
 // personalizados tipo "Espalda, hombro y cardio" y el panel debe respetarlos
@@ -194,8 +194,8 @@ function RutinasImpl() {
                     <div key={d.id} onClick={() => setDiaSel(d.id)}
                       className={`flex cursor-pointer flex-col gap-2.5 rounded-xl border p-[13px] transition-colors ${diaSel === d.id ? 'border-orange bg-orange-50/60' : 'border-line bg-[#FAFBFC] hover:border-orange'}`}>
                       <div className="flex items-center justify-between">
-                        <div className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] bg-navy text-[13px] font-extrabold text-white">
-                          {DIA_LETRA[d.dia_semana]}
+                        <div className="rounded-[8px] bg-navy px-2.5 py-1 text-[11.5px] font-extrabold text-white">
+                          {DIA_NOMBRE[d.dia_semana]}
                         </div>
                         <span className="text-[10px] font-extrabold text-faint">{nEjs > 0 ? `${nEjs} ejerc.` : ''}</span>
                       </div>
