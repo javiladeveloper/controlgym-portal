@@ -3,6 +3,7 @@ import Modal, { Campo, inputCls } from '../Modal.jsx'
 import { useClientes } from '../../hooks/useClientes.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { waLink } from '../../lib/whatsapp.js'
+import { WhatsAppIcon } from '../icons.jsx'
 
 // Campaña de WhatsApp semi-automática: eliges el segmento, personalizas el
 // mensaje ({nombre} y {gym} se reemplazan solos) y vas abriendo chat por chat
@@ -67,7 +68,7 @@ export default function CampanaWhatsAppModal({ sedeId, onClose }) {
             onClick={() => setEnviados((s) => new Set([...s, pendiente.id]))}
             className="flex items-center justify-center gap-2 rounded-[11px] border-none py-3 text-[14px] font-extrabold text-white"
             style={{ background: '#1DA851' }}>
-            💬 Enviar a {pendiente.nombre.split(' ')[0]} → ({enviados.size + 1} de {lista.length})
+            <WhatsAppIcon size={17} /> Enviar a {pendiente.nombre.split(' ')[0]} → ({enviados.size + 1} de {lista.length})
           </a>
         ) : lista.length > 0 ? (
           <div className="rounded-[11px] bg-green-50 py-3 text-center text-[14px] font-extrabold text-green-600">

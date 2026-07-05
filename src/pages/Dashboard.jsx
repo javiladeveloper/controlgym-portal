@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import Topbar from '../components/Topbar.jsx'
 import ChecklistActivacion from '../components/ChecklistActivacion.jsx'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
-import { BoxIcon, DocIcon, ClockIcon } from '../components/icons.jsx'
+import { BoxIcon, DocIcon, ClockIcon, WhatsAppIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
 import Modal, { inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
@@ -255,8 +255,8 @@ export default function Dashboard() {
                   <span className="text-[11px] font-bold text-faint">{c.dia} {esHoy ? '· ¡HOY!' : ''}</span>
                   {wa && (
                     <a href={wa} target="_blank" rel="noreferrer" title="Saludarlo por WhatsApp"
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-[12px]"
-                      style={{ background: '#25D36622', color: '#1DA851' }}>💬</a>
+                      className="flex h-6 w-6 items-center justify-center rounded-full"
+                      style={{ background: '#25D366' }}><WhatsAppIcon size={13} /></a>
                   )}
                 </div>
               )

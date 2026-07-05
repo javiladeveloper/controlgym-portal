@@ -13,6 +13,7 @@ import { estadoBadge, money } from '../lib/uiHelpers.js'
 import { waLink, msgRenovacion, msgRecibo } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import { WhatsAppIcon } from '../components/icons.jsx'
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
 
@@ -242,6 +243,7 @@ export default function Membresias() {
   const [cobrando, setCobrando] = useState(null) // membresía a la que se le registra el cobro
   const [congelando, setCongelando] = useState(null) // membresía a congelar (pide días)
   const [abonando, setAbonando] = useState(null) // membresía con saldo a la que se abona
+  const [busca, setBusca] = useState('') // buscador de socios en la gestión
   const [dandoBaja, setDandoBaja] = useState(null) // socio en confirmación de baja
 
   // Control de cobros: vencidas y por vencer en ≤7 días (el gym cobra en persona).
@@ -307,23 +309,27 @@ export default function Membresias() {
             const d = diasPara(m.fecha_fin)
             const saldo = saldoDe(m)
             const soloSaldo = saldo > 0 && d > 7
-            const etiqueta = soloSaldo ? `Debe ${money(saldo, moneda)}`
+            // El combo crítico: venció Y todavía debe plata del trato anterior
+            const critico = saldo > 0 && d <= 0
+            const etiqueta = critico ? `🚨 Vencida${d < 0 ? ` hace ${-d} día${-d === -1 ? '' : 's'}` : ' HOY'} y DEBE ${money(saldo, moneda)}`
+              : soloSaldo ? `Debe ${money(saldo, moneda)}`
               : d < 0 ? `Vencida hace ${-d} día${-d === 1 ? '' : 's'}` : d === 0 ? 'Vence HOY' : `Vence en ${d} día${d === 1 ? '' : 's'}`
-            const rojo = !soloSaldo && d <= 0
+            const rojo = critico || (!soloSaldo && d <= 0)
             return (
-              <div key={m.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line2 px-4 py-3 hover:bg-[#FAFBFC] sm:px-5">
+              <div key={m.id} className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line2 px-4 py-3 sm:px-5 ${critico ? 'bg-red-50/70 hover:bg-red-50' : 'hover:bg-[#FAFBFC]'}`}>
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-extrabold">{m.socio?.nombre}</div>
                   <div className="text-[11.5px] font-semibold text-muted">{m.plan?.nombre} · {money(m.plan?.precio, moneda)}</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge bg={soloSaldo ? '#FEF3C7' : rojo ? T.dangerBg : T.primaryBg} color={soloSaldo ? '#92400E' : rojo ? T.danger : T.primary}>{etiqueta}</Badge>
-                  {!soloSaldo && saldo > 0 && <Badge bg="#FEF3C7" color="#92400E">Debe {money(saldo, moneda)}</Badge>}
+                  <Badge bg={critico ? T.danger : soloSaldo ? '#FEF3C7' : rojo ? T.dangerBg : T.primaryBg}
+                    color={critico ? '#FFFFFF' : soloSaldo ? '#92400E' : rojo ? T.danger : T.primary}>{etiqueta}</Badge>
+                  {!critico && !soloSaldo && saldo > 0 && <Badge bg="#FEF3C7" color="#92400E">Debe {money(saldo, moneda)}</Badge>}
                   {m.socio?.telefono && (
                     <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}
                       target="_blank" rel="noreferrer" title="Recordarle por WhatsApp"
-                      className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
-                      style={{ background: '#25D36622', color: '#1DA851' }}>💬</a>
+                      className="flex h-8 w-8 items-center justify-center rounded-[9px] transition-transform hover:scale-110"
+                      style={{ background: '#25D366' }}><WhatsAppIcon size={17} /></a>
                   )}
                   {saldo > 0 && (
                     <button onClick={() => setAbonando(m)}
@@ -369,9 +375,14 @@ export default function Membresias() {
 
       {/* Gestión */}
       <Card className="mt-[15px] overflow-x-auto">
-        <div className="px-5 py-4">
-          <div className="text-[14.5px] font-extrabold">Gestión de membresías</div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">Renueva, congela o reactiva según lo que permite cada plan</div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+          <div>
+            <div className="text-[14.5px] font-extrabold">Gestión de membresías</div>
+            <div className="mt-0.5 text-[12px] font-semibold text-muted">Renueva, congela o reactiva según lo que permite cada plan</div>
+          </div>
+          <input value={busca} onChange={(e) => setBusca(e.target.value)}
+            placeholder="🔍 Buscar socio o N.º…"
+            className="w-[230px] rounded-[10px] border border-line bg-white px-3.5 py-2 text-[13px] outline-none focus:border-orange" />
         </div>
         <div className="grid min-w-[700px] grid-cols-[1.8fr_1.2fr_1fr_0.9fr_264px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
           <div>Socio</div><div>Plan</div><div>Estado</div><div>Vence</div><div className="text-right">Acciones</div>
@@ -379,7 +390,9 @@ export default function Membresias() {
 
         {membresias.isLoading && <LoadingState variant="table" rows={5} />}
         {membresias.error && <ErrorState error={membresias.error} onRetry={membresias.refetch} />}
-        {(membresias.data || []).map((m) => {
+        {(membresias.data || [])
+          .filter((m) => !busca || m.socio?.nombre?.toLowerCase().includes(busca.toLowerCase()) || m.socio?.codigo?.includes(busca))
+          .map((m) => {
           const deBaja = m.socio?.estado === 'inactivo'
           const st = deBaja ? { bg: T.line2, color: T.muted, label: 'De baja' } : estadoBadge(m.estado)
           const dias = m.plan?.dias_congelamiento_anio || 0
@@ -397,8 +410,8 @@ export default function Membresias() {
                 <div className="text-[13px] font-bold">{m.plan?.nombre}</div>
                 {saldoDe(m) > 0 ? (
                   <button onClick={() => setAbonando(m)} title="Pagó en partes — clic para registrar un abono"
-                    className="cursor-pointer rounded-full border-none bg-amber-100 px-2 py-0.5 text-[10.5px] font-extrabold text-amber-800 hover:bg-amber-200">
-                    Debe {money(saldoDe(m), moneda)} · Abonar
+                    className={`cursor-pointer rounded-full border-none px-2 py-0.5 text-[10.5px] font-extrabold ${m.estado === 'vencida' ? 'bg-red text-white hover:bg-red-600' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}`}>
+                    {m.estado === 'vencida' ? '🚨 ' : ''}Debe {money(saldoDe(m), moneda)} · Abonar
                   </button>
                 ) : (
                   <div className="text-[10.5px] font-extrabold text-faint">{dias ? `Congela hasta ${dias} días/año` : 'Sin congelamiento'}</div>
@@ -425,9 +438,9 @@ export default function Membresias() {
                   {m.socio?.telefono && m.estado !== 'cancelada' ? (
                     <a href={waLink(m.socio.telefono, msgRenovacion({ socio: m.socio.nombre, gym: empresa?.nombre, plan: m.plan?.nombre, vence: m.fecha_fin }))}
                       target="_blank" rel="noreferrer" title="Recordarle por WhatsApp que renueve"
-                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] text-[15px] transition-transform hover:scale-110"
-                      style={{ background: '#25D36622', color: '#1DA851' }}>
-                      💬
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] transition-transform hover:scale-110"
+                      style={{ background: '#25D366' }}>
+                      <WhatsAppIcon size={17} />
                     </a>
                   ) : (
                     <span className="h-8 w-8 flex-shrink-0" />

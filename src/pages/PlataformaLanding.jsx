@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FitControlLogo } from '../components/icons.jsx'
+import { FitControlLogo, WhatsAppIcon } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
@@ -620,7 +620,7 @@ export default function PlataformaLanding() {
             <ul className="mt-3.5 space-y-2.5 text-[13.5px] font-bold">
               <li>
                 <a href={WA_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 transition-colors hover:text-white" style={{ color: C.muted }}>
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]" style={{ background: '#25D366' }}>💬</span>
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: '#25D366' }}><WhatsAppIcon size={11} /></span>
                   {WA_NUM}
                 </a>
               </li>

@@ -25,6 +25,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   })
   const [verif, setVerif] = useState(null) // resultado de la verificación de DNI (MAXFIND)
   const [dupSocio, setDupSocio] = useState(null) // ya existe un socio con este documento
+  const [paso, setPaso] = useState('dni') // el documento es el paso 1 obligatorio; el resto del form viene después
 
   // Anti-duplicados: si el documento ya es de un socio del gym, avisar y frenar
   useEffect(() => {
@@ -76,6 +77,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     return () => clearTimeout(t)
   }, [f.documento, f.nombre]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Paso 1 → 2: en cuanto el padrón responde (encontrado o no), se abre el
+  // resto del formulario con el nombre oficial ya puesto
+  useEffect(() => {
+    if (paso === 'dni' && verif && !verif.buscando && !dupSocio) setPaso('form')
+  }, [verif, paso, dupSocio])
+
+  function cambiarDocumento() {
+    setF((s) => ({ ...s, documento: '' }))
+    setVerif(null)
+    setPaso('dni')
+  }
+
   // Promos de grupo: cuántos vienen y cuántos pagan
   const esGrupo = plan && promo && ['2x1', 'grupal'].includes(promo.tipo)
   const nInvitados = !esGrupo ? 0 : promo.tipo === '2x1' ? 1 : Math.max(1, (Number(promo.grupo_personas) || 3) - 1)
@@ -126,9 +139,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     })
     setBusy(false)
     if (error) { setError(error.message); return }
-    // Si el DNI no estaba en el padrón, lo aportamos a MAXFIND (fire-and-forget)
-    if (verif?.encontrado === false && f.documento && f.nombre.trim()) {
-      verificarDni({ dni: f.documento, nombre: f.nombre, alimentar: true })
+    // Retroalimentar MAXFIND (fire-and-forget): DNI nuevo aporta el nombre, y
+    // los datos que el gym completó (teléfono, correo, nacimiento) enriquecen
+    // el padrón aunque el DNI ya existiera
+    const dniLimpio = f.documento.replace(/\D/g, '')
+    if (/^\d{8}$/.test(dniLimpio) && f.nombre.trim()) {
+      const extra = {}
+      if (f.telefono.trim()) extra.telefono = f.telefono.trim()
+      if (f.email.trim()) extra.email = f.email.trim()
+      if (f.fecha_nacimiento) extra.fecha_nacimiento = f.fecha_nacimiento
+      if (verif?.encontrado === false || Object.keys(extra).length) {
+        verificarDni({ dni: dniLimpio, nombre: f.nombre, alimentar: true, extra })
+      }
     }
     setExito({ codigo: data.codigo, total: data.total_cobrado, saldo: Number(data.saldo || 0), promo: data.promo_aplicada, codigosInvitados: data.codigos_invitados || [] })
     qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
@@ -177,15 +199,53 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     )
   }
 
+  // Paso 1: SOLO el documento. Con 8 dígitos se busca solo en el padrón y al
+  // responder se abre el formulario; extranjeros continúan sin verificar.
+  if (paso === 'dni') {
+    const esDni = /^\d{8}$/.test(f.documento.replace(/\D/g, ''))
+    return (
+      <Modal title={leadId ? 'Convertir en socio' : 'Nuevo socio'} subtitle="Paso 1 · Documento de identidad" onClose={onClose} width={400}>
+        <div className="flex flex-col gap-3.5">
+          <Campo label="Documento (DNI / CE) *" hint="Con 8 dígitos (DNI) buscamos a la persona en el padrón; extranjeros: carné o pasaporte y Continuar.">
+            <input autoFocus value={f.documento} onChange={set('documento')} maxLength={12} inputMode="numeric"
+              placeholder="44247191" className={inputCls + ' text-center text-[18px] font-extrabold tracking-[3px]'} />
+          </Campo>
+          {dupSocio && (
+            <p className="rounded-[8px] bg-red-50 px-3 py-2 text-[11.5px] font-extrabold text-red">
+              ⚠️ Este documento ya es socio: {dupSocio.nombre} (N.º {dupSocio.codigo}) — búscalo en Clientes en vez de duplicarlo.
+            </p>
+          )}
+          {verif?.buscando && (
+            <div className="flex flex-col items-center gap-2.5 rounded-[10px] bg-surface px-4 py-6">
+              <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-line border-t-orange" />
+              <span className="text-[12.5px] font-bold text-muted">Buscando en el padrón…</span>
+            </div>
+          )}
+          {!verif?.buscando && !esDni && !dupSocio && f.documento.trim().length >= 6 && (
+            <button onClick={() => setPaso('form')}
+              className="cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600">
+              Continuar (documento extranjero) →
+            </button>
+          )}
+          <button onClick={onClose}
+            className="cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted">
+            Cancelar
+          </button>
+        </div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal title={leadId ? 'Convertir en socio' : 'Nuevo socio'} subtitle="Se inscribe en la sede actual" onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
-        <Campo label="Nombre completo *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Carlos Mendoza" /></Campo>
-        <div className="grid grid-cols-2 gap-3">
-          <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} placeholder="999 888 777" /></Campo>
-          <Campo label="Documento (DNI / CE) *" hint="8 dígitos = DNI (se verifica); extranjeros: carné o pasaporte.">
-            <input required value={f.documento} onChange={set('documento')} className={inputCls} maxLength={12} />
-          </Campo>
+        {/* Documento ya capturado en el paso 1 */}
+        <div className="flex items-center justify-between rounded-[10px] bg-surface px-3.5 py-2.5">
+          <span className="text-[13px] font-extrabold">🪪 {f.documento}</span>
+          <button type="button" onClick={cambiarDocumento}
+            className="cursor-pointer border-none bg-transparent p-0 text-[12px] font-extrabold text-orange hover:underline">
+            ✏️ Cambiar
+          </button>
         </div>
         {dupSocio && (
           <p className="-mt-1.5 rounded-[8px] bg-red-50 px-3 py-1.5 text-[11.5px] font-extrabold text-red">
@@ -193,17 +253,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
           </p>
         )}
         {/* Resultado de la verificación de identidad (MAXFIND) */}
-        {verif?.buscando && <p className="-mt-1.5 text-[11.5px] font-bold text-faint">Verificando DNI en el padrón…</p>}
         {(() => {
           const t = textoVerificacion(verif)
           if (!t) return null
           const cls = t.tipo === 'ok' ? 'bg-green-50 text-green-700' : t.tipo === 'alerta' ? 'bg-red-50 text-red' : 'bg-amber-50 text-amber-800'
           return <p className={`-mt-1.5 rounded-[8px] px-3 py-1.5 text-[11.5px] font-extrabold ${cls}`}>{t.texto}</p>
         })()}
+        <Campo label="Nombre completo *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Carlos Mendoza" /></Campo>
         <div className="grid grid-cols-2 gap-3">
-          <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
+          <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} placeholder="999 888 777" /></Campo>
           <Campo label="Fecha de nacimiento"><input type="date" value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
         </div>
+        <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <Campo label="Objetivo">
           <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
         </Campo>

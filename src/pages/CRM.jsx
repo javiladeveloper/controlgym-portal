@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
-import { CheckIcon } from '../components/icons.jsx'
+import { CheckIcon, WhatsAppIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
@@ -229,7 +229,8 @@ export default function CRM() {
                       {ld.telefono && (
                         <a href={waLink(ld.telefono, msgLead({ lead: ld.nombre, gym: empresa?.nombre, etapa: ld.etapa }))}
                           target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
-                          className="rounded-md px-1 text-[13px] transition-transform hover:scale-110">💬</a>
+                          className="flex h-6 w-6 items-center justify-center rounded-full transition-transform hover:scale-110"
+                          style={{ background: '#25D366' }}><WhatsAppIcon size={13} /></a>
                       )}
                       <button onClick={() => setEditar(ld)} title="Editar prospecto"
                         className="cursor-pointer rounded-md border-none bg-transparent px-1 text-[13px] text-faint hover:text-orange">✏️</button>

@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient.js'
 // Verifica un DNI contra el padrón (vía nuestro puente con MAXFIND).
 // Nunca lanza: si el servicio no está, devuelve { encontrado: null } y la
 // operación del gym sigue normal.
-export async function verificarDni({ dni, nombre = '', alimentar = false }) {
+export async function verificarDni({ dni, nombre = '', alimentar = false, extra = null }) {
   try {
     const limpio = String(dni || '').replace(/\D/g, '')
     if (!/^\d{8}$/.test(limpio)) return { encontrado: null }
@@ -14,7 +14,7 @@ export async function verificarDni({ dni, nombre = '', alimentar = false }) {
         'content-type': 'application/json',
         authorization: `Bearer ${sess?.session?.access_token || ''}`,
       },
-      body: JSON.stringify({ dni: limpio, nombre, alimentar }),
+      body: JSON.stringify({ dni: limpio, nombre, alimentar, extra }),
     })
     return await res.json()
   } catch {

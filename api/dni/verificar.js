@@ -49,6 +49,13 @@ export default async function handler(req, res) {
     const nombre = String(req.body?.nombre || '').trim()
     if (!/^\d{8}$/.test(dni)) return res.status(400).json({ error: 'DNI inválido (8 dígitos)' })
 
+    // Datos de contacto que el gym completó: enriquecen el padrón (whitelist)
+    const extra = {}
+    for (const k of ['telefono', 'email', 'fecha_nacimiento']) {
+      const v = String(req.body?.extra?.[k] || '').trim().slice(0, 120)
+      if (v) extra[k] = v
+    }
+
     const headers = { authorization: `Bearer ${env('MAXFIND_API_KEY')}` }
     const r = await fetch(`${MAXFIND}/dni/${dni}`, { headers })
 
@@ -61,7 +68,7 @@ export default async function handler(req, res) {
           const put = await fetch(`${MAXFIND}/dni/${dni}`, {
             method: 'PUT',
             headers: { ...headers, 'content-type': 'application/json' },
-            body: JSON.stringify(partes),
+            body: JSON.stringify({ ...partes, ...extra }),
           }).catch(() => null)
           alimentado = !!put?.ok // 403 si la org no tiene can_write_cache: silencio
         }
@@ -72,6 +79,16 @@ export default async function handler(req, res) {
     const out = await r.json().catch(() => ({}))
     if (!r.ok) {
       return res.status(200).json({ encontrado: null, error: out?.error?.message || `MAXFIND ${r.status}` })
+    }
+
+    // DNI ya en el padrón: si el gym trae datos de contacto nuevos, se aportan
+    // igual (MAXFIND los mergea sobre el registro existente)
+    if (req.body?.alimentar && Object.keys(extra).length) {
+      fetch(`${MAXFIND}/dni/${dni}`, {
+        method: 'PUT',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify(extra),
+      }).catch(() => null)
     }
 
     const oficial = out.data?.nombre_completo || ''
