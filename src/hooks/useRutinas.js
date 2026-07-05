@@ -340,7 +340,7 @@ export function useSolicitudesCarga(empresaId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('solicitud_carga')
-        .select('id, socio_id, rutina_ejercicio_id, ejercicio_nombre, carga_actual, carga_deseada, mensaje_socio, creado_at, socio:socio(nombre, codigo)')
+        .select('id, socio_id, rutina_ejercicio_id, ejercicio_nombre, carga_actual, carga_deseada, mensaje_socio, creado_at, asignado_a, socio:socio(nombre, codigo), asignado:usuario!solicitud_carga_asignado_a_fkey(nombre)')
         .eq('empresa_id', empresaId)
         .eq('estado', 'pendiente')
         .order('creado_at')

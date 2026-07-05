@@ -245,6 +245,11 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
               className="cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-extrabold text-ink hover:text-orange">
               {s.socio?.nombre} <span className="text-[11px] font-bold text-faint">N.º {s.socio?.codigo} · {haceCuanto(s.creado_at)}</span>
             </button>
+            {s.asignado?.nombre && (
+              <span className="ml-2 rounded-full bg-[#EEF1FF] px-2 py-0.5 text-[10.5px] font-extrabold text-[#4C5AA8]">
+                → {s.asignado.nombre.split(' ')[0]}
+              </span>
+            )}
             <div className="text-[12.5px] font-bold text-muted">
               {s.ejercicio_nombre || 'Su rutina'}{s.carga_actual && s.carga_deseada ? `: ${s.carga_actual} → ${s.carga_deseada}` : ''}
               {s.mensaje_socio && <span className="font-semibold text-faint"> — "{s.mensaje_socio}"</span>}

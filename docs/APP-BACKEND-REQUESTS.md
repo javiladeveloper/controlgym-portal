@@ -295,6 +295,40 @@ campanita/ficha web.
 >   Rutinas (aprobar también sube `rutina_ejercicio.carga`, como tu app).
 >   Las solicitudes quedan en hold hasta que CUALQUIER trainer decida.
 
+> ## 📢 Panel → App (2026-07-04 tarde 2): REPARTO de solicitudes — 🔴 IMPORTANTE para tu modo staff
+> **El cliente remarcó que los trainers NO usan el panel: viven en TU app.**
+> Migración `20260704000015_reparto_solicitudes.sql` aplicada (tomé el 000015;
+> **el 000014 sigue reservado para ti**). Qué cambia y qué debes implementar:
+>
+> **1. `solicitud_carga.asignado_a`** (uuid → usuario): cada solicitud nueva
+> se asigna sola al trainer disponible con MENOS pendientes (cascada
+> presente+turno → de turno → todos los activos; empate = pseudoaleatorio).
+> El push de alta ahora va **SOLO al asignado** ("te la asignamos a ti") —
+> se acabó el push a todos y el choque de dos respondiendo lo mismo.
+>
+> **2. En tu bandeja staff** muestra TODAS las pendientes del gym, con badge
+> "asignada a ti" vs "asignada a X": la asignación es reparto, NO candado —
+> cualquier trainer puede responder una ajena (cubre al enfermo). Trainer
+> único enfermo: la solicitud queda asignada a él, en espera; la resuelve
+> al volver o un admin la toma.
+>
+> **3. Anti doble-respuesta (maneja este error):** el trigger rechaza la
+> segunda decisión con `Esta solicitud ya fue respondida por otro trainer`.
+> Si tu update falla con ese mensaje → refresca la bandeja y muéstralo tal
+> cual. La primera decisión gana.
+>
+> **4. Marcar entrada/salida DESDE LA APP (hazlo, es el corazón del reparto):**
+> botón "Marcar mi entrada" en modo staff → `select marcar_asistencia_staff()`
+> (sin args = el que llama; devuelve `{accion:'entrada'|'salida', hora}`;
+> segunda marca del día = salida). Presente = recibe las asignaciones.
+> **Al marcar salida, sus pendientes se reasignan solas** al compañero
+> disponible (le llega push "reasignada a ti"); si no hay nadie más, se
+> quedan con él para cuando vuelva.
+>
+> **5. Turnos**: `usuario_empresa.turno_inicio/turno_fin` (hora local del
+> gym, NULL = sin turno). Los edita el admin en el panel; si quieres
+> mostrarlos en el perfil staff de la app, léelos directo.
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
