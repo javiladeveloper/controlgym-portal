@@ -174,6 +174,24 @@ tienen nutricionista que da plan SEMANAL y recomienda suplementos):
 La app implementará su parte (rol nutricionista con vista de nutrición,
 plan por día, suplementos) apenas confirmes ✔ aplicada.
 
+## 📤 PEDIDO DEL PANEL → APP (2026-07-04 noche, encargo directo del cliente)
+
+En la vista del SOCIO, mostrar lo que el especialista escribe desde el panel:
+
+1. **`rutina.notas` (Indicaciones generales)** — mostrarlas junto a su rutina
+   (tarjeta 📝 arriba de los días): "Calentar 10 min antes de empezar…".
+   El panel ya las edita; verifica que la app del socio las pinte.
+2. **`dieta.suplementos`** — ya tienes la tarjeta 💊 (según tu cierre); solo
+   valida el formato que ahora genera el panel: una línea por suplemento,
+   con guiones largos, p. ej.:
+   `· Creatina Monohidrato 300g — lo tenemos en el gym, cómpralo en recepción (S/ 75)`
+   Esa línea de "cómpralo en recepción" es venta cruzada del gym — que se lea
+   bien (respetar saltos de línea, no truncar el precio).
+3. Contexto de datos nuevo del panel (nada que hacer, solo para que lo sepas):
+   comidas agrupadas por día en el panel igual que tu UI; banco `ejercicio`
+   sembrado con ~45 básicos por empresa y crece solo cuando el staff escribe
+   ejercicios nuevos (panel Y app se benefician del mismo catálogo).
+
 ## Notas / no urgente
 
 - El panel aún no tiene UI para `rutina_ejercicio` (ejercicios por día) ni
