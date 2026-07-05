@@ -876,9 +876,9 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
               <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre *" className={inputCls} />
               <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono / WhatsApp" className={inputCls} />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo (opcional)" className={inputCls} />
-              <input inputMode="numeric" maxLength={8} value={dni}
+              <input required inputMode="numeric" maxLength={8} minLength={8} value={dni}
                 onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
-                placeholder="DNI (opcional — agiliza tu inscripción)" className={inputCls} />
+                placeholder="DNI *" title="8 dígitos" className={inputCls} />
 
               <div>
                 <div className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿Cuándo te gustaría empezar?</div>

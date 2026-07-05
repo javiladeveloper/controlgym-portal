@@ -164,7 +164,9 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         <Campo label="Nombre completo *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Carlos Mendoza" /></Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} placeholder="999 888 777" /></Campo>
-          <Campo label="Documento (DNI)"><input value={f.documento} onChange={set('documento')} className={inputCls} maxLength={8} /></Campo>
+          <Campo label="Documento (DNI / CE) *" hint="8 dígitos = DNI (se verifica); extranjeros: carné o pasaporte.">
+            <input required value={f.documento} onChange={set('documento')} className={inputCls} maxLength={12} />
+          </Campo>
         </div>
         {/* Resultado de la verificación de identidad (MAXFIND) */}
         {verif?.buscando && <p className="-mt-1.5 text-[11.5px] font-bold text-faint">Verificando DNI en el padrón…</p>}
