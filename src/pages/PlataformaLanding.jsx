@@ -233,7 +233,18 @@ const PLANES = [
 // tocar código); si no, cae a un mini-mockup dibujado como respaldo.
 function SlideMock({ tipo }) {
   const [sinFoto, setSinFoto] = useState(false)
+  // La app es captura VERTICAL de celular → marco de teléfono más angosto;
+  // los módulos del panel son capturas horizontales anchas.
+  const esApp = tipo === 'app'
   if (!sinFoto) {
+    if (esApp) {
+      return (
+        <div className="mx-auto w-[230px] overflow-hidden rounded-[26px] p-1.5" style={{ background: '#0C1220', border: '6px solid #263149', boxShadow: '0 30px 70px rgba(0,0,0,0.5)' }}>
+          <img src="/landing/capturas/app.jpg" alt="La app FitCore del socio"
+            onError={() => setSinFoto(true)} loading="lazy" className="w-full rounded-[20px]" />
+        </div>
+      )
+    }
     return (
       <img src={`/landing/capturas/${tipo}.jpg`} alt={`Vista de ${tipo} en FitCore`}
         onError={() => setSinFoto(true)} loading="lazy"
