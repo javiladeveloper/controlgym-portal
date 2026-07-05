@@ -36,8 +36,14 @@ function CheckinModal({ sedeId, onClose }) {
     qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
   }
 
+  // Busca por nombre, DNI o N.º de socio (nadie se acuerda de su código;
+  // el DNI sí lo tienen a la mano)
   const matches = (clientes || []).filter(
-    (c) => q.trim() && (c.nombre.toLowerCase().includes(q.toLowerCase()) || c.codigo?.includes(q)),
+    (c) => q.trim() && (
+      c.nombre.toLowerCase().includes(q.toLowerCase())
+      || c.documento?.includes(q.trim())
+      || c.codigo?.includes(q.trim())
+    ),
   ).slice(0, 6)
 
   async function registrar(socio, direccion) {
@@ -86,7 +92,7 @@ function CheckinModal({ sedeId, onClose }) {
             <span className="h-px flex-1 bg-line" />o busca manual<span className="h-px flex-1 bg-line" />
           </div>
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} className={inputCls}
-            placeholder="Nombre o N.º de socio…" />
+            placeholder="Nombre, DNI o N.º de socio…" />
           <div className="mt-2.5 flex flex-col gap-1.5">
             {matches.map((c) => {
               const mem = c.membresia?.[0]
@@ -96,7 +102,7 @@ function CheckinModal({ sedeId, onClose }) {
                   <div className="min-w-0">
                     <div className="truncate text-[13.5px] font-extrabold">{c.nombre}</div>
                     <div className="text-[11px] font-semibold text-muted">
-                      N.º {c.codigo} · {mem ? `${mem.plan?.nombre || 'Plan'} ${activa ? 'activa' : mem.estado}` : 'sin membresía'}
+                      N.º {c.codigo}{c.documento ? ` · DNI ${c.documento}` : ''} · {mem ? `${mem.plan?.nombre || 'Plan'} ${activa ? 'activa' : mem.estado}` : 'sin membresía'}
                     </div>
                   </div>
                   <div className="flex flex-shrink-0 gap-1.5">
