@@ -94,7 +94,40 @@ function Ficha({ socioId, onBack, onVerSocio }) {
         </Card>
 
         <Card className="p-[19px]">
-          <div className="mb-1.5 text-[14px] font-extrabold">Historial de asistencia</div>
+          <div className="text-[14px] font-extrabold">Constancia (últimas 8 semanas)</div>
+          {(() => {
+            // Visitas por semana: detecta al socio que se está "enfriando"
+            const semanas = Array.from({ length: 8 }, () => 0)
+            const ahora = Date.now()
+            for (const e of ficha.entradas8sem || []) {
+              const idx = 7 - Math.min(7, Math.floor((ahora - new Date(e.ocurrido_en).getTime()) / (7 * 86400000)))
+              semanas[idx]++
+            }
+            const max = Math.max(1, ...semanas)
+            const estaSemana = semanas[7]
+            const promedio = semanas.slice(0, 7).reduce((a, b) => a + b, 0) / 7
+            const enfriando = promedio >= 1.5 && estaSemana === 0
+            return (
+              <>
+                <div className="mt-2.5 flex h-[72px] items-stretch gap-1.5">
+                  {semanas.map((n, i) => (
+                    <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
+                      <div className="w-full rounded-t-[4px]"
+                        style={{ height: `${Math.round((n / max) * 100)}%`, minHeight: 2, background: n === 0 ? '#E5E7EB' : i === 7 ? '#FF6B35' : '#1D9E75' }}
+                        title={`${n} visita${n === 1 ? '' : 's'}`} />
+                      <div className="text-[9px] font-bold text-faint">{i === 7 ? 'hoy' : `-${7 - i}s`}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className={`mt-2 rounded-[8px] px-2.5 py-1.5 text-[11.5px] font-extrabold ${enfriando ? 'bg-red-50 text-red' : 'bg-surface text-muted'}`}>
+                  {enfriando
+                    ? '⚠️ Venía seguido y esta semana no apareció — buen momento para escribirle'
+                    : `Promedio: ${promedio.toFixed(1)} visitas/semana · esta semana: ${estaSemana}`}
+                </div>
+              </>
+            )
+          })()}
+          <div className="mb-1.5 mt-4 border-t border-line2 pt-3 text-[14px] font-extrabold">Últimas visitas</div>
           {ficha.visitas.length === 0 && <div className="py-4 text-[12.5px] font-semibold text-muted">Sin visitas registradas.</div>}
           {ficha.visitas.map((v) => (
             <div key={v.id} className="flex items-center justify-between border-b border-line2 py-2.5">

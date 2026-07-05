@@ -39,6 +39,17 @@ export function useSocioFicha(socioId) {
         .order('ocurrido_en', { ascending: false })
         .limit(5)
 
+      // Entradas de las últimas 8 semanas para el gráfico de constancia
+      const hace8sem = new Date(Date.now() - 56 * 86400000).toISOString()
+      const { data: entradas } = await supabase
+        .from('checkin')
+        .select('ocurrido_en')
+        .eq('socio_id', socioId)
+        .eq('direccion', 'entrada')
+        .eq('resultado', 'permitido')
+        .gte('ocurrido_en', hace8sem)
+        .limit(500)
+
       // Si entró con una promo de grupo (2x1 / NxM), traer con quiénes
       let grupoPromo = []
       const mem = socio.membresia?.[0]
@@ -53,7 +64,7 @@ export function useSocioFicha(socioId) {
         grupoPromo = (grupo || []).map((g) => g.socio).filter(Boolean)
       }
 
-      return { ...socio, visitas: visitas || [], grupoPromo }
+      return { ...socio, visitas: visitas || [], entradas8sem: entradas || [], grupoPromo }
     },
   })
 }

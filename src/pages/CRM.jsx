@@ -5,6 +5,7 @@ import { CheckIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
+import CampanaWhatsAppModal from '../components/forms/CampanaWhatsAppModal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
@@ -103,6 +104,7 @@ export default function CRM() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
   const [nuevoOpen, setNuevoOpen] = useState(false)
+  const [campanaOpen, setCampanaOpen] = useState(false)
   const [editar, setEditar] = useState(null) // lead en edición
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
   const leads = useLeads(sedeId)
@@ -125,11 +127,18 @@ export default function CRM() {
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">CRM · Prospectos</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Embudo de captación y seguimiento · {sedeNombre}</p>
         </div>
-        <button onClick={() => setNuevoOpen(true)}
-          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo prospecto</button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setCampanaOpen(true)} title="Mensajes por segmento: vencidos, por vencer, de baja…"
+            className="cursor-pointer rounded-[10px] border border-green-300 bg-green-50 px-[16px] py-[11px] text-[13px] font-extrabold text-green-700 transition-colors hover:bg-green-100">
+            📣 Campaña WhatsApp
+          </button>
+          <button onClick={() => setNuevoOpen(true)}
+            className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo prospecto</button>
+        </div>
       </div>
 
       {nuevoOpen && <ProspectoModal sedeId={sedeId} empresaId={empresa?.id} onClose={() => setNuevoOpen(false)} />}
+      {campanaOpen && <CampanaWhatsAppModal sedeId={sedeId} onClose={() => setCampanaOpen(false)} />}
       {editar && <ProspectoModal sedeId={sedeId} empresaId={empresa?.id} lead={editar} onClose={() => setEditar(null)} />}
       {convertir && (
         <NuevoSocioModal
