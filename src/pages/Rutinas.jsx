@@ -436,27 +436,42 @@ function RutinasImpl() {
                 </button>
               </div>
             )}
-            {/* Cabeceras: el chip de día arma el plan SEMANAL (Todos = diario) */}
-            {meals.length > 0 && (
-              <div className="mt-4 hidden flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.5px] text-faint sm:flex">
-                <span className="w-[118px]">Comida</span>
-                <span className="w-[92px]">Hora</span>
-                <span className="w-[104px]" title="Todos = se come a diario; un día = solo ese día (plan semanal)">¿Qué día? ⓘ</span>
-                <span className="min-w-[160px] flex-1">Qué come</span>
-                <span className="w-[72px] text-right">Calorías</span>
-                <span className="w-[40px]" />
-              </div>
-            )}
-            <div className="mt-1.5 flex flex-col gap-2.5">
-              {meals.map((m) => (
-                <ComidaFila key={m.id} comida={m}
-                  onGuardar={(c) => { guardarComida.mutate(c, { onError: (e) => toast.error(e.message) }); setEnviado(false) }}
-                  onEliminar={(id) => { eliminarComida.mutate(id); setEnviado(false) }} />
-              ))}
+            {/* Agrupado por día: primero la base diaria, luego cada excepción.
+                Cambiar el chip de día de una comida la mueve a su grupo. */}
+            <div className="mt-4 flex flex-col gap-2.5">
+              {(() => {
+                const orden = (a, b) => String(a.hora || '').localeCompare(String(b.hora || ''))
+                const grupos = [
+                  { dia: null, titulo: '📌 Base diaria (se repite todos los días)' },
+                  ...[1, 2, 3, 4, 5, 6, 7].map((n) => ({ dia: n, titulo: `📅 Solo los ${DIA_NOMBRE[n].toLowerCase()}` })),
+                ]
+                return grupos.map((g) => {
+                  const filas = meals.filter((m) => (m.dia_semana ?? null) === g.dia).sort(orden)
+                  if (filas.length === 0) return null
+                  return (
+                    <div key={g.dia ?? 'todos'}
+                      className={`rounded-xl border p-2.5 ${g.dia ? 'border-orange/30 bg-orange-50/40' : 'border-line bg-white'}`}>
+                      <div className={`mb-2 text-[11.5px] font-extrabold ${g.dia ? 'text-orange' : 'text-muted'}`}>{g.titulo}</div>
+                      <div className="hidden flex-wrap items-center gap-2 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.5px] text-faint sm:flex">
+                        <span className="w-[118px]">Comida</span><span className="w-[92px]">Hora</span>
+                        <span className="w-[104px]">Día</span><span className="min-w-[160px] flex-1">Qué come</span>
+                        <span className="w-[72px] text-right">Calorías</span><span className="w-[40px]" />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {filas.map((m) => (
+                          <ComidaFila key={m.id} comida={m}
+                            onGuardar={(c) => { guardarComida.mutate(c, { onError: (e) => toast.error(e.message) }); setEnviado(false) }}
+                            onEliminar={(id) => { eliminarComida.mutate(id); setEnviado(false) }} />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
               {dieta.data?.id && (
                 <button onClick={() => agregarComida.mutate({ dietaId: dieta.data.id, orden: meals.length + 1 })}
                   className="cursor-pointer self-start rounded-[9px] border border-dashed border-line bg-white px-3.5 py-2 text-[12px] font-extrabold text-muted hover:border-orange hover:text-orange">
-                  + Agregar comida
+                  + Agregar comida <span className="font-semibold text-faint">(nace en "Todos"; cámbiale el día para hacerla semanal)</span>
                 </button>
               )}
             </div>
