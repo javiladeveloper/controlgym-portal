@@ -34,6 +34,9 @@ const PASOS = [
 ]
 
 const REG = 'https://fitcorecenter.com/registro'
+// Gym de ejemplo real: la landing en vivo de MaximusGym (la captura de la
+// seccion web es de este mismo gym, asi el boton "ver en vivo" lleva al mismo).
+const GYM_EJEMPLO = 'https://maximusgym.fitcorecenter.com'
 
 // Pantallas del panel para el tour "por dentro" (capturas reales de MaximusGym).
 const TOUR = [
@@ -132,6 +135,27 @@ export default function DemoVenta() {
         @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
         .dv-a { text-decoration: none; }
         @keyframes dvFade { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Marco de navegador de la seccion web (landing real de Maximus) */
+        .dv-browser { display: block; text-decoration: none; border-radius: 14px; overflow: hidden;
+          border: 1px solid rgba(255,180,60,.22); background: #0A1120;
+          box-shadow: 0 34px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,180,60,.06), 0 18px 70px -20px rgba(240,175,60,.35);
+          transition: transform .3s ease, box-shadow .3s ease; }
+        .dv-browser:hover { transform: translateY(-5px);
+          box-shadow: 0 44px 110px rgba(0,0,0,.6), 0 26px 90px -18px rgba(240,175,60,.5); }
+        .dv-bwbar { display: flex; align-items: center; gap: 7px; padding: 9px 14px;
+          background: #131C2E; border-bottom: 1px solid rgba(255,255,255,.07); }
+        .dv-dot { width: 11px; height: 11px; border-radius: 999px; display: inline-block; }
+        .dv-url { margin-left: 12px; font-size: 11.5px; font-weight: 600; color: ${C.muted};
+          background: #0A1120; padding: 4px 12px; border-radius: 7px; letter-spacing: .2px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dv-bwshot { position: relative; line-height: 0; }
+        .dv-bwshot img { display: block; width: 100%; }
+        .dv-live { position: absolute; right: 12px; bottom: 12px; background: ${C.orange};
+          color: #fff; font-size: 12px; font-weight: 800; padding: 7px 13px; border-radius: 999px;
+          line-height: 1; box-shadow: 0 8px 24px rgba(255,107,53,.4); opacity: 0; transform: translateY(6px);
+          transition: opacity .3s ease, transform .3s ease; }
+        .dv-browser:hover .dv-live { opacity: 1; transform: none; }
       `}</style>
       {tourOpen && <TourPanel onClose={() => setTourOpen(false)} />}
 
@@ -223,16 +247,31 @@ export default function DemoVenta() {
         </div>
       </section>
 
-      {/* Web propia */}
-      <section style={{ padding: '70px 0', borderTop: `1px solid ${C.line}` }}>
-        <div className="dv-wrap dv-web" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 54, alignItems: 'center' }}>
-          <img className="dv-shot reveal" src={cap('web')} alt="Página web del gimnasio" loading="lazy" />
+      {/* Web propia — captura real de MaximusGym en un marco de navegador,
+          con boton que abre su landing en vivo (el mismo gym de la captura). */}
+      <section style={{ padding: '78px 0', borderTop: `1px solid ${C.line}` }}>
+        <div className="dv-wrap dv-web" style={{ display: 'grid', gridTemplateColumns: '1.18fr 1fr', gap: 54, alignItems: 'center' }}>
+          {/* Marco de navegador con la landing real de Maximus */}
+          <a className="dv-browser reveal" href={GYM_EJEMPLO} target="_blank" rel="noopener noreferrer" aria-label="Ver la página de MaximusGym en vivo">
+            <div className="dv-bwbar">
+              <span className="dv-dot" style={{ background: '#FF5F57' }} />
+              <span className="dv-dot" style={{ background: '#FEBC2E' }} />
+              <span className="dv-dot" style={{ background: '#28C840' }} />
+              <span className="dv-url">🔒 maximusgym.fitcorecenter.com</span>
+            </div>
+            <div className="dv-bwshot">
+              <img src={cap('web')} alt="Página web de MaximusGym" loading="lazy" />
+              <span className="dv-live">Ver en vivo ↗</span>
+            </div>
+          </a>
           <div className="reveal">
+            <span style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.orange, marginBottom: 12 }}>Página web incluida</span>
             <h2 style={{ fontSize: 'clamp(24px,3.5vw,32px)', letterSpacing: '-.7px', lineHeight: 1.14, fontWeight: 800, margin: '0 0 14px' }}>Tu propia página web,<br />sin pagar un diseñador</h2>
-            <p style={{ color: C.muted, fontWeight: 500, lineHeight: 1.6, fontSize: 14.5, margin: '0 0 16px', maxWidth: 440 }}>Cada gimnasio recibe su página con dirección propia (tugym.fitcorecenter.com), lista para compartir en redes. Los interesados caen directo a tu CRM.</p>
-            <div style={{ background: C.orangeSoft, border: '1px solid rgba(255,107,53,.28)', borderRadius: 12, padding: '14px 16px', fontSize: 13, lineHeight: 1.55, fontWeight: 600 }}>
+            <p style={{ color: C.muted, fontWeight: 500, lineHeight: 1.6, fontSize: 14.5, margin: '0 0 18px', maxWidth: 440 }}>Cada gimnasio recibe su página con dirección propia (tugym.fitcorecenter.com), lista para compartir en redes. Los interesados caen directo a tu CRM.</p>
+            <div style={{ background: C.orangeSoft, border: '1px solid rgba(255,107,53,.28)', borderRadius: 12, padding: '14px 16px', fontSize: 13, lineHeight: 1.55, fontWeight: 600, marginBottom: 20 }}>
               <b style={{ color: C.orange }}>Ningún otro sistema en Perú te da esto:</b> otros muestran una ficha genérica con la marca de ellos. Aquí la página es <b>tuya</b> — tu dirección, tus colores, tu estilo.
             </div>
+            <a className="dv-a" href={GYM_EJEMPLO} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', color: C.ink, padding: '12px 20px', borderRadius: 11, fontWeight: 800, fontSize: 14, border: `1.5px solid ${C.orange}` }}>Ver un gym de ejemplo →</a>
           </div>
         </div>
       </section>
