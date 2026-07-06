@@ -714,6 +714,44 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
+      {/* Asistente de IA que responde tus redes — Próximamente (motor Leadia) */}
+      <section id="asistente-ia" className="lp-rev relative overflow-hidden py-16">
+        <div className="pointer-events-none absolute -left-32 top-8 h-[400px] w-[400px] rounded-full opacity-[0.10] blur-3xl" style={{ background: C.primary }} />
+        <div className="relative mx-auto max-w-[1100px] px-6">
+          <div className="text-center">
+            <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[1.5px]" style={{ background: 'rgba(255,107,53,0.12)', color: C.primary }}>
+              🤖 Muy pronto
+            </span>
+            <h2 className="mt-4 text-[30px] font-extrabold tracking-[-0.8px]">Una IA que responde tus redes por ti</h2>
+            <p className="mx-auto mt-2 max-w-[600px] text-[14.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+              Ya no pierdas al interesado que escribe a medianoche. Un asistente de IA
+              contesta al instante en WhatsApp, Instagram, Messenger y TikTok, resuelve
+              sus dudas de precios y horarios, y solo te avisa cuando está listo para inscribirse.
+            </p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['💬', 'Contesta en todas tus redes', 'WhatsApp, Instagram, Messenger y TikTok respondidos al instante, 24/7 — como si tuvieras a alguien atento a los mensajes toda la noche.'],
+              ['🎯', 'Separa al que sí va', 'La IA distingue al curioso del que quiere inscribirse. Al interesado caliente te lo pasa con un resumen y una respuesta lista para enviar.'],
+              ['🔁', 'No deja enfriar a nadie', 'Al que preguntó y no volvió, le da seguimiento solo con mensajes de WhatsApp — y reactiva a los socios que dejaron de venir.'],
+              ['📋', 'Todo cae en tu CRM', 'Cada conversación queda registrada como un interesado en tu CRM de FitCore, con su estado y de qué red llegó. Nada se pierde.'],
+            ].map(([ic, t, d]) => (
+              <div key={t} className="rounded-lg p-5" style={{ background: C.surface, border: C.border }}>
+                <div className="text-[26px]">{ic}</div>
+                <div className="mt-2.5 text-[14.5px] font-extrabold">{t}</div>
+                <div className="mt-1.5 text-[12.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>{d}</div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-8 text-center text-[13px] font-semibold" style={{ color: C.muted }}>
+            Se integra con tu FitCore: los interesados que capta llegan directo a tu CRM.
+            Un <b className="text-white">adicional opcional</b> — actívalo cuando esté listo y págalo solo si lo usas.
+          </p>
+        </div>
+      </section>
+
       {/* Pasos */}
       <section className="lp-rev py-16" style={{ background: C.surface }}>
         <div className="mx-auto max-w-[960px] px-6">
