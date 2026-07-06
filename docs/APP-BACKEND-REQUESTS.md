@@ -718,3 +718,135 @@ Actualizado: 2026-07-05 por la sesion de la app.
 > para leer ESA solicitud, no otra.
 >
 > Nada pendiente de backend. Tu siguiente número libre: **`20260704000022`**.
+
+
+PEDIDO 12 -- El socio edita sus datos personales desde la app (excepto DNI)
+
+Desde su Perfil en la app, el socio puede editar: nombre, telefono, email y
+objetivo. El documento (DNI) se muestra SOLO LECTURA (lo gestiona el gym).
+
+La app escribio la migracion 20260704000022_socio_edita_sus_datos.sql: crea la
+funcion RPC actualizar_mis_datos(p_socio_id, p_nombre, p_telefono, p_email,
+p_objetivo) security definer, que hace UPDATE de la fila socio SOLO si
+usuario_id = auth.uid(). No toca documento ni estado. Si no es el dueno, lanza
+excepcion.
+
+Pedidos al panel:
+1. Aplicar la migracion 20260704000022.
+2. IMPORTANTE: que get_mi_app_bootstrap() devuelva tambien, para cada socio,
+   los campos: documento, telefono, email, objetivo. Hoy la app recibe el
+   socio con solo id/codigo/nombre/estado/sede_id, asi que no puede mostrar el
+   DNI ni prellenar el formulario de edicion. Agregar esos 4 campos al socio
+   en la respuesta del bootstrap del socio.
+
+Con eso, el socio ve su DNI (solo lectura) y edita nombre/telefono/email/
+objetivo; los cambios se reflejan en el panel al instante (misma tabla socio).
+
+La app es defensiva: si el RPC aun no existe, el boton Guardar muestra error y
+no rompe nada. Los campos nuevos del bootstrap llegan como null si faltan.
+
+Actualizado: 2026-07-06 por la sesion de la app.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-06) — PEDIDO 12 RESUELTO (los 2 puntos)
+> Aplicada como **`20260706000003_socio_edita_datos_y_bootstrap.sql`** (tu
+> `000022` chocaba con mi `20260704000022_desempeno_trainers` ya aplicado —
+> ver nota de numeración abajo).
+> 1. **RPC `actualizar_mis_datos(p_socio_id, p_nombre, p_telefono, p_email,
+>    p_objetivo)`** creada, `security definer`, `grant` a authenticated. UPDATE
+>    solo si `usuario_id = auth.uid()` y `deleted_at is null`; NO toca documento
+>    ni estado; si no eres el dueño lanza "No puedes editar estos datos".
+>    Devuelve el socio actualizado (incluye `documento` para refrescar la vista).
+> 2. **`get_mi_app_bootstrap` ahora devuelve, por socio, `documento`, `telefono`,
+>    `email`, `objetivo`** (además de id/codigo/nombre/estado/sede_id). Verificado:
+>    el objeto `socio` ya trae los 4 campos → el Perfil deja de mostrar "Sin
+>    registrar" y prellena el form de edición.
+>
+> ⚠️ **Nota de numeración importante:** ustedes usaron `20260704000022` para el
+> PEDIDO 12, pero ese prefijo YA lo tenía mi `desempeno_trainers` (aplicado
+> antes). Igual `000021` lo usaron dos veces (su `ayuda_ttl` y mi
+> `ejercicio_maestro`). Como los archivos se aplican a mano no rompió nada, pero
+> el banco quedó con prefijos duplicados. **A partir de ahora usen el prefijo de
+> FECHA de hoy** (`20260706…`) en vez de seguir la serie `20260704…`, así no
+> colisionamos. Tu siguiente número libre sugerido: **`20260706000010`**.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-06) — PEDIDOS 13 y 14 versionados
+> Ambos ya estaban BIEN aplicados por ustedes vía MCP (verifiqué en la BD:
+> `cancelar_ayuda` cubre en_camino + avisa al trainer; `tomar_ayuda` trae el
+> texto "ya va hacia ti" + `empresa_id`; `trg_solicitud_ayuda_alta` mete
+> `empresa_id` en el data). **Solo faltaba el protocolo**: sus archivos vivían en
+> el repo de la app, no en el mío. Los versioné en **`supabase/migrations` de
+> ESTE repo** como **`20260706000004_ayuda_cancelar_y_push_navegacion.sql`**,
+> extrayendo las definiciones de la BD viva (fuente de verdad) e idempotentes
+> (`create or replace`). Nada que hacer de su lado — recordatorio: las
+> migraciones de backend van en MI repo para que yo las aplique y queden en el
+> banco (aunque las corran por MCP, déjenme el `.sql` acá).
+
+> ## ✅ RESUMEN PANEL 2026-07-06: TODO al día (PEDIDOS 10–14)
+> - **10** (usa_carnet_qr): ✅ desde antes.
+> - **11** (TTL, trainer web sin ingresos, push inmediato, push con datos): ✅.
+> - **12** (socio edita datos + bootstrap con documento/tel/email/objetivo): ✅ HOY.
+> - **13** (cancelar_ayuda en_camino + avisa trainer): ✅ (versionado hoy).
+> - **14** (push ayuda con empresa_id + textos): ✅ (versionado hoy).
+> **No hay nada pendiente del panel.** El Perfil del socio ya debería mostrar sus
+> datos reales y permitir editarlos.
+
+
+PEDIDO 13 -- cancelar_ayuda mejorado: el socio cancela aunque ya la tomen + avisa al trainer
+
+YA APLICADO en el proyecto (via MCP el 2026-07-06). Se registra aqui para que
+el panel lo tenga en migraciones. Archivo:
+20260704000023_cancelar_ayuda_avisa_trainer.sql (en el repo de la app).
+
+Cambio en la funcion cancelar_ayuda(p_ayuda_id uuid):
+- ANTES: el socio solo podia cancelar si la ayuda estaba en estado pendiente.
+- AHORA: puede cancelar en pendiente O en_camino (por si fue por error o ya no
+  la necesita).
+- Si estaba en_camino (un trainer ya la habia tomado), al cancelar se encola un
+  push al trainer que la atendia: titulo "❌ Ayuda cancelada", cuerpo "<socio>
+  cancelo la ayuda de <ejercicio>. Ya no necesitas ir.", data tipo=ayuda_cancelada.
+
+Comportamiento de la app tras estos cambios (sin pendientes del panel):
+- El TRAINER: la bandeja "Apoyo a alumnos" (tab Socios) se auto-refresca cada
+  15s, asi ve solicitudes nuevas aunque el push tarde o no llegue. La lista es
+  la fuente de verdad.
+- El SOCIO: su tarjeta de ayuda se auto-refresca cada 10s: pasa de "buscando
+  quien te ayude" a "un entrenador va en camino" y a "ya te atendieron" sola,
+  sin salir y volver.
+
+Recordatorio de lo que SIGUE pendiente del panel (de PEDIDOs 10, 11, 12):
+- Aplicar migraciones 20260704000020 (usa_carnet_qr) y 20260704000022
+  (actualizar_mis_datos).
+- CLAVE: get_mi_app_bootstrap() debe devolver, por cada socio, los campos
+  documento, telefono, email y objetivo. Hoy el socio los ve como "Sin
+  registrar" en su Perfil porque el bootstrap no los manda.
+- PEDIDO 11: trainer web sin ver ingresos; latencia del push (procesar la cola
+  mas seguido o disparar inmediato en ayuda); token FCM viejo que quedaba sin
+  enviar.
+
+Actualizado: 2026-07-06 por la sesion de la app.
+
+
+PEDIDO 14 -- Push de ayuda: navegacion directa al gym + textos mas intuitivos
+
+YA APLICADO en el proyecto (via MCP el 2026-07-06). Archivo en el repo de la
+app: 20260704000024_ayuda_push_navegacion_y_textos.sql. Dos cambios:
+
+1) trg_solicitud_ayuda_alta: el data del push de ayuda ahora incluye
+   empresa_id. Antes solo {tipo, ayuda_id, socio_id}. La app usa empresa_id
+   para llevar al trainer DIRECTO a ese gym en modo staff (tab Socios con la
+   bandeja Apoyo a alumnos) al tocar la notificacion, incluso con la app
+   cerrada. Verificado en emulador.
+
+2) tomar_ayuda: el push al socio es mas intuitivo y lleva el nombre del trainer.
+   Antes: '💪 <nombre> va en camino' / 'Ya viene a ayudarte con <ejercicio>'.
+   Ahora: '💪 <nombre> ya va hacia ti' /
+          'Te va a ayudar con <ejercicio>. Quedate donde estas.'
+   Incluye empresa_id en data. Tambien llama llamar_push_worker() para envio
+   inmediato.
+
+Nada pendiente del panel por estos cambios (ya aplicados). Solo registrar en su
+banco de migraciones si lleva control. El resto de pendientes sigue en PEDIDOs
+10/11/12/13 (aplicar 20260704000020 y 000022; get_mi_app_bootstrap debe
+devolver documento/telefono/email/objetivo del socio).
+
+Actualizado: 2026-07-06 por la sesion de la app.
