@@ -140,7 +140,9 @@ const HORAS = Array.from({ length: 15 }, (_, i) => {
 
 export default function Dashboard() {
   const { sedeId, sedeNombre } = usePanel()
-  const { usuario, empresa } = useAuth()
+  const { usuario, empresa, rol } = useAuth()
+  // Los especialistas (entrenador/nutricionista) no ven la plata del gym
+  const veIngresos = rol === 'admin' || rol === 'recepcion'
   const [checkinOpen, setCheckinOpen] = useState(false)
   const kpis = useDashboardKpis(sedeId)
   const horas = useAsistenciaPorHora(sedeId)
@@ -179,7 +181,7 @@ export default function Dashboard() {
           <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
             delta={kpis.data.aforo_max ? `aforo ${Math.round((kpis.data.en_sede_hoy / kpis.data.aforo_max) * 100)}%` : ' '} />
           <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta=" " deltaColor={T.success} />
-          <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta=" " deltaColor={T.success} />
+          {veIngresos && <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta=" " deltaColor={T.success} />}
           <div className="rounded-card border border-orange-100 bg-orange-50 p-[17px]">
             <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-orange">Por vencer (7 días)</div>
             <div className="mt-1.5 text-[27px] font-extrabold text-orange">{kpis.data.por_vencer_7d ?? 0}</div>
@@ -271,8 +273,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Ingresos por día: cuánta plata entró en las últimas 2 semanas */}
-      {(ingresos.data || []).some((d) => d.total > 0) && (() => {
+      {/* Ingresos por día: cuánta plata entró en las últimas 2 semanas (solo quien ve plata) */}
+      {veIngresos && (ingresos.data || []).some((d) => d.total > 0) && (() => {
         const serie = ingresos.data
         const maxIng = Math.max(1, ...serie.map((d) => d.total))
         const totalIng = serie.reduce((n, d) => n + d.total, 0)
@@ -309,10 +311,12 @@ export default function Dashboard() {
           <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-chipnavy"><DocIcon stroke={T.navy} /></div>
           <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Socios esperando <span className="font-extrabold">rutina nueva</span> esta semana</div>
         </Card>
-        <Card className="flex items-center gap-3 p-[15px]">
-          <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-green-50"><ClockIcon stroke={T.success} /></div>
-          <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Revisa la <span className="font-extrabold">caja del día</span> en Finanzas</div>
-        </Card>
+        {veIngresos && (
+          <Card className="flex items-center gap-3 p-[15px]">
+            <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-green-50"><ClockIcon stroke={T.success} /></div>
+            <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Revisa la <span className="font-extrabold">caja del día</span> en Finanzas</div>
+          </Card>
+        )}
       </div>
     </div>
   )

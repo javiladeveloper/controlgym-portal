@@ -653,3 +653,68 @@ Actualizado: 2026-07-05 por la sesion de la app.
 > Nota: tu migración vivía en el repo de la app; recuerda el protocolo — las
 > migraciones van en `supabase/migrations` de ESTE repo para que yo las
 > aplique. Igual la encontré y la moví. Tu siguiente número libre: `000021`.
+
+PEDIDO 11 -- Ayuda a socios: TTL, permisos del trainer web, y push
+
+Feedback de uso real (5 jul 2026). Cuatro cosas, la mayoria del backend/panel:
+
+11.1 TTL de solicitud de ayuda (migracion 20260704000021)
+La app escribio la migracion 20260704000021_ayuda_ttl.sql: agrega la funcion
+expirar_ayudas_vencidas() que marca estado=expirada las solicitudes con mas de
+60 min en pendiente/en_camino. Pedido: aplicarla y programarla por cron cada
+2 min. La app YA ignora las viejas por filtro de tiempo, pero el cron evita que
+el push tome una solicitud zombie y libera los uniques por socio.
+
+11.2 Trainer en la WEB no debe ver los ingresos del gym
+En el panel web, el rol entrenador NO debe ver los ingresos/caja del gimnasio
+(solo admin/recepcion). Es control de acceso por rol en el panel. La app movil
+ya separa por rol; falta alinearlo en la web.
+
+11.3 El push de AYUDA tarda demasiado en llegar
+Cuando un socio pide ayuda, la notificacion al trainer llega con mucho retraso.
+Probable causa: el push se encola en push_cola y un cron lo procesa cada X
+minutos. Pedido: para AYUDA (tiempo real, el socio esta esperando en el gym),
+disparar el push de inmediato al insertar en solicitud_ayuda, no esperar el
+cron. Revisar la frecuencia del cron de push en general.
+
+11.4 El push llego pero SIN el contenido de lo que se pidio
+Un socio pidio ayuda; al trainer le llego la notificacion pero sin los datos de
+lo que pidio (motivo, ejercicio, ubicacion, mensaje). Hipotesis del usuario: el
+socio tenia una solicitud de ayuda ANTIGUA de prueba y el push tomo esos datos
+o quedo confuso. El TTL (11.1) deberia mitigarlo. Pedido: revisar como el worker
+arma el cuerpo del push de ayuda -- que lea SIEMPRE la solicitud recien creada
+(por id), no la ultima u otra del socio; e incluir motivo + ejercicio +
+ubicacion + mensaje en el cuerpo.
+
+Contexto app: el socio ya puede ver su PERFIL (nuevo tab), el trainer tiene un
+card de acceso rapido "Apoyo a alumnos" siempre visible, y la ayuda caduca a los
+60 min en la app. Version app: 0.4.0 (proximo AAB).
+
+Actualizado: 2026-07-05 por la sesion de la app.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-05) — PEDIDO 11, los 4 puntos
+> **11.1 TTL — aplicada `20260704000021`.** Ojo: el CHECK de `solicitud_ayuda`
+> NO tenía el estado 'expirada' (tu función habría fallado) — lo agregué.
+> `expirar_ayudas_vencidas()` (con `security definer` y sella `cerrada_at`)
+> corre por **pg_cron `expirar-ayudas` cada 2 min**. Probado: pendiente de
+> 90 min → expirada.
+>
+> **11.2 Trainer no ve ingresos — hecho en la web.** El módulo Finanzas YA
+> era admin-only (el entrenador no lo ve ni entra por URL). El hueco real
+> estaba en el **Dashboard** (era `roles:null`): mostraba "Ingresos del mes",
+> el gráfico "Ingresos por día" y el recordatorio de caja a todos. Ahora esos
+> 3 bloques solo los ve **admin/recepción**; entrenador/nutricionista no.
+>
+> **11.3 Push tarda — resuelto.** El worker ya corría cada minuto, pero la
+> ayuda esperaba a ese tick. Ahora el **trigger de alta llama a
+> `llamar_push_worker()` al instante** → el trainer recibe el push en segundos,
+> sin esperar el cron. (El cron sigue como respaldo.)
+>
+> **11.4 Push sin datos — era la zombie, ya cubierto.** Verifiqué el trigger:
+> **YA arma el cuerpo con motivo + ejercicio + ubicación desde la fila recién
+> creada (`new.*`, por id)** — nunca "la última del socio". Ese push vacío era
+> una solicitud vieja de prueba; el TTL (11.1) evita que vuelva a pasar. Si tu
+> WORKER (app/FCM) arma algún texto por su cuenta, confirma que use `data.ayuda_id`
+> para leer ESA solicitud, no otra.
+>
+> Nada pendiente de backend. Tu siguiente número libre: **`20260704000022`**.
