@@ -14,6 +14,7 @@ const Landing = lazy(() => import('./pages/Landing.jsx'))
 const PlataformaLanding = lazy(() => import('./pages/PlataformaLanding.jsx'))
 const LegalPage = lazy(() => import('./pages/LegalPage.jsx'))
 const Reclamaciones = lazy(() => import('./pages/Reclamaciones.jsx'))
+const DemoVenta = lazy(() => import('./pages/DemoVenta.jsx'))
 
 const Cargando = () => (
   <div className="flex min-h-screen items-center justify-center bg-canvas">
@@ -32,12 +33,23 @@ const root = ReactDOM.createRoot(document.getElementById('root'))
 
 const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad', '/devoluciones': 'devoluciones' }[window.location.pathname]
 const esReclamaciones = window.location.pathname === '/reclamaciones'
+const esDemo = window.location.pathname === '/demo'
 
 if (isPlataformaHome()) {
   root.render(
     <React.StrictMode>
       <Suspense fallback={<Cargando />}>
       <PlataformaLanding />
+    </Suspense>
+    </React.StrictMode>,
+  )
+} else if (esDemo) {
+  // La demo de venta se ve en /demo de cualquier host de la plataforma
+  // (fitcorecenter.com/demo, app.…/demo y localhost/demo en dev)
+  root.render(
+    <React.StrictMode>
+      <Suspense fallback={<Cargando />}>
+      <DemoVenta />
     </Suspense>
     </React.StrictMode>,
   )
