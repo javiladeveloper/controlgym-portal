@@ -43,6 +43,14 @@ function tiktokId(url) {
   return m ? m[1] : null
 }
 
+// Si una foto no carga (URL rota / bloqueada), oculta su contenedor en vez de
+// dejar un hueco blanco: sube ocultando el ancestro más cercano marcado con
+// data-fallback (una celda de galería, la foto de una sede, etc.).
+function ocultarSiFalla(e) {
+  const cont = e.currentTarget.closest('[data-fallback]') || e.currentTarget
+  cont.style.display = 'none'
+}
+
 // Iconos de redes sociales para el footer
 const ICONO_RED = {
   facebook: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5h1.3V4.9c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.2-3.2 3.3V11H9v3h2.3v7h2.2z" /></svg>,
@@ -380,24 +388,24 @@ export default function Landing({ slug }) {
           <div className="mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3"
             style={{ scrollbarWidth: 'thin' }}>
             {galeria.map((url, i) => (
-              <div key={i} className="h-[300px] w-[82%] flex-shrink-0 snap-center overflow-hidden sm:w-[420px]" style={{ borderRadius: rCard }}>
-                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <div key={i} data-fallback className="h-[300px] w-[82%] flex-shrink-0 snap-center overflow-hidden sm:w-[420px]" style={{ borderRadius: rCard }}>
+                <img src={url} alt="" onError={ocultarSiFalla} className="h-full w-full object-cover" loading="lazy" />
               </div>
             ))}
           </div>
         ) : (L.galeria_estilo || 'mosaico') === 'lista' ? (
           <div className="mx-auto mt-8 flex max-w-[760px] flex-col gap-4">
             {galeria.map((url, i) => (
-              <div key={i} className="aspect-[16/9] overflow-hidden" style={{ borderRadius: rCard }}>
-                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <div key={i} data-fallback className="aspect-[16/9] overflow-hidden" style={{ borderRadius: rCard }}>
+                <img src={url} alt="" onError={ocultarSiFalla} className="h-full w-full object-cover" loading="lazy" />
               </div>
             ))}
           </div>
         ) : (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {galeria.map((url, i) => (
-              <div key={i} className="aspect-[4/3] overflow-hidden" style={{ borderRadius: rCard }}>
-                <img src={url} alt="" className="h-full w-full object-cover transition-transform hover:scale-105" loading="lazy" />
+              <div key={i} data-fallback className="aspect-[4/3] overflow-hidden" style={{ borderRadius: rCard }}>
+                <img src={url} alt="" onError={ocultarSiFalla} className="h-full w-full object-cover transition-transform hover:scale-105" loading="lazy" />
               </div>
             ))}
           </div>
@@ -414,7 +422,7 @@ export default function Landing({ slug }) {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             {data.sedes.map((s) => (
               <div key={s.nombre} className="w-full max-w-[340px] overflow-hidden border border-line bg-white sm:w-[320px]" style={{ borderRadius: rCard }}>
-                {s.foto_url && <div className="aspect-[16/10] overflow-hidden"><img src={s.foto_url} alt="" className="h-full w-full object-cover" /></div>}
+                {s.foto_url && <div data-fallback className="aspect-[16/10] overflow-hidden"><img src={s.foto_url} alt="" onError={ocultarSiFalla} className="h-full w-full object-cover" /></div>}
                 <div className="p-5">
                   <div className="text-[16px] font-extrabold">{s.nombre}</div>
                   {(s.direccion || data.direccion) && <div className="mt-1 text-[13px] font-semibold text-muted">📍 {s.direccion || data.direccion}</div>}
