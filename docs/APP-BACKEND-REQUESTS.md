@@ -611,3 +611,45 @@ columna `ejercicio.video_url`), sin migración de schema. Cada gym igual puede
 sobreescribir con su propio link desde el panel.
 
 _Actualizado: 2026-07-05 por la sesión de la app._
+
+
+PEDIDO 10 -- Carnet QR configurable por gimnasio (flag usa_carnet_qr)
+
+Algunos gimnasios NO controlan acceso por QR. La app necesita un flag por
+gimnasio para ocultar el carnet y lo que dependa de control de acceso.
+
+La app escribio la migracion 20260704000020_carnet_qr_flag.sql en el repo de
+la app (carpeta docs de migraciones de backend). Contenido: agrega columna
+usa_carnet_qr (boolean not null default true) a la tabla public.empresa de
+forma idempotente. Default true, o sea los gyms existentes no cambian nada.
+
+Pedidos al panel:
+1. Aplicar la migracion 20260704000020.
+2. Toggle en la config del gimnasio: Carnet QR o control de acceso (on u off)
+   que escribe empresa.usa_carnet_qr.
+3. (No bloqueante) Incluir usa_carnet_qr en el bootstrap del socio a futuro.
+
+Con el flag en false la app oculta: tab Carnet, racha y visitas del socio, el
+mensaje de no registramos tu ingreso, y en la ficha staff las visitas mas el
+aviso de discrepancia. Con true o columna inexistente: todo como hoy.
+
+Actualizado: 2026-07-05 por la sesion de la app.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-05) — PEDIDO 10 RESUELTO, los 3 puntos
+> 1. **Migración aplicada** — `empresa.usa_carnet_qr` existe (copié tu
+>    `20260704000020` a supabase/migrations y la apliqué; los 9 gyms quedan
+>    en `true`, nada cambia).
+> 2. **Toggle en el panel** — Configuración → **Control de acceso**, tarjeta
+>    "¿Tu gimnasio controla el acceso?" (interruptor). Al apagarlo, escribe
+>    `usa_carnet_qr=false` y además oculta en el panel las secciones de
+>    lectores/enrolamiento (no tienen sentido sin control de acceso). Al
+>    prender vuelve todo.
+> 3. **Bootstrap YA lo trae** (no lo dejé "a futuro"): `get_mi_app_bootstrap`
+>    ahora incluye **`usa_carnet_qr`** dentro del objeto `empresa` de cada
+>    gimnasio (mig `20260705000002`). Léelo de ahí en un solo viaje; mantén tu
+>    fallback defensivo a `true` por si acaso. Probado: toggle guarda y el
+>    bootstrap expone el flag.
+>
+> Nota: tu migración vivía en el repo de la app; recuerda el protocolo — las
+> migraciones van en `supabase/migrations` de ESTE repo para que yo las
+> aplique. Igual la encontré y la moví. Tu siguiente número libre: `000021`.

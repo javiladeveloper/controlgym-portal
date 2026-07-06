@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, PrimaryButton, Badge } from '../../components/ui.jsx'
 import { LoadingState, ErrorState } from '../../components/states.jsx'
 import { inputCls } from '../../components/Modal.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { usePanel } from '../../store.jsx'
-import { useSedes } from '../../hooks/useConfiguracion.js'
+import { supabase } from '../../lib/supabaseClient.js'
+import { useSedes, useGuardarEmpresa } from '../../hooks/useConfiguracion.js'
 import { useClientes } from '../../hooks/useClientes.js'
 import { usePersonal } from '../../hooks/useOperaciones.js'
 import {
@@ -39,6 +40,25 @@ export default function TabAcceso() {
   const [titular, setTitular] = useState('socio') // 'socio' | 'personal'
   const [cred, setCred] = useState({ tipo: 'huella', valor: '', socioId: '', usuarioId: '' })
 
+  // Flag: ¿este gym controla acceso (carnet QR / lector)? Si off, la app del
+  // socio oculta el carnet, racha y visitas. Se lee directo (el bootstrap
+  // puede no traer la columna nueva todavía).
+  const guardarEmpresa = useGuardarEmpresa(empresa?.id)
+  const [usaQr, setUsaQr] = useState(null) // null=cargando
+  useEffect(() => {
+    if (!empresa?.id) return
+    supabase.from('empresa').select('usa_carnet_qr').eq('id', empresa.id).single()
+      .then(({ data }) => setUsaQr(data?.usa_carnet_qr ?? true))
+  }, [empresa?.id])
+
+  function toggleQr(nuevo) {
+    setUsaQr(nuevo)
+    guardarEmpresa.mutate({ usa_carnet_qr: nuevo }, {
+      onSuccess: () => toast.ok(nuevo ? 'Carnet QR activado' : 'Carnet QR desactivado'),
+      onError: (e) => { setUsaQr(!nuevo); toast.error(e.message) },
+    })
+  }
+
   function onGuardarDisp() {
     if (!disp.nombre.trim()) { toast.error('Ponle un nombre al lector'); return }
     if (!disp.sede_id) { toast.error('Elige la sede'); return }
@@ -60,6 +80,35 @@ export default function TabAcceso() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Interruptor maestro: ¿este gym usa control de acceso? */}
+      <Card className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[14.5px] font-extrabold">¿Tu gimnasio controla el acceso?</div>
+            <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">
+              Actívalo si registras la entrada de tus socios (por carnet QR de la app, lector o recepción).
+              Si tu gimnasio <b>no controla acceso</b>, desactívalo: la app del socio ocultará su carnet QR,
+              racha de asistencia y visitas.
+            </div>
+          </div>
+          <button
+            onClick={() => usaQr !== null && toggleQr(!usaQr)}
+            disabled={usaQr === null || guardarEmpresa.isPending}
+            className={`relative mt-1 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${usaQr ? 'bg-orange' : 'bg-line2'} disabled:opacity-50`}
+            aria-label="Activar control de acceso">
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${usaQr ? 'left-6' : 'left-1'}`} />
+          </button>
+        </div>
+        {usaQr === false && (
+          <p className="mt-3 rounded-[9px] bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-800">
+            Control de acceso desactivado. Tus socios no verán el carnet QR en la app. Puedes reactivarlo cuando quieras.
+          </p>
+        )}
+      </Card>
+
+      {/* Todo lo de control de acceso solo si el gym lo usa */}
+      {usaQr !== false && (
+      <>
       {/* Explicación de los 2 métodos */}
       <div className="rounded-[12px] border border-line bg-[#FAFBFC] p-4">
         <div className="text-[14px] font-extrabold">Control de acceso · dos métodos</div>
@@ -213,6 +262,8 @@ export default function TabAcceso() {
           </div>
         )}
       </Card>
+      </>
+      )}
     </div>
   )
 }
