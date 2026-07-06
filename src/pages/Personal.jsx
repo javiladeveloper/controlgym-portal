@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, Avatar, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { verificarDni, textoVerificacion } from '../lib/dni.js'
 import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -382,11 +383,30 @@ function useInvitaciones() {
 
 function InvitarModal({ sedeId, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ email: '', rol: 'recepcion', nombre: '', telefono: '', sueldo: '' })
+  const [f, setF] = useState({ email: '', rol: 'recepcion', nombre: '', telefono: '', sueldo: '', documento: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [ok, setOk] = useState(false)
+  const [verif, setVerif] = useState(null) // verificación de DNI del colaborador
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  // Verificar DNI del colaborador contra el padrón y autocompletar su nombre
+  // (igual que con socios: recepción solo tipea 8 dígitos).
+  useEffect(() => {
+    const dni = f.documento.replace(/\D/g, '')
+    if (dni.length !== 8) { setVerif(null); return }
+    if (verif?.encontrado && verif._dni === dni && f.nombre === verif.nombre_oficial) return
+    setVerif({ buscando: true })
+    const t = setTimeout(async () => {
+      const v = await verificarDni({ dni, nombre: f.nombre })
+      setVerif({ ...v, _dni: dni })
+      if (v.encontrado && v.nombre_oficial && f.nombre !== v.nombre_oficial) {
+        setF((s) => ({ ...s, nombre: v.nombre_oficial }))
+        setVerif({ ...v, _dni: dni, coincide: true, similitud: 1 })
+      }
+    }, 500)
+    return () => clearTimeout(t)
+  }, [f.documento, f.nombre]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function invitar(e) {
     e?.preventDefault()
@@ -395,9 +415,14 @@ function InvitarModal({ sedeId, onClose }) {
       p_email: f.email.trim().toLowerCase(), p_rol_codigo: f.rol, p_sede_id: sedeId,
       p_nombre: f.nombre.trim() || null, p_telefono: f.telefono.trim() || null,
       p_sueldo: f.sueldo === '' ? null : Number(f.sueldo),
+      p_documento: f.documento.trim() || null,
     })
     setBusy(false)
     if (error) { setError(error.message); return }
+    // DNI nuevo → alimentar MAXFIND con el nombre (fire-and-forget)
+    if (verif?.encontrado === false && f.documento && f.nombre.trim()) {
+      verificarDni({ dni: f.documento, nombre: f.nombre, alimentar: true })
+    }
     setOk(true)
     qc.invalidateQueries({ queryKey: ['invitaciones'] })
     qc.invalidateQueries({ queryKey: ['personal', sedeId] })
@@ -417,6 +442,16 @@ function InvitarModal({ sedeId, onClose }) {
   return (
     <Modal title="Agregar colaborador" subtitle="Se le da acceso al panel por invitación" onClose={onClose}>
       <form onSubmit={invitar} className="flex flex-col gap-3.5">
+        <Campo label="DNI del colaborador" hint="8 dígitos = DNI (autocompleta su nombre del padrón). Opcional; útil para la planilla.">
+          <input value={f.documento} onChange={set('documento')} className={inputCls} maxLength={12} inputMode="numeric" placeholder="44247191" />
+        </Campo>
+        {verif?.buscando && <p className="-mt-1.5 text-[11.5px] font-bold text-faint">Verificando DNI en el padrón…</p>}
+        {(() => {
+          const t = textoVerificacion(verif)
+          if (!t) return null
+          const cls = t.tipo === 'ok' ? 'bg-green-50 text-green-700' : t.tipo === 'alerta' ? 'bg-red-50 text-red' : 'bg-amber-50 text-amber-800'
+          return <p className={`-mt-1.5 rounded-[8px] px-3 py-1.5 text-[11.5px] font-extrabold ${cls}`}>{t.texto}</p>
+        })()}
         <Campo label="Correo de Google *" hint="Con este correo iniciará sesión en el panel.">
           <input type="email" required value={f.email} onChange={set('email')} className={inputCls} placeholder="colaborador@gmail.com" />
         </Campo>

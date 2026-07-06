@@ -27,13 +27,16 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const [dupSocio, setDupSocio] = useState(null) // ya existe un socio con este documento
   const [paso, setPaso] = useState('dni') // el documento es el paso 1 obligatorio; el resto del form viene después
 
-  // Anti-duplicados: si el documento ya es de un socio del gym, avisar y frenar
+  const [modoExistente, setModoExistente] = useState(false) // agregar membresía a un socio que ya existe
+
+  // Si el documento ya es de un socio del gym, lo detectamos para ofrecer
+  // agregarle una membresía en vez de duplicarlo (ex-socio que retoma, etc.)
   useEffect(() => {
     const doc = f.documento.trim()
     if (doc.length < 8) { setDupSocio(null); return }
     const t = setTimeout(async () => {
       const { data } = await supabase.from('socio')
-        .select('id, nombre, codigo').eq('documento', doc).is('deleted_at', null).limit(1)
+        .select('id, nombre, codigo, estado').eq('documento', doc).is('deleted_at', null).limit(1)
       setDupSocio(data?.[0] || null)
     }, 400)
     return () => clearTimeout(t)
@@ -126,6 +129,25 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   async function guardar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
+    // Modo "socio existente": agrega membresía sin recrear al socio.
+    if (modoExistente) {
+      if (!f.plan_id) { setBusy(false); setError('Elige un plan para agregarle la membresía'); return }
+      const { data, error } = await supabase.rpc('agregar_membresia_socio', {
+        p_socio_id: dupSocio.id, p_plan_id: f.plan_id, p_metodo_pago: f.metodo_pago,
+        p_promocion_id: f.promocion_id || null,
+        p_precio_acordado: usaAcordado ? acordadoNum : null,
+        p_monto_inicial: enPartes && puedePartes ? inicial : null,
+        p_motivo: usaAcordado ? 'Descuento por volver' : null,
+      })
+      setBusy(false)
+      if (error) { setError(error.message); return }
+      setExito({ codigo: data.codigo, total: data.total_cobrado, saldo: Number(data.saldo || 0), promo: data.nota, codigosInvitados: [] })
+      qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
+      qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
+      qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+      return
+    }
     const { data, error } = await supabase.rpc('inscribir_socio', {
       p_sede_id: sedeId,
       p_nombre: f.nombre, p_telefono: f.telefono || null, p_email: f.email || null,
@@ -170,7 +192,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
 
   if (exito) {
     return (
-      <Modal title={exito.codigosInvitados?.length ? `¡${1 + exito.codigosInvitados.length} socios inscritos! 🎉` : '¡Socio inscrito! 🎉'} onClose={onClose} width={400}>
+      <Modal title={modoExistente ? '¡Membresía agregada! 🎉' : exito.codigosInvitados?.length ? `¡${1 + exito.codigosInvitados.length} socios inscritos! 🎉` : '¡Socio inscrito! 🎉'} onClose={onClose} width={400}>
         <div className="rounded-[10px] bg-green-50 p-4 text-center">
           <div className="text-[15px] font-extrabold text-green-600">{f.nombre}</div>
           <div className="mt-1 text-[13px] font-bold text-muted">Socio N.º {exito.codigo}</div>
@@ -218,9 +240,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
               placeholder="44247191" className={inputCls + ' text-center text-[18px] font-extrabold tracking-[3px]'} />
           </Campo>
           {dupSocio && (
-            <p className="rounded-[8px] bg-red-50 px-3 py-2 text-[11.5px] font-extrabold text-red">
-              ⚠️ Este documento ya es socio: {dupSocio.nombre} (N.º {dupSocio.codigo}) — búscalo en Clientes en vez de duplicarlo.
-            </p>
+            <div className="rounded-[10px] border border-orange/40 bg-orange/5 p-3.5">
+              <div className="text-[12.5px] font-extrabold">
+                {dupSocio.estado === 'activo' ? '👤 Ya es socio' : '↩️ Ex-socio que vuelve'}: {dupSocio.nombre}
+              </div>
+              <div className="mt-0.5 text-[11.5px] font-semibold text-muted">
+                N.º {dupSocio.codigo}{dupSocio.estado !== 'activo' ? ' · estaba de baja' : ''} — no lo dupliques, agrégale una membresía nueva.
+              </div>
+              <button onClick={() => { setModoExistente(true); setF((s) => ({ ...s, nombre: dupSocio.nombre })); setPaso('form') }}
+                className="mt-2.5 w-full cursor-pointer rounded-[9px] border-none bg-orange py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600">
+                {dupSocio.estado === 'activo' ? 'Agregarle una membresía →' : 'Reactivarlo y darle membresía →'}
+              </button>
+            </div>
           )}
           {verif?.buscando && (
             <div className="flex flex-col items-center gap-2.5 rounded-[10px] bg-surface px-4 py-6">
@@ -254,11 +285,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             ✏️ Cambiar
           </button>
         </div>
-        {dupSocio && (
-          <p className="-mt-1.5 rounded-[8px] bg-red-50 px-3 py-1.5 text-[11.5px] font-extrabold text-red">
-            ⚠️ Este documento ya es socio: {dupSocio.nombre} (N.º {dupSocio.codigo}) — búscalo en Clientes en vez de duplicarlo.
-          </p>
-        )}
+        {modoExistente ? (
+          /* Socio existente: solo confirmamos quién es; los datos ya están */
+          <div className="rounded-[10px] border border-orange/40 bg-orange/5 px-3.5 py-3">
+            <div className="text-[13.5px] font-extrabold">
+              {dupSocio?.estado === 'activo' ? '👤' : '↩️'} {dupSocio?.nombre} <span className="text-[11.5px] font-bold text-faint">N.º {dupSocio?.codigo}</span>
+            </div>
+            <div className="mt-0.5 text-[11.5px] font-semibold text-muted">
+              {dupSocio?.estado === 'activo' ? 'Le agregas una membresía nueva.' : 'Vuelve al gimnasio — se reactivará al cobrar.'}
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Resultado de la verificación de identidad (MAXFIND) */}
         {(() => {
           const t = textoVerificacion(verif)
@@ -275,6 +313,8 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         <Campo label="Objetivo">
           <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
         </Campo>
+        </>
+        )}
         <Campo label="Plan de membresía" hint={!plan ? 'Opcional: puedes asignarlo después.' : undefined}>
           <select value={f.plan_id} onChange={set('plan_id')} className={inputCls + ' cursor-pointer'}>
             <option value="">Sin plan por ahora</option>
@@ -387,7 +427,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
           </>
         )}
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} disabled={!f.nombre.trim() || !!dupSocio} submitLabel={dupSocio ? 'Documento duplicado' : f.plan_id ? `Inscribir y cobrar ${money(inicial, empresa?.moneda)}` : 'Inscribir'} />
+        <BotonesModal onCancel={onClose} busy={busy}
+          disabled={modoExistente ? !f.plan_id : (!f.nombre.trim() || !!dupSocio)}
+          submitLabel={modoExistente
+            ? (f.plan_id ? `Cobrar ${money(inicial, empresa?.moneda)} y activar` : 'Elige un plan')
+            : (dupSocio ? 'Documento duplicado' : f.plan_id ? `Inscribir y cobrar ${money(inicial, empresa?.moneda)}` : 'Inscribir')} />
       </form>
     </Modal>
   )
