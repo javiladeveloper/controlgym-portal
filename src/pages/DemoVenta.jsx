@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { FitCoreLogo } from '../components/icons.jsx'
 
 // Demo de venta de FitCore para dueños de gimnasios. Vive en tu dominio
@@ -35,7 +35,74 @@ const PASOS = [
 
 const REG = 'https://fitcorecenter.com/registro'
 
+// Pantallas del panel para el tour "por dentro" (capturas reales de MaximusGym).
+const TOUR = [
+  { k: 'clientes', nombre: 'Clientes', pie: 'Todos tus socios, con su plan, estado y vencimiento. Búscalos por nombre o DNI.' },
+  { k: 'membresias', nombre: 'Membresías', pie: 'Cobros pendientes al frente, en rojo los vencidos. Cobra y renueva en un clic.' },
+  { k: 'rutinas', nombre: 'Rutinas y dietas', pie: 'El plan del socio por día, con banco de ejercicios y video. Se envía a su app.' },
+  { k: 'personal', nombre: 'Personal', pie: 'Tu equipo con sueldo o pago por clase, turnos y la planilla del mes.' },
+  { k: 'kardex', nombre: 'Kardex', pie: 'Inventario y ventas de productos, conectados a la caja del día.' },
+  { k: 'finanzas', nombre: 'Finanzas', pie: 'Ingresos vs gastos, caja del día que cuadra sola y reporte de deudores.' },
+]
+
+// Tour navegable del panel: modal a pantalla completa con la captura grande,
+// navegación por flechas / teclado / miniaturas. Muestra el producto real
+// sin dar acceso al panel (cero riesgo).
+function TourPanel({ onClose }) {
+  const [i, setI] = useState(0)
+  const n = TOUR.length
+  const ir = useCallback((idx) => setI((idx + n) % n), [n])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowRight') ir(i + 1)
+      else if (e.key === 'ArrowLeft') ir(i - 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [i, ir, onClose])
+
+  const s = TOUR[i]
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(6,10,18,.94)', display: 'flex', flexDirection: 'column', padding: '20px 24px' }}>
+      {/* Barra superior */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, width: '100%', margin: '0 auto 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <FitCoreLogo size={26} />
+          <span style={{ fontWeight: 800, fontSize: 15 }}>El panel por dentro</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, marginLeft: 6 }}>{i + 1} / {n} · {s.nombre}</span>
+        </div>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,.08)', border: 'none', color: C.ink, width: 34, height: 34, borderRadius: 9, fontWeight: 800, fontSize: 16, cursor: 'pointer' }}>✕</button>
+      </div>
+
+      {/* Captura grande + flechas */}
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', flex: 1, maxWidth: 1200, width: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+        <button onClick={() => ir(i - 1)} aria-label="Anterior" style={{ position: 'absolute', left: -6, zIndex: 2, background: 'rgba(28,36,56,.9)', border: `1px solid ${C.line}`, color: C.ink, width: 44, height: 44, borderRadius: 999, fontSize: 20, fontWeight: 800, cursor: 'pointer' }}>‹</button>
+        <img key={s.k} src={cap(s.k)} alt={s.nombre}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: '0 30px 80px rgba(0,0,0,.6)', animation: 'dvFade .35s ease' }} />
+        <button onClick={() => ir(i + 1)} aria-label="Siguiente" style={{ position: 'absolute', right: -6, zIndex: 2, background: 'rgba(28,36,56,.9)', border: `1px solid ${C.line}`, color: C.ink, width: 44, height: 44, borderRadius: 999, fontSize: 20, fontWeight: 800, cursor: 'pointer' }}>›</button>
+      </div>
+
+      {/* Pie + miniaturas */}
+      <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 1200, width: '100%', margin: '12px auto 0' }}>
+        <p style={{ textAlign: 'center', color: C.muted, fontSize: 13.5, fontWeight: 600, margin: '0 0 14px' }}>{s.pie}</p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {TOUR.map((t, idx) => (
+            <button key={t.k} onClick={() => ir(idx)}
+              style={{ background: 'none', border: idx === i ? `2px solid ${C.orange}` : `2px solid transparent`, padding: 0, borderRadius: 8, cursor: 'pointer', opacity: idx === i ? 1 : .55, transition: 'opacity .2s' }}>
+              <img src={cap(t.k)} alt={t.nombre} style={{ width: 96, height: 58, objectFit: 'cover', objectPosition: 'left top', borderRadius: 6, display: 'block' }} />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function DemoVenta() {
+  const [tourOpen, setTourOpen] = useState(false)
+
   // Aparición suave de secciones al hacer scroll
   useEffect(() => {
     const io = new IntersectionObserver(
@@ -64,7 +131,9 @@ export default function DemoVenta() {
         .reveal.in { opacity: 1; transform: none; }
         @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
         .dv-a { text-decoration: none; }
+        @keyframes dvFade { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
+      {tourOpen && <TourPanel onClose={() => setTourOpen(false)} />}
 
       {/* Header */}
       <header style={{ position: 'sticky', top: 0, zIndex: 20, backdropFilter: 'blur(12px)', background: 'rgba(14,21,38,.82)', borderBottom: `1px solid ${C.line}` }}>
@@ -89,7 +158,7 @@ export default function DemoVenta() {
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a className="dv-a" href={REG} style={{ background: C.orange, color: '#fff', padding: '14px 26px', borderRadius: 12, fontWeight: 800, fontSize: 15, boxShadow: '0 12px 34px rgba(255,107,53,.3)' }}>Empieza gratis — 1 mes</a>
-            <a className="dv-a" href="https://maximusgym.fitcorecenter.com" target="_blank" rel="noreferrer" style={{ color: C.ink, border: `1px solid ${C.line}`, padding: '14px 24px', borderRadius: 12, fontWeight: 800, fontSize: 15 }}>Ver un gym de ejemplo →</a>
+            <button onClick={() => setTourOpen(true)} style={{ color: C.ink, background: 'transparent', border: `1px solid ${C.line}`, padding: '14px 24px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>Ver el panel por dentro →</button>
           </div>
           <div style={{ marginTop: 16, fontSize: 12.5, color: C.faint, fontWeight: 600 }}>Sin tarjeta · Sin instalar nada · Listo hoy</div>
         </div>
