@@ -15,6 +15,7 @@ const PlataformaLanding = lazy(() => import('./pages/PlataformaLanding.jsx'))
 const LegalPage = lazy(() => import('./pages/LegalPage.jsx'))
 const Reclamaciones = lazy(() => import('./pages/Reclamaciones.jsx'))
 const DemoVenta = lazy(() => import('./pages/DemoVenta.jsx'))
+const PlanesPublico = lazy(() => import('./pages/PlanesPublico.jsx'))
 
 const Cargando = () => (
   <div className="flex min-h-screen items-center justify-center bg-canvas">
@@ -34,6 +35,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'))
 const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad', '/devoluciones': 'devoluciones' }[window.location.pathname]
 const esReclamaciones = window.location.pathname === '/reclamaciones'
 const esDemo = window.location.pathname === '/demo'
+const esPlanes = window.location.pathname === '/planes'
 
 if (isPlataformaHome()) {
   root.render(
@@ -50,6 +52,16 @@ if (isPlataformaHome()) {
     <React.StrictMode>
       <Suspense fallback={<Cargando />}>
       <DemoVenta />
+    </Suspense>
+    </React.StrictMode>,
+  )
+} else if (esPlanes) {
+  // Checkout público de planes (fitcorecenter.com/planes) — pago con Culqi
+  // sin registro previo. Requisito de Culqi para aprobar el comercio.
+  root.render(
+    <React.StrictMode>
+      <Suspense fallback={<Cargando />}>
+      <PlanesPublico />
     </Suspense>
     </React.StrictMode>,
   )
