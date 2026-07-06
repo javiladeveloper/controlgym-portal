@@ -6,6 +6,52 @@
 
 ---
 
+## ⚙️ Cómo grabar con una pantalla grande (para que se vea bien)
+
+**Problema:** si tu monitor es muy grande, grabar toda la pantalla se ve chico y
+mal. **Solución:** graba solo la ventana del navegador, y el emulador aparte;
+luego unes los dos clips. Queda profesional.
+
+### Paso 1 — Deja Chrome del tamaño correcto (tipo laptop, 1280×800)
+
+Que NO esté maximizado. Dos formas:
+
+- **Fácil:** arrastra la esquina de la ventana de Chrome hasta que se vea como
+  una laptop (ni gigante ni chica). Aprox. la mitad de tu monitor.
+- **Exacto (recomendado):** pega esto en la barra de direcciones de Chrome y
+  Enter — abre una ventana nueva de tamaño perfecto para grabar:
+  ```
+  Cierra Chrome del todo. Luego en Inicio → busca "cmd" → pega:
+  chrome.exe --window-size=1280,800 --window-position=100,80 --app=https://app.fitcorecenter.com
+  ```
+  (Si no funciona el comando, con arrastrar la ventana basta.)
+
+### Paso 2 — Graba SOLO esa ventana (no todo el monitor)
+
+- **Xbox Game Bar (ya viene en Windows):** abre Chrome, presiona `Win + G`,
+  clic en grabar (círculo). Game Bar graba **solo la ventana activa**, no toda
+  la pantalla. 👍
+- **OBS Studio (gratis, mejor calidad):** [obsproject.com](https://obsproject.com)
+  → Fuentes → "+" → **Captura de ventana** → elige Chrome. Graba solo esa ventana.
+
+### Paso 3 — Graba el emulador / celular POR SEPARADO
+
+No cambies de ventana en vivo (se ve feo). Graba la app aparte:
+- **Emulador Android:** tiene su propio botón de grabar, o usa Game Bar sobre él.
+- **Tu celular:** usa la grabación de pantalla nativa (Android: barra de ajustes
+  rápidos → "Grabar pantalla"; iPhone: Centro de control → botón de grabar).
+
+### Paso 4 — Une los dos clips (5 minutos)
+
+- **CapCut** (gratis, PC y celular): arrastras el clip del panel, luego el de la
+  app, uno tras otro. Cortas lo que sobre. Exportas. Listo.
+- **Editor de video de Windows** (Fotos → "Editor de video"): también sirve.
+
+> 🎬 Resultado: el video se ve nítido — panel a pantalla completa → corte limpio
+> → app a pantalla completa. Nadie ve el "cambio de ventana" torpe.
+
+---
+
 ## Antes de grabar (5 minutos de preparación)
 
 - [ ] Entra al panel logueado como **MaximusGym** (es el gym demo, tiene datos completos y se ve bien): `app.fitcorecenter.com`
