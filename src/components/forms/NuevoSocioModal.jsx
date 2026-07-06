@@ -40,6 +40,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   }, [f.documento])
   const [invitados, setInvitados] = useState([]) // acompañantes de promos 2x1/grupal
   const [enPartes, setEnPartes] = useState(false) // paga una parte hoy, el resto después
+  const [precioAcordado, setPrecioAcordado] = useState('') // monto pactado distinto al plan (pana/ex-socio)
   const [montoInicial, setMontoInicial] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -111,6 +112,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         : `precio especial ${money(promo.valor, empresa?.moneda)}`
     }
   }
+  // Precio acordado (pana / ex-socio / trato): pisa la mensualidad, salvo en
+  // promos de grupo (ahí el precio es por persona). Espejo del RPC.
+  const acordadoNum = precioAcordado === '' ? null : Math.max(0, Number(precioAcordado) || 0)
+  const usaAcordado = acordadoNum !== null && !esGrupo
+  if (usaAcordado) { precio = acordadoNum; promoNota = '' }
   const total = precio * pagan + matricula
   // Pago en partes: solo sin promo de grupo (un pago compartido no se disgrega)
   const puedePartes = plan && !esGrupo && total > 0
@@ -136,6 +142,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             .map((i) => ({ nombre: i.nombre.trim(), telefono: i.telefono || null, documento: i.documento || null }))
         : null,
       p_monto_inicial: enPartes && puedePartes ? inicial : null,
+      p_precio_acordado: usaAcordado ? acordadoNum : null,
     })
     setBusy(false)
     if (error) { setError(error.message); return }
@@ -292,6 +299,19 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
                 </select>
               </Campo>
             </div>
+            {/* Precio acordado: monto pactado distinto al del plan (pana, ex-socio
+                que retoma, acuerdo puntual). Solo aplica esta inscripción. */}
+            {!esGrupo && (
+              <Campo label="Precio acordado (opcional)"
+                hint={`Déjalo vacío para cobrar el precio del plan (${money(plan.precio, empresa?.moneda)}). Ponlo si acordaste otro monto solo por esta vez.`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-bold text-muted">{empresa?.moneda === 'USD' ? '$' : 'S/'}</span>
+                  <input type="number" step="0.01" min="0" value={precioAcordado}
+                    onChange={(e) => setPrecioAcordado(e.target.value)}
+                    className={inputCls} placeholder={`${plan.precio}`} />
+                </div>
+              </Campo>
+            )}
             {esGrupo && (
               <div className="rounded-[10px] border border-orange/40 bg-orange/5 p-3">
                 <div className="mb-2 text-[12px] font-extrabold text-orange">
@@ -316,8 +336,18 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             <div className="rounded-[10px] bg-surface px-3.5 py-3">
               <div className="flex justify-between text-[12.5px] font-bold text-muted">
                 <span>Mensualidad {plan.nombre}{esGrupo && pagan > 1 ? ` × ${pagan}` : ''}</span>
-                <span>{money(precio * pagan, empresa?.moneda)}</span>
+                <span className="flex items-center gap-2">
+                  {usaAcordado && Number(plan.precio) !== precio && (
+                    <span className="text-[11px] font-semibold text-faint line-through">{money(plan.precio, empresa?.moneda)}</span>
+                  )}
+                  {money(precio * pagan, empresa?.moneda)}
+                </span>
               </div>
+              {usaAcordado && (
+                <div className="mt-1 flex justify-between text-[12px] font-extrabold text-orange">
+                  <span>🤝 Precio acordado</span><span>solo esta inscripción</span>
+                </div>
+              )}
               {matricula > 0 && (
                 <div className="mt-1 flex justify-between text-[12.5px] font-bold text-muted">
                   <span>Matrícula</span><span>{money(matricula, empresa?.moneda)}</span>
