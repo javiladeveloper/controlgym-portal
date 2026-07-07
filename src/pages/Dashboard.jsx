@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import Topbar from '../components/Topbar.jsx'
 import ChecklistActivacion from '../components/ChecklistActivacion.jsx'
@@ -24,16 +25,24 @@ function CheckinModal({ sedeId, onClose }) {
   const [resultado, setResultado] = useState(null) // { resultado, motivo, socio }
   const [busy, setBusy] = useState(false)
 
-  // Valida el carnet QR de la app (firma + expiración) y registra la entrada
+  // Valida el carnet QR de la app (firma + expiración) y registra la entrada.
+  // Se procesa el resultado ANTES de limpiar el input y solo se vacía si hubo
+  // respuesta; ante un fallo de red (throw) se muestra el error y se conserva
+  // el código para reintentar sin re-escanear.
   async function validarQr() {
     setBusy(true)
-    const { data, error } = await supabase.rpc('validar_qr', { p_qr: qr.trim(), p_sede_id: sedeId })
-    setBusy(false)
-    setQr('')
-    if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: 'Carnet QR' }); return }
-    setResultado(data)
-    qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
-    qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+    try {
+      const { data, error } = await supabase.rpc('validar_qr', { p_qr: qr.trim(), p_sede_id: sedeId })
+      if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: 'Carnet QR' }); return }
+      setResultado(data)
+      setQr('')
+      qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
+      qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+    } catch (e) {
+      setResultado({ resultado: 'error', motivo: e?.message || 'Error de red', socio: 'Carnet QR' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   // Busca por nombre, DNI o N.º de socio (nadie se acuerda de su código;
@@ -48,15 +57,20 @@ function CheckinModal({ sedeId, onClose }) {
 
   async function registrar(socio, direccion) {
     setBusy(true)
-    const { data, error } = await supabase.rpc('checkin_manual', {
-      p_socio_id: socio.id, p_sede_id: sedeId, p_direccion: direccion,
-    })
-    setBusy(false)
-    if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: socio.nombre }); return }
-    setResultado(data)
-    qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
-    qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
-    qc.invalidateQueries({ queryKey: ['asistencia-hora', sedeId] })
+    try {
+      const { data, error } = await supabase.rpc('checkin_manual', {
+        p_socio_id: socio.id, p_sede_id: sedeId, p_direccion: direccion,
+      })
+      if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: socio.nombre }); return }
+      setResultado(data)
+      qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
+      qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+      qc.invalidateQueries({ queryKey: ['asistencia-hora', sedeId] })
+    } catch (e) {
+      setResultado({ resultado: 'error', motivo: e?.message || 'Error de red', socio: socio.nombre })
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -157,6 +171,7 @@ const HORAS = Array.from({ length: 15 }, (_, i) => {
 })
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { sedeId, sedeNombre } = usePanel()
   const { usuario, empresa, rol } = useAuth()
   // Los especialistas (entrenador/nutricionista) no ven la plata del gym
@@ -168,16 +183,27 @@ export default function Dashboard() {
   const ingresos = useIngresosPorDia(sedeId)
   const clientes = useClientes(sedeId)
 
-  // Cumpleaños del mes 🎂 (socios activos con fecha de nacimiento)
+  // Cumpleaños del mes 🎂. Se saluda a todo socio "en el gym" (activo o moroso:
+  // sigue siendo cliente y saludarlo retiene); se excluyen inactivo/suspendido.
+  // Antes exigía estado === 'activo' exacto y omitía, p.ej., a un moroso o a un
+  // reactivado cuyo estado no quedó exactamente en 'activo'.
+  const ESTADOS_SALUDAR = new Set(['activo', 'moroso'])
   const mesActual = new Date().getMonth()
   const diaHoy = new Date().getDate()
   const cumpleanieros = (clientes.data || [])
-    .filter((c) => c.estado === 'activo' && c.fecha_nacimiento && new Date(c.fecha_nacimiento + 'T12:00:00').getMonth() === mesActual)
+    .filter((c) => ESTADOS_SALUDAR.has(c.estado) && c.fecha_nacimiento && new Date(c.fecha_nacimiento + 'T12:00:00').getMonth() === mesActual)
     .map((c) => ({ ...c, dia: new Date(c.fecha_nacimiento + 'T12:00:00').getDate() }))
     .sort((a, b) => a.dia - b.dia)
 
   const nombre = usuario?.nombre?.split(' ')[0] || ''
   const moneda = empresa?.moneda || 'PEN'
+
+  // Delta de aforo: solo se muestra si el porcentaje es un número finito
+  // (aforo_max nulo/0 o en_sede_hoy nulo darían NaN/Infinity → deja el hueco).
+  const aforoPct = kpis.data && kpis.data.aforo_max
+    ? (Number(kpis.data.en_sede_hoy) / Number(kpis.data.aforo_max)) * 100
+    : NaN
+  const aforoDelta = Number.isFinite(aforoPct) ? `aforo ${Math.round(aforoPct)}%` : ' '
 
   // Mapear asistencia por hora al arreglo de 15 franjas
   const horaMap = new Map((horas.data || []).map((r) => [r.hora, Number(r.total)]))
@@ -197,9 +223,9 @@ export default function Dashboard() {
       {kpis.data && (
         <div className="mt-[22px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
           <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
-            delta={kpis.data.aforo_max ? `aforo ${Math.round((kpis.data.en_sede_hoy / kpis.data.aforo_max) * 100)}%` : ' '} />
-          <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta=" " deltaColor={T.success} />
-          {veIngresos && <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta=" " deltaColor={T.success} />}
+            delta={aforoDelta} />
+          <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta="con membresía vigente" />
+          {veIngresos && <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta="membresías + ventas" />}
           <div className="rounded-card border border-orange-100 bg-orange-50 p-[17px]">
             <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-orange">Por vencer (7 días)</div>
             <div className="mt-1.5 text-[27px] font-extrabold text-orange">{kpis.data.por_vencer_7d ?? 0}</div>
@@ -213,6 +239,13 @@ export default function Dashboard() {
         <Card className="p-[19px]">
           <div className="text-[14.5px] font-extrabold">Asistencia de hoy por hora</div>
           <div className="mt-0.5 text-[12px] font-semibold text-muted">6:00 am — 8:00 pm</div>
+          {horas.error && (
+            <div className="mt-4 flex h-[180px] flex-col items-center justify-center gap-2 text-center text-[12.5px] font-semibold text-red">
+              <span>No se pudo cargar la asistencia por hora.</span>
+              <button onClick={() => horas.refetch()} className="cursor-pointer font-extrabold underline">Reintentar</button>
+            </div>
+          )}
+          {!horas.error && (
           <div className="mt-4 flex h-[180px] items-stretch gap-[7px]">
             {barras.map((b) => (
               <div key={b.label} className="flex flex-1 flex-col items-center justify-end gap-1.5">
@@ -221,6 +254,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          )}
         </Card>
 
         <Card className="flex flex-col p-[19px]">
@@ -240,7 +274,13 @@ export default function Dashboard() {
           {checkinOpen && <CheckinModal sedeId={sedeId} onClose={() => setCheckinOpen(false)} />}
           <div className="mt-2 flex-1 overflow-hidden">
             {checkins.isLoading && <div className="py-4 text-[12.5px] font-semibold text-muted">Cargando…</div>}
-            {checkins.data?.length === 0 && <div className="py-4 text-[12.5px] font-semibold text-muted">Sin check-ins hoy.</div>}
+            {checkins.error && (
+              <div className="py-4 text-center text-[12.5px] font-semibold text-red">
+                No se pudieron cargar los check-ins.{' '}
+                <button onClick={() => checkins.refetch()} className="cursor-pointer font-extrabold underline">Reintentar</button>
+              </div>
+            )}
+            {!checkins.error && checkins.data?.length === 0 && <div className="py-4 text-[12.5px] font-semibold text-muted">Sin check-ins hoy.</div>}
             {(checkins.data || []).map((c) => {
               const permit = c.resultado === 'permitido'
               return (
@@ -319,18 +359,21 @@ export default function Dashboard() {
         )
       })()}
 
-      {/* Alertas */}
+      {/* Accesos rápidos: cada tarjeta lleva al módulo correspondiente */}
       <div className="mt-[15px] grid grid-cols-1 gap-[15px] lg:grid-cols-3">
-        <Card className="flex items-center gap-3 p-[15px]">
+        <Card onClick={() => navigate('/kardex')}
+          className="flex cursor-pointer items-center gap-3 p-[15px] transition-shadow hover:shadow-md">
           <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-orange-50"><BoxIcon stroke={T.primary} /></div>
           <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Revisa el <span className="font-extrabold">Kardex</span> para productos con stock bajo</div>
         </Card>
-        <Card className="flex items-center gap-3 p-[15px]">
+        <Card onClick={() => navigate('/rutinas')}
+          className="flex cursor-pointer items-center gap-3 p-[15px] transition-shadow hover:shadow-md">
           <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-chipnavy"><DocIcon stroke={T.navy} /></div>
           <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Socios esperando <span className="font-extrabold">rutina nueva</span> esta semana</div>
         </Card>
         {veIngresos && (
-          <Card className="flex items-center gap-3 p-[15px]">
+          <Card onClick={() => navigate('/finanzas')}
+            className="flex cursor-pointer items-center gap-3 p-[15px] transition-shadow hover:shadow-md">
             <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] bg-green-50"><ClockIcon stroke={T.success} /></div>
             <div className="text-[12.5px] font-bold leading-[1.45] text-ink">Revisa la <span className="font-extrabold">caja del día</span> en Finanzas</div>
           </Card>

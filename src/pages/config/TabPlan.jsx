@@ -4,7 +4,7 @@ import { Card, PrimaryButton } from '../../components/ui.jsx'
 import LoadingOverlay from '../../components/LoadingOverlay.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
-import { money } from '../../lib/uiHelpers.js'
+import { money, fechaLocal } from '../../lib/uiHelpers.js'
 
 import { PLANES_GYM, planPorSlug } from '../../config/planesComerciales.js'
 
@@ -67,9 +67,17 @@ export default function TabPlan() {
 
   const s = sus.data
   const activa = s?.estado === 'activa'
-  const diasTrial = s?.trial_hasta
-    ? Math.max(0, Math.ceil((new Date(s.trial_hasta) - Date.now()) / 86400000))
-    : 0
+  // trial_hasta es un DATE (medianoche). Se parsea como fecha LOCAL para no
+  // desfasar en Perú (UTC-5), y el conteo se hace por diferencia de DÍAS de
+  // calendario (no por horas): coincide con la BD, que marca 'vencida' cuando
+  // trial_hasta < current_date. Así "0" = último día, "1" = falta 1 día, etc.
+  const diasTrial = (() => {
+    const fin = s?.trial_hasta ? fechaLocal(s.trial_hasta) : null
+    if (!fin) return 0
+    fin.setHours(0, 0, 0, 0)
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+    return Math.max(0, Math.round((fin - hoy) / 86400000))
+  })()
 
   async function cambiarPlan(planSlug, conApp) {
     if (activa) {
@@ -78,7 +86,10 @@ export default function TabPlan() {
     }
     const { error } = await supabase.rpc('elegir_plan', { p_empresa_id: empresa.id, p_plan: planSlug, p_con_app: conApp })
     if (error) setMsg({ tipo: 'error', texto: error.message })
-    else { setMsg(null); qc.invalidateQueries({ queryKey: ['mi-suscripcion'] }) }
+    else {
+      setMsg({ tipo: 'ok', texto: '✓ Plan actualizado. El nuevo monto aplica al activar tu pago automático.' })
+      qc.invalidateQueries({ queryKey: ['mi-suscripcion'] })
+    }
   }
 
   // Upgrade self-service: el plan ya está activo y quiere sumar la app.
@@ -214,7 +225,7 @@ export default function TabPlan() {
 
         {s.estado === 'prueba' && (
           <div className="mt-4 rounded-[10px] border border-blue-200 bg-blue-50 px-4 py-3 text-[13px] font-semibold text-blue-800">
-            Te quedan <b>{diasTrial} días de prueba gratis</b> (hasta el {new Date(s.trial_hasta).toLocaleDateString('es-PE')}).
+            Te quedan <b>{diasTrial} {diasTrial === 1 ? 'día' : 'días'} de prueba gratis</b> (hasta el {fechaLocal(s.trial_hasta).toLocaleDateString('es-PE')}).
             {diasTrial > 5
               ? ' Disfrútala — la activación del pago se habilita en los últimos 5 días.'
               : ' Ya puedes activar tu tarjeta: el primer cobro sale recién 1 mes después.'}
@@ -230,9 +241,15 @@ export default function TabPlan() {
             El último cobro no pasó. Verifica tu tarjeta o escríbenos por WhatsApp.
           </div>
         )}
+        {s.estado === 'cancelada' && (
+          <div className="mt-4 rounded-[10px] border border-gray-200 bg-gray-50 px-4 py-3 text-[13px] font-bold text-gray-600">
+            Tu suscripción está cancelada. Para reactivar tu plan escríbenos por WhatsApp y lo dejamos listo.
+          </div>
+        )}
 
-        {/* El pago se habilita recién al final del trial (últimos 5 días) o vencido */}
-        {!activa && (s.estado !== 'prueba' || diasTrial <= 5) && (
+        {/* El pago se habilita recién al final del trial (últimos 5 días) o vencido.
+            Cancelada no muestra el CTA de activar (se reactiva por WhatsApp). */}
+        {!activa && s.estado !== 'cancelada' && (s.estado !== 'prueba' || diasTrial <= 5) && (
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <PrimaryButton onClick={activarPago} disabled={busy}>
               {busy ? 'Abriendo pago seguro…' : `💳 Activar pago automático · ${money(Number(s.monto))}/mes`}
@@ -308,7 +325,7 @@ export default function TabPlan() {
           <div className="mt-3 flex flex-col gap-1.5">
             {pagos.data.map((p) => (
               <div key={p.id} className="flex items-center justify-between rounded-[9px] border border-line px-3.5 py-2">
-                <span className="text-[12.5px] font-bold">{new Date(p.pagado_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="text-[12.5px] font-bold">{p.pagado_at ? new Date(p.pagado_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
                 <span className="text-[12.5px] font-extrabold">{money(Number(p.monto))}</span>
                 <span className={`text-[11px] font-extrabold ${p.estado === 'exitoso' ? 'text-green-600' : 'text-red'}`}>
                   {p.estado === 'exitoso' ? '✓ Pagado' : p.estado === 'fallido' ? '✕ Falló' : 'Reembolsado'}

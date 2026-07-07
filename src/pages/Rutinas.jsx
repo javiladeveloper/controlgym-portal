@@ -26,7 +26,9 @@ const DIA_NOMBRE = { 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: '
 function FocoInput({ dia, onGuardar }) {
   const [v, setV] = useState(dia.foco || '')
   useEffect(() => { setV(dia.foco || '') }, [dia.foco])
-  const commit = () => { if (v.trim() && v !== dia.foco) onGuardar(v.trim()) }
+  // Permitir DEJAR VACÍO el foco (día de descanso sin etiqueta): se persiste
+  // el valor recortado tal cual, incluso si queda vacío, siempre que cambie.
+  const commit = () => { const nv = v.trim(); if (nv !== (dia.foco || '')) onGuardar(nv) }
   return (
     <>
       <input list="focos-sugeridos" value={v} onChange={(e) => setV(e.target.value)}
@@ -40,7 +42,7 @@ function FocoInput({ dia, onGuardar }) {
 // Autocompletado de ejercicios: sugiere SOLO mientras se escribe (2+ letras,
 // máx. 6) — nada de listas kilométricas al hacer clic. Si no existe, se
 // avisa que quedará agregado al banco al guardar.
-function InputEjercicio({ value, onChange, onBlur, onKeyDown, placeholder, className, banco }) {
+function InputEjercicio({ value, onChange, onBlur, onKeyDown, placeholder, className, banco, onSelect }) {
   const [foco, setFoco] = useState(false)
   const q = (value || '').trim().toLowerCase()
   const sug = foco && q.length >= 2
@@ -57,7 +59,17 @@ function InputEjercicio({ value, onChange, onBlur, onKeyDown, placeholder, class
         <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-[10px] border border-line bg-white shadow-lg">
           {sug.filter((e) => e.nombre.toLowerCase() !== q).map((e) => (
             <button key={e.id} type="button"
-              onMouseDown={(ev) => { ev.preventDefault(); onChange({ target: { value: e.nombre } }) }}
+              onMouseDown={(ev) => {
+                ev.preventDefault()
+                setFoco(false)
+                // Si el consumidor define onSelect (campo 'nuevo ejercicio'),
+                // elegir una sugerencia EJECUTA la acción (agrega la fila) en vez
+                // de solo rellenar el texto. Si no, actualiza el valor y en el
+                // caso de fila existente forzamos el commit (blur) para persistir.
+                if (onSelect) { onSelect(e.nombre); return }
+                onChange({ target: { value: e.nombre } })
+                onBlur?.({ target: { value: e.nombre } })
+              }}
               className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-left text-[12.5px] font-bold hover:bg-[#FFF4EC]">
               {e.nombre}
               {e.grupo_muscular && <span className="text-[10.5px] font-extrabold text-faint">{e.grupo_muscular}</span>}
@@ -174,10 +186,17 @@ function EjercicioFila({ ej, banco, onGuardar, onEliminar }) {
   useEffect(() => { setE(ej) }, [ej])
   const set = (k) => (ev) => setE((s) => ({ ...s, [k]: ev.target.value }))
   const commit = () => { if (JSON.stringify(e) !== JSON.stringify(ej)) onGuardar(e) }
+  // Commit del NOMBRE: al elegir una sugerencia del autocompletado, el blur llega
+  // ANTES de que el setState del nombre se aplique (estado async), así que si el
+  // evento trae el nombre elegido lo fusionamos para no persistir el nombre viejo.
+  const commitNombre = (ev) => {
+    const merged = ev?.target?.value != null ? { ...e, nombre: ev.target.value } : e
+    if (JSON.stringify(merged) !== JSON.stringify(ej)) onGuardar(merged)
+  }
   const cls = 'rounded-[8px] border border-line bg-white px-2 py-1.5 text-[12px] font-bold outline-none focus:border-orange'
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-t border-line2 py-1.5 first:border-0">
-      <InputEjercicio value={e.nombre} onChange={set('nombre')} onBlur={commit} placeholder="Ejercicio"
+      <InputEjercicio value={e.nombre} onChange={set('nombre')} onBlur={commitNombre} placeholder="Ejercicio"
         banco={banco} className={cls + ' font-extrabold'} />
       <input value={e.series ?? ''} onChange={set('series')} onBlur={commit} placeholder="Ser." type="number" min="1" title="Series" className={cls + ' w-[52px] text-center'} />
       <input value={e.reps || ''} onChange={set('reps')} onBlur={commit} placeholder="Reps" title="Repeticiones" className={cls + ' w-[64px] text-center'} />
@@ -269,7 +288,7 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
               <input autoFocus value={nota} onChange={(e) => setNota(e.target.value)} placeholder="¿Por qué aún no? (le llega al socio)"
                 className="w-[230px] rounded-[9px] border border-line bg-white px-3 py-1.5 text-[12px] outline-none focus:border-orange" />
               <button disabled={responder.isPending}
-                onClick={() => responder.mutate({ solicitud: s, aprobar: false, nota }, { onSuccess: () => { setRechazando(null); setNota('') } })}
+                onClick={() => responder.mutate({ solicitud: s, aprobar: false, nota }, { onSuccess: () => { setRechazando(null); setNota('') }, onError: (e) => toast.error(e.message) })}
                 className="cursor-pointer rounded-[9px] border-none bg-amber-500 px-3 py-1.5 text-[11.5px] font-extrabold text-white disabled:opacity-50">
                 Enviar
               </button>
@@ -279,7 +298,7 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
           ) : (
             <div className="flex items-center gap-2">
               <button disabled={responder.isPending}
-                onClick={() => responder.mutate({ solicitud: s, aprobar: true })}
+                onClick={() => responder.mutate({ solicitud: s, aprobar: true }, { onError: (e) => toast.error(e.message) })}
                 className="cursor-pointer rounded-[9px] border-none bg-green-600 px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">
                 ✓ Aprobar{s.carga_deseada ? ` ${s.carga_deseada}` : ''}
               </button>
@@ -301,9 +320,13 @@ function RutinasImpl() {
   const socios = useSociosSelect(sedeId)
   const [socioId, setSocioId] = useState(location.state?.socioId ?? null)
 
-  // Al cargar socios, seleccionar el primero si no hay uno.
+  // Al cargar socios, seleccionar el primero si no hay uno. Y si el socio
+  // seleccionado ya no existe en la sede actual (cambio de sede), reencauzar
+  // al primero en vez de quedar con la ficha en blanco apuntando a un id ausente.
   useEffect(() => {
-    if (!socioId && socios.data?.length) setSocioId(socios.data[0].id)
+    if (!socios.data?.length) return
+    const existe = socioId && socios.data.some((s) => s.id === socioId)
+    if (!existe) setSocioId(socios.data[0].id)
   }, [socios.data, socioId])
 
   const { empresa, rol } = useAuth()
@@ -353,6 +376,18 @@ function RutinasImpl() {
   const diaActivo = (rutina.data?.dias || []).find((d) => d.id === diaSel)
   const ejsDelDia = (ejercicios.data || []).filter((e) => e.rutina_dia_id === diaSel)
 
+  // Agregar un ejercicio al día activo. El orden se calcula del MÁXIMO existente
+  // +1 (no de length+1) para no colisionar con órdenes tras borrar intermedios.
+  // Además marca el plan como NO enviado: la rutina cambió y hay que reenviarla.
+  const agregarEj = (nombre) => {
+    const nextOrden = ejsDelDia.reduce((mx, e) => Math.max(mx, Number(e.orden) || 0), 0) + 1
+    guardarEj.mutate(
+      { rutina_dia_id: diaSel, nombre, series: 3, reps: '12', descanso: '60s', orden: nextOrden },
+      { onError: (er) => toast.error(er.message) },
+    )
+    setEnviado(false)
+  }
+
   // Buscador de socios (con 17+ el dropdown no escala)
   const sociosFiltrados = (socios.data || []).filter((s) =>
     !busqueda || s.nombre.toLowerCase().includes(busqueda.toLowerCase()) || s.codigo?.includes(busqueda))
@@ -363,7 +398,13 @@ function RutinasImpl() {
     setSuplementos(dieta.data?.suplementos || '')
   }, [dieta.data])
 
-  const kcalTotal = meals.reduce((n, m) => n + (Number(m.kcal) || 0), 0)
+  // Total de calorías del DÍA base (comidas que se repiten todos los días,
+  // dia_semana null). No sumamos las excepciones por día (lunes, sábado…):
+  // pertenecen a días distintos y sumarlas juntas inflaría un total que no
+  // corresponde a la ingesta de ningún día real.
+  const kcalTotal = meals
+    .filter((m) => (m.dia_semana ?? null) === null)
+    .reduce((n, m) => n + (Number(m.kcal) || 0), 0)
 
   return (
     <div className="max-w-[1020px] px-7 pb-9 pt-6">
@@ -419,8 +460,13 @@ function RutinasImpl() {
                 <Chip label="Talla:" value={socio.talla_m ? `${socio.talla_m} m` : '—'} />
                 <Chip label="Peso:" value={socio.peso_kg ? `${socio.peso_kg} kg` : '—'} />
                 {(() => {
-                  // IMC = peso / talla² — el punto de partida del especialista
-                  const t = Number(socio.talla_m), p = Number(socio.peso_kg)
+                  // IMC = peso / talla² — el punto de partida del especialista.
+                  // Si la talla vino en cm (p.ej. 175 en vez de 1.75), la
+                  // normalizamos a metros (>3 → /100) como hace EditarSocioModal,
+                  // para no calcular un IMC absurdo.
+                  const p = Number(socio.peso_kg)
+                  let t = Number(socio.talla_m)
+                  if (t > 3) t = t / 100
                   if (!t || !p) return null
                   const imc = p / (t * t)
                   const [etiqueta, color, bg] =
@@ -467,7 +513,7 @@ function RutinasImpl() {
                         </div>
                         <span className="text-[10px] font-extrabold text-faint">{nEjs > 0 ? `${nEjs} ejerc.` : ''}</span>
                       </div>
-                      <FocoInput dia={d} onGuardar={(foco) => setFoco.mutate({ diaId: d.id, foco })} />
+                      <FocoInput dia={d} onGuardar={(foco) => { setFoco.mutate({ diaId: d.id, foco }); setEnviado(false) }} />
                     </div>
                   )
                 })}
@@ -480,7 +526,7 @@ function RutinasImpl() {
                 <span className="text-[11.5px] font-extrabold text-muted">+ Agregar día:</span>
                 {diasFaltantes.map((n) => (
                   <button key={n} disabled={agregarDia.isPending}
-                    onClick={() => agregarDia.mutate({ rutinaId: rutina.data.id, diaSemana: n }, { onSuccess: (d) => setDiaSel(d.id) })}
+                    onClick={() => { agregarDia.mutate({ rutinaId: rutina.data.id, diaSemana: n }, { onSuccess: (d) => setDiaSel(d.id) }); setEnviado(false) }}
                     className="cursor-pointer rounded-full border border-dashed border-line bg-white px-3 py-1.5 text-[11.5px] font-extrabold text-muted hover:border-orange hover:text-orange disabled:opacity-50">
                     {DIA_NOMBRE[n]}
                   </button>
@@ -498,7 +544,7 @@ function RutinasImpl() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10.5px] font-bold text-faint">serie · reps · carga · descanso — se guarda al salir del campo</span>
-                    <button onClick={() => { if (window.confirm(`¿Quitar el ${DIA_NOMBRE[diaActivo.dia_semana]} y sus ${ejsDelDia.length} ejercicios de la rutina?`)) { eliminarDia.mutate(diaSel); setDiaSel(null) } }}
+                    <button onClick={() => { if (window.confirm(`¿Quitar el ${DIA_NOMBRE[diaActivo.dia_semana]} y sus ${ejsDelDia.length} ejercicios de la rutina?`)) { eliminarDia.mutate(diaSel); setDiaSel(null); setEnviado(false) } }}
                       className="cursor-pointer rounded-[7px] border border-line bg-white px-2 py-1 text-[10.5px] font-extrabold text-muted hover:border-red hover:text-red">
                       🗑 Quitar día
                     </button>
@@ -506,18 +552,19 @@ function RutinasImpl() {
                 </div>
                 {ejsDelDia.map((ej) => (
                   <EjercicioFila key={ej.id} ej={ej} banco={banco.data || []}
-                    onGuardar={(e) => guardarEj.mutate(e, { onError: (er) => toast.error(er.message) })}
-                    onEliminar={(id) => eliminarEj.mutate(id)} />
+                    onGuardar={(e) => { guardarEj.mutate(e, { onError: (er) => toast.error(er.message) }); setEnviado(false) }}
+                    onEliminar={(id) => { eliminarEj.mutate(id); setEnviado(false) }} />
                 ))}
                 {ejsDelDia.length === 0 && (
                   <div className="py-2 text-[12px] font-semibold text-faint">Sin ejercicios aún — agrega el primero:</div>
                 )}
                 <div className="mt-2 flex gap-2 border-t border-line2 pt-2.5">
                   <InputEjercicio value={nuevoEj} onChange={(e) => setNuevoEj(e.target.value)} banco={banco.data || []}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && nuevoEj.trim()) { guardarEj.mutate({ rutina_dia_id: diaSel, nombre: nuevoEj.trim(), series: 3, reps: '12', descanso: '60s', orden: ejsDelDia.length + 1 }); setNuevoEj('') } }}
+                    onSelect={(nombre) => { agregarEj(nombre); setNuevoEj('') }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && nuevoEj.trim()) { agregarEj(nuevoEj.trim()); setNuevoEj('') } }}
                     placeholder="Nuevo ejercicio (ej. Press banca) y Enter…"
                     className="rounded-[9px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange" />
-                  <button onClick={() => { if (nuevoEj.trim()) { guardarEj.mutate({ rutina_dia_id: diaSel, nombre: nuevoEj.trim(), series: 3, reps: '12', descanso: '60s', orden: ejsDelDia.length + 1 }); setNuevoEj('') } }}
+                  <button onClick={() => { if (nuevoEj.trim()) { agregarEj(nuevoEj.trim()); setNuevoEj('') } }}
                     className="cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600">
                     + Agregar
                   </button>
@@ -549,7 +596,7 @@ function RutinasImpl() {
                 <div className="text-[14.5px] font-extrabold">Plan de alimentación</div>
                 <div className="mt-0.5 text-[12.5px] font-semibold text-muted">Edita cada comida y sus calorías</div>
               </div>
-              <div className="rounded-full bg-green-50 px-[13px] py-1.5 text-[12px] font-extrabold text-green">Total: {kcalTotal.toLocaleString('es-PE')} kcal</div>
+              <div className="rounded-full bg-green-50 px-[13px] py-1.5 text-[12px] font-extrabold text-green" title="Suma de la base diaria (las comidas 'Todos'); las excepciones por día no se suman aquí">Base diaria: {kcalTotal.toLocaleString('es-PE')} kcal</div>
             </div>
 
             {dieta.isLoading && <div className="mt-4"><LoadingState variant="table" rows={3} /></div>}
@@ -595,7 +642,7 @@ function RutinasImpl() {
                 })
               })()}
               {dieta.data?.id && (
-                <button onClick={() => agregarComida.mutate({ dietaId: dieta.data.id, orden: meals.length + 1 })}
+                <button onClick={() => agregarComida.mutate({ dietaId: dieta.data.id, orden: (meals.reduce((mx, m) => Math.max(mx, Number(m.orden) || 0), 0)) + 1 })}
                   className="cursor-pointer self-start rounded-[9px] border border-dashed border-line bg-white px-3.5 py-2 text-[12px] font-extrabold text-muted hover:border-orange hover:text-orange">
                   + Agregar comida <span className="font-semibold text-faint">(nace en "Todos"; cámbiale el día para hacerla semanal)</span>
                 </button>

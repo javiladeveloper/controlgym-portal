@@ -25,6 +25,33 @@ const ETIQUETA_SECCION = {
 }
 const MAX_VIDEOS = 3
 
+// Construye el objeto de landing en edición a partir del guardado en la empresa.
+// Se usa al montar y también para "Descartar" (revertir al último guardado).
+function landingBase(empresa) {
+  const base = empresa?.landing || {}
+  return {
+    hero_url: base.hero_url || '',
+    hero_overlay: base.hero_overlay ?? 0.55,
+    hero_pos: base.hero_pos ?? 50,
+    galeria: base.galeria || [],
+    stats: base.stats || [],
+    ubicacion: base.ubicacion || { lat: '', lng: '' },
+    colores: base.colores || null, // null = heredar los colores de la marca
+    estilo: { botones: 'suave', tarjetas: 'suave', hero_altura: 'normal', titulo_mayus: false, fuente: '', ...(base.estilo || {}) },
+    cta_texto: base.cta_texto || '',
+    whatsapp_flotante: !!base.whatsapp_flotante,
+    stats_modo: base.stats_modo || ((base.stats || []).length > 0 ? 'manual' : 'auto'),
+    testimonios: base.testimonios || [],
+    logros: base.logros || [],
+    videos: base.videos || [],
+    galeria_estilo: base.galeria_estilo || 'mosaico',
+    orden: Array.isArray(base.orden) && base.orden.length
+      ? [...base.orden, ...DEFAULT_ORDEN.filter((k) => !base.orden.includes(k))]
+      : DEFAULT_ORDEN,
+    secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, testimonios: true, logros: true, ...(base.secciones || {}) },
+  }
+}
+
 // Fuentes disponibles para la página (se cargan solas desde Google Fonts).
 // Las "de póster" se aplican SOLO a títulos y números; el texto usa letra legible.
 const FUENTES_PAGINA = ['Manrope', 'Inter', 'Poppins', 'Montserrat', 'Nunito Sans', 'Roboto Condensed', 'Oswald', 'Bebas Neue', 'Anton', 'Teko']
@@ -161,17 +188,22 @@ export default function TabPaginaWeb() {
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState(null) // null | []
   const [buscando, setBuscando] = useState(false)
+  const [geoError, setGeoError] = useState(false) // el buscador falló (red / rate-limit 429/403), NO es "sin resultados"
   const [coordsManual, setCoordsManual] = useState(false)
 
   async function buscarDireccion(q = busqueda) {
     if (!q.trim()) return
     setBuscando(true)
     setResultados(null)
+    setGeoError(false)
     try {
       const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=es&q=${encodeURIComponent(q)}`)
+      // Nominatim limita a 1 req/s: un 429/403 NO significa "dirección inexistente".
+      // Lo tratamos como error del buscador para no confundir al usuario.
+      if (!r.ok) { setGeoError(true); return }
       setResultados(await r.json())
     } catch {
-      setResultados([])
+      setGeoError(true)
     } finally {
       setBuscando(false)
     }
@@ -182,8 +214,10 @@ export default function TabPaginaWeb() {
     if (!empresa?.direccion) return
     setBuscando(true)
     setResultados(null)
+    setGeoError(false)
     try {
       const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=es&q=${encodeURIComponent(empresa.direccion)}`)
+      if (!r.ok) { setGeoError(true); return }
       const j = await r.json()
       if (j.length > 0) {
         // Toma el mejor resultado directamente
@@ -193,7 +227,7 @@ export default function TabPaginaWeb() {
         setResultados([])
       }
     } catch {
-      setResultados([])
+      setGeoError(true)
     } finally {
       setBuscando(false)
     }
@@ -209,34 +243,13 @@ export default function TabPaginaWeb() {
   }
 
   useEffect(() => {
-    if (empresa) {
-      const base = empresa.landing || {}
-      setL({
-        hero_url: base.hero_url || '',
-        hero_overlay: base.hero_overlay ?? 0.55,
-        hero_pos: base.hero_pos ?? 50,
-        galeria: base.galeria || [],
-        stats: base.stats || [],
-        ubicacion: base.ubicacion || { lat: '', lng: '' },
-        colores: base.colores || null, // null = heredar los colores de la marca
-        estilo: { botones: 'suave', tarjetas: 'suave', hero_altura: 'normal', titulo_mayus: false, fuente: '', ...(base.estilo || {}) },
-        cta_texto: base.cta_texto || '',
-        whatsapp_flotante: !!base.whatsapp_flotante,
-        stats_modo: base.stats_modo || ((base.stats || []).length > 0 ? 'manual' : 'auto'),
-        testimonios: base.testimonios || [],
-        logros: base.logros || [],
-        videos: base.videos || [],
-        galeria_estilo: base.galeria_estilo || 'mosaico',
-        orden: Array.isArray(base.orden) && base.orden.length
-          ? [...base.orden, ...DEFAULT_ORDEN.filter((k) => !base.orden.includes(k))]
-          : DEFAULT_ORDEN,
-        secciones: { planes: true, clases: true, sedes: true, galeria: true, stats: true, mapa: true, promociones: true, testimonios: true, logros: true, ...(base.secciones || {}) },
-      })
-    }
+    if (empresa) setL(landingBase(empresa))
   }, [empresa])
 
   if (!L) return <div className="text-[13px] text-muted">Cargando…</div>
   const upd = (patch) => { setL((s) => ({ ...s, ...patch })); setOk(false) }
+  // ¿Hay cambios sin guardar respecto al último landing guardado?
+  const dirty = JSON.stringify(L) !== JSON.stringify(landingBase(empresa))
 
   // Antes de subir la portada, revisamos que la imagen sirva como fondo:
   // resolución suficiente y sin formato banner (esos traen texto y se cortan).
@@ -275,7 +288,10 @@ export default function TabPaginaWeb() {
     try {
       const urls = []
       for (const f of lote) urls.push(await subirImagen(empresa.id, 'galeria', f))
-      upd({ galeria: [...L.galeria, ...urls] })
+      // Merge funcional sobre el estado MÁS RECIENTE: si el usuario reordenó o
+      // borró fotos mientras subía el lote, esos cambios no se pisan (se anexan
+      // las nuevas al final de la galería vigente, no a la capturada al inicio).
+      setL((s) => ({ ...s, galeria: [...s.galeria, ...urls] })); setOk(false)
     } catch (e) { alert('No se pudo subir: ' + e.message) } finally { setBusy('') }
   }
 
@@ -792,6 +808,13 @@ export default function TabPaginaWeb() {
           </button>
         </div>
 
+        {/* El buscador de direcciones falló (red o límite de Nominatim), no es "sin resultados" */}
+        {geoError && (
+          <div className="mt-2.5 rounded-[10px] border border-amber-200 bg-amber-50 px-3.5 py-3 text-[12.5px] font-semibold text-amber-800">
+            No pudimos consultar el mapa ahora mismo (puede ser el límite del buscador). Espera unos segundos e inténtalo otra vez, o fija la ubicación a mano con las coordenadas.
+          </div>
+        )}
+
         {/* Resultados */}
         {resultados !== null && (
           <div className="mt-2.5 overflow-hidden rounded-[10px] border border-line">
@@ -866,6 +889,11 @@ export default function TabPaginaWeb() {
 
       <div className="mt-5 flex items-center gap-3">
         <PrimaryButton onClick={onGuardar} disabled={guardar.isPending}>{guardar.isPending ? 'Guardando…' : 'Guardar página web'}</PrimaryButton>
+        {/* Descartar: revierte al último guardado (como en Marca). Nota: las
+            imágenes ya subidas al storage no se borran aquí — solo se quita su
+            referencia del landing sin guardar. */}
+        {dirty && <button onClick={() => { setL(landingBase(empresa)); setOk(false) }}
+          className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Descartar</button>}
         {ok && <span className="text-[13px] font-extrabold text-green-600">Guardado ✓</span>}
         {empresa.slug && <a href={urlPublica(empresa.slug)} target="_blank" rel="noreferrer" className="ml-auto text-[13px] font-extrabold text-orange">Ver mi página →</a>}
       </div>

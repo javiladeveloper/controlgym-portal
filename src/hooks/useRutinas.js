@@ -170,7 +170,9 @@ export function useGuardarEjercicio(rutinaId, empresaId) {
   return useMutation({
     mutationFn: async (ej) => {
       const campos = {
-        nombre: (ej.nombre || '').trim(), series: Number(ej.series) || null,
+        // Normalizar espacios internos ('Press  banca' -> 'Press banca') para
+        // que el match con el banco (ilike) no cree duplicados por doble espacio.
+        nombre: (ej.nombre || '').trim().replace(/\s+/g, ' '), series: Number(ej.series) || null,
         reps: ej.reps || null, carga: ej.carga || null,
         descanso: ej.descanso || null, notas: ej.notas || null,
       }
@@ -186,9 +188,12 @@ export function useGuardarEjercicio(rutinaId, empresaId) {
       if (existe?.length) {
         ejercicioId = existe[0].id
       } else {
+        // Si RLS impide crear en el banco (p.ej. rol sin permiso), NO abortamos
+        // el guardado de la fila: dejamos ejercicio_id null (el socio verá el
+        // ejercicio sin guía) en vez de romper todo el guardado.
         const { data: creado } = await supabase.from('ejercicio')
           .insert({ empresa_id: empresaId, nombre: campos.nombre })
-          .select('id').single()
+          .select('id').maybeSingle()
         ejercicioId = creado?.id || null
       }
 

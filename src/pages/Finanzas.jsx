@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
@@ -10,11 +10,31 @@ import { useFinanzas } from '../hooks/useOperaciones.js'
 import { money, mismoMesAnio, mismoDia } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
+// Fecha de HOY en hora LOCAL como 'YYYY-MM-DD' (no UTC): toISOString() usaría UTC
+// y cerca de medianoche en Perú (UTC-5) daría el día siguiente, desalineando la
+// caja del día con las fechas locales que se muestran.
+function hoyLocalStr() {
+  const d = new Date()
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dia}`
+}
+
 // ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
 // esperado = fondo inicial + ingresos en efectivo − gastos en efectivo (hoy)
 function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   const qc = useQueryClient()
-  const hoy = new Date().toISOString().slice(0, 10)
+  // 'hoy' vive en estado y se re-evalúa cada minuto: si el panel queda abierto y
+  // cruza la medianoche, la queryKey pasa al nuevo día en vez de quedar clavada
+  // en la caja de ayer.
+  const [hoy, setHoy] = useState(hoyLocalStr)
+  useEffect(() => {
+    const id = setInterval(() => {
+      const actual = hoyLocalStr()
+      setHoy((prev) => (prev === actual ? prev : actual))
+    }, 60000)
+    return () => clearInterval(id)
+  }, [])
   const [montoApertura, setMontoApertura] = useState('')
   const [contado, setContado] = useState('')
   const [abriendo, setAbriendo] = useState(false)
@@ -52,26 +72,64 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
       saldo_inicial: Number(montoApertura) || 0, estado: 'abierta', abierta_por: usuarioId,
     })
     setAbriendo(false)
-    if (error) { toast.error('No se pudo abrir la caja: ' + error.message); return }
+    if (error) {
+      // El unique(sede_id,fecha) del esquema evita la doble apertura, pero su
+      // error crudo ('duplicate key…') no le dice nada al recepcionista.
+      const dup = error.code === '23505' || /duplicate key|unique/i.test(error.message || '')
+      toast.error(dup ? 'La caja de hoy ya está abierta. Refresca para verla.' : 'No se pudo abrir la caja: ' + error.message)
+      qc.invalidateQueries({ queryKey: ['caja', sedeId, hoy] })
+      return
+    }
     toast.ok('Caja abierta — ¡buen turno! 💪')
     qc.invalidateQueries({ queryKey: ['caja', sedeId, hoy] })
   }
 
   async function cerrar() {
     setCerrando(true)
-    const { error } = await supabase.from('caja')
+    // Condicionamos el cierre a estado='abierta': si otra recepción ya la cerró,
+    // el update no afecta filas y avisamos, en vez de pisar su cierre.
+    const { data: filas, error } = await supabase.from('caja')
       .update({
         saldo_final: Number(contado) || 0, estado: 'cerrada', cerrada_por: usuarioId,
         efectivo_esperado: esperadoVivo, // congela el esperado al momento del cierre
       })
       .eq('id', c.id)
+      .eq('estado', 'abierta')
+      .select('id')
     setCerrando(false)
     if (error) { toast.error('No se pudo cerrar: ' + error.message); return }
+    if (!filas || filas.length === 0) {
+      toast.error('La caja ya fue cerrada por otra persona.')
+      qc.invalidateQueries({ queryKey: ['caja', sedeId, hoy] })
+      return
+    }
     toast.ok('Caja cerrada y cuadrada')
     qc.invalidateQueries({ queryKey: ['caja', sedeId, hoy] })
   }
 
   if (caja.isLoading) return null
+
+  // Si la consulta de caja falla no podemos saber si ya hay una caja abierta:
+  // mostrar el formulario 'Abrir caja' arriesgaría una doble apertura. Avisamos
+  // del error y ofrecemos reintentar en vez de asumir que no hay caja.
+  if (caja.isError) {
+    return (
+      <Card className="mt-5 p-[19px]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[14.5px] font-extrabold">🧰 Caja del día</div>
+            <div className="mt-0.5 text-[12px] font-semibold text-red">
+              No se pudo cargar el estado de la caja. Vuelve a intentar antes de abrir o cerrar.
+            </div>
+          </div>
+          <button onClick={() => caja.refetch()}
+            className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange">
+            Reintentar
+          </button>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card className="mt-5 p-[19px]">
@@ -168,6 +226,10 @@ export default function Finanzas() {
   }
 
   const movs = data || []
+  // Ids de movimientos que ya fueron anulados (referenciados por un contra-asiento
+  // con ref_tipo='anulacion'). Se marcan visualmente en la lista para que el
+  // original y su ANULACIÓN se lean como un par neutralizado, no como dos cargos.
+  const anulados = new Set(movs.filter((m) => m.ref_tipo === 'anulacion').map((m) => m.ref_id))
   // Mismo MES Y AÑO (no solo el mes, que mezclaría julio 2025 con julio 2026).
   const esteMes = (m) => mismoMesAnio(m.fecha)
   const ingresos = movs.filter((m) => m.tipo === 'ingreso' && esteMes(m)).reduce((n, m) => n + Number(m.monto || 0), 0)
@@ -224,7 +286,7 @@ export default function Finanzas() {
         movs={movs} moneda={moneda} esAdmin={rol === 'admin'} />
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
-        <StatCard label="Ingresos del mes" value={money(ingresos, moneda)} delta=" " deltaColor={T.success} />
+        <StatCard label="Ingresos del mes" value={money(ingresos, moneda)} delta="membresías, ventas, servicios" deltaColor={T.success} />
         <StatCard label="Gastos del mes" value={money(gastos, moneda)} delta="planilla, compras, servicios" />
         <div className="rounded-card border border-line bg-white p-[17px]">
           <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">Utilidad del mes</div>
@@ -241,8 +303,20 @@ export default function Finanzas() {
       {/* Desglose del mes: en qué entró y salió la plata */}
       {desglose.length > 0 && (
         <Card className="mt-[15px] p-[19px]">
-          <div className="text-[14.5px] font-extrabold">¿En qué se movió la plata este mes?</div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">Haz clic en una categoría para filtrar los movimientos.</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-[14.5px] font-extrabold">¿En qué se movió la plata este mes?</div>
+            {fCat !== 'todas' && (
+              <button onClick={() => setFCat('todas')}
+                className="flex items-center gap-1.5 rounded-full border border-orange bg-orange/5 px-3 py-1 text-[11.5px] font-extrabold text-orange hover:bg-orange/10">
+                Filtrando: {catLabel(fCat)} · quitar ✕
+              </button>
+            )}
+          </div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">
+            {fCat === 'todas'
+              ? 'Haz clic en una categoría para filtrar los movimientos de abajo.'
+              : 'La lista de movimientos de más abajo quedó filtrada por esta categoría.'}
+          </div>
           <div className="overflow-x-auto">
             <div className="min-w-[520px]">
               <div className="mt-3 grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
@@ -286,20 +360,25 @@ export default function Finanzas() {
           {movsFiltrados.length === 0 && (
             <div className="py-6 text-center text-[12.5px] font-bold text-faint">Sin movimientos con este filtro.</div>
           )}
-          {movsFiltrados.map((mv) => (
+          {movsFiltrados.map((mv) => {
+            const anulado = anulados.has(mv.id) // este movimiento tiene un contra-asiento
+            return (
             <div key={mv.id} className="flex items-center justify-between gap-2.5 border-b border-line2 py-2.5">
               <div className="min-w-0">
-                <div className="text-[13px] font-extrabold">{mv.descripcion || mv.categoria}</div>
+                <div className={`text-[13px] font-extrabold ${anulado ? 'text-muted line-through' : ''}`}>
+                  {mv.descripcion || mv.categoria}
+                  {anulado && <span className="ml-1.5 rounded-full bg-surface px-2 py-0.5 align-middle text-[10px] font-extrabold text-muted no-underline">anulado</span>}
+                </div>
                 <div className="text-[11.5px] font-semibold text-muted capitalize">
                   {mv.categoria} · {new Date(mv.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
                   {mv.metodo_pago && <span className="ml-1.5 rounded-full bg-surface px-2 py-0.5 text-[10px] font-extrabold text-muted">{mv.metodo_pago}</span>}
                 </div>
               </div>
               <div className="flex flex-shrink-0 items-center gap-2.5">
-                <div className="text-[13px] font-extrabold" style={{ color: mv.tipo === 'ingreso' ? T.success : T.danger }}>
+                <div className={`text-[13px] font-extrabold ${anulado ? 'line-through' : ''}`} style={{ color: mv.tipo === 'ingreso' ? T.success : T.danger }}>
                   {mv.tipo === 'ingreso' ? '+' : '−'}{money(mv.monto, moneda)}
                 </div>
-                {rol === 'admin' && !(mv.descripcion || '').startsWith('ANULACIÓN:') && (
+                {rol === 'admin' && !anulado && !(mv.descripcion || '').startsWith('ANULACIÓN:') && (
                   anulando === mv.id ? (
                     <div className="flex items-center gap-1.5">
                       <button disabled={busyAnular} onClick={() => anular(mv)}
@@ -316,7 +395,8 @@ export default function Finanzas() {
                 )}
               </div>
             </div>
-          ))}
+            )
+          })}
         </Card>
       )}
     </div>

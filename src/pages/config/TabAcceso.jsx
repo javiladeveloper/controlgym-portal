@@ -47,9 +47,16 @@ export default function TabAcceso() {
   const [usaQr, setUsaQr] = useState(null) // null=cargando
   useEffect(() => {
     if (!empresa?.id) return
+    setUsaQr(null)
     supabase.from('empresa').select('usa_carnet_qr').eq('id', empresa.id).single()
-      .then(({ data }) => setUsaQr(data?.usa_carnet_qr ?? true))
+      .then(({ data, error }) => {
+        // Si falla la consulta, no dejamos el switch bloqueado para siempre:
+        // asumimos el default (activado) para que quede usable.
+        if (error) { setUsaQr(true); return }
+        setUsaQr(data?.usa_carnet_qr ?? true)
+      })
   }, [empresa?.id])
+  const cargandoQr = usaQr === null
 
   function toggleQr(nuevo) {
     setUsaQr(nuevo)
@@ -92,11 +99,14 @@ export default function TabAcceso() {
             </div>
           </div>
           <button
-            onClick={() => usaQr !== null && toggleQr(!usaQr)}
-            disabled={usaQr === null || guardarEmpresa.isPending}
-            className={`relative mt-1 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${usaQr ? 'bg-orange' : 'bg-line2'} disabled:opacity-50`}
+            onClick={() => !cargandoQr && toggleQr(!usaQr)}
+            disabled={cargandoQr || guardarEmpresa.isPending}
+            aria-busy={cargandoQr}
+            className={`relative mt-1 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${cargandoQr ? 'animate-pulse bg-line' : usaQr ? 'bg-orange' : 'bg-line2'} disabled:cursor-default disabled:opacity-60`}
             aria-label="Activar control de acceso">
-            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${usaQr ? 'left-6' : 'left-1'}`} />
+            {/* Mientras carga, el círculo se queda centrado (ni ON ni OFF) para no
+                mostrar un OFF falso antes de conocer el valor real */}
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${cargandoQr ? 'left-3.5' : usaQr ? 'left-6' : 'left-1'}`} />
           </button>
         </div>
         {usaQr === false && (
@@ -106,8 +116,9 @@ export default function TabAcceso() {
         )}
       </Card>
 
-      {/* Todo lo de control de acceso solo si el gym lo usa */}
-      {usaQr !== false && (
+      {/* Todo lo de control de acceso solo si el gym lo usa. Mientras carga
+          (usaQr===null) no se pinta para evitar el "salto" cuando resuelve a false. */}
+      {usaQr === true && (
       <>
       {/* Explicación de los 2 métodos */}
       <div className="rounded-[12px] border border-line bg-[#FAFBFC] p-4">

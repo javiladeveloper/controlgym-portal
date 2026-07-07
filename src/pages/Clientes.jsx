@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, Avatar, Badge, GhostButton, PrimaryButton } from '../components/ui.jsx'
 import { ChevronLeft } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
@@ -8,7 +8,7 @@ import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
-import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo } from '../lib/uiHelpers.js'
+import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal } from '../lib/uiHelpers.js'
 
 function fmtFecha(iso) {
   if (!iso) return '—'
@@ -18,8 +18,20 @@ function fmtFecha(iso) {
 }
 function edadDe(fechaNac) {
   if (!fechaNac) return '—'
-  const diff = Date.now() - new Date(fechaNac).getTime()
+  const nac = fechaLocal(fechaNac)
+  const diff = Date.now() - (nac ? nac.getTime() : NaN)
+  // Fecha inválida o futura (dedazo en el año): no mostrar edad negativa/NaN
+  if (isNaN(diff) || diff < 0) return '—'
   return Math.floor(diff / (365.25 * 24 * 3600 * 1000)) + ' años'
+}
+
+// IMC = peso / talla². Devuelve null si faltan datos o son absurdos.
+function imcDe(talla, peso) {
+  const t = Number(talla), p = Number(peso)
+  if (!t || !p || t < 0.5 || t > 2.6 || p < 10 || p > 400) return null
+  const imc = p / (t * t)
+  const cat = imc < 18.5 ? 'Bajo peso' : imc < 25 ? 'Normal' : imc < 30 ? 'Sobrepeso' : 'Obesidad'
+  return { valor: imc.toFixed(1), cat }
 }
 
 function Ficha({ socioId, onBack, onVerSocio }) {
@@ -69,6 +81,17 @@ function Ficha({ socioId, onBack, onVerSocio }) {
             <Field label="Teléfono" value={ficha.telefono || '—'} />
             <Field label="Talla" value={ficha.talla_m ? `${ficha.talla_m} m` : '—'} />
             <Field label="Peso" value={ficha.peso_kg ? `${ficha.peso_kg} kg` : '—'} />
+            {(() => {
+              const imc = imcDe(ficha.talla_m, ficha.peso_kg)
+              return (
+                <div className="col-span-2">
+                  <FieldLabel>IMC</FieldLabel>
+                  <div className="mt-[3px] text-[14.5px] font-extrabold">
+                    {imc ? <>{imc.valor} <span className="text-[12px] font-bold text-muted">· {imc.cat}</span></> : '—'}
+                  </div>
+                </div>
+              )
+            })()}
             <div className="col-span-2">
               <FieldLabel>Objetivo</FieldLabel>
               <div className="mt-[3px] text-[14.5px] font-extrabold text-orange">{ficha.objetivo || '—'}</div>
@@ -145,8 +168,19 @@ function Ficha({ socioId, onBack, onVerSocio }) {
 
 export default function Clientes() {
   const { sedeId, sedeNombre } = usePanel()
-  // Deep-link desde la búsqueda global: /clientes?socio=<id> abre la ficha
-  const [fichaId, setFichaId] = useState(() => new URLSearchParams(window.location.search).get('socio'))
+  // La ficha vive en la URL (/clientes?socio=<id>): así el deep-link entra,
+  // F5 la conserva, el botón Atrás del navegador la cierra y el enlace se
+  // puede copiar. setFichaId escribe/borra el query param.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const fichaId = searchParams.get('socio')
+  const setFichaId = (id) => setSearchParams(
+    (prev) => {
+      const next = new URLSearchParams(prev)
+      if (id) next.set('socio', id); else next.delete('socio')
+      return next
+    },
+    { replace: false },
+  )
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [importarOpen, setImportarOpen] = useState(false)
   const [editar, setEditar] = useState(null) // socio en edición rápida desde la lista
@@ -249,9 +283,23 @@ export default function Clientes() {
                   )}
                 </div>
                 <div><Badge bg={st.bg} color={st.color}>{st.label}</Badge></div>
-                <div className="text-[12.5px] font-semibold text-muted">
-                  {mem?.fecha_fin ? new Date(mem.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
-                </div>
+                {(() => {
+                  // Señal visual de urgencia: rojo si ya venció, ámbar si vence
+                  // en los próximos 7 días, gris si está vigente/sin membresía.
+                  const fin = mem?.fecha_fin ? fechaLocal(mem.fecha_fin) : null
+                  let cls = 'text-muted'
+                  if (fin && !deBaja) {
+                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+                    const dias = Math.round((fin - hoy) / 86400000)
+                    if (dias < 0) cls = 'text-red'
+                    else if (dias <= 7) cls = 'text-amber-600'
+                  }
+                  return (
+                    <div className={`text-[12.5px] font-semibold ${cls}`}>
+                      {fin ? fin.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
+                    </div>
+                  )
+                })()}
                 <div className="flex items-center justify-end gap-1.5">
                   <button onClick={() => setEditar(c)} title="Editar socio"
                     className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-2 text-[12px] text-muted hover:border-orange hover:text-orange">✏️</button>

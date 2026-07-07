@@ -51,6 +51,8 @@ function normalizarFecha(v) {
   return isNaN(d) ? null : d.toISOString().slice(0, 10)
 }
 
+const LIMITE = 500 // tope de filas por archivo (coherente con el texto de ayuda)
+
 export default function ImportarSociosModal({ sedeId, onClose }) {
   const qc = useQueryClient()
   const [filas, setFilas] = useState(null)      // matriz cruda del archivo
@@ -81,8 +83,13 @@ export default function ImportarSociosModal({ sedeId, onClose }) {
 
   async function importar() {
     if (mapa.nombre === '') { setError('Indica cuál columna es el Nombre'); return }
-    setBusy(true); setError('')
-    const socios = filas.map((f) => ({
+    // El RPC procesa como máximo 500 por archivo: recortamos y avisamos en
+    // vez de mandar de más y mostrar una discrepancia silenciosa.
+    setError(filas.length > LIMITE
+      ? `El archivo tiene ${filas.length} filas y el máximo es ${LIMITE} por importación. Se importarán las primeras ${LIMITE}; sube el resto en otro archivo.`
+      : '')
+    setBusy(true)
+    const socios = filas.slice(0, LIMITE).map((f) => ({
       nombre: String(f[Number(mapa.nombre)] ?? '').trim(),
       telefono: mapa.telefono !== '' ? String(f[Number(mapa.telefono)] ?? '').trim() : null,
       email: mapa.email !== '' ? String(f[Number(mapa.email)] ?? '').trim() : null,
@@ -175,7 +182,7 @@ export default function ImportarSociosModal({ sedeId, onClose }) {
                 className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted">Otro archivo</button>
               <button onClick={importar} disabled={busy || mapa.nombre === ''}
                 className="cursor-pointer rounded-[10px] border-none bg-orange px-5 py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
-                {busy ? 'Importando…' : `Importar ${filas.length} socios`}
+                {busy ? 'Importando…' : `Importar ${Math.min(filas.length, LIMITE)} socios${filas.length > LIMITE ? ` (de ${filas.length})` : ''}`}
               </button>
             </div>
           </>

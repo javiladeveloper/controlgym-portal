@@ -665,8 +665,7 @@ export default function Landing({ slug }) {
               )}
             </div>
             {L.hero_url && (
-              <img src={L.hero_url} alt="" style={heroPos} className="mx-auto mt-10 h-[260px] w-full max-w-[820px] border-[3px] border-black object-cover"
-                style={{ boxShadow: '10px 10px 0 #000' }} />
+              <img src={L.hero_url} alt="" style={{ ...heroPos, boxShadow: '10px 10px 0 #000' }} className="mx-auto mt-10 h-[260px] w-full max-w-[820px] border-[3px] border-black object-cover" />
             )}
           </div>
         </section>

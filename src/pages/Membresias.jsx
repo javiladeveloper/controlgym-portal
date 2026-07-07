@@ -73,12 +73,16 @@ function CobrarModal({ m, moneda, renovar, gym, onClose }) {
             {saldo > 0 && <><br /><span className="text-amber-600">Queda un saldo de {money(saldo, moneda)}</span></>}
           </div>
         </div>
-        {recibo && (
+        {recibo ? (
           <a href={recibo} target="_blank" rel="noreferrer"
             className="mt-3 flex items-center justify-center gap-2 rounded-[10px] border-none py-2.5 text-[13px] font-extrabold text-white"
             style={{ background: '#1DA851' }}>
             📄 Enviar recibo por WhatsApp
           </a>
+        ) : (
+          <p className="mt-3 text-center text-[11.5px] font-semibold text-muted">
+            Este socio no tiene teléfono registrado; agrégalo en su ficha para enviarle el recibo por WhatsApp.
+          </p>
         )}
         <button onClick={onClose} className="mt-2.5 w-full cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Listo</button>
       </Modal>
@@ -173,12 +177,16 @@ function AbonarModal({ m, moneda, sedeId, gym, onClose }) {
             {Number(exito.saldo) > 0 ? `Queda debiendo ${money(exito.saldo, moneda)}` : 'Membresía cancelada completa ✓'} · registrado en caja
           </div>
         </div>
-        {recibo && (
+        {recibo ? (
           <a href={recibo} target="_blank" rel="noreferrer"
             className="mt-3 flex items-center justify-center gap-2 rounded-[10px] border-none py-2.5 text-[13px] font-extrabold text-white"
             style={{ background: '#1DA851' }}>
             📄 Enviar recibo por WhatsApp
           </a>
+        ) : (
+          <p className="mt-3 text-center text-[11.5px] font-semibold text-muted">
+            Este socio no tiene teléfono registrado; agrégalo en su ficha para enviarle el recibo por WhatsApp.
+          </p>
         )}
         <button onClick={onClose} className="mt-2.5 w-full cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Listo</button>
       </Modal>
@@ -233,7 +241,7 @@ function CongelarModal({ m, freeze, onClose }) {
           se corre los días realmente congelados (no pierde lo pagado).
         </p>
         <BotonesModal onCancel={onClose} busy={freeze.isPending} disabled={n < 1 || n > tope}
-          submitLabel={`Congelar ${n || ''} día${n === 1 ? '' : 's'}`} onSubmit={confirmar} />
+          submitLabel={n >= 1 ? `Congelar ${n} día${n === 1 ? '' : 's'}` : 'Congelar'} onSubmit={confirmar} />
       </div>
     </Modal>
   )
@@ -271,6 +279,7 @@ export default function Membresias() {
   const navigate = useNavigate()
   const { sedeId } = usePanel()
   const { empresa, rol } = useAuth()
+  const esAdmin = rol === 'admin' // baja/anulación/devolución son solo de admin
   const moneda = empresa?.moneda || 'PEN'
   const planes = usePlanes()
   const membresias = useMembresias(sedeId)
@@ -300,6 +309,10 @@ export default function Membresias() {
     const saldo = saldoDe(m)
     return n + (saldo > 0 ? saldo : (Number(m.precio_pagado) || Number(m.plan?.precio) || 0))
   }, 0)
+
+  // Membresías filtradas por el buscador de la tabla de gestión
+  const filtradas = (membresias.data || [])
+    .filter((m) => !busca || m.socio?.nombre?.toLowerCase().includes(busca.toLowerCase()) || m.socio?.codigo?.includes(busca))
 
   // El socio no responde y no volverá: se cierra su membresía y pasa a inactivo
   async function darBaja(m) {
@@ -388,7 +401,8 @@ export default function Membresias() {
                       Cobré — renovar
                     </button>
                   )}
-                  {dandoBaja === m.id ? (
+                  {/* Dar de baja (cierra al socio) es solo de admin */}
+                  {esAdmin && (dandoBaja === m.id ? (
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10.5px] font-extrabold text-red">¿Dar de baja?</span>
                       <button onClick={() => darBaja(m)}
@@ -401,7 +415,7 @@ export default function Membresias() {
                       className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-2 text-[11px] font-extrabold text-muted hover:border-red hover:text-red">
                       No volverá
                     </button>
-                  )}
+                  ))}
                 </div>
               </div>
             )
@@ -435,9 +449,14 @@ export default function Membresias() {
 
         {membresias.isLoading && <LoadingState variant="table" rows={5} />}
         {membresias.error && <ErrorState error={membresias.error} onRetry={membresias.refetch} />}
-        {(membresias.data || [])
-          .filter((m) => !busca || m.socio?.nombre?.toLowerCase().includes(busca.toLowerCase()) || m.socio?.codigo?.includes(busca))
-          .map((m) => {
+        {membresias.data && !membresias.error && filtradas.length === 0 && (
+          <div className="border-t border-line2 px-5 py-10 text-center text-[13px] font-semibold text-muted">
+            {busca
+              ? `Sin resultados para "${busca}".`
+              : 'Aún no hay membresías en esta sede. Inscribe socios desde Clientes para verlas aquí.'}
+          </div>
+        )}
+        {filtradas.map((m) => {
           const deBaja = m.socio?.estado === 'inactivo'
           const st = deBaja ? { bg: T.line2, color: T.muted, label: 'De baja' } : estadoBadge(m.estado)
           const dias = m.plan?.dias_congelamiento_anio || 0
@@ -466,7 +485,7 @@ export default function Membresias() {
               <div className="text-[12.5px] font-bold text-muted">
                 {m.fecha_fin ? fechaLocal(m.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
               </div>
-              {anulando === m.id ? (
+              {esAdmin && anulando === m.id ? (
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
                   <span className="text-[10.5px] font-extrabold text-red">¿Anular?</span>
                   <button disabled={anular.isPending} onClick={() => onAnular(m, false)}
@@ -508,7 +527,8 @@ export default function Membresias() {
                   ) : (
                     <span className="w-[86px] flex-shrink-0" />
                   )}
-                  {m.estado !== 'cancelada' && (
+                  {/* Anular (y anular+devolver) es solo de admin */}
+                  {esAdmin && m.estado !== 'cancelada' && (
                     <button
                       disabled={busy}
                       onClick={() => setAnulando(m.id)}

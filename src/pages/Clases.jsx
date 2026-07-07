@@ -9,6 +9,16 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useQuery } from '@tanstack/react-query'
 import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso } from '../hooks/useClases.js'
 
+// Fecha de HOY en horario local (Lima UTC-5) como 'YYYY-MM-DD'. toISOString()
+// usaría UTC y de tarde/noche adelantaría al día siguiente, excluyendo las
+// reservas de hoy. uiHelpers no expone un formateador local, así que se define aquí.
+function hoyLocal() {
+  const d = new Date()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
 // Reservas vigentes por clase (desde la app del socio): la señal de demanda
 // que le dice al gym qué clases jalan y cuáles no
 function useReservasPorClase(sedeId) {
@@ -21,8 +31,11 @@ function useReservasPorClase(sedeId) {
         .from('reserva_clase')
         .select('clase_id, fecha')
         .eq('sede_id', sedeId)
-        .eq('estado', 'reservada')
-        .gte('fecha', new Date().toISOString().slice(0, 10))
+        // Cupo ocupado real = todo lo que no está cancelado (igual que la RPC
+        // reservar_clase): incluye 'reservada', 'asistio' y 'no_show'. Contar
+        // solo 'reservada' subestimaba las clases más exitosas (ya con lista pasada).
+        .neq('estado', 'cancelada')
+        .gte('fecha', hoyLocal())
       if (error) throw error
       const porClase = {}
       for (const r of data || []) {
@@ -67,6 +80,12 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
     setBusy(true); setError('')
     try {
       let tipoId = f.tipo_id || null
+      // Si eligió "Crear tipo nuevo…" el nombre es obligatorio: sin él la clase
+      // quedaría con tipo_clase_id null (sin color/servicio ni acceso por plan) en
+      // silencio. Avisar en vez de guardar sin tipo.
+      if (f.tipo_id === '__nuevo__' && !f.tipo_nuevo.trim()) {
+        throw new Error('Escribe el nombre del tipo de servicio nuevo, o elige uno existente.')
+      }
       // Crear tipo de clase nuevo al vuelo si lo escribió
       if (f.tipo_id === '__nuevo__' && f.tipo_nuevo.trim()) {
         const { data, error } = await supabase.from('tipo_clase')
@@ -75,10 +94,17 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
         tipoId = data.id
         qc.invalidateQueries({ queryKey: ['plan-acceso'] })
       }
+      // Duración y cupo: exigir enteros > 0. No usar `Number(x) || default` porque
+      // 0 es falsy (convertía silenciosamente cupo 0 en 20) y los negativos pasaban
+      // crudos (un cupo_max negativo deja la clase 'llena' desde 0 reservas).
+      const dur = Number(f.duracion)
+      const cupo = Number(f.cupo)
+      if (!Number.isFinite(dur) || dur <= 0) throw new Error('La duración debe ser mayor que 0.')
+      if (!Number.isFinite(cupo) || cupo <= 0) throw new Error('El cupo máximo debe ser mayor que 0.')
       const payload = {
         tipo_clase_id: tipoId === '__nuevo__' ? null : tipoId,
         nombre: f.nombre.trim(), dia_semana: Number(f.dia), hora: f.hora,
-        duracion_min: Number(f.duracion) || 60, cupo_max: Number(f.cupo) || 20,
+        duracion_min: dur, cupo_max: cupo,
         // Staff del panel o externo por nombre (nunca ambos)
         instructor_id: f.instructor && f.instructor !== '__externo__' ? f.instructor : null,
         instructor_nombre: f.instructor === '__externo__' ? (f.instructor_externo.trim() || null) : null,
@@ -148,8 +174,8 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
           <Campo label="Hora"><input type="time" value={f.hora} onChange={set('hora')} className={inputCls} /></Campo>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Campo label="Duración (min)"><input type="number" value={f.duracion} onChange={set('duracion')} className={inputCls} /></Campo>
-          <Campo label="Cupo máximo"><input type="number" value={f.cupo} onChange={set('cupo')} className={inputCls} /></Campo>
+          <Campo label="Duración (min)"><input type="number" min="1" value={f.duracion} onChange={set('duracion')} className={inputCls} /></Campo>
+          <Campo label="Cupo máximo"><input type="number" min="1" value={f.cupo} onChange={set('cupo')} className={inputCls} /></Campo>
         </div>
         <Campo label="Instructor" hint="Puede ser de tu equipo, o alguien contratado solo para dictar esta clase.">
           <select value={f.instructor} onChange={set('instructor')} className={inputCls + ' cursor-pointer'}>
@@ -224,8 +250,11 @@ function ServiciosModal({ empresaId, sedeId, tipos, onClose }) {
     const { error } = await supabase.from('tipo_clase').delete().eq('id', t.id)
     setBusy('')
     if (error) {
+      // Solo clase.tipo_clase_id bloquea el borrado (sin ON DELETE). La matriz de
+      // planes (plan_acceso_clase) es ON DELETE CASCADE: no bloquea, así que no la
+      // mencionamos como causa del error de FK.
       setError(error.message.includes('foreign key')
-        ? `No se puede eliminar "${t.nombre}": tiene clases en el horario o está en la matriz de planes. Quita esas referencias primero.`
+        ? `No se puede eliminar "${t.nombre}": tiene clases en el horario. Quita esas clases primero.`
         : error.message)
       return
     }
@@ -437,7 +466,7 @@ export default function Clases() {
                 const on = !!accesoMap.get(`${p.id}:${t.id}`)
                 return (
                   <div key={p.id} className="flex justify-center">
-                    <button onClick={() => toggleAcceso.mutate({ empresaId: empresa.id, planId: p.id, tipoId: t.id, incluido: !on })}
+                    <button onClick={() => toggleAcceso.mutate({ empresaId: empresa?.id, planId: p.id, tipoId: t.id, incluido: !on })}
                       className="flex h-8 w-8 items-center justify-center rounded-full text-[14px] font-extrabold transition hover:ring-2 hover:ring-orange-100 active:scale-[0.92]"
                       style={{ background: on ? T.successBg : T.line2, color: on ? T.success : T.faint }}>
                       {on ? '✓' : '—'}

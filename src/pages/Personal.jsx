@@ -9,7 +9,7 @@ import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePersonal } from '../hooks/useOperaciones.js'
-import { iniciales } from '../lib/uiHelpers.js'
+import { iniciales, money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const ROLES = [
@@ -36,7 +36,10 @@ function ChipCopiable({ etiqueta, valor }) {
     </button>
   )
 }
-const MES_LABEL = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+// Etiqueta del mes en curso. Es una FUNCIÓN (no constante de módulo) para que
+// se recalcule en cada render: si la pestaña queda abierta al cruzar de mes, el
+// texto y la descripción del gasto siguen el mes real, no el de cuando se cargó.
+const mesLabel = () => new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
 
 // Editar el vínculo laboral del colaborador: rol, forma de pago y banco.
 // (El nombre y teléfono los edita cada quien en su perfil.)
@@ -203,11 +206,13 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
   const [metodo, setMetodo] = useState('transferencia')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const MES = mesLabel()
 
   const totalClases = (Number(clases) || 0) * (Number(tarifa) || 0)
 
   async function pagar(e) {
     e?.preventDefault()
+    if (busy) return // evita doble envío por doble clic mientras se inserta
     setBusy(true); setError('')
     try {
       const esMensual = modo === 'mensual'
@@ -219,19 +224,31 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
           ? { tipo_pago: 'mensual', sueldo_mensual: n }
           : { tipo_pago: 'por_clase', tarifa_clase: Number(tarifa) })
         .eq('usuario_id', colaborador.id).eq('empresa_id', empresaId)
-      // Registrar el gasto de planilla
+      // Registrar el gasto de planilla. Para sueldo MENSUAL marcamos
+      // es_planilla_mensual + mes_planilla: un índice único impide pagar dos
+      // veces el sueldo del mismo colaborador en el mismo mes (los pagos por
+      // clase no se marcan, pueden repetirse).
+      const primeroDeMes = new Date(); primeroDeMes.setDate(1)
+      const mesPlanilla = esMensual ? primeroDeMes.toLocaleDateString('en-CA') : null
       const { error } = await supabase.from('movimiento_financiero').insert({
         empresa_id: empresaId, sede_id: sedeId, tipo: 'gasto', categoria: 'planilla',
         descripcion: esMensual
-          ? `Sueldo ${MES_LABEL} · ${colaborador.nombre}`
-          : `Pago por ${clases} clase${Number(clases) === 1 ? '' : 's'} · ${MES_LABEL} · ${colaborador.nombre}`,
+          ? `Sueldo ${MES} · ${colaborador.nombre}`
+          : `Pago por ${clases} clase${Number(clases) === 1 ? '' : 's'} · ${MES} · ${colaborador.nombre}`,
         monto: n, metodo_pago: metodo, ref_tipo: 'usuario', ref_id: colaborador.id,
+        es_planilla_mensual: esMensual, mes_planilla: mesPlanilla,
       })
-      if (error) throw error
+      if (error) {
+        // El índice único de planilla mensual devuelve un error de duplicado.
+        if (error.code === '23505' || /uq_planilla_mensual/.test(error.message)) {
+          throw new Error(`Ya se pagó el sueldo de ${colaborador.nombre} este mes.`)
+        }
+        throw error
+      }
       qc.invalidateQueries({ queryKey: ['planilla-mes'] })
       qc.invalidateQueries({ queryKey: ['personal', sedeId] })
       qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
-      toast.ok(`Pago de S/ ${Number(n).toLocaleString('es-PE')} a ${colaborador.nombre} registrado en Finanzas`)
+      toast.ok(`Pago de ${money(n)} a ${colaborador.nombre} registrado en Finanzas`)
       onClose()
     } catch (err) {
       setError(err.message)
@@ -241,7 +258,7 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
   }
 
   return (
-    <Modal title={`Pagar · ${MES_LABEL}`} subtitle={colaborador.nombre} onClose={onClose}>
+    <Modal title={`Pagar · ${MES}`} subtitle={colaborador.nombre} onClose={onClose}>
       <form onSubmit={pagar} className="flex flex-col gap-3.5">
         {/* Cómo se le paga: fijo de planilla o por clases dictadas */}
         <div className="flex gap-2">
@@ -309,28 +326,44 @@ function PagarPlanillaModal({ pendientes, sedeId, empresaId, onClose }) {
   const qc = useQueryClient()
   const [metodo, setMetodo] = useState('transferencia')
   const [busy, setBusy] = useState(false)
+  const [hecho, setHecho] = useState(false) // ya se registró en esta apertura: no repetir
   const [error, setError] = useState('')
+  const MES = mesLabel()
   const total = pendientes.reduce((n, st) => n + Number(st.sueldo_mensual), 0)
 
   async function pagar() {
+    // Doble protección contra el doble pago: (1) guarda de re-entrada en el
+    // cliente para el doble clic, y (2) el índice único uq_planilla_mensual_mes
+    // en la BD (es_planilla_mensual + mes_planilla) que frena la carrera entre
+    // dos administradores.
+    if (busy || hecho) return
     setBusy(true); setError('')
+    const primeroDeMes = new Date(); primeroDeMes.setDate(1)
+    const mesPlanilla = primeroDeMes.toLocaleDateString('en-CA')
     const { error } = await supabase.from('movimiento_financiero').insert(
       pendientes.map((st) => ({
         empresa_id: empresaId, sede_id: sedeId, tipo: 'gasto', categoria: 'planilla',
-        descripcion: `Sueldo ${MES_LABEL} · ${st.nombre}`,
+        descripcion: `Sueldo ${MES} · ${st.nombre}`,
         monto: Number(st.sueldo_mensual), metodo_pago: metodo, ref_tipo: 'usuario', ref_id: st.id,
+        es_planilla_mensual: true, mes_planilla: mesPlanilla,
       }))
     )
+    if (error && (error.code === '23505' || /uq_planilla_mensual/.test(error.message))) {
+      setBusy(false)
+      setError('Algunos de estos colaboradores ya tienen su sueldo pagado este mes. Refresca la lista.')
+      return
+    }
     setBusy(false)
     if (error) { setError(error.message); return }
-    toast.ok(`Planilla de ${MES_LABEL} registrada: ${pendientes.length} sueldos por S/ ${total}`)
+    setHecho(true)
+    toast.ok(`Planilla de ${MES} registrada: ${pendientes.length} sueldos por ${money(total)}`)
     qc.invalidateQueries({ queryKey: ['planilla-mes'] })
     qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
     onClose()
   }
 
   return (
-    <Modal title={`Pagar planilla · ${MES_LABEL}`} subtitle="Registra el sueldo de todos los pendientes" onClose={onClose}>
+    <Modal title={`Pagar planilla · ${MES}`} subtitle="Registra el sueldo de todos los pendientes" onClose={onClose}>
       <div className="flex flex-col gap-3.5">
         <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
           {pendientes.map((st) => (
@@ -345,11 +378,11 @@ function PagarPlanillaModal({ pendientes, sedeId, empresaId, onClose }) {
                   </button>
                 )}
               </span>
-              <span className="font-bold text-muted">S/ {Number(st.sueldo_mensual)}</span>
+              <span className="font-bold text-muted">{money(st.sueldo_mensual)}</span>
             </div>
           ))}
           <div className="mt-1.5 flex items-center justify-between border-t border-line2 pt-2 text-[13.5px] font-extrabold">
-            <span>Total</span><span className="text-orange">S/ {total}</span>
+            <span>Total</span><span className="text-orange">{money(total)}</span>
           </div>
         </div>
         <Campo label="Método de pago">
@@ -361,7 +394,7 @@ function PagarPlanillaModal({ pendientes, sedeId, empresaId, onClose }) {
           Se registran {pendientes.length} gastos de <b>planilla</b> en Finanzas. Si alguien no cobra este mes, ciérralo y págale individual con su botón.
         </p>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
-        <BotonesModal onCancel={onClose} busy={busy} submitLabel={`Registrar S/ ${total}`} onSubmit={pagar} />
+        <BotonesModal onCancel={onClose} busy={busy} disabled={hecho} submitLabel={`Registrar ${money(total)}`} onSubmit={pagar} />
       </div>
     </Modal>
   )
@@ -422,9 +455,11 @@ function InvitarModal({ sedeId, onClose }) {
     })
     setBusy(false)
     if (error) { setError(error.message); return }
-    // DNI nuevo → alimentar MAXFIND con el nombre (fire-and-forget)
-    if (verif?.encontrado === false && f.documento && f.nombre.trim()) {
-      verificarDni({ dni: f.documento, nombre: f.nombre, alimentar: true })
+    // DNI nuevo → alimentar MAXFIND con el nombre (fire-and-forget).
+    // Se normaliza a solo dígitos, igual que en la verificación previa.
+    const dniLimpio = f.documento.replace(/\D/g, '')
+    if (verif?.encontrado === false && dniLimpio && f.nombre.trim()) {
+      verificarDni({ dni: dniLimpio, nombre: f.nombre, alimentar: true })
     }
     setOk(true)
     qc.invalidateQueries({ queryKey: ['invitaciones'] })
@@ -494,6 +529,7 @@ export default function Personal() {
 
   // Marcar entrada/salida de un colaborador (RPC valida que sea admin)
   async function marcarAsistencia(st) {
+    if (!sedeId) { toast.error('Espera a que cargue la sede'); return }
     const { data: r, error } = await supabase.rpc('marcar_asistencia_staff', {
       p_usuario_id: st.id, p_sede_id: sedeId,
     })
@@ -508,22 +544,29 @@ export default function Personal() {
     (st) => st.activo && st.tipo_pago !== 'por_clase' && Number(st.sueldo_mensual) > 0 && pagosMes.data && !pagosMes.data.has(st.id)
   )
 
-  // Revocar una invitación pendiente (esa persona ya no podrá vincularse)
+  // Revocar una invitación pendiente (esa persona ya no podrá vincularse).
+  // Es destructivo → se confirma antes.
   async function revocar(inv) {
+    if (!window.confirm(`¿Revocar la invitación de ${inv.nombre || inv.email}? Ya no podrá vincularse con este correo.`)) return
     const { error } = await supabase.from('invitacion')
       .update({ estado: 'revocada' }).eq('id', inv.id)
-    if (error) toast.error('No se pudo revocar: ' + error.message)
-    else qc.invalidateQueries({ queryKey: ['invitaciones'] })
+    if (error) { toast.error('No se pudo revocar: ' + error.message); return }
+    toast.ok('Invitación revocada')
+    qc.invalidateQueries({ queryKey: ['invitaciones'] })
   }
 
-  // Activar/desactivar el acceso de un colaborador a la empresa
+  // Activar/desactivar el acceso de un colaborador a la empresa. Desactivar
+  // (quitarle el acceso) es sensible → se confirma antes.
   async function toggleActivo(st) {
+    if (!empresa?.id) { toast.error('Espera a que cargue la empresa'); return }
+    if (st.activo && !window.confirm(`¿Desactivar el acceso de ${st.nombre} al panel?`)) return
     const { error } = await supabase.from('usuario_empresa')
       .update({ activo: !st.activo })
       .eq('usuario_id', st.id)
       .eq('empresa_id', empresa.id)
-    if (error) toast.error('No se pudo actualizar: ' + error.message)
-    else refetch()
+    if (error) { toast.error('No se pudo actualizar: ' + error.message); return }
+    toast.ok(st.activo ? `${st.nombre} desactivado` : `${st.nombre} reactivado`)
+    qc.invalidateQueries({ queryKey: ['personal', sedeId] })
   }
 
   return (
@@ -554,12 +597,16 @@ export default function Personal() {
 
       {isLoading && <LoadingState variant="table" rows={5} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
-      {!isLoading && !error && (data || []).length === 0 && <EmptyState message="No hay colaboradores asignados a esta sede." />}
+      {!isLoading && !error && (data || []).length === 0 && (
+        <EmptyState icon="👥" message="No hay colaboradores asignados a esta sede."
+          actionLabel={rol === 'admin' ? 'Agregar colaborador' : undefined}
+          onAction={rol === 'admin' ? () => setInvitarOpen(true) : undefined} />
+      )}
 
       {(data || []).length > 0 && (
         <Card className="mt-[18px] overflow-x-auto">
           <div className="grid min-w-[860px] grid-cols-[2fr_1fr_1fr_1.3fr_0.9fr_300px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Colaborador</div><div>Rol</div><div>Teléfono</div><div>Sueldo · {MES_LABEL.split(' ')[0]}</div><div>Estado</div><div />
+            <div>Colaborador</div><div>Rol</div><div>Teléfono</div><div>Sueldo · {mesLabel().split(' ')[0]}</div><div>Estado</div><div />
           </div>
           {data.map((st) => {
             const pagado = pagosMes.data?.get(st.id)
@@ -586,13 +633,13 @@ export default function Personal() {
                 <div className="text-[12.5px] font-bold">
                   {porClase ? (
                     <span className="text-muted">
-                      {st.tarifa_clase ? `S/ ${Number(st.tarifa_clase)} por clase` : 'por clase'}
-                      {pagado != null && <span className="ml-1.5 font-extrabold text-green-600">· pagado S/ {pagado}</span>}
+                      {st.tarifa_clase ? `${money(st.tarifa_clase)} por clase` : 'por clase'}
+                      {pagado != null && <span className="ml-1.5 font-extrabold text-green-600">· pagado {money(pagado)}</span>}
                     </span>
                   ) : pagado != null
-                    ? <span className="text-green-600">✓ Pagado S/ {pagado}</span>
+                    ? <span className="text-green-600">✓ Pagado {money(pagado)}</span>
                     : st.sueldo_mensual
-                      ? <span className="text-muted">S/ {Number(st.sueldo_mensual)} pendiente</span>
+                      ? <span className="text-muted">{money(st.sueldo_mensual)} pendiente</span>
                       : <span className="text-faint">sin sueldo fijado</span>}
                 </div>
                 <div>

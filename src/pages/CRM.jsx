@@ -30,6 +30,7 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
   const [error, setError] = useState('')
   const [confirmarDel, setConfirmarDel] = useState(false)
   const [verif, setVerif] = useState(null) // verificación del DNI vs padrón (MAXFIND)
+  const [confirmarNombre, setConfirmarNombre] = useState(false) // guardar pese a que el nombre no coincide con el padrón
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   // Aquí SÍ se valida el DNI que el interesado dejó en la página del gym:
@@ -38,6 +39,7 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
     const dni = (f.documento || '').replace(/\D/g, '')
     if (dni.length !== 8 || !f.nombre.trim()) { setVerif(null); return }
     setVerif({ buscando: true })
+    setConfirmarNombre(false) // cambió el dato: exige confirmar de nuevo si no coincide
     const t = setTimeout(async () => setVerif(await verificarDni({ dni, nombre: f.nombre })), 400)
     return () => clearTimeout(t)
   }, [f.documento, f.nombre])
@@ -46,6 +48,12 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
 
   async function guardar(e) {
     e?.preventDefault()
+    // El nombre no coincide con el padrón: no guardamos a la primera, pedimos
+    // una confirmación explícita para que la alerta roja no sea solo cosmética.
+    if (verif?.coincide === false && !confirmarNombre) {
+      setConfirmarNombre(true)
+      return
+    }
     setBusy(true); setError('')
     const payload = {
       nombre: f.nombre.trim(), telefono: f.telefono || null, email: f.email || null,
@@ -68,8 +76,11 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
     if (error) { setError(error.message); return }
     invalidar(); onClose()
     toast.undo(`Prospecto ${lead.nombre} eliminado`, async () => {
-      await supabase.from('lead').update({ deleted_at: null }).eq('id', lead.id)
+      const { error: errRestore } = await supabase.from('lead').update({ deleted_at: null }).eq('id', lead.id)
       invalidar()
+      // Supabase no lanza: hay que revisar el objeto {error} para no anunciar
+      // una restauración que en realidad falló (RLS/red).
+      if (errRestore) { toast.error('No se pudo restaurar: ' + errRestore.message); return }
       toast.ok('Prospecto restaurado')
     })
   }
@@ -100,6 +111,11 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
         </Campo>
         <Campo label="Nota"><textarea rows={2} value={f.nota} onChange={set('nota')} className={inputCls + ' resize-none'} placeholder="Le interesa el plan Pro…" /></Campo>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
+        {confirmarNombre && verif?.coincide === false && (
+          <div className="rounded-[10px] border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] font-extrabold text-amber-800">
+            El nombre no coincide con el padrón. Pulsa “{editando ? 'Guardar cambios' : 'Agregar prospecto'}” otra vez para guardarlo de todos modos.
+          </div>
+        )}
         {editando && (
           confirmarDel ? (
             <div className="flex items-center gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.5 py-2.5">
@@ -131,16 +147,22 @@ export default function CRM() {
   const [sobreCol, setSobreCol] = useState(null) // columna resaltada durante el drag
 
   // Drag & drop: soltar la tarjeta en una columna la mueve a ESA etapa
-  // (en cualquier dirección, no solo avanzar) con actualización optimista
+  // (en cualquier dirección, no solo avanzar) con actualización optimista.
+  // Mismo patrón que useAvanzarLead: cancelar queries en vuelo antes de la
+  // escritura optimista (para que un refetch no la pise), snapshot para
+  // revertir al instante si falla, e invalidar al terminar.
   async function moverLead(id, etapa) {
     const lead = (leads.data || []).find((l) => l.id === id)
     if (!lead || lead.etapa === etapa) return
+    await qc.cancelQueries({ queryKey: ['leads', sedeId] })
+    const prev = qc.getQueryData(['leads', sedeId])
     qc.setQueryData(['leads', sedeId], (old) => (old || []).map((l) => (l.id === id ? { ...l, etapa } : l)))
     const { error } = await supabase.from('lead').update({ etapa }).eq('id', id)
     if (error) {
       toast.error('No se pudo mover: ' + error.message)
-      qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+      if (prev) qc.setQueryData(['leads', sedeId], prev)
     }
+    qc.invalidateQueries({ queryKey: ['leads', sedeId] })
   }
   const [editar, setEditar] = useState(null) // lead en edición
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
@@ -229,12 +251,19 @@ export default function CRM() {
                         <div className="text-[13px] font-extrabold leading-[1.25]">{ld.nombre}</div>
                         <div className="text-[10.5px] font-bold text-muted">{ld.fuente}</div>
                       </div>
-                      {ld.telefono && (
-                        <a href={waLink(ld.telefono, msgLead({ lead: ld.nombre, gym: empresa?.nombre, etapa: ld.etapa }))}
-                          target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
-                          className="flex h-6 w-6 items-center justify-center rounded-full transition-transform hover:scale-110"
-                          style={{ background: '#25D366' }}><WhatsAppIcon size={13} /></a>
-                      )}
+                      {/* waLink devuelve null si el teléfono no tiene dígitos
+                          (p.ej. "llamar recepción"): en ese caso no pintamos el
+                          botón para no dejar un enlace de WhatsApp muerto. */}
+                      {(() => {
+                        const wa = ld.telefono && waLink(ld.telefono, msgLead({ lead: ld.nombre, gym: empresa?.nombre, etapa: ld.etapa }))
+                        if (!wa) return null
+                        return (
+                          <a href={wa}
+                            target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
+                            className="flex h-6 w-6 items-center justify-center rounded-full transition-transform hover:scale-110"
+                            style={{ background: '#25D366' }}><WhatsAppIcon size={13} /></a>
+                        )
+                      })()}
                       <button onClick={() => setEditar(ld)} title="Editar prospecto"
                         className="cursor-pointer rounded-md border-none bg-transparent px-1 text-[13px] text-faint hover:text-orange">✏️</button>
                     </div>
@@ -254,7 +283,11 @@ export default function CRM() {
                         )}
                         {ld.socio_id ? (
                           <span className="rounded-lg px-[10px] py-1.5 text-[10.5px] font-extrabold" style={{ background: T.successBg, color: T.success }}>Socio ✓</span>
-                        ) : !last && (
+                        ) : !last && ld.etapa !== 'clase_prueba' && (
+                          /* Desde "Clase de prueba" el único paso adelante es
+                             convertir en socio (botón "→ Socio"): NO ofrecemos
+                             "Avanzar →" para no crear un "inscrito" fantasma sin
+                             socio ni cobro. */
                           <button onClick={() => avanzar.mutate({ id: ld.id, etapa: ld.etapa })}
                             className="cursor-pointer rounded-lg px-[11px] py-1.5 text-[10.5px] font-extrabold active:scale-[0.96]"
                             style={{ border: `1px solid ${T.primary}`, background: 'transparent', color: T.primary }}>
@@ -278,7 +311,10 @@ export default function CRM() {
           <div className="mt-0.5 text-[12px] font-semibold text-muted">Marca cada contacto como realizado</div>
         </div>
         {tareas.isLoading && <LoadingState variant="table" rows={3} />}
-        {(tareas.data || []).length === 0 && !tareas.isLoading && (
+        {tareas.error && !tareas.isLoading && (
+          <ErrorState error={tareas.error} onRetry={tareas.refetch} />
+        )}
+        {!tareas.error && (tareas.data || []).length === 0 && !tareas.isLoading && (
           <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin seguimientos pendientes.</div>
         )}
         {(tareas.data || []).map((t) => {

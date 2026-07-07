@@ -33,10 +33,16 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   // agregarle una membresía en vez de duplicarlo (ex-socio que retoma, etc.)
   useEffect(() => {
     const doc = f.documento.trim()
-    if (doc.length < 8) { setDupSocio(null); return }
+    // Antes solo con >=8 (DNI). Bajamos a 6 para cubrir CE / pasaporte cortos:
+    // el alta de extranjero se permite desde 6 caracteres, así que el chequeo
+    // de duplicado debe cubrir ese mismo rango.
+    if (doc.length < 6) { setDupSocio(null); return }
     const t = setTimeout(async () => {
+      // Traemos también la sede para avisar si el socio pertenece a OTRA sede:
+      // agregar_membresia_socio crea la membresía en la sede original del socio,
+      // no en la que opera recepción. RLS ya aísla por empresa.
       const { data } = await supabase.from('socio')
-        .select('id, nombre, codigo, estado').eq('documento', doc).is('deleted_at', null).limit(1)
+        .select('id, nombre, codigo, estado, sede_id, sede:sede(nombre)').eq('documento', doc).is('deleted_at', null).limit(1)
       setDupSocio(data?.[0] || null)
     }, 400)
     return () => clearTimeout(t)
@@ -48,6 +54,17 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(null) // { codigo, total, promo }
+
+  // Traduce el error crudo de Postgres a un mensaje entendible. El índice
+  // único uq_socio_documento_empresa lanza 23505 si el DNI ya existe (carrera
+  // entre el dup-check con debounce y el submit, o dos recepciones a la vez).
+  const mensajeError = (err) => {
+    const m = err?.message || ''
+    if (err?.code === '23505' || /duplicate key|uq_socio_documento/i.test(m)) {
+      return 'Ese documento ya pertenece a un socio. Vuelve al paso 1 y usa "Agregarle una membresía" en vez de duplicarlo.'
+    }
+    return m
+  }
 
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
   const setInv = (i, k) => (e) => setInvitados((arr) => {
@@ -140,7 +157,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         p_motivo: usaAcordado ? 'Descuento por volver' : null,
       })
       setBusy(false)
-      if (error) { setError(error.message); return }
+      if (error) { setError(mensajeError(error)); return }
       setExito({ codigo: data.codigo, total: data.total_cobrado, saldo: Number(data.saldo || 0), promo: data.nota, codigosInvitados: [] })
       qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
       qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
@@ -167,7 +184,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       p_precio_acordado: usaAcordado ? acordadoNum : null,
     })
     setBusy(false)
-    if (error) { setError(error.message); return }
+    if (error) { setError(mensajeError(error)); return }
     // Retroalimentar MAXFIND (fire-and-forget): DNI nuevo aporta el nombre, y
     // los datos que el gym completó (teléfono, correo, nacimiento) enriquecen
     // el padrón aunque el DNI ya existiera
@@ -247,6 +264,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
               <div className="mt-0.5 text-[11.5px] font-semibold text-muted">
                 N.º {dupSocio.codigo}{dupSocio.estado !== 'activo' ? ' · estaba de baja' : ''} — no lo dupliques, agrégale una membresía nueva.
               </div>
+              {dupSocio.sede_id && sedeId && dupSocio.sede_id !== sedeId && (
+                <div className="mt-2 rounded-[8px] bg-amber-50 px-2.5 py-1.5 text-[11px] font-extrabold text-amber-800">
+                  ⚠️ Pertenece a otra sede{dupSocio.sede?.nombre ? ` (${dupSocio.sede.nombre})` : ''}. Al agregarle una membresía, esta se registra en ESA sede, no en la actual.
+                </div>
+              )}
               <button onClick={() => { setModoExistente(true); setF((s) => ({ ...s, nombre: dupSocio.nombre })); setPaso('form') }}
                 className="mt-2.5 w-full cursor-pointer rounded-[9px] border-none bg-orange py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600">
                 {dupSocio.estado === 'activo' ? 'Agregarle una membresía →' : 'Reactivarlo y darle membresía →'}
@@ -307,7 +329,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         <Campo label="Nombre completo *"><input required value={f.nombre} onChange={set('nombre')} className={inputCls} placeholder="Carlos Mendoza" /></Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} placeholder="999 888 777" /></Campo>
-          <Campo label="Fecha de nacimiento"><input type="date" value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
+          <Campo label="Fecha de nacimiento"><input type="date" max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
         </div>
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <Campo label="Objetivo">

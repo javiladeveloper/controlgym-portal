@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
+import { fechaLocal } from '../lib/uiHelpers.js'
+
+// Clave de día local (YYYY-M-D) para agrupar sin desfase de zona horaria.
+function claveDiaLocal(f) {
+  const d = fechaLocal(f)
+  if (!d) return null
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
 
 // KPIs del dashboard para una sede (usa la vista v_dashboard_sede).
 export function useDashboardKpis(sedeId) {
@@ -47,16 +55,19 @@ export function useIngresosPorDia(sedeId) {
         .eq('tipo', 'ingreso')
         .gte('fecha', desde.toISOString())
       if (error) throw error
-      // Serie completa de 14 días (con ceros donde no hubo ingresos)
+      // Serie completa de 14 días (con ceros donde no hubo ingresos).
+      // Se agrupa por día LOCAL (mismo criterio que las fechas mostradas en el
+      // gráfico); antes usaba toDateString() sobre UTC y un pago nocturno caía
+      // en el día equivocado, descuadrando la barra frente a lo cobrado.
       const porDia = new Map()
       for (let i = 0; i < 14; i++) {
         const d = new Date(desde)
         d.setDate(desde.getDate() + i)
-        porDia.set(d.toDateString(), { fecha: new Date(d), total: 0 })
+        porDia.set(claveDiaLocal(d), { fecha: new Date(d), total: 0 })
       }
       for (const m of data || []) {
-        const k = new Date(m.fecha).toDateString()
-        if (porDia.has(k)) porDia.get(k).total += Number(m.monto || 0)
+        const k = claveDiaLocal(m.fecha)
+        if (k && porDia.has(k)) porDia.get(k).total += Number(m.monto || 0)
       }
       return [...porDia.values()]
     },

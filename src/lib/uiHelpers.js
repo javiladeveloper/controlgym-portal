@@ -24,8 +24,17 @@ export function estadoBadge(estado) {
       return { bg: T.dangerBg, color: T.danger, label: estado === 'moroso' ? 'Morosa' : 'Vencida' }
     case 'congelada':
       return { bg: T.chipNavy, color: T.navy, label: 'Congelada' }
+    case 'cancelada':
+      return { bg: '#E9EBF0', color: '#5B6472', label: 'Cancelada' }
+    case 'suspendido':
+    case 'suspendida':
+      return { bg: T.dangerBg, color: T.danger, label: 'Suspendida' }
+    case 'inactivo':
+    case 'inactiva':
+      return { bg: '#E9EBF0', color: '#5B6472', label: 'Inactiva' }
     default:
-      return { bg: T.surface, color: T.muted, label: estado || '—' }
+      // Capitaliza cualquier estado no previsto en vez de mostrarlo crudo.
+      return { bg: T.surface, color: T.muted, label: estado ? estado.charAt(0).toUpperCase() + estado.slice(1) : '—' }
   }
 }
 

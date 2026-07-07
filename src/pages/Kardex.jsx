@@ -45,6 +45,11 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
         if (error) throw error
         productoId = data.id
       }
+      // Un total explícito en venta/compra debe ser positivo: un monto 0 o
+      // negativo ensuciaría la caja (p. ej. una venta que RESTA de caja).
+      if ((f.tipo === 'venta' || f.tipo === 'compra') && f.monto !== '' && Number(f.monto) <= 0) {
+        throw new Error('El total de la operación debe ser mayor a 0')
+      }
       const { error } = await supabase.rpc('registrar_mov_inventario', {
         p_sede_id: sedeId, p_producto_id: productoId, p_tipo: f.tipo,
         p_cantidad: Number(f.cantidad), p_monto: f.monto === '' ? null : Number(f.monto),
@@ -105,7 +110,7 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
           hint={f.tipo === 'venta' ? 'Se calcula solo (precio × cantidad). Cámbialo únicamente si cobraste otro monto, p. ej. con descuento.'
             : f.tipo === 'compra' ? 'Lo que le pagas al proveedor por esta compra (costo total, no el precio de venta).'
             : 'El ajuste no mueve caja; puedes dejarlo vacío.'}>
-          <input type="number" step="0.1" value={montoMostrado} onChange={set('monto')} className={inputCls} placeholder="0" />
+          <input type="number" step="0.1" min="0" value={montoMostrado} onChange={set('monto')} className={inputCls} placeholder="0" />
         </Campo>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         <BotonesModal onCancel={onClose} busy={busy} submitLabel="Registrar" />
@@ -200,6 +205,7 @@ export default function Kardex() {
   const [editarProd, setEditarProd] = useState(null)
   const [anulando, setAnulando] = useState(null) // movimiento en confirmación
   const [busyAnular, setBusyAnular] = useState(false)
+  const [verTodos, setVerTodos] = useState(false) // expandir la lista de movimientos del mes
   const productos = useProductos(sedeId)
   const movs = useMovimientosInventario(sedeId)
 
@@ -285,7 +291,7 @@ export default function Kardex() {
           <div className="grid min-w-[660px] grid-cols-[0.8fr_1.8fr_1fr_0.9fr_0.9fr_150px] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
             <div>Fecha</div><div>Producto</div><div>Movimiento</div><div>Stock</div><div>Caja</div><div />
           </div>
-          {movs.data.slice(0, 12).map((m) => {
+          {(verTodos ? movs.data : movs.data.slice(0, 12)).map((m) => {
             const venta = m.tipo === 'venta'
             const ajuste = m.tipo === 'ajuste'
             return (
@@ -317,6 +323,17 @@ export default function Kardex() {
               </div>
             )
           })}
+          {movs.data.length > 12 && (
+            <div className="flex items-center justify-between gap-3 border-t border-line2 px-5 py-3">
+              <span className="text-[12px] font-semibold text-muted">
+                Mostrando {verTodos ? movs.data.length : 12} de {movs.data.length} movimientos del mes
+              </span>
+              <button onClick={() => setVerTodos((v) => !v)}
+                className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-1.5 text-[12px] font-extrabold text-muted hover:border-orange hover:text-orange">
+                {verTodos ? 'Ver menos' : `Ver todos (${movs.data.length})`}
+              </button>
+            </div>
+          )}
         </Card>
       )}
     </div>

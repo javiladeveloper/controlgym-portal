@@ -23,8 +23,10 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
 
   function invalidar() {
     qc.invalidateQueries({ queryKey: ['clientes'] })
-    qc.invalidateQueries({ queryKey: ['socio-ficha'] })
-    qc.invalidateQueries({ queryKey: ['dashboard'] })
+    // La ficha del socio se registra como ['socio', socioId] (useSocioFicha),
+    // no ['socio-ficha']; y los KPIs del dashboard como ['dashboard-kpis', sedeId].
+    qc.invalidateQueries({ queryKey: ['socio', socio.id] })
+    qc.invalidateQueries({ queryKey: ['dashboard-kpis'] })
   }
 
   async function guardar(e) {
@@ -98,7 +100,7 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
         </div>
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <div className="grid grid-cols-3 gap-3">
-          <Campo label="Nacimiento"><input type="date" value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
+          <Campo label="Nacimiento"><input type="date" max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
           <Campo label="Talla (m)" hint={Number(f.talla_m) > 3 ? `Se guardará como ${(Math.round(Number(f.talla_m)) / 100).toFixed(2)} m` : undefined}>
             <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder="1.70" />
           </Campo>

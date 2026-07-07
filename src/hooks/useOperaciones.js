@@ -54,7 +54,13 @@ export function useProductos(sedeId) {
       if (error) throw error
       return (data || [])
         .filter((r) => r.producto && !r.producto.deleted_at)
-        .map((r) => ({ ...r.producto, stock: r.stock, bajo: r.stock <= (r.producto?.stock_minimo ?? 0) }))
+        .map((r) => {
+          const minimo = Number(r.producto?.stock_minimo ?? 0)
+          // 'Stock bajo' solo si hay un mínimo configurado (>0) y el stock llegó a
+          // él o por debajo. Con mínimo 0 (o producto recién creado en 0) NO se
+          // marca alarma: 0<=0 daba falsos rojos en el panel.
+          return { ...r.producto, stock: r.stock, bajo: minimo > 0 && r.stock <= minimo }
+        })
     },
   })
 }
@@ -65,13 +71,16 @@ export function useMovimientosInventario(sedeId) {
     enabled: !!sedeId,
     queryFn: async () => {
       const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      // Traemos TODOS los movimientos del mes (no un limit chico): los KPIs
+      // 'Ventas del mes' y 'Compras del mes' (Kardex.jsx) suman sobre este array,
+      // así que truncarlo a 200 subcontaba el dinero en gimnasios grandes.
       const { data, error } = await supabase
         .from('movimiento_inventario')
         .select('id, tipo, cantidad, monto, fecha, producto:producto(nombre)')
         .eq('sede_id', sedeId)
         .gte('fecha', inicioMes)
         .order('fecha', { ascending: false })
-        .limit(200)
+        .limit(2000)
       if (error) throw error
       return data
     },
@@ -127,7 +136,7 @@ export function useFinanzas(sedeId) {
       const desdeStr = `${y}-${mth}-01`
       const { data, error } = await supabase
         .from('movimiento_financiero')
-        .select('id, tipo, categoria, descripcion, monto, fecha, metodo_pago')
+        .select('id, tipo, categoria, descripcion, monto, fecha, metodo_pago, ref_tipo, ref_id')
         .eq('sede_id', sedeId)
         .gte('fecha', desdeStr)
         .order('fecha', { ascending: false })

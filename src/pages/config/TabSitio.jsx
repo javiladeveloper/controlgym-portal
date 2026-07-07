@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, PrimaryButton } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -17,6 +17,7 @@ export default function TabSitio() {
   const [activa, setActiva] = useState(true)
   const [check, setCheck] = useState(null) // null | 'ok' | 'taken' | 'checking'
   const [ok, setOk] = useState(false)
+  const checkSeq = useRef(0) // secuencia para descartar respuestas fuera de orden
 
   useEffect(() => {
     if (empresa) {
@@ -29,12 +30,21 @@ export default function TabSitio() {
     const s = normalizaSlug(v)
     setSlug(s); setOk(false); setCheck('checking')
     if (!s) { setCheck(null); return }
+    // Cada tecleo dispara una consulta; solo aplicamos la respuesta si sigue
+    // siendo la última pedida (evita que una respuesta lenta de un slug
+    // intermedio marque 'ok' un valor que ya no corresponde al slug actual).
+    const seq = ++checkSeq.current
     const { data } = await supabase.rpc('slug_disponible', { p_slug: s, p_empresa_id: empresa.id })
+    if (seq !== checkSeq.current) return
     setCheck(data ? 'ok' : 'taken')
   }
 
   const dirty = slug !== (empresa?.slug || '') || activa !== (empresa?.landing_activa !== false)
-  const puedeGuardar = dirty && slug && check !== 'taken' && !guardar.isPending
+  // Solo se habilita Guardar cuando el slug NO cambió (nada que verificar) o
+  // cuando la última verificación confirmó que está libre ('ok'). Con 'checking'
+  // o 'taken' se bloquea, cerrando la ventana de una respuesta obsoleta.
+  const slugSinCambio = slug === (empresa?.slug || '')
+  const puedeGuardar = dirty && slug && (slugSinCambio || check === 'ok') && !guardar.isPending
 
   function onGuardar() {
     guardar.mutate({ slug, landing_activa: activa }, {
