@@ -29,6 +29,21 @@ export function estadoBadge(estado) {
   }
 }
 
+// Estado EFECTIVO de una membresía considerando su fecha de fin. El campo
+// membresia.estado solo pasa a 'vencida' cuando corre el cron diario; entre
+// tanto una membresía ya vencida seguiría en verde. Esto lo corrige en vivo:
+// si está 'activa' pero su fecha_fin ya pasó, se trata como 'vencida'.
+export function estadoMembresiaVivo(mem) {
+  if (!mem) return null
+  const est = mem.estado
+  if (est === 'activa' && mem.fecha_fin) {
+    const fin = fechaLocal(mem.fecha_fin)
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+    if (fin && fin < hoy) return 'vencida'
+  }
+  return est
+}
+
 // Colores de avatar por estado/id (determinístico)
 export function avatarColors({ estado, destacado } = {}) {
   if (estado === 'vencida' || estado === 'moroso') return { bg: T.dangerBg, color: T.danger }

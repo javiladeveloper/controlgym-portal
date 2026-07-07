@@ -232,6 +232,14 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
   const responder = useResponderSolicitud(empresaId)
   const [rechazando, setRechazando] = useState(null) // solicitud a la que se le escribe el "aún no"
   const [nota, setNota] = useState('')
+  // Si la consulta falla, avisar en vez de ocultar todo silenciosamente.
+  if (solicitudes.error) {
+    return (
+      <Card className="mt-[18px] p-[15px]" style={{ borderLeft: '4px solid #EF4444' }}>
+        <div className="text-[13px] font-bold text-red">No se pudieron cargar las solicitudes de carga. Reintenta en un momento.</div>
+      </Card>
+    )
+  }
   if (!solicitudes.data?.length) return null
   return (
     <Card className="mt-[18px] p-[19px]" style={{ borderLeft: '4px solid #FF6B35' }}>
@@ -387,13 +395,13 @@ function RutinasImpl() {
         <>
           <Card className="mt-[18px] p-[19px]">
             <div className="flex flex-wrap items-end gap-4">
-              <div className="min-w-[260px]">
+              <div className="relative min-w-[260px]">
                 <div className="mb-[7px] text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Socio</div>
                 <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
                   placeholder={`🔍 ${socio.nombre} — busca otro…`}
                   className="w-full rounded-[10px] border border-line bg-white px-3.5 py-[11px] text-[13.5px] font-bold text-ink outline-none focus:border-orange" />
                 {busqueda && (
-                  <div className="absolute z-20 mt-1 max-h-[220px] w-[280px] overflow-y-auto rounded-[10px] border border-line bg-white shadow-lg">
+                  <div className="absolute left-0 z-20 mt-1 max-h-[220px] w-[280px] overflow-y-auto rounded-[10px] border border-line bg-white shadow-lg">
                     {sociosFiltrados.slice(0, 8).map((s) => (
                       <button key={s.id}
                         onClick={() => { setSocioId(s.id); setBusqueda(''); setDiaSel(null); setEnviado(false) }}
@@ -628,7 +636,7 @@ function RutinasImpl() {
 
           <div className="mt-[18px] flex items-center gap-3.5">
             <button disabled={(!dieta.data?.id && !rutina.data?.id) || enviar.isPending}
-              onClick={() => enviar.mutate({ dietaId: dieta.data?.id, rutinaId: veRutina ? rutina.data?.id : null, comidas: meals }, { onSuccess: () => setEnviado(true) })}
+              onClick={() => enviar.mutate({ dietaId: dieta.data?.id, rutinaId: veRutina ? rutina.data?.id : null }, { onSuccess: () => setEnviado(true) })}
               className="cursor-pointer rounded-[11px] border-none bg-orange px-6 py-[13px] text-[14px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] transition-colors hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50">
               {enviar.isPending ? 'Enviando…' : 'Enviar a la app del socio'}
             </button>

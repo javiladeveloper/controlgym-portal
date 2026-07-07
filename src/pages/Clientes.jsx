@@ -8,7 +8,7 @@ import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
-import { estadoBadge, avatarColors, iniciales } from '../lib/uiHelpers.js'
+import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo } from '../lib/uiHelpers.js'
 
 function fmtFecha(iso) {
   if (!iso) return '—'
@@ -34,7 +34,7 @@ function Ficha({ socioId, onBack, onVerSocio }) {
   const av = avatarColors({ estado: ficha.estado, destacado: false })
   const st = ficha.estado === 'inactivo'
     ? { bg: '#E9EBF0', color: '#5B6472', label: 'De baja — ya no es miembro' }
-    : estadoBadge(ficha.membresia?.[0]?.estado || ficha.estado)
+    : estadoBadge(estadoMembresiaVivo(ficha.membresia?.[0]) || ficha.estado)
 
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
@@ -155,9 +155,18 @@ export default function Clientes() {
 
   if (fichaId) return <Ficha socioId={fichaId} onBack={() => setFichaId(null)} onVerSocio={setFichaId} />
 
-  const filtered = (clientes || []).filter(
-    (c) => !q || c.nombre.toLowerCase().includes(q.toLowerCase()) || c.codigo?.includes(q),
-  )
+  // Búsqueda DNI-first: por nombre, código, DNI, teléfono o correo.
+  const filtered = (clientes || []).filter((c) => {
+    if (!q) return true
+    const t = q.toLowerCase().trim()
+    return (
+      c.nombre?.toLowerCase().includes(t) ||
+      c.codigo?.includes(q) ||
+      c.documento?.includes(q) ||
+      c.telefono?.replace(/\D/g, '').includes(q.replace(/\D/g, '')) && q.replace(/\D/g, '') !== '' ||
+      c.email?.toLowerCase().includes(t)
+    )
+  })
 
   // Grupos de promos 2x1/NxM: quiénes entraron juntos (misma promo, misma fecha)
   const grupos = new Map()
@@ -188,7 +197,7 @@ export default function Clientes() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre o N.º de socio…"
+            placeholder="Buscar por nombre, DNI, N.º, teléfono o correo…"
             className="w-[290px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
           />
           <GhostButton onClick={() => setImportarOpen(true)} title="Migra tus socios desde tu Excel en minutos">⬆ Importar</GhostButton>
@@ -218,7 +227,7 @@ export default function Clientes() {
             const mem = c.membresia?.[0]
             const av = avatarColors({ estado: c.estado })
             const deBaja = c.estado === 'inactivo'
-            const st = deBaja ? { bg: '#E9EBF0', color: '#5B6472', label: 'De baja' } : estadoBadge(mem?.estado || c.estado)
+            const st = deBaja ? { bg: '#E9EBF0', color: '#5B6472', label: 'De baja' } : estadoBadge(estadoMembresiaVivo(mem) || c.estado)
             const grupo = companerosDe(c)
             return (
               <div key={c.id}

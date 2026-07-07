@@ -44,12 +44,17 @@ export function useProductos(sedeId) {
     queryKey: ['kardex', sedeId],
     enabled: !!sedeId,
     queryFn: async () => {
+      // !inner + filtro deleted_at: si un producto se elimina (soft-delete),
+      // deja de aparecer. Sin esto, el "borrado" no lo sacaba de la tabla.
       const { data, error } = await supabase
         .from('inventario_sede')
-        .select('stock, producto:producto(id, nombre, categoria, precio, stock_minimo)')
+        .select('stock, producto:producto!inner(id, nombre, categoria, precio, stock_minimo, deleted_at)')
         .eq('sede_id', sedeId)
+        .is('producto.deleted_at', null)
       if (error) throw error
-      return (data || []).map((r) => ({ ...r.producto, stock: r.stock, bajo: r.stock <= (r.producto?.stock_minimo ?? 0) }))
+      return (data || [])
+        .filter((r) => r.producto && !r.producto.deleted_at)
+        .map((r) => ({ ...r.producto, stock: r.stock, bajo: r.stock <= (r.producto?.stock_minimo ?? 0) }))
     },
   })
 }

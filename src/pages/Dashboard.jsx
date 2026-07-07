@@ -131,6 +131,24 @@ function hourColor(count, max) {
   return ratio >= 0.8 ? T.primary : ratio >= 0.5 ? T.primarySoft : T.primaryTint
 }
 
+// Etiqueta legible del método de ingreso (antes se mostraba "Huella verificada"
+// para TODO acceso permitido, aunque fuera QR, DNI manual, rostro, etc.).
+function etiquetaMetodo(metodo) {
+  switch (metodo) {
+    case 'huella': return 'Huella verificada'
+    case 'facial':
+    case 'rostro': return 'Rostro verificado'
+    case 'qr':
+    case 'carnet': return 'Carnet QR'
+    case 'dni':
+    case 'documento': return 'DNI verificado'
+    case 'manual': return 'Registro manual'
+    case 'tarjeta': return 'Tarjeta'
+    case 'pin': return 'PIN'
+    default: return 'Acceso permitido'
+  }
+}
+
 // Etiquetas 6a..8p para las 15 franjas horarias (6:00–20:00)
 const HORAS = Array.from({ length: 15 }, (_, i) => {
   const h = 6 + i
@@ -231,7 +249,7 @@ export default function Dashboard() {
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] font-extrabold text-ink">{c.socio?.nombre || 'Desconocido'}</div>
                     <div className="text-[11px] font-bold" style={{ color: permit ? T.faint : T.danger }}>
-                      {permit ? 'Huella verificada' : (c.motivo || 'Acceso denegado')}
+                      {permit ? etiquetaMetodo(c.metodo) : (c.motivo || 'Acceso denegado')}
                     </div>
                   </div>
                   <div className="flex-shrink-0 text-right">

@@ -3,20 +3,27 @@ import { supabase } from '../lib/supabaseClient.js'
 import { comprimirImagen, PRESETS } from '../lib/imagen.js'
 
 // Guardar datos de la empresa (contacto, redes, regional, textos).
+// Verifica que el UPDATE afectó una fila: un update sobre id inexistente no da
+// error en Postgres, y mostraría "guardado" sin haber escrito nada.
 export function useGuardarEmpresa(empresaId) {
   return useMutation({
     mutationFn: async (payload) => {
-      const { error } = await supabase.from('empresa').update(payload).eq('id', empresaId)
+      const { data, error } = await supabase.from('empresa').update(payload).eq('id', empresaId).select('id')
       if (error) throw error
+      if (!data || data.length === 0) throw new Error('No se pudo guardar: empresa no encontrada.')
     },
   })
 }
 
 // Guardar tema (marca: colores, logo, favicon, tipografía).
+// upsert: si la empresa aún no tiene fila en empresa_tema, la crea; así el
+// guardado nunca "tiene éxito" sin escribir (antes un UPDATE sobre fila
+// inexistente afectaba 0 filas sin error).
 export function useGuardarTema(empresaId) {
   return useMutation({
     mutationFn: async (payload) => {
-      const { error } = await supabase.from('empresa_tema').update(payload).eq('empresa_id', empresaId)
+      const { error } = await supabase.from('empresa_tema')
+        .upsert({ ...payload, empresa_id: empresaId }, { onConflict: 'empresa_id' })
       if (error) throw error
     },
   })

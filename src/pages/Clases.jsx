@@ -98,14 +98,29 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
 
   async function eliminar() {
     setBusy(true); setError('')
-    const { error } = await supabase.from('clase').delete().eq('id', clase.id)
-    setBusy(false)
-    if (error) {
-      setError(error.message.includes('foreign key')
-        ? 'No se puede eliminar: la clase tiene reservas. Puedes pausarla en su lugar.'
-        : error.message)
+    // La FK reserva_clase→clase es ON DELETE CASCADE: un delete físico borraría
+    // en silencio TODAS las reservas de los socios. Primero comprobamos si hay
+    // reservas futuras vigentes; si las hay, no se elimina (se ofrece pausar).
+    const hoy = new Date().toISOString().slice(0, 10)
+    const { count, error: errCount } = await supabase
+      .from('reserva_clase')
+      .select('id', { count: 'exact', head: true })
+      .eq('clase_id', clase.id)
+      .eq('estado', 'reservada')
+      .gte('fecha', hoy)
+    if (errCount) { setBusy(false); setError(errCount.message); return }
+    if (count > 0) {
+      setBusy(false)
+      setError(`No se puede eliminar: ${count} socio${count > 1 ? 's tienen' : ' tiene'} reserva próxima. Pausa la clase para que deje de aparecer sin borrar sus reservas.`)
       return
     }
+    // Sin reservas futuras: soft-delete (no borrado físico) para conservar el
+    // historial de reservas pasadas.
+    const { error } = await supabase.from('clase')
+      .update({ deleted_at: new Date().toISOString(), activa: false })
+      .eq('id', clase.id)
+    setBusy(false)
+    if (error) { setError(error.message); return }
     qc.invalidateQueries({ queryKey: ['clases', sedeId] })
     onClose()
   }
@@ -265,7 +280,11 @@ function ServiciosModal({ empresaId, sedeId, tipos, onClose }) {
 
 export default function Clases() {
   const { sedeId, sedeNombre } = usePanel()
-  const { empresa } = useAuth()
+  const { empresa, rol } = useAuth()
+  // Quién puede administrar el horario y los servicios: admin y recepción.
+  // Entrenadores/nutri/mantenimiento solo consultan (la autorización real está
+  // en RLS; esto es la capa de UX para no ofrecer acciones que fallarían).
+  const puedeEditar = rol === 'admin' || rol === 'recepcion'
   const [nuevaOpen, setNuevaOpen] = useState(false)
   const [editarClase, setEditarClase] = useState(null)
   const [serviciosOpen, setServiciosOpen] = useState(false)
@@ -275,8 +294,12 @@ export default function Clases() {
   const acceso = usePlanAcceso()
   const toggleAcceso = useToggleAcceso()
 
-  // Agrupar clases por día (1..6)
-  const cols = [1, 2, 3, 4, 5, 6].map((d) => ({
+  // Agrupar clases por día. El domingo (7) también cuenta: el selector deja
+  // crear clases ese día, así que debe tener su columna o desaparecerían.
+  // Si ningún gym tiene clases el domingo, esa columna simplemente va vacía.
+  const hayDomingo = (clases.data || []).some((c) => c.dia_semana === 7)
+  const dias = hayDomingo ? [1, 2, 3, 4, 5, 6, 7] : [1, 2, 3, 4, 5, 6]
+  const cols = dias.map((d) => ({
     label: DAY_NAMES[d],
     items: (clases.data || []).filter((c) => c.dia_semana === d),
   }))
@@ -289,14 +312,16 @@ export default function Clases() {
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Clases y servicios</h1>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Horario semanal · {sedeNombre} · toca una clase para pausarla</p>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">Horario semanal · {sedeNombre}{puedeEditar ? ' · toca una clase para pausarla' : ''}</p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <button onClick={() => setServiciosOpen(true)}
-            className="cursor-pointer rounded-[10px] border border-orange bg-white px-[16px] py-[10px] text-[13px] font-extrabold text-orange transition-colors hover:bg-orange-50">Servicios</button>
-          <button onClick={() => setNuevaOpen(true)}
-            className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
-        </div>
+        {puedeEditar && (
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => setServiciosOpen(true)}
+              className="cursor-pointer rounded-[10px] border border-orange bg-white px-[16px] py-[10px] text-[13px] font-extrabold text-orange transition-colors hover:bg-orange-50">Servicios</button>
+            <button onClick={() => setNuevaOpen(true)}
+              className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
+          </div>
+        )}
       </div>
 
       {/* Áreas de acceso libre: la base del gym (musculación, cardio) — sin horario ni cupos */}
@@ -343,19 +368,22 @@ export default function Clases() {
       {clases.error && <ErrorState error={clases.error} onRetry={clases.refetch} />}
 
       {clases.data && (
-        <div className="mt-3.5 grid grid-cols-6 items-start gap-3 max-lg:flex max-lg:snap-x max-lg:overflow-x-auto max-lg:pb-2 max-lg:[&>div]:w-[74vw] max-lg:[&>div]:flex-shrink-0 max-lg:[&>div]:snap-start">
+        <div className="mt-3.5 grid items-start gap-3 max-lg:flex max-lg:snap-x max-lg:overflow-x-auto max-lg:pb-2 max-lg:[&>div]:w-[74vw] max-lg:[&>div]:flex-shrink-0 max-lg:[&>div]:snap-start lg:[grid-template-columns:var(--cols)]"
+          style={{ '--cols': `repeat(${cols.length}, minmax(0, 1fr))` }}>
           {cols.map((col) => (
             <div key={col.label} className="flex flex-col gap-2.5">
               <div className="rounded-[10px] bg-navy px-3 py-[9px] text-center text-[12.5px] font-extrabold text-white">{col.label}</div>
               {col.items.map((cs) => {
                 const paused = !cs.activa
                 return (
-                  <div key={cs.id} onClick={() => toggle.mutate({ id: cs.id, activa: !cs.activa })}
-                    className="group cursor-pointer rounded-xl border border-line bg-white p-3 transition hover:border-orange" style={{ opacity: paused ? 0.55 : 1 }}>
+                  <div key={cs.id} onClick={puedeEditar ? () => toggle.mutate({ id: cs.id, activa: !cs.activa }) : undefined}
+                    className={`group rounded-xl border border-line bg-white p-3 transition ${puedeEditar ? 'cursor-pointer hover:border-orange' : ''}`} style={{ opacity: paused ? 0.55 : 1 }}>
                     <div className="flex items-center justify-between">
                       <div className="text-[11.5px] font-extrabold text-muted">{cs.hora?.slice(0, 5)}</div>
-                      <button onClick={(e) => { e.stopPropagation(); setEditarClase(cs) }} title="Editar clase"
-                        className="cursor-pointer rounded border-none bg-transparent px-1 text-[11px] text-faint opacity-0 transition-opacity hover:text-orange group-hover:opacity-100">✏️</button>
+                      {puedeEditar && (
+                        <button onClick={(e) => { e.stopPropagation(); setEditarClase(cs) }} title="Editar clase"
+                          className="cursor-pointer rounded border-none bg-transparent px-1 text-[11px] text-faint opacity-0 transition-opacity hover:text-orange group-hover:opacity-100">✏️</button>
+                      )}
                     </div>
                     <div className="mt-[5px] flex items-center gap-1.5">
                       <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: cs.tipo?.color || claseDot(cs.nombre) }} />

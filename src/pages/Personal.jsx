@@ -231,6 +231,7 @@ function PagarSueldoModal({ colaborador, sedeId, empresaId, onClose }) {
       qc.invalidateQueries({ queryKey: ['planilla-mes'] })
       qc.invalidateQueries({ queryKey: ['personal', sedeId] })
       qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+      toast.ok(`Pago de S/ ${Number(n).toLocaleString('es-PE')} a ${colaborador.nombre} registrado en Finanzas`)
       onClose()
     } catch (err) {
       setError(err.message)
@@ -395,14 +396,16 @@ function InvitarModal({ sedeId, onClose }) {
   useEffect(() => {
     const dni = f.documento.replace(/\D/g, '')
     if (dni.length !== 8) { setVerif(null); return }
-    if (verif?.encontrado && verif._dni === dni && f.nombre === verif.nombre_oficial) return
+    if (verif?._dni === dni) return
     setVerif({ buscando: true })
     const t = setTimeout(async () => {
       const v = await verificarDni({ dni, nombre: f.nombre })
       setVerif({ ...v, _dni: dni })
-      if (v.encontrado && v.nombre_oficial && f.nombre !== v.nombre_oficial) {
+      // Solo autocompletamos el nombre si el admin NO escribió nada aún. Si ya
+      // tecleó un nombre, el del padrón queda como referencia (se muestra en el
+      // aviso), pero NO se le pisa lo que escribió.
+      if (v.encontrado && v.nombre_oficial && !f.nombre.trim()) {
         setF((s) => ({ ...s, nombre: v.nombre_oficial }))
-        setVerif({ ...v, _dni: dni, coincide: true, similitud: 1 })
       }
     }, 500)
     return () => clearTimeout(t)
@@ -605,7 +608,17 @@ export default function Personal() {
                 {rol === 'admin' ? (
                   <div className="flex items-center justify-end gap-1.5">
                     {st.activo && (() => {
-                      const presente = asistencia.data?.get(st.id) && !asistencia.data.get(st.id).salida_at
+                      const a = asistencia.data?.get(st.id)
+                      const presente = a && !a.salida_at
+                      const jornadaCerrada = a && a.salida_at // ya marcó entrada y salida hoy
+                      if (jornadaCerrada) {
+                        return (
+                          <span title={`Entró ${horaDe(a.entrada_at)} · salió ${horaDe(a.salida_at)}`}
+                            className="rounded-[9px] border border-line bg-surface px-2.5 py-1.5 text-[11px] font-extrabold text-faint">
+                            🕐 Jornada cerrada
+                          </span>
+                        )
+                      }
                       return (
                         <button onClick={() => marcarAsistencia(st)}
                           title={presente ? 'Marcar su salida' : 'Marcar su entrada de hoy'}

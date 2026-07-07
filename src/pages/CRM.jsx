@@ -155,7 +155,10 @@ export default function CRM() {
     items: (leads.data || []).filter((l) => l.etapa === etapa),
   }))
   const pendientes = (tareas.data || []).filter((t) => !t.completada).length
-  const inscritos = (leads.data || []).filter((l) => l.etapa === 'inscrito').length
+  // Convertidos DE VERDAD: los que ya son socios (tienen socio_id). Un lead
+  // puede estar en la columna "Inscrito" sin haberse convertido aún (arrastrado
+  // a mano), así que contar por etapa inflaba el número.
+  const inscritos = (leads.data || []).filter((l) => l.socio_id).length
 
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">

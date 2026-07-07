@@ -310,18 +310,14 @@ export function useGuardarSuplementos(socioId) {
   })
 }
 
-// Guardar comidas y marcar el plan como enviado a la app del socio.
+// Marca el plan (dieta + rutina) como enviado a la app del socio.
+// NO reescribe las comidas: cada comida ya se guarda cuando se edita (on-blur),
+// así que volver a escribirlas aquí con el estado en memoria podía REVERTIR una
+// edición reciente si el estado estaba desactualizado (condición de carrera).
 export function useEnviarPlan(socioId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ dietaId, rutinaId, comidas }) => {
-      for (const c of comidas || []) {
-        if (!c.id) continue
-        const { error } = await supabase.from('comida')
-          .update({ descripcion: c.descripcion, kcal: c.kcal })
-          .eq('id', c.id)
-        if (error) throw error
-      }
+    mutationFn: async ({ dietaId, rutinaId }) => {
       const ahora = new Date().toISOString()
       if (dietaId) {
         const { error } = await supabase.from('dieta').update({ enviado_at: ahora }).eq('id', dietaId)

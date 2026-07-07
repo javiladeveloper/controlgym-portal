@@ -72,7 +72,7 @@ export function useCheckins(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('checkin')
-        .select('id, ocurrido_en, direccion, resultado, motivo, socio:socio(nombre)')
+        .select('id, ocurrido_en, direccion, resultado, motivo, metodo, socio:socio(nombre)')
         .eq('sede_id', sedeId)
         .order('ocurrido_en', { ascending: false })
         .limit(7)

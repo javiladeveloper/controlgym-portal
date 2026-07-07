@@ -201,6 +201,12 @@ export default function TabAcceso() {
           Pega el identificador que genera el lector al capturar (o el nº de tarjeta / PIN) y asígnalo a un socio o colaborador.
         </div>
 
+        {!sedeId && (
+          <div className="mt-3 rounded-[10px] border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12px] font-bold text-amber-700">
+            Elige una sede específica (arriba a la izquierda) para ver sus socios y colaboradores y poder enrolarlos.
+          </div>
+        )}
+
         <div className="mt-4 flex gap-2">
           {[['socio', '🧍 Socio'], ['personal', '👔 Colaborador']].map(([v, l]) => (
             <button key={v} onClick={() => setTitular(v)}

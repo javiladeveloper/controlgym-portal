@@ -48,9 +48,16 @@ export function useTareas(sedeId) {
     queryKey: ['lead-tareas', sedeId],
     enabled: !!sedeId,
     queryFn: async () => {
+      // "Seguimientos de hoy": solo tareas PENDIENTES, de leads de ESTA sede,
+      // que vencen hasta el final de hoy (incluye atrasadas). Antes traía todas
+      // las tareas de todas las sedes, completadas incluidas.
+      const finDeHoy = new Date(); finDeHoy.setHours(23, 59, 59, 999)
       const { data, error } = await supabase
         .from('lead_tarea')
-        .select('id, tipo, detalle, vence_at, completada, lead:lead(nombre)')
+        .select('id, tipo, detalle, vence_at, completada, lead:lead!inner(nombre, sede_id)')
+        .eq('lead.sede_id', sedeId)
+        .eq('completada', false)
+        .lte('vence_at', finDeHoy.toISOString())
         .order('vence_at')
       if (error) throw error
       return data
