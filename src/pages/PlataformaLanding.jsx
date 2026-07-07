@@ -19,16 +19,51 @@ const C = {
 }
 
 // ── Mockup del panel en código (nítido, sin imágenes) ───────────────────────
+// Check-ins que van "llegando" en el mockup del hero: refuerzan el badge EN VIVO.
+const CHECKINS_MOCK = [
+  ['CM', 'Carlos Mendoza', 'Huella verificada'],
+  ['LR', 'Lucía Ramos', 'Check-in recepción'],
+  ['JT', 'Jorge Tapia', 'Carnet QR'],
+  ['MV', 'María Vega', 'Huella verificada'],
+  ['DS', 'Diego Salas', 'Check-in recepción'],
+]
+
 function DashboardMockup() {
   const barras = [28, 42, 35, 24, 18, 30, 55, 88, 72, 40]
+  // Los check-ins entran de a uno, en loop, como si llegaran en tiempo real.
+  // Mantenemos una ventana de los 2 más recientes.
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const t = setInterval(() => setIdx((i) => (i + 1) % CHECKINS_MOCK.length), 2600)
+    return () => clearInterval(t)
+  }, [])
+  const visibles = [CHECKINS_MOCK[idx], CHECKINS_MOCK[(idx + 1) % CHECKINS_MOCK.length]]
+  const hora = (n) => { const m = 5 - n; return `6:${m < 10 ? '0' + m : m} pm` }
+
   return (
-    <div className="w-full max-w-[520px] overflow-hidden"
+    <div className="dm-card w-full max-w-[520px] overflow-hidden"
       style={{ background: C.surface, border: C.border, borderRadius: 14, boxShadow: '0 40px 100px rgba(0,0,0,0.5), 0 20px 60px rgba(255,107,53,0.12)' }}>
+      <style>{`
+        @keyframes dmBarGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+        @keyframes dmLivePulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+        @keyframes dmCheckIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+        .dm-bar { transform-origin: bottom; animation: dmBarGrow .7s cubic-bezier(.34,1.56,.64,1) backwards; }
+        .dm-live-dot { animation: dmLivePulse 1.4s ease-in-out infinite; }
+        .dm-checkin { animation: dmCheckIn .5s ease-out; }
+        @media (prefers-reduced-motion: reduce) {
+          .dm-bar { animation: none; }
+          .dm-live-dot { animation: none; }
+          .dm-checkin { animation: none; }
+        }
+      `}</style>
       {/* barra de ventana */}
       <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: C.border }}>
         <span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.primary }} />
         <span className="ml-2 text-[11px] font-bold" style={{ color: C.muted }}>FitCore · Panel</span>
-        <span className="ml-auto rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white" style={{ background: C.primary }}>En vivo</span>
+        <span className="ml-auto flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white" style={{ background: C.primary }}>
+          <span className="dm-live-dot h-1.5 w-1.5 rounded-full bg-white" /> En vivo
+        </span>
       </div>
       <div className="p-4">
         {/* métricas */}
@@ -41,7 +76,7 @@ function DashboardMockup() {
             </div>
           ))}
         </div>
-        {/* gráfico */}
+        {/* gráfico — las barras crecen al cargar, escalonadas */}
         <div className="mt-3 rounded-lg p-3" style={{ border: C.border }}>
           <div className="flex items-baseline justify-between">
             <span className="text-[10px] font-extrabold text-white">Asistencia de hoy</span>
@@ -49,19 +84,19 @@ function DashboardMockup() {
           </div>
           <div className="mt-2.5 flex h-[64px] items-end gap-1.5">
             {barras.map((h, i) => (
-              <div key={i} className="flex-1 rounded-t"
-                style={{ height: `${h}%`, background: h > 60 ? C.primary : 'rgba(255,107,53,0.35)' }} />
+              <div key={i} className="dm-bar flex-1 rounded-t"
+                style={{ height: `${h}%`, background: h > 60 ? C.primary : 'rgba(255,107,53,0.35)', animationDelay: `${0.15 + i * 0.06}s` }} />
             ))}
           </div>
         </div>
-        {/* check-ins */}
+        {/* check-ins — entran de a uno, en loop, como en vivo */}
         <div className="mt-3 rounded-lg p-3" style={{ border: C.border }}>
-          {[['CM', 'Carlos Mendoza', 'Huella verificada · 6:05 pm'], ['LR', 'Lucía Ramos', 'Check-in recepción · 6:02 pm']].map(([ini, n, d]) => (
-            <div key={ini} className="flex items-center gap-2.5 py-1.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full text-[9px] font-extrabold text-white" style={{ background: 'rgba(255,107,53,0.25)', color: C.primary }}>{ini}</span>
+          {visibles.map(([ini, n, d], pos) => (
+            <div key={`${ini}-${idx}`} className={`flex items-center gap-2.5 py-1.5 ${pos === 0 ? 'dm-checkin' : ''}`}>
+              <span className="flex h-7 w-7 items-center justify-center rounded-full text-[9px] font-extrabold" style={{ background: 'rgba(255,107,53,0.25)', color: C.primary }}>{ini}</span>
               <div className="min-w-0">
                 <div className="text-[11px] font-extrabold text-white">{n}</div>
-                <div className="text-[9px] font-semibold" style={{ color: C.muted }}>{d}</div>
+                <div className="text-[9px] font-semibold" style={{ color: C.muted }}>{d} · {hora(pos)}</div>
               </div>
               <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ background: '#3FCB9C' }} />
             </div>
