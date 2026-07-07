@@ -3,7 +3,7 @@
 export function Card({ className = '', children, ...props }) {
   return (
     <div
-      className={`rounded-card border border-line bg-white ${className}`}
+      className={`rounded-card border border-line bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] ${className}`}
       {...props}
     >
       {children}
@@ -69,11 +69,11 @@ export function StatCard({ label, value, delta, deltaColor, variant = 'default' 
   const labelColor = variant === 'accent' ? 'text-orange' : variant === 'danger' ? 'text-red' : 'text-muted'
   const valueColor = variant === 'accent' ? 'text-orange' : variant === 'danger' ? 'text-red' : 'text-ink'
   return (
-    <div className={`rounded-card border p-[17px] ${styles}`}>
+    <div className={`rounded-card border p-[17px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] transition-shadow hover:shadow-[0_4px_12px_rgba(16,24,40,0.08)] ${styles}`}>
       <div className={`text-[11px] font-extrabold uppercase tracking-[0.6px] ${labelColor}`}>
         {label}
       </div>
-      <div className={`mt-1.5 text-[27px] font-extrabold ${valueColor}`}>{value}</div>
+      <div className={`mt-1.5 text-[27px] font-extrabold tabular-nums ${valueColor}`} style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</div>
       {delta && (
         <div
           className="mt-0.5 text-[12px] font-bold"
