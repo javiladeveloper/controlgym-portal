@@ -247,7 +247,7 @@ function CheckoutModal({ plan, onClose, onDone }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(6,10,18,.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, boxShadow: '0 40px 100px rgba(0,0,0,.6)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Contratar {plan.nombre}</div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Contratar {plan.nombre}</h2>
           <button onClick={onClose} aria-label="Cerrar" style={{ background: 'rgba(255,255,255,.08)', border: 'none', color: C.ink, width: 32, height: 32, borderRadius: 9, fontWeight: 800, cursor: 'pointer' }}>✕</button>
         </div>
         <p style={{ color: C.muted, fontSize: 13, fontWeight: 600, margin: '0 0 16px' }}>
