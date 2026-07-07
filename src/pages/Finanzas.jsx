@@ -7,7 +7,7 @@ import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useFinanzas } from '../hooks/useOperaciones.js'
-import { money } from '../lib/uiHelpers.js'
+import { money, mismoMesAnio, mismoDia } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 // ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
@@ -31,11 +31,17 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
     },
   })
 
-  const esHoy = (m) => new Date(m.fecha).toDateString() === new Date().toDateString()
+  const esHoy = (m) => mismoDia(m.fecha, new Date())
   const efectivoHoy = movs.filter((m) => esHoy(m) && (m.metodo_pago === 'efectivo' || !m.metodo_pago))
     .reduce((n, m) => n + (m.tipo === 'ingreso' ? 1 : -1) * Number(m.monto || 0), 0)
   const c = caja.data
-  const esperado = c ? Number(c.saldo_inicial || 0) + efectivoHoy : null
+  // Caja abierta: el esperado se calcula en vivo (saldo_inicial + efectivo del
+  // día). Caja cerrada: se usa el valor CONGELADO al cierre (efectivo_esperado),
+  // para que el cuadre histórico no cambie si luego se anulan movimientos.
+  const esperadoVivo = c ? Number(c.saldo_inicial || 0) + efectivoHoy : null
+  const esperado = c?.estado === 'cerrada' && c.efectivo_esperado != null
+    ? Number(c.efectivo_esperado)
+    : esperadoVivo
   const diferencia = c?.estado === 'cerrada' ? Number(c.saldo_final || 0) - esperado
     : contado !== '' ? Number(contado) - esperado : null
 
@@ -54,7 +60,10 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   async function cerrar() {
     setCerrando(true)
     const { error } = await supabase.from('caja')
-      .update({ saldo_final: Number(contado) || 0, estado: 'cerrada', cerrada_por: usuarioId })
+      .update({
+        saldo_final: Number(contado) || 0, estado: 'cerrada', cerrada_por: usuarioId,
+        efectivo_esperado: esperadoVivo, // congela el esperado al momento del cierre
+      })
       .eq('id', c.id)
     setCerrando(false)
     if (error) { toast.error('No se pudo cerrar: ' + error.message); return }
@@ -159,7 +168,8 @@ export default function Finanzas() {
   }
 
   const movs = data || []
-  const esteMes = (m) => new Date(m.fecha).getMonth() === new Date().getMonth()
+  // Mismo MES Y AÑO (no solo el mes, que mezclaría julio 2025 con julio 2026).
+  const esteMes = (m) => mismoMesAnio(m.fecha)
   const ingresos = movs.filter((m) => m.tipo === 'ingreso' && esteMes(m)).reduce((n, m) => n + Number(m.monto || 0), 0)
   const gastos = movs.filter((m) => m.tipo === 'gasto' && esteMes(m)).reduce((n, m) => n + Number(m.monto || 0), 0)
   const utilidad = ingresos - gastos
@@ -177,10 +187,37 @@ export default function Finanzas() {
   const movsFiltrados = movs.filter((m) =>
     (fTipo === 'todos' || m.tipo === fTipo) && (fCat === 'todas' || (m.categoria || 'otro') === fCat))
 
+  // Exporta los movimientos filtrados a Excel (el gerente los quiere fuera del
+  // sistema). Carga xlsx bajo demanda para no pesar la carga inicial.
+  async function exportar() {
+    const XLSX = await import('xlsx')
+    const filas = movsFiltrados.map((m) => ({
+      Fecha: m.fecha ? new Date(m.fecha).toLocaleDateString('es-PE') : '',
+      Tipo: m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto',
+      Categoría: m.categoria || 'otro',
+      Descripción: m.descripcion || '',
+      Método: m.metodo_pago || '',
+      Monto: Number(m.monto || 0),
+    }))
+    const ws = XLSX.utils.json_to_sheet(filas)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Movimientos')
+    const nombreMes = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+    XLSX.writeFile(wb, `Finanzas ${sedeNombre || ''} - ${nombreMes}.xlsx`)
+  }
+
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
-      <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Finanzas</h1>
-      <p className="mt-0.5 text-[13px] font-semibold text-muted">{sedeNombre}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Finanzas</h1>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">{sedeNombre}</p>
+        </div>
+        <button onClick={exportar} disabled={!movsFiltrados.length}
+          className="flex items-center gap-2 rounded-[10px] border border-line bg-white px-3.5 py-2 text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange disabled:opacity-40">
+          ⬇ Exportar a Excel
+        </button>
+      </div>
 
       {/* Caja del día: la rutina de recepción para cuadrar el efectivo */}
       <CajaDelDia sedeId={sedeId} empresaId={empresa?.id} usuarioId={usuario?.id}

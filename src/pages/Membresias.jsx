@@ -9,7 +9,7 @@ import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
-import { estadoBadge, money } from '../lib/uiHelpers.js'
+import { estadoBadge, money, fechaLocal } from '../lib/uiHelpers.js'
 import { waLink, msgRenovacion, msgRecibo } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
@@ -20,7 +20,7 @@ const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin
 // Cuándo vencería si se renueva hoy (espejo de renew_membership: desde el
 // vencimiento actual si aún no pasó, o desde hoy si ya venció)
 function nuevaFechaFin(m) {
-  const base = new Date(Math.max(new Date(m.fecha_fin).getTime(), Date.now()))
+  const base = new Date(Math.max(fechaLocal(m.fecha_fin)?.getTime() || 0, Date.now()))
   const u = m.plan?.unidad
   if (u === 'dia') base.setDate(base.getDate() + 1)
   else if (u === 'trimestre') base.setMonth(base.getMonth() + 3)
@@ -33,27 +33,44 @@ function nuevaFechaFin(m) {
 // renueva la membresía y el ingreso entra a caja con su método.
 function CobrarModal({ m, moneda, renovar, gym, onClose }) {
   const [metodo, setMetodo] = useState('efectivo')
-  const [exito, setExito] = useState(null) // { fecha_fin } tras cobrar
-  const precio = Number(m.plan?.precio || 0)
+  const [exito, setExito] = useState(null) // { fecha_fin, pagado, saldo } tras cobrar
+  // Precio a renovar: por defecto lo que el socio pagó la última vez (respeta
+  // el precio acordado del ciclo anterior); si es nuevo, el de lista del plan.
+  const precioBase = Number(m.precio_pagado) > 0 ? Number(m.precio_pagado) : Number(m.plan?.precio || 0)
+  const [precio, setPrecio] = useState(String(precioBase))
+  const [pagaParte, setPagaParte] = useState(false)
+  const [montoAhora, setMontoAhora] = useState(String(precioBase))
+  const precioNum = Math.max(0, Number(precio) || 0)
+  const cobradoAhora = pagaParte ? Math.min(precioNum, Math.max(0, Number(montoAhora) || 0)) : precioNum
+  const acordado = precioNum !== Number(m.plan?.precio || 0)
 
   function confirmar() {
-    renovar.mutate({ membresiaId: m.id, metodo }, {
-      onSuccess: (data) => { toast.ok(`Cobro de ${money(precio, moneda)} registrado — ${m.socio?.nombre} renovado`); setExito(data) },
-      onError: (e) => toast.error('No se pudo registrar: ' + e.message),
-    })
+    renovar.mutate(
+      { membresiaId: m.id, metodo, precioAcordado: precioNum, montoInicial: cobradoAhora },
+      {
+        onSuccess: (data) => {
+          toast.ok(`Cobro de ${money(cobradoAhora, moneda)} registrado — ${m.socio?.nombre} renovado`)
+          setExito(data)
+        },
+        onError: (e) => toast.error('No se pudo registrar: ' + e.message),
+      },
+    )
   }
 
   if (exito) {
+    const saldo = Number(exito.saldo) || 0
     const recibo = m.socio?.telefono && waLink(m.socio.telefono, msgRecibo({
       socio: m.socio.nombre, gym, concepto: `Renovación ${m.plan?.nombre}`,
-      monto: precio, metodo: METODOS_PAGO.find(([v]) => v === metodo)?.[1], vence: exito.fecha_fin,
+      monto: Number(exito.pagado) || cobradoAhora, metodo: METODOS_PAGO.find(([v]) => v === metodo)?.[1],
+      saldo: saldo || undefined, vence: exito.fecha_fin,
     }))
     return (
       <Modal title="Cobro registrado ✓" subtitle={m.socio?.nombre} onClose={onClose} width={400}>
         <div className="rounded-[10px] bg-green-50 p-4 text-center">
-          <div className="text-[20px] font-extrabold text-green-600">{money(precio, moneda)}</div>
+          <div className="text-[20px] font-extrabold text-green-600">{money(Number(exito.pagado) || cobradoAhora, moneda)}</div>
           <div className="mt-1 text-[12.5px] font-bold text-muted">
             Membresía renovada hasta el {exito.fecha_fin ? new Date(exito.fecha_fin).toLocaleDateString('es-PE') : '—'} · registrado en caja
+            {saldo > 0 && <><br /><span className="text-amber-600">Queda un saldo de {money(saldo, moneda)}</span></>}
           </div>
         </div>
         {recibo && (
@@ -72,9 +89,19 @@ function CobrarModal({ m, moneda, renovar, gym, onClose }) {
     <Modal title="Registrar cobro" subtitle={m.socio?.nombre} onClose={onClose} width={420}>
       <div className="flex flex-col gap-3.5">
         <div className="rounded-[10px] bg-surface px-3.5 py-3">
-          <div className="flex justify-between text-[13px] font-bold text-muted">
-            <span>{m.plan?.nombre}</span><span className="font-extrabold text-ink">{money(precio, moneda)}</span>
+          <div className="flex items-center justify-between text-[13px] font-bold text-muted">
+            <span>{m.plan?.nombre}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] font-semibold">{moneda === 'PEN' ? 'S/' : ''}</span>
+              <input type="number" min="0" step="1" value={precio} onChange={(e) => setPrecio(e.target.value)}
+                className="w-24 rounded-[8px] border border-line bg-white px-2 py-1 text-right text-[14px] font-extrabold text-ink outline-none focus:border-orange" />
+            </div>
           </div>
+          {acordado && (
+            <div className="mt-1 text-right text-[11px] font-bold text-orange">
+              🤝 Precio acordado (lista {money(m.plan?.precio, moneda)})
+            </div>
+          )}
           <div className="mt-1.5 flex justify-between text-[12px] font-semibold text-muted">
             <span>Nuevo vencimiento</span>
             <span className="font-extrabold text-green-600">{nuevaFechaFin(m).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
@@ -85,10 +112,23 @@ function CobrarModal({ m, moneda, renovar, gym, onClose }) {
             {METODOS_PAGO.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Campo>
+        <label className="flex cursor-pointer items-center gap-2 text-[12.5px] font-bold text-muted">
+          <input type="checkbox" checked={pagaParte} onChange={(e) => { setPagaParte(e.target.checked); setMontoAhora(String(precioNum)) }} />
+          Paga solo una parte ahora (el resto queda como saldo)
+        </label>
+        {pagaParte && (
+          <Campo label={`¿Cuánto paga ahora? (de ${money(precioNum, moneda)})`}>
+            <input type="number" min="0" max={precioNum} step="1" value={montoAhora} onChange={(e) => setMontoAhora(e.target.value)}
+              className={inputCls} />
+            {cobradoAhora < precioNum && (
+              <div className="mt-1 text-[11.5px] font-bold text-amber-600">Quedará un saldo de {money(precioNum - cobradoAhora, moneda)}</div>
+            )}
+          </Campo>
+        )}
         <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
           El ingreso queda registrado en <b>Finanzas</b> como renovación de membresía.
         </p>
-        <BotonesModal onCancel={onClose} busy={renovar.isPending} submitLabel={`Cobré ${money(precio, moneda)}`} onSubmit={confirmar} />
+        <BotonesModal onCancel={onClose} busy={renovar.isPending} submitLabel={`Cobré ${money(cobradoAhora, moneda)}`} onSubmit={confirmar} />
       </div>
     </Modal>
   )
@@ -249,12 +289,17 @@ export default function Membresias() {
   // Control de cobros: vencidas y por vencer en ≤7 días (el gym cobra en persona).
   // Los socios dados de baja ya no se persiguen.
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-  const diasPara = (f) => Math.ceil((new Date(f) - hoy) / 86400000)
+  const diasPara = (f) => Math.ceil((fechaLocal(f) - hoy) / 86400000)
   const porCobrar = (membresias.data || [])
     .filter((m) => !['cancelada', 'congelada'].includes(m.estado) && m.socio?.estado !== 'inactivo'
       && ((m.fecha_fin && diasPara(m.fecha_fin) <= 7) || saldoDe(m) > 0))
     .sort((a, b) => new Date(a.fecha_fin) - new Date(b.fecha_fin))
-  const totalPorCobrar = porCobrar.reduce((n, m) => n + (saldoDe(m) > 0 ? saldoDe(m) : Number(m.plan?.precio || 0)), 0)
+  // Por cobrar: si hay saldo pendiente (pago en partes) es ese saldo; si no,
+  // el precio realmente pactado (precio_pagado), no el de lista del plan.
+  const totalPorCobrar = porCobrar.reduce((n, m) => {
+    const saldo = saldoDe(m)
+    return n + (saldo > 0 ? saldo : (Number(m.precio_pagado) || Number(m.plan?.precio) || 0))
+  }, 0)
 
   // El socio no responde y no volverá: se cierra su membresía y pasa a inactivo
   async function darBaja(m) {
@@ -419,7 +464,7 @@ export default function Membresias() {
               </div>
               <div><Badge bg={st.bg} color={st.color}>{st.label}</Badge></div>
               <div className="text-[12.5px] font-bold text-muted">
-                {m.fecha_fin ? new Date(m.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
+                {m.fecha_fin ? fechaLocal(m.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
               </div>
               {anulando === m.id ? (
                 <div className="flex flex-wrap items-center justify-end gap-1.5">

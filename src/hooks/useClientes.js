@@ -9,7 +9,8 @@ export function useClientes(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('socio')
-        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,plan(nombre),promocion:promocion(id,nombre,tipo))')
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,precio_pagado,matricula_pagada,monto_pagado,plan(nombre,precio),promocion:promocion(id,nombre,tipo))')
+        .order('fecha_fin', { referencedTable: 'membresia', ascending: false })
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('nombre')
@@ -27,7 +28,8 @@ export function useSocioFicha(socioId) {
     queryFn: async () => {
       const { data: socio, error } = await supabase
         .from('socio')
-        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,plan(nombre),promocion:promocion(id,nombre,tipo))')
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,precio_pagado,matricula_pagada,monto_pagado,plan(nombre,precio),promocion:promocion(id,nombre,tipo))')
+        .order('fecha_fin', { referencedTable: 'membresia', ascending: false })
         .eq('id', socioId)
         .single()
       if (error) throw error

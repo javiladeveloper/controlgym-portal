@@ -113,12 +113,20 @@ export function useFinanzas(sedeId) {
     queryKey: ['finanzas', sedeId],
     enabled: !!sedeId,
     queryFn: async () => {
+      // Traemos TODOS los movimientos del mes en curso (no un limit arbitrario):
+      // los KPIs de la página —ingresos/gastos/utilidad y el efectivo del día—
+      // se calculan sobre este conjunto, así que truncarlo daría totales falsos.
+      const hoy = new Date()
+      const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+      const y = desde.getFullYear(), mth = String(desde.getMonth() + 1).padStart(2, '0')
+      const desdeStr = `${y}-${mth}-01`
       const { data, error } = await supabase
         .from('movimiento_financiero')
         .select('id, tipo, categoria, descripcion, monto, fecha, metodo_pago')
         .eq('sede_id', sedeId)
+        .gte('fecha', desdeStr)
         .order('fecha', { ascending: false })
-        .limit(12)
+        .limit(2000)
       if (error) throw error
       return data
     },

@@ -48,6 +48,33 @@ export function money(monto, moneda = 'PEN') {
   return `${simbolo} ${n}`.trim()
 }
 
+// Parsea una fecha de Postgres SIN desfase de zona horaria. Un date
+// 'YYYY-MM-DD' con new Date() se interpreta como medianoche UTC y en Perú
+// (UTC-5) retrocede un día. Esto lo parsea como fecha LOCAL. Acepta también
+// timestamps completos (los deja tal cual).
+export function fechaLocal(f) {
+  if (!f) return null
+  if (f instanceof Date) return f
+  const s = String(f)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return new Date(s)
+}
+
+// ¿Dos fechas caen el MISMO día del calendario local?
+export function mismoDia(a, b) {
+  const x = fechaLocal(a), y = fechaLocal(b)
+  if (!x || !y) return false
+  return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate()
+}
+
+// ¿La fecha cae en el mismo MES y AÑO que la referencia (hoy por defecto)?
+export function mismoMesAnio(f, ref = new Date()) {
+  const x = fechaLocal(f)
+  if (!x) return false
+  return x.getFullYear() === ref.getFullYear() && x.getMonth() === ref.getMonth()
+}
+
 // Estado de máquina → badge/label
 export function maquinaEstado(estado) {
   if (estado === 'operativa') return { label: 'Operativa', bg: T.successBg, color: T.success }

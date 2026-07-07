@@ -50,3 +50,18 @@ begin
   end loop;
 end
 $dni$;
+
+-- MaximusGym solo tenía planes mensuales; para poder mostrar en la demo la
+-- venta de un plang anual (1 año) le agregamos uno con descuento por pago
+-- adelantado (12 meses a precio de ~10). Idempotente por nombre.
+do $plananual$
+declare v_emp uuid := (select id from empresa where slug='maximusgym');
+begin
+  if v_emp is null then return; end if;
+  if not exists (select 1 from plan where empresa_id=v_emp and unidad='anual' and deleted_at is null) then
+    insert into public.plan (empresa_id, nombre, precio, unidad, activo, descripcion)
+    values (v_emp, 'Anual Premium', 1300.00, 'anual', true,
+            'Todo Premium por 1 año — ahorra 2 meses pagando adelantado');
+  end if;
+end
+$plananual$;

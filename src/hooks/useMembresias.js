@@ -78,8 +78,13 @@ export function useAnularMembresia(sedeId) {
 export function useRenovar(sedeId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ membresiaId, metodo = 'efectivo' }) => {
-      const { data, error } = await supabase.rpc('renew_membership', { p_membresia_id: membresiaId, p_metodo_pago: metodo })
+    mutationFn: async ({ membresiaId, metodo = 'efectivo', precioAcordado = null, montoInicial = null }) => {
+      const { data, error } = await supabase.rpc('renew_membership', {
+        p_membresia_id: membresiaId,
+        p_metodo_pago: metodo,
+        p_precio_acordado: precioAcordado,
+        p_monto_inicial: montoInicial,
+      })
       if (error) throw error
       return data
     },
