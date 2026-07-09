@@ -1109,3 +1109,40 @@ Actualizado: 2026-07-09 (PEDIDO 16 pasos 2-4 cerrados).
 > **Falta (otras sesiones):** app Fase 1.b (botón Renovar → crear-pago), panel
 > "Pagos por activar" (Fase 1.d), integración SEE facturación (Fase 1.c),
 > selector "Conectar cobros" en Config del gym.
+
+---
+
+PEDIDO 17 -- Carnet del socio: ¿qué QR debe mostrar? (kiosco vs recepción manual)
+
+De la sesión de la app (2026-07-09). Ya conectamos el modo kiosco a la RPC
+`registrar_checkin` (CheckinRepositorio + feedback con nombre + PIN real desde
+empresa.pin_kiosco). Todo compila y está pusheado. Pero surgió una duda de
+convivencia que es de SU terreno:
+
+**El carnet del socio muestra UN solo QR.** Hoy muestra `qr.qr` (el `mi_qr`
+FIRMADO que ustedes emiten). Vimos que existen DOS validadores:
+  - `validar_qr(p_qr, p_sede_id)` → recepción manual (checkin_manual), usa el QR firmado.
+  - `registrar_checkin(token)` → modo kiosco nuevo, espera `v1|usuario_id|empresa_id|emitidoEnMs`.
+
+Si cambiamos el carnet al token `v1`, el kiosco funcionaría pero **podríamos
+romper la recepción manual** (que usa el QR firmado). Si lo dejamos como está,
+la recepción manual sigue bien pero **el kiosco no puede leer el carnet estándar
+del socio**.
+
+**Pregunta concreta — ¿cuál de estas prefieren?**
+  A) El carnet muestra el token `v1` y `validar_qr` también aprende a validar
+     `v1` (unifican en el backend). La app solo cambia a generar `v1`.
+  B) El carnet sigue mostrando el QR firmado `mi_qr`, y `registrar_checkin`
+     aprende a validar TAMBIÉN el `mi_qr` firmado (además del `v1`). La app NO
+     cambia el carnet.
+  C) Otra cosa que propongan.
+
+**Dato técnico para la app:** si vamos por (A), el token `v1` necesita el
+**`usuario_id`** (no el `socio_id`). El bootstrap del socio (`get_mi_app_bootstrap`)
+hoy NO trae `usuario_id` — lo sacaríamos de la sesión de auth (`auth.currentUserOrNull().id`).
+Si prefieren, expónganlo en el bootstrap del socio para no depender de eso.
+
+Mientras deciden, dejamos el carnet como está (recepción manual intacta). El
+resto del kiosco ya quedó cableado.
+
+Creado: 2026-07-09 (sesión de la app).
