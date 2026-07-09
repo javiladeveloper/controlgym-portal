@@ -396,15 +396,29 @@ export default function Kardex() {
 
       {(productos.data || []).length > 0 && (
         <Card className="mt-[15px] overflow-x-auto">
-          <div className="grid min-w-[660px] grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-            <div>Producto</div><div>Categoría</div><div>Stock</div><div>Precio</div><div>Estado</div><div />
+          <div className="grid min-w-[760px] grid-cols-[2.4fr_1fr_0.9fr_0.7fr_0.8fr_1fr_60px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Producto</div><div>Categoría</div><div>En app</div><div>Stock</div><div>Precio</div><div>Estado</div><div />
           </div>
           {productos.data.map((k) => (
             <div key={k.id}
               onClick={(e) => { if (e.target.closest('button,a')) return; setEditarProd(k) }}
-              className="grid min-w-[660px] cursor-pointer grid-cols-[2.2fr_1.2fr_0.8fr_0.8fr_1.1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
-              <div className="text-[13.5px] font-extrabold">{k.nombre}</div>
+              className="grid min-w-[760px] cursor-pointer grid-cols-[2.4fr_1fr_0.9fr_0.7fr_0.8fr_1fr_60px] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+              {/* Nombre con miniatura de la foto (si tiene) */}
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-line bg-surface">
+                  {k.imagen_url
+                    ? <img src={k.imagen_url} alt="" className="h-full w-full object-cover" />
+                    : <span className="text-[8px] font-bold text-faint">—</span>}
+                </div>
+                <span className="text-[13.5px] font-extrabold">{k.nombre}</span>
+              </div>
               <div className="text-[12.5px] font-bold text-muted">{k.categoria}</div>
+              {/* Indicador de venta por app */}
+              <div>
+                {k.visible_en_app
+                  ? <Badge bg={T.successBg} color={T.success}>📱 En app</Badge>
+                  : <span className="text-[12px] font-bold text-faint">No</span>}
+              </div>
               <div className="text-[13px] font-extrabold" style={{ color: k.bajo ? T.danger : T.navy }}>{k.stock} uds.</div>
               <div className="text-[13px] font-bold">{money(k.precio, moneda)}</div>
               <div><Badge bg={k.bajo ? T.dangerBg : T.successBg} color={k.bajo ? T.danger : T.success}>{k.bajo ? 'Stock bajo' : 'OK'}</Badge></div>
