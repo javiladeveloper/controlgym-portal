@@ -56,6 +56,16 @@ El gym marca qué productos vende por app; el socio los compra desde la app
 Todo el backend está listo y probado E2E. **La app necesita construir su parte:
 catálogo + botón comprar.**
 
+> ⚠️ **IMPORTANTE — mostrar pagos/tienda SOLO si el gym cobra por app.**
+> Si el gym NO conectó su cuenta de MercadoPago, el pago falla (no hay a dónde
+> mandar el dinero). El backend ya lo rechaza, pero la app NO debe mostrar los
+> botones de pagar/comprar en ese caso. El bootstrap del socio ahora trae el
+> flag: `empresa.cobros_habilitados` (bool, migración `20260706000024`).
+> **Regla en la app:** si `cobros_habilitados == false` → ocultar el botón
+> "Renovar/Pagar" de la membresía Y toda la sección de tienda. Si `true` →
+> mostrarlos. (MaximusGym ya lo tiene en true; el resto en false hasta que
+> conecten cobros desde el panel → Config → Cobros.)
+
 **Campos nuevos en `producto`** (migración `20260706000023`):
 - `imagen_url` (text) — foto del producto (URL pública). **Obligatoria** para
   vender por app.
