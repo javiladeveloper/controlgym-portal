@@ -959,3 +959,26 @@ Actualizado: 2026-07-08 por la sesion de la app.
 > **App (Fase 1.b):** cuando el split funcione, el botón "Renovar" del Perfil
 > del socio llama `POST /api/mp/crear-pago` → `init_point` → checkout. La BD y
 > los endpoints ya están listos para que la app los consuma.
+
+> ### 🎯 PEDIDO 15 — HITO 1 LOGRADO (2026-07-09): el split 97/3 funciona
+> Probado E2E en sandbox:
+> - **OAuth del gym ✓**: maximusgym conectó su cuenta MP (vendedor de prueba
+>   `3007590951`). Token con scope `payments read-write` + `offline_access`
+>   guardado en `empresa_mp`, expira en 6 meses.
+> - **crear-pago ✓**: preferencia de S/130 (Plan Premium) → `init_point` +
+>   registro en `pago_app` con el **marketplace_fee del 3% aplicado**:
+>   comisión FitCore **S/3.90**, el gym recibe **S/126.10**. Split correcto.
+>
+> ⚠️ **Fix clave durante la prueba:** el `MP_CLIENT_ID` NO es el N.º de aplicación
+> (`4850233728518280`) sino el **Client ID de las credenciales de producción
+> (`8616766980206881`)**. Con el número de app daba `invalid_client`. Ya
+> corregido en `.env` y Vercel.
+>
+> **Falta (opcional para cerrar Fase 1):** completar un pago real con el
+> comprador de prueba + tarjeta APRO para ejercitar el `webhook` (que activa la
+> membresía vía `renew_membership`). La mecánica del split ya está confirmada.
+>
+> **Para la APP (Fase 1.b):** el botón "Renovar" del Perfil del socio ya puede
+> llamar `POST /api/mp/crear-pago` con `{empresa_id, tipo:'membresia', ref_id:
+> <membresia_id>, socio_id}` → recibe `{init_point, pago_id}` → abre el checkout.
+> Todo el backend está listo y probado.
