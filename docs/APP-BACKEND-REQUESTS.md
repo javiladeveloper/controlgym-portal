@@ -982,3 +982,48 @@ Actualizado: 2026-07-08 por la sesion de la app.
 > llamar `POST /api/mp/crear-pago` con `{empresa_id, tipo:'membresia', ref_id:
 > <membresia_id>, socio_id}` → recibe `{init_point, pago_id}` → abre el checkout.
 > Todo el backend está listo y probado.
+
+
+PEDIDO 16 -- Métodos de check-in configurables (backend + panel)
+
+Del handoff controlgym-app/docs/CHECKIN-METODOS-BACKEND-HANDOFF.md (2026-07-09).
+Cada gym elige UN método de acceso (sin_control/boton_app/qr_kiosco/qr_lector/
+biometrico), aplica a socios y staff. Check-in de trainer abre/cierra su turno.
+QR con token rotativo (~60s) validado en backend. usa_carnet_qr queda derivada.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-09) — PEDIDO 16 PASO 1 (migración) LISTO, con AJUSTE
+> Apliqué **`20260706000014_metodo_checkin.sql`** (mi serie de fecha).
+>
+> ⚠️ **AJUSTE IMPORTANTE — conflicto de tabla resuelto:** su migración
+> `20260709000025` creaba una tabla `checkin` NUEVA, pero **YA EXISTE una
+> `checkin` con 67 registros en uso** (el feed "Check-ins EN VIVO" del Dashboard:
+> columnas sede_id, direccion, resultado, metodo, ocurrido_en, socio_id). Crear
+> otra habría chocado/duplicado. **Adapté**: en vez de tabla nueva, AGREGUÉ a la
+> existente las columnas del pedido: `usuario_id` (para cubrir staff, no solo
+> socios), `rol`, `metodo_tipo` (enum), `origen`. Mapeo:
+>   - su `tipo` (entrada/salida) → columna existente **`direccion`**
+>   - su `metodo` → **`metodo_tipo`** (enum); la vieja `metodo` text se conserva
+>   - su `creado_at` → **`ocurrido_en`** (existente)
+> Así hay UNA sola tabla de accesos, los 67 registros y el Dashboard intactos.
+>
+> **Aplicado y verificado:** enum `metodo_checkin` (5 valores) ✓, `empresa.metodo_checkin`
+> (default boton_app, backfilleado desde usa_carnet_qr) + `pin_kiosco` ✓, trigger
+> que deriva `usa_carnet_qr` de `metodo_checkin` ✓, columnas nuevas en checkin ✓.
+>
+> **PENDIENTE (siguientes pasos, este pedido es grande):**
+>   1. RPC `registrar_checkin(p_token, p_origen, p_dispositivo)` — toggle
+>      entrada/salida por último evento del día, inserta en checkin, y si es
+>      staff abre/cierra turno (reusa `marcar_asistencia_staff` + reasignación).
+>   2. Validación canónica del token QR (HMAC con clave del gym) — decidir si el
+>      backend emite el token firmado o guarda la clave y valida. La app NO es
+>      fuente de verdad. **Necesito que definan el formato exacto del payload y
+>      dónde vive la clave del gym** para implementar la firma.
+>   3. RLS de checkin: el kiosco (sesión staff) registra accesos de SU empresa.
+>   4. Panel: selector de método en config + campo PIN kiosco.
+>   5. FASE 2 (solo diseñado): empresa_api_key + POST /api/checkin/hardware.
+>
+> El Hito 1 (socio muestra QR → kiosco registra vía registrar_checkin → trainer
+> queda presente) necesita los pasos 1-3. Avísenme el formato del token para
+> arrancar la RPC.
+
+Creado: 2026-07-09 (respuesta del panel al PEDIDO 16).
