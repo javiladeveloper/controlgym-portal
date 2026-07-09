@@ -34,4 +34,37 @@ test.describe('Panel (autenticado)', () => {
     await page.goto('https://app.fitcorecenter.com/finanzas')
     await expect(page.getByText(/caja|ingreso|gasto/i).first()).toBeVisible({ timeout: 20_000 })
   })
+
+  // ── Features nuevas (2026-07-09): cobros app, check-in, tienda ──────────────
+
+  test('Config → Cobros muestra el estado de conexión MercadoPago', async ({ page }) => {
+    await page.goto('https://app.fitcorecenter.com/configuracion?tab=cobros')
+    await expect(page.getByText(/cobros por la app|conectar con mercadopago|conectado/i).first())
+      .toBeVisible({ timeout: 20_000 })
+  })
+
+  test('Config → Control de acceso muestra el selector de método', async ({ page }) => {
+    await page.goto('https://app.fitcorecenter.com/configuracion?tab=acceso')
+    await expect(page.getByText(/método de control de acceso|botón en la app|qr con app-kiosco/i).first())
+      .toBeVisible({ timeout: 20_000 })
+  })
+
+  test('Config → Control de acceso ofrece la clave de conexión de equipos', async ({ page }) => {
+    await page.goto('https://app.fitcorecenter.com/configuracion?tab=acceso')
+    await expect(page.getByText(/clave de conexión|molinete|lector físico/i).first())
+      .toBeVisible({ timeout: 20_000 })
+  })
+
+  test('Kardex carga y el modal de producto permite vender en la app', async ({ page }) => {
+    await page.goto('https://app.fitcorecenter.com/kardex')
+    // La página de kardex carga (inventario / ventas)
+    await expect(page.getByText(/inventario|productos|ventas del mes/i).first())
+      .toBeVisible({ timeout: 20_000 })
+    // Abrir el primer producto para editarlo (si hay productos) y ver el toggle de app
+    const editar = page.getByTitle('Editar producto').first()
+    if (await editar.isVisible().catch(() => false)) {
+      await editar.click()
+      await expect(page.getByText(/vender en la app/i).first()).toBeVisible({ timeout: 10_000 })
+    }
+  })
 })
