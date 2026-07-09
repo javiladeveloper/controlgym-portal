@@ -36,3 +36,4 @@ Gemini_Generated_Image_*.png
 videos-demo/
 test-results/
 playwright-report/
+.playwright-mcp/
