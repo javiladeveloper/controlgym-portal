@@ -5,6 +5,17 @@ import { ROOT_DOMAIN } from '../lib/tenant.js'
 // Mismo tema dark de la landing.
 const C = { bg: '#141B2E', surface: '#1F293D', primary: '#FF6B35', muted: '#8E9AA8', border: '1px solid rgba(255,255,255,0.08)' }
 
+// Identificación del titular del servicio (transparencia legal — Perú).
+const TITULAR = {
+  razon: 'NORAC LABS E.I.R.L.',
+  correo: 'noraclabspe@gmail.com',
+}
+// Sección de identificación del titular, común a todos los documentos legales.
+const IDENTIFICACION = ['Titular del servicio',
+  `FitCore es un servicio operado por ${TITULAR.razon}, con domicilio en Perú. ` +
+  `Para asuntos legales y de titularidad puedes escribir a ${TITULAR.correo}. ` +
+  `La atención y el soporte del servicio se brindan a través de soporte@${ROOT_DOMAIN}.`]
+
 const TERMINOS = [
   ['1. El servicio', 'FitCore es una plataforma en línea para la gestión de gimnasios y centros deportivos: socios, membresías, cobros, clases, inventario, página web y captación de clientes. El servicio se ofrece bajo suscripción mensual por gimnasio (empresa).'],
   ['2. Tu cuenta', 'Para usar FitCore necesitas una cuenta de Google válida. Eres responsable de la actividad realizada con tu cuenta y de mantener el acceso restringido a tu personal autorizado. Cada colaborador debe usar su propia cuenta con el rol que le asignes.'],
@@ -38,9 +49,9 @@ const DEVOLUCIONES = [
 ]
 
 const DOCS = {
-  terminos: { titulo: 'Términos y condiciones', secciones: TERMINOS },
-  privacidad: { titulo: 'Política de privacidad', secciones: PRIVACIDAD },
-  devoluciones: { titulo: 'Política de cambios y devoluciones', secciones: DEVOLUCIONES },
+  terminos: { titulo: 'Términos y condiciones', secciones: [IDENTIFICACION, ...TERMINOS] },
+  privacidad: { titulo: 'Política de privacidad', secciones: [IDENTIFICACION, ...PRIVACIDAD] },
+  devoluciones: { titulo: 'Política de cambios y devoluciones', secciones: [IDENTIFICACION, ...DEVOLUCIONES] },
 }
 
 export default function LegalPage({ doc = 'terminos' }) {
@@ -83,6 +94,10 @@ export default function LegalPage({ doc = 'terminos' }) {
           <a href="/devoluciones" style={{ color: doc === 'devoluciones' ? C.primary : C.muted }}>Cambios y devoluciones</a>
           <a href="/reclamaciones" style={{ color: C.muted }}>📖 Libro de Reclamaciones</a>
         </div>
+
+        <p className="mt-10 text-[12px] font-semibold" style={{ color: C.muted }}>
+          {TITULAR.razon} · {TITULAR.correo}
+        </p>
       </main>
     </div>
   )

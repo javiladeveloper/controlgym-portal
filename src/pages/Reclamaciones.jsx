@@ -77,7 +77,7 @@ export default function Reclamaciones() {
           </div>
         </div>
         <p className="mt-4 text-[13.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
-          Razón social: <b className="text-white">FitCore · {ROOT_DOMAIN}</b> · Lima, Perú ·
+          Razón social: <b className="text-white">NORAC LABS E.I.R.L.</b> (FitCore · {ROOT_DOMAIN}) · Lima, Perú ·
           soporte@{ROOT_DOMAIN} · WhatsApp +51 986 110 558.
           Responderemos tu {f.tipo === 'queja' ? 'queja' : 'reclamo'} en un plazo máximo de <b className="text-white">15 días hábiles</b>.
         </p>
