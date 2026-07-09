@@ -113,7 +113,7 @@ export default function TabMarca() {
               className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
           </label>
           <div className="mt-4"><Uploader label="Logo" help="PNG/SVG, máx 2MB" value={form.logo_url} onFile={(f) => onUpload('logo', f)} uploading={uploading === 'logo'} /></div>
-          <div className="mt-4"><Uploader label="Favicon / isotipo" help="Cuadrado, para la app" square value={form.favicon_url} onFile={(f) => onUpload('favicon', f)} uploading={uploading === 'favicon'} /></div>
+          <div className="mt-4"><Uploader label="Favicon del sitio" help="Ícono cuadrado de la pestaña del navegador en tu página web. Si lo dejas vacío, se usa el logo." square value={form.favicon_url} onFile={(f) => onUpload('favicon', f)} uploading={uploading === 'favicon'} /></div>
           <label className="mt-4 flex flex-col gap-1.5">
             <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Tipografía</span>
             <select value={form.font_family || 'Manrope'} onChange={(e) => update('font_family', e.target.value)}
