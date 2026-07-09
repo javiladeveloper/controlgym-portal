@@ -56,15 +56,26 @@ El gym marca qué productos vende por app; el socio los compra desde la app
 Todo el backend está listo y probado E2E. **La app necesita construir su parte:
 catálogo + botón comprar.**
 
-> ⚠️ **IMPORTANTE — mostrar pagos/tienda SOLO si el gym cobra por app.**
-> Si el gym NO conectó su cuenta de MercadoPago, el pago falla (no hay a dónde
-> mandar el dinero). El backend ya lo rechaza, pero la app NO debe mostrar los
-> botones de pagar/comprar en ese caso. El bootstrap del socio ahora trae el
-> flag: `empresa.cobros_habilitados` (bool, migración `20260706000024`).
-> **Regla en la app:** si `cobros_habilitados == false` → ocultar el botón
-> "Renovar/Pagar" de la membresía Y toda la sección de tienda. Si `true` →
-> mostrarlos. (MaximusGym ya lo tiene en true; el resto en false hasta que
-> conecten cobros desde el panel → Config → Cobros.)
+> ⚠️ **IMPORTANTE — la tienda se OCULTA por completo si el gym no cobra por app.**
+>
+> **Por qué (regla de negocio, no solo UX):** FitCore gana su comisión (3%) solo
+> cuando hay ventas por app. Si un gym publica productos pero NO enlaza cobros,
+> obtendría *publicidad gratis* de sus productos sin que FitCore gane nada. Por
+> eso: **sin cobros conectados, el socio no ve la tienda en absoluto** — el
+> escaparate es el incentivo para que el gym conecte MercadoPago. Lo mismo aplica
+> al botón "Renovar/Pagar" de la membresía (si no cobra, no se muestra).
+>
+> El bootstrap del socio trae el flag `empresa.cobros_habilitados` (bool,
+> migración `20260706000024`) = true solo si el gym conectó su cuenta MP.
+>
+> **Regla en la app:**
+> - `cobros_habilitados == false` → **NO mostrar** la pestaña/sección de tienda
+>   (ocultarla del todo, no borrosa) NI el botón "Renovar/Pagar". El socio ni
+>   sabe que existen hasta que el gym habilite cobros.
+> - `cobros_habilitados == true` → mostrar tienda + pagos normalmente.
+>
+> (MaximusGym ya está en true; el resto en false hasta que conecten cobros desde
+> el panel → Config → Cobros 💰.)
 
 **Campos nuevos en `producto`** (migración `20260706000023`):
 - `imagen_url` (text) — foto del producto (URL pública). **Obligatoria** para
