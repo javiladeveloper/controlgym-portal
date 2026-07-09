@@ -1303,3 +1303,34 @@ Creado: 2026-07-09 (sesión de la app).
 > `validar_qr` (recepción) verificada intacta.
 
 Actualizado: 2026-07-09 (PEDIDO 17 resuelto por el panel).
+
+---
+
+PEDIDO 19 -- 🐛 La tienda del socio sale VACÍA: el socio no puede leer `producto`
+
+Al probar la tienda en la app (MaximusGym con cobros activados), el catálogo sale
+vacío. Diagnóstico desde la app: **el socio NO tiene RLS para leer la tabla
+`producto`** (revisé las migraciones: no hay ninguna policy sobre `producto` para
+el rol socio). El PEDIDO 18 decía "RLS del socio ya permite leer productos de su
+empresa", pero en el código no existe esa policy → el `select` del socio devuelve
+0 filas sin error (RLS filtra en silencio).
+
+**Lo que necesito (elijan uno):**
+  A) **RPC `catalogo_app(p_empresa_id uuid, p_sede_id uuid)`** SECURITY DEFINER
+     (Recomendado). Devuelve las columnas
+     `id, nombre, categoria, precio, imagen_url, descripcion` de los productos
+     `visible_en_app = true` y `activo` y `deleted_at is null` con **stock > 0**
+     en `inventario_sede` de esa sede. Grant execute to authenticated. Esto
+     además resuelve el filtro de stock que quedó pendiente. **La app YA la llama**
+     (con fallback al select directo), así que en cuanto exista, la tienda se
+     llena sola.
+  B) O una **policy RLS** que permita al socio (autenticado, de esa empresa) leer
+     `producto` con `visible_en_app = true`. Si van por aquí, avísenme el nombre.
+
+La app ya está preparada para (A): llama `catalogo_app(p_empresa_id, p_sede_id)`
+y, si no existe, cae al select directo. Con (A) creada, funciona sin tocar la app.
+
+Nota: `catalogo_app` NO debe exponer stock exacto (solo listar lo que tiene
+stock). El precio/monto lo valida `crear-pago` server-side igual que hoy.
+
+Creado: 2026-07-09 (sesión de la app).
