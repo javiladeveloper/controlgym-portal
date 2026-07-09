@@ -933,3 +933,29 @@ Actualizado: 2026-07-08 por la sesion de la app.
 > oauth-callback, crear-pago con marketplace_fee 3%, webhook) y probamos el
 > **hito 1: un pago de prueba que se divida 97/3 en sandbox**. La BD ya está
 > lista para recibirlos.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-09) — PEDIDO 15 Fase 1 PASOS 2-3 LISTOS
+> **Los 4 endpoints `api/mp/` escritos, desplegados y respondiendo en producción:**
+> - `oauth-start.js` (admin del gym inicia OAuth → URL de MP) — verificado HTTP 401 sin sesión ✓
+> - `oauth-callback.js` (intercambia code por access_token del gym → empresa_mp)
+> - `crear-pago.js` (preferencia Checkout Pro con `marketplace_fee` 3%, monto validado server-side, registra `pago_app` pendiente) → devuelve `init_point`
+> - `webhook.js` (confirma pago idempotente; socio existente → `renew_membership`; producto → `registrar_mov_inventario`; socio nuevo queda `pendiente_activacion`) — verificado HTTP 200 ✓
+>
+> Adaptados a la BD real: el RPC es **`renew_membership(uuid, text, numeric, numeric)`**
+> (NO `renovar_membresia`); ventas de producto usan **`registrar_mov_inventario`**
+> (valida stock). Estilo fiel a `api/culqi/` (db()/env()/usuarioDesdeJwt).
+>
+> **7 env vars MP configuradas en Vercel** (producción): MP_CLIENT_ID,
+> MP_CLIENT_SECRET, MP_ACCESS_TOKEN, VITE_MP_PUBLIC_KEY, MP_REDIRECT_URI
+> (`https://app.fitcorecenter.com/api/mp/oauth-callback`), PANEL_URL, APP_DEEP_LINK.
+>
+> **PENDIENTE (bloquea la prueba del split):** registrar el Redirect URI
+> `https://app.fitcorecenter.com/api/mp/oauth-callback` en la app MP
+> `4850233728518280` (Developers → Redirect URIs). Sin eso el OAuth rechaza.
+> Tras eso: hito 1 = OAuth del gym (vendedor de prueba) + pago del socio
+> (comprador de prueba + tarjeta APRO) → verificar split 97/3. Credenciales y
+> cuentas de prueba ya en mano.
+>
+> **App (Fase 1.b):** cuando el split funcione, el botón "Renovar" del Perfil
+> del socio llama `POST /api/mp/crear-pago` → `init_point` → checkout. La BD y
+> los endpoints ya están listos para que la app los consuma.
