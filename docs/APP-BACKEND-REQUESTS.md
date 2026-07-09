@@ -1028,6 +1028,60 @@ QR con token rotativo (~60s) validado en backend. usa_carnet_qr queda derivada.
 
 Creado: 2026-07-09 (respuesta del panel al PEDIDO 16).
 
+> ### ✅ PEDIDO 16 — PASOS 2, 3 y 4 LISTOS (2026-07-09): RPC + RLS + panel, probado E2E
+> Migración **`20260706000016_rpc_registrar_checkin.sql`** aplicada y verificada.
+>
+> **Decisión de la firma (paso 2):** el QR va **SIN HMAC en Fase 1**. La app ya
+> arma `v1|usuario_id|empresa_id|emitidoEnMs` en texto plano (TokenCarnet.kt) y
+> eso es suficiente porque la RPC valida **en el servidor**:
+>   - formato y versión (`v1|...`, 4 partes),
+>   - misma empresa (el `empresa_id` del QR debe ser el del kiosco → aislamiento tenant),
+>   - vigencia ~60 s (misma ventana que `tokenVigente()` de la app; toleramos 5 s de reloj adelantado),
+>   - **anti-replay**: `(usuario_id, emitidoEnMs)` es único → una captura del QR no se puede reusar,
+>   - el usuario pertenece (activo) a esa empresa; si es socio, membresía vigente.
+>   - Solo una **sesión de staff autenticada** puede invocar la RPC (RLS), así que
+>     la superficie queda acotada. El hardware sin sesión (qr_lector/biométrico)
+>     usará API key en Fase 2 — ahí sí conviene HMAC. **No necesitan cambiar la app.**
+>
+> **Contrato de la RPC** (lo que el kiosco recibe):
+> ```
+> registrar_checkin(p_token text, p_origen text default 'kiosco', p_dispositivo text default null)
+>   → jsonb { tipo, nombre, rol, resultado, motivo, hora }
+> ```
+>   - `tipo`: 'entrada' | 'salida' (toggle por el último evento del día del usuario).
+>   - `nombre`: para el feedback ("Bienvenido, <nombre>").
+>   - `rol`: 'socio' | 'entrenador' | 'recepcion' | 'admin' | ...
+>   - `resultado`: 'permitido' | 'denegado'; `motivo`: 'membresia_vencida' o null.
+>   - `hora`: 'HH:MM' en la zona del gym.
+> **Errores legibles** (raise exception, la app los muestra en rojo): `QR invalido`,
+> `QR vencido, pide que lo actualice`, `QR de otra empresa`, `Ese QR ya fue
+> escaneado, pide que lo actualice`, `Usuario no pertenece a este gimnasio`.
+>
+> **Staff (paso 1):** si quien escanea es entrenador/recepción, el check-in
+> **abre/cierra su turno** en `asistencia_staff` (misma lógica que
+> `marcar_asistencia_staff`: 1ª marca del día = entrada; siguientes extienden la
+> salida → dispara la reasignación de pendientes que ya existe).
+>
+> **RLS (paso 3):** la tabla `checkin` YA tenía las policies correctas
+> (`checkin_scope` = staff escribe/lee su empresa+sede; `socio_app_checkin` = el
+> socio ve su propio historial). No las toqué; la RPC es SECURITY DEFINER.
+>
+> **Panel (paso 4):** `TabAcceso` ahora muestra un **selector de método** (radio
+> único: Botón app / QR kiosco / Sin control, + QR lector físico y Molinete
+> biométrico deshabilitados con badge "Requiere integración") que guarda
+> `empresa.metodo_checkin`, y un campo **PIN del kiosco** (4–8 dígitos, solo visible
+> con qr_kiosco) que guarda `empresa.pin_kiosco`. El bootstrap ya expone ambos.
+>
+> **Probado E2E contra BD** (socia real Nora Castillo en MaximusGym): entrada
+> permitida ✓, mismo QR rechazado (anti-replay) ✓, 2º QR fresco → salida (toggle)
+> ✓, QR vencido rechazado ✓, QR de otra empresa rechazado ✓, formato basura
+> rechazado ✓ (6/6). Datos de prueba limpiados.
+>
+> **Falta (Fase 2, solo diseñado):** `empresa_api_key` + `POST /api/checkin/hardware`
+> para lectores/molinetes sin sesión — se implementa cuando tengan el hardware.
+
+Actualizado: 2026-07-09 (PEDIDO 16 pasos 2-4 cerrados).
+
 > ### ✅ PEDIDO 15 — FASE 1 CERRADA (2026-07-09): webhook probado, ciclo completo
 > Probado el `webhook` E2E (simulando el pago aprobado de MP sobre un pago real
 > registrado): **pago pendiente → aprobado, membresía renovada +1 mes, ingreso

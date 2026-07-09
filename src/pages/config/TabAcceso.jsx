@@ -23,6 +23,18 @@ const DIRECCIONES = [['entrada', 'Solo entrada'], ['salida', 'Solo salida'], ['a
 const TIPOS_CRED = [['huella', 'Huella'], ['facial', 'Rostro'], ['tarjeta', 'Tarjeta'], ['pin', 'PIN']]
 const EMPTY_DISP = { nombre: '', tipo: 'huella', direccion: 'entrada', identificador: '', activo: true, sede_id: '' }
 
+// Métodos de control de acceso (uno por gimnasio). El valor va a
+// empresa.metodo_checkin; usa_carnet_qr queda como columna derivada.
+// muestra=true → la app enseña el carnet QR (kiosco/lector). requiereHw=true →
+// necesita hardware que aún no tenemos: se muestra deshabilitado (fase 2).
+const METODOS = [
+  { v: 'boton_app',   titulo: 'Botón en la app',      desc: 'El socio marca su entrada desde su app. Sin hardware.',                 muestra: true },
+  { v: 'qr_kiosco',   titulo: 'QR con app-kiosco',    desc: 'Una tablet/celular en recepción escanea el QR de la app del socio.',    muestra: true },
+  { v: 'sin_control', titulo: 'Sin control de acceso', desc: 'No registras entradas. La app oculta carnet, racha y visitas.',         muestra: false },
+  { v: 'qr_lector',   titulo: 'QR con lector físico',  desc: 'Torniquete/lector de QR en la puerta.',   requiereHw: true, muestra: true },
+  { v: 'biometrico',  titulo: 'Molinete biométrico',  desc: 'Huella o rostro en un torniquete.',        requiereHw: true, muestra: true },
+]
+
 export default function TabAcceso() {
   const { empresa } = useAuth()
   const { sedeId } = usePanel()
@@ -40,29 +52,43 @@ export default function TabAcceso() {
   const [titular, setTitular] = useState('socio') // 'socio' | 'personal'
   const [cred, setCred] = useState({ tipo: 'huella', valor: '', socioId: '', usuarioId: '' })
 
-  // Flag: ¿este gym controla acceso (carnet QR / lector)? Si off, la app del
-  // socio oculta el carnet, racha y visitas. Se lee directo (el bootstrap
-  // puede no traer la columna nueva todavía).
+  // Método de control de acceso del gym (empresa.metodo_checkin). Reemplaza al
+  // antiguo toggle booleano: ahora es una opción única entre 5 métodos.
+  // usa_carnet_qr quedó como columna derivada (la recalcula un trigger), así que
+  // la app y el resto del panel siguen viendo el booleano correcto.
   const guardarEmpresa = useGuardarEmpresa(empresa?.id)
-  const [usaQr, setUsaQr] = useState(null) // null=cargando
+  const [metodo, setMetodo] = useState(null) // null=cargando
+  const [pin, setPin] = useState('')
   useEffect(() => {
     if (!empresa?.id) return
-    setUsaQr(null)
-    supabase.from('empresa').select('usa_carnet_qr').eq('id', empresa.id).single()
+    setMetodo(null)
+    supabase.from('empresa').select('metodo_checkin, pin_kiosco').eq('id', empresa.id).single()
       .then(({ data, error }) => {
-        // Si falla la consulta, no dejamos el switch bloqueado para siempre:
-        // asumimos el default (activado) para que quede usable.
-        if (error) { setUsaQr(true); return }
-        setUsaQr(data?.usa_carnet_qr ?? true)
+        // Si falla la consulta, no bloqueamos la UI: asumimos el default seguro.
+        if (error) { setMetodo('boton_app'); return }
+        setMetodo(data?.metodo_checkin ?? 'boton_app')
+        setPin(data?.pin_kiosco ?? '')
       })
   }, [empresa?.id])
-  const cargandoQr = usaQr === null
+  const cargando = metodo === null
+  // La app muestra el carnet salvo en 'sin_control' (mantiene el gating de la app).
+  const usaQr = metodo !== 'sin_control'
 
-  function toggleQr(nuevo) {
-    setUsaQr(nuevo)
-    guardarEmpresa.mutate({ usa_carnet_qr: nuevo }, {
-      onSuccess: () => toast.ok(nuevo ? 'Carnet QR activado' : 'Carnet QR desactivado'),
-      onError: (e) => { setUsaQr(!nuevo); toast.error(e.message) },
+  function elegirMetodo(nuevo) {
+    const anterior = metodo
+    setMetodo(nuevo)
+    guardarEmpresa.mutate({ metodo_checkin: nuevo }, {
+      onSuccess: () => toast.ok('Método de acceso actualizado'),
+      onError: (e) => { setMetodo(anterior); toast.error(e.message) },
+    })
+  }
+
+  function guardarPin() {
+    const limpio = pin.trim()
+    if (limpio && !/^\d{4,8}$/.test(limpio)) { toast.error('El PIN debe tener entre 4 y 8 dígitos'); return }
+    guardarEmpresa.mutate({ pin_kiosco: limpio || null }, {
+      onSuccess: () => toast.ok(limpio ? 'PIN del kiosco guardado' : 'PIN del kiosco quitado'),
+      onError: (e) => toast.error(e.message),
     })
   }
 
@@ -87,38 +113,69 @@ export default function TabAcceso() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Interruptor maestro: ¿este gym usa control de acceso? */}
+      {/* Selector de método de control de acceso (opción única por gimnasio) */}
       <Card className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-[14.5px] font-extrabold">¿Tu gimnasio controla el acceso?</div>
-            <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">
-              Actívalo si registras la entrada de tus socios (por carnet QR de la app, lector o recepción).
-              Si tu gimnasio <b>no controla acceso</b>, desactívalo: la app del socio ocultará su carnet QR,
-              racha de asistencia y visitas.
+        <div className="text-[14.5px] font-extrabold">Método de control de acceso</div>
+        <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">
+          Elige <b>cómo</b> tus socios registran su entrada. Aplica a socios y personal por igual.
+          Si eliges <b>Sin control</b>, la app del socio ocultará su carnet QR, racha y visitas.
+        </div>
+
+        {cargando ? (
+          <div className="mt-4"><LoadingState variant="table" rows={3} /></div>
+        ) : (
+          <div className="mt-4 flex flex-col gap-2.5">
+            {METODOS.map((m) => {
+              const activo = metodo === m.v
+              const bloqueado = m.requiereHw
+              return (
+                <button key={m.v}
+                  onClick={() => !bloqueado && !activo && elegirMetodo(m.v)}
+                  disabled={bloqueado || guardarEmpresa.isPending}
+                  className={`flex items-start gap-3 rounded-[12px] border px-4 py-3 text-left transition-colors ${
+                    activo ? 'border-orange bg-orange-50'
+                    : bloqueado ? 'cursor-not-allowed border-line bg-surface opacity-70'
+                    : 'cursor-pointer border-line bg-white hover:border-orange'}`}>
+                  {/* Radio */}
+                  <span className={`mt-0.5 flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border-2 ${activo ? 'border-orange' : 'border-line2'}`}>
+                    {activo && <span className="h-2 w-2 rounded-full bg-orange" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[13.5px] font-extrabold ${activo ? 'text-orange' : ''}`}>{m.titulo}</span>
+                      {bloqueado && <Badge bg={T.line2} color={T.muted}>Requiere integración</Badge>}
+                    </span>
+                    <span className="mt-0.5 block text-[12px] font-semibold text-muted">{m.desc}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* PIN del kiosco: solo relevante cuando la app corre como escáner (qr_kiosco) */}
+        {metodo === 'qr_kiosco' && (
+          <div className="mt-4 rounded-[12px] border border-line bg-[#FAFBFC] p-4">
+            <div className="text-[13px] font-extrabold">PIN para salir del modo kiosco</div>
+            <div className="mt-0.5 text-[12px] font-semibold leading-[1.5] text-muted">
+              La app en modo escáner ocupa toda la pantalla. Este PIN evita que un socio la cierre y husmee.
+              Déjalo vacío para usar el predeterminado.
+            </div>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">PIN (4–8 dígitos)</span>
+                <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  inputMode="numeric" className={inputCls + ' w-40'} placeholder="1234" />
+              </label>
+              <PrimaryButton onClick={guardarPin} disabled={guardarEmpresa.isPending}>Guardar PIN</PrimaryButton>
             </div>
           </div>
-          <button
-            onClick={() => !cargandoQr && toggleQr(!usaQr)}
-            disabled={cargandoQr || guardarEmpresa.isPending}
-            aria-busy={cargandoQr}
-            className={`relative mt-1 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${cargandoQr ? 'animate-pulse bg-line' : usaQr ? 'bg-orange' : 'bg-line2'} disabled:cursor-default disabled:opacity-60`}
-            aria-label="Activar control de acceso">
-            {/* Mientras carga, el círculo se queda centrado (ni ON ni OFF) para no
-                mostrar un OFF falso antes de conocer el valor real */}
-            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${cargandoQr ? 'left-3.5' : usaQr ? 'left-6' : 'left-1'}`} />
-          </button>
-        </div>
-        {usaQr === false && (
-          <p className="mt-3 rounded-[9px] bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-800">
-            Control de acceso desactivado. Tus socios no verán el carnet QR en la app. Puedes reactivarlo cuando quieras.
-          </p>
         )}
       </Card>
 
-      {/* Todo lo de control de acceso solo si el gym lo usa. Mientras carga
-          (usaQr===null) no se pinta para evitar el "salto" cuando resuelve a false. */}
-      {usaQr === true && (
+      {/* Lectores/credenciales: solo si el gym controla acceso (cualquier método
+          salvo 'sin_control'). Mientras carga no se pinta para evitar el salto. */}
+      {usaQr && !cargando && (
       <>
       {/* Explicación de los 2 métodos */}
       <div className="rounded-[12px] border border-line bg-[#FAFBFC] p-4">
