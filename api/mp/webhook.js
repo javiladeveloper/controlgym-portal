@@ -41,12 +41,25 @@ export default async function handler(req, res) {
         // Socio existente → renovar/activar su membresía (paga completo).
         await db().query(`select public.renew_membership($1, 'mercadopago')`, [pago.ref_id])
       } else if (pago.tipo === 'producto') {
-        // Compra desde la app → registra la venta y descuenta stock al pagar
-        // (reserva el producto). Queda 'pendiente_activacion' = por entregar;
-        // recepción lo entrega en el mostrador (o cancela y repone el stock).
-        await db().query(
-          `select public.registrar_mov_inventario($1, $2, 'venta', 1, $3)`,
-          [pago.sede_id, pago.ref_id, pago.monto])
+        // Compra desde la app (1 producto o carrito) → registra la venta de cada
+        // ítem y descuenta su stock al pagar (reserva). La orden queda
+        // 'pendiente_activacion' = por entregar; recepción la entrega completa
+        // en el mostrador (o cancela y se repone todo el stock).
+        const { rows: lineas } = await db().query(
+          `select producto_id, cantidad, subtotal from public.pago_app_item where pago_id = $1`,
+          [pago.id])
+        if (lineas.length > 0) {
+          for (const l of lineas) {
+            await db().query(
+              `select public.registrar_mov_inventario($1, $2, 'venta', $3, $4)`,
+              [pago.sede_id, l.producto_id, l.cantidad, l.subtotal])
+          }
+        } else if (pago.ref_id) {
+          // Compat: órdenes viejas sin items (1 producto en ref_id).
+          await db().query(
+            `select public.registrar_mov_inventario($1, $2, 'venta', 1, $3)`,
+            [pago.sede_id, pago.ref_id, pago.monto])
+        }
         await db().query(
           `update public.pago_app set estado_activacion = 'pendiente_activacion' where id = $1`,
           [pago.id])

@@ -95,13 +95,23 @@ select p.id, p.nombre, p.descripcion, p.precio, p.imagen_url, i.stock
 (RLS del socio ya permite leer productos de su empresa. Si prefieren una RPC
 dedicada `catalogo_app(sede)`, la creo — avísenme.)
 
-**Comprar** — MISMO endpoint que las membresías:
+**Comprar — CARRITO** (varios productos con cantidades, un solo pago):
 ```
 POST /api/mp/crear-pago
-Body: { empresa_id, tipo:'producto', ref_id:<producto_id>, sede_id,
-        socio_id:<socio>, nuevo?:{nombre,documento} }
-→ { init_point }   // abrir en el navegador/checkout de MP
+Body: { empresa_id, tipo:'producto', sede_id, socio_id:<socio>,
+        items: [ {producto_id, cantidad}, {producto_id, cantidad}, ... ],
+        nuevo?:{nombre,documento} }
+→ { init_point }   // abrir en el checkout de MP; paga TODO junto
 ```
+El backend valida cada producto server-side (existe, visible, stock suficiente
+por cantidad), suma el total, calcula la comisión 3% sobre el total, y crea una
+sola preferencia MP con una línea por producto. Compat: para 1 producto también
+acepta `ref_id:<producto_id>` (sin items), pero el carrito con `items[]` es lo
+recomendado.
+
+**Una orden = un pago.** Al aprobarse: se reserva el stock de TODOS los items y
+la orden queda "por entregar". Recepción la entrega COMPLETA (o cancela y se
+repone todo el stock). No hay entrega parcial en Fase 1.
 El webhook, al aprobar: descuenta stock (reserva), registra la venta en caja, y
 deja el producto **"por entregar"**. El socio lo recoge; recepción lo marca
 entregado en el panel (Kardex → "Productos por entregar"). Si no recoge, el gym

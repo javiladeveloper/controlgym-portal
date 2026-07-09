@@ -281,16 +281,16 @@ export default function Kardex() {
   const cancelar = useCancelarCompra(sedeId)
 
   function onEntregar(p) {
-    if (!window.confirm(`¿Entregar ${p.producto_nombre} a ${p.socio_nombre || 'el socio'}?`)) return
+    if (!window.confirm(`¿Entregar esta orden a ${p.socio_nombre || 'el socio'}?`)) return
     entregar.mutate(p.id, {
-      onSuccess: () => toast.ok('Producto entregado'),
+      onSuccess: () => toast.ok('Orden entregada'),
       onError: (e) => toast.error(e.message),
     })
   }
   function onCancelarCompra(p) {
-    if (!window.confirm(`¿Cancelar la compra de ${p.producto_nombre}? Se repone el stock y se marca para reembolso. El dinero se devuelve por MercadoPago aparte.`)) return
+    if (!window.confirm(`¿Cancelar esta orden? Se repone el stock de todos los productos y se marca para reembolso. El dinero se devuelve por MercadoPago aparte.`)) return
     cancelar.mutate({ pagoId: p.id, motivo: 'cancelado en mostrador' }, {
-      onSuccess: () => toast.ok('Compra cancelada · stock repuesto'),
+      onSuccess: () => toast.ok('Orden cancelada · stock repuesto'),
       onError: (e) => toast.error(e.message),
     })
   }
@@ -338,35 +338,48 @@ export default function Kardex() {
         <StatCard label="Compras del mes" value={money(comprasMes, moneda)} delta="inversión en mercadería" />
       </div>
 
-      {/* Productos comprados por app, pendientes de que el socio los recoja */}
+      {/* Órdenes compradas por app, pendientes de que el socio las recoja */}
       {(porEntregar.data?.length > 0) && (
         <Card className="mt-[15px] p-5">
           <div className="flex items-center gap-2">
-            <div className="text-[14.5px] font-extrabold">Productos por entregar 📦</div>
+            <div className="text-[14.5px] font-extrabold">Órdenes por entregar 📦</div>
             <Badge bg="#FEF3E2" color="#B7791F">{porEntregar.data.length}</Badge>
           </div>
           <p className="mt-0.5 text-[12px] font-semibold text-muted">
-            Comprados desde la app. El stock ya se descontó al pagar. Entrégalos cuando el socio venga.
+            Compradas desde la app. El stock ya se descontó al pagar. Entrégalas cuando el socio venga.
           </p>
           <div className="mt-4 flex flex-col gap-2.5">
             {porEntregar.data.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-[12px] border border-line bg-white px-3.5 py-3">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-[9px] border border-line bg-surface">
-                  {p.imagen_url ? <img src={p.imagen_url} alt="" className="h-full w-full object-cover" /> : <span className="text-[9px] font-bold text-faint">sin foto</span>}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13.5px] font-extrabold">{p.producto_nombre}</div>
-                  <div className="text-[11.5px] font-semibold text-muted">
-                    {p.socio_nombre ? `${p.socio_nombre}${p.socio_codigo ? ` · N.º ${p.socio_codigo}` : ''}` : 'Socio'}
-                    {' · '}{p.moneda === 'PEN' ? 'S/' : ''}{Number(p.monto).toFixed(2)}
-                    {p.pagado_at ? ` · ${new Date(p.pagado_at).toLocaleDateString('es-PE')}` : ''}
+              <div key={p.id} className="rounded-[12px] border border-line bg-white px-3.5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-extrabold">
+                      {p.socio_nombre ? `${p.socio_nombre}${p.socio_codigo ? ` · N.º ${p.socio_codigo}` : ''}` : 'Socio'}
+                    </div>
+                    <div className="text-[11.5px] font-semibold text-muted">
+                      {p.moneda === 'PEN' ? 'S/' : ''}{Number(p.monto).toFixed(2)}
+                      {p.pagado_at ? ` · ${new Date(p.pagado_at).toLocaleDateString('es-PE')}` : ''}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => onEntregar(p)} disabled={entregar.isPending}
+                      className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">Entregar orden</button>
+                    <button onClick={() => onCancelarCompra(p)} disabled={cancelar.isPending}
+                      className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Cancelar</button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => onEntregar(p)} disabled={entregar.isPending}
-                    className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">Entregar</button>
-                  <button onClick={() => onCancelarCompra(p)} disabled={cancelar.isPending}
-                    className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Cancelar</button>
+                {/* Items de la orden */}
+                <div className="mt-2.5 flex flex-col gap-1.5 border-t border-line2 pt-2.5">
+                  {(p.items || []).map((it, i) => (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-[7px] border border-line bg-surface">
+                        {it.imagen_url ? <img src={it.imagen_url} alt="" className="h-full w-full object-cover" /> : <span className="text-[8px] font-bold text-faint">—</span>}
+                      </div>
+                      <span className="flex-1 text-[12.5px] font-bold">{it.nombre}</span>
+                      <span className="text-[12px] font-extrabold text-muted">×{it.cantidad}</span>
+                      <span className="w-16 text-right text-[12px] font-bold text-muted">{p.moneda === 'PEN' ? 'S/' : ''}{Number(it.subtotal).toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
