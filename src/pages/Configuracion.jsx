@@ -9,10 +9,12 @@ import TabRedes from './config/TabRedes.jsx'
 import TabRegional from './config/TabRegional.jsx'
 import TabTextos from './config/TabTextos.jsx'
 import TabPlan from './config/TabPlan.jsx'
+import TabCobros from './config/TabCobros.jsx'
 import TabAcceso from './config/TabAcceso.jsx'
 
 const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
+  { key: 'cobros', label: 'Cobros 💰', Comp: TabCobros },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'sitio', label: 'Sitio web', Comp: TabSitio },
   { key: 'pagina', label: 'Página web', Comp: TabPaginaWeb },

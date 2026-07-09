@@ -1110,6 +1110,50 @@ Actualizado: 2026-07-09 (PEDIDO 16 pasos 2-4 cerrados).
 > "Pagos por activar" (Fase 1.d), integración SEE facturación (Fase 1.c),
 > selector "Conectar cobros" en Config del gym.
 
+> ### ✅ PANEL FASE 1 COMPLETA (2026-07-09): Cobros + Pagos por activar + andamiaje SEE
+> Se cerró TODO lo del panel que faltaba de Fase 1 (probado E2E, desplegado):
+>
+> **1.d.i — "Conectar cobros" (Config → Cobros 💰):** tab nuevo `TabCobros`.
+>   - Botón "Conectar con MercadoPago" → `/api/mp/oauth-start` → redirige a MP.
+>   - Al volver (`?tab=cobros&mp=conectado|error`) muestra el resultado.
+>   - Estado de conexión vía RPC `estado_cobros_mp()` (SECURITY DEFINER, NUNCA
+>     expone los tokens — `empresa_mp` tiene RLS cerrado). Solo admin.
+>   - "Desconectar cobros" → `desconectar_cobros_mp()`.
+>   - El callback ahora vuelve a `/configuracion?tab=cobros` (antes `/portal`).
+>
+> **1.d.ii — "Pagos por activar" (misma pestaña):** lista los pagos de app
+>   aprobados de socios NUEVOS (`estado_activacion='pendiente_activacion'`).
+>   - RPC `pagos_por_activar()` (lista) + `activar_pago_app(pago_id, sede?, plan?)`.
+>   - Al activar: crea el socio + su membresía ya pagada. **NO duplica el ingreso
+>     en caja** (el webhook ya lo registró al aprobarse el pago).
+>   - Caso cubierto: si el documento YA existe como socio, reusa ese socio y le
+>     **extiende** la membresía desde su fecha_fin (no crea duplicado; el índice
+>     único `uq_socio_documento_empresa` lo habría rechazado).
+>   - Probado E2E: lista → activar → socio creado + membresía, 0 movimientos
+>     duplicados, pago marcado 'activado', re-activar rechazado.
+>
+> **1.c — Facturación SEE (andamiaje, sin proveedor aún):** decisión del owner =
+>   dejar la arquitectura lista y enchufar el proveedor después.
+>   - Tabla `empresa_facturacion` (ruc, serie, proveedor, credenciales secretas
+>     con RLS cerrado igual que empresa_mp).
+>   - `pago_app` + columnas `comprobante_estado/serie/numero/error`.
+>   - RPCs `guardar_facturacion()`, `estado_facturacion()`, `preparar_comprobante()`.
+>   - El **webhook** ya llama `preparar_comprobante` al aprobar: si el gym no
+>     factura → marca `no_aplica`; si factura → deja el **punto de integración
+>     HTTP marcado** para el POST al proveedor (Nubefact/Efact/…). La facturación
+>     nunca tumba el webhook (try/catch). Idempotente. Probado E2E (4/4).
+>
+> **Migraciones:** `20260706000018_estado_cobros_mp.sql`,
+> `20260706000019_pagos_por_activar.sql`,
+> `20260706000020_facturacion_see_andamiaje.sql`.
+>
+> **Falta de Fase 1 (solo lado app / decisión externa):**
+>   - App 1.b: botón "Renovar / Pagar" en la app del socio → `POST /api/mp/crear-pago`
+>     (todo el backend listo para consumir; devuelve `init_point` para abrir MP).
+>   - SEE 1.c: elegir proveedor y enchufar el POST (5 min, punto ya marcado).
+
+Actualizado: 2026-07-09 (panel Fase 1 completa).
+
 ---
 
 PEDIDO 17 -- Carnet del socio: ¿qué QR debe mostrar? (kiosco vs recepción manual)

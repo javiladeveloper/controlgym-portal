@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const data = await r.json().catch(() => ({}))
     if (!r.ok || !data.access_token) {
       console.error('mp oauth-callback error', data)
-      return res.redirect(302, '/portal?g=&mp=error')
+      return res.redirect(302, `${env('PANEL_URL', '')}/configuracion?tab=cobros&mp=error`)
     }
 
     // Guarda/actualiza la conexión del gym. access_token protegido por RLS
@@ -43,9 +43,9 @@ export default async function handler(req, res) {
     )
 
     // De vuelta al panel con confirmación visible (Config → cobros).
-    return res.redirect(302, `${env('PANEL_URL', '')}/portal?mp=conectado`)
+    return res.redirect(302, `${env('PANEL_URL', '')}/configuracion?tab=cobros&mp=conectado`)
   } catch (e) {
     console.error('mp oauth-callback', e)
-    return res.redirect(302, '/portal?mp=error')
+    return res.redirect(302, `${env('PANEL_URL', '')}/configuracion?tab=cobros&mp=error`)
   }
 }

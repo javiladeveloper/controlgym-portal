@@ -48,7 +48,27 @@ export default async function handler(req, res) {
       }
       // Socio nuevo → ya está pendiente_activacion; el panel (recepción) lo da de alta.
 
-      // TODO Fase 1.c: emitir comprobante del gym (SEE) y guardar comprobante_url + push al socio.
+      // Fase 1.c — Comprobante electrónico (SEE). preparar_comprobante decide si
+      // el gym factura y devuelve los datos; si no factura, marca 'no_aplica' y
+      // seguimos. La emisión real es una llamada HTTP al proveedor del gym.
+      try {
+        const { rows: pr } = await db().query(
+          `select public.preparar_comprobante($1) as info`, [pago.id])
+        const info = pr[0]?.info
+        if (info?.emitir) {
+          // ─── PUNTO DE INTEGRACIÓN DEL PROVEEDOR SEE ────────────────────────
+          // Cuando se elija proveedor (Nubefact/Efact/…), aquí va el POST con
+          // { serie, monto, igv_incluido, concepto, cliente_nombre, cliente_doc,
+          //   ruc_emisor, razon_social_emisor } → respuesta con enlace_pdf.
+          // Luego: update pago_app set comprobante_estado='emitido',
+          //   comprobante_url=<pdf>, comprobante_serie=<serie>, comprobante_numero=<n>.
+          // Por ahora el andamiaje queda listo pero no emite (proveedor pendiente).
+          console.log('mp/webhook: comprobante por emitir (proveedor pendiente)', info.proveedor)
+        }
+      } catch (e) {
+        // La facturación nunca debe tumbar el webhook (el pago ya es válido).
+        console.error('mp/webhook preparar_comprobante', e)
+      }
     }
     return res.status(200).end()
   } catch (e) {
