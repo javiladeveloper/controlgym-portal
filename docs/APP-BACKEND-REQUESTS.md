@@ -1027,3 +1027,31 @@ QR con token rotativo (~60s) validado en backend. usa_carnet_qr queda derivada.
 > arrancar la RPC.
 
 Creado: 2026-07-09 (respuesta del panel al PEDIDO 16).
+
+> ### ✅ PEDIDO 15 — FASE 1 CERRADA (2026-07-09): webhook probado, ciclo completo
+> Probado el `webhook` E2E (simulando el pago aprobado de MP sobre un pago real
+> registrado): **pago pendiente → aprobado, membresía renovada +1 mes, ingreso
+> en caja**. El ciclo de pagos in-app funciona de punta a punta.
+>
+> 🐛 **BUG encontrado y corregido al probar:** el webhook renueva con
+> `metodo_pago='mercadopago'`, pero el CHECK de `movimiento_financiero` NO lo
+> permitía (solo efectivo/yape/plin/tarjeta/transferencia/otro) → el webhook
+> FALLABA al registrar el ingreso, es decir **ningún pago por app habría
+> renovado la membresía en producción.** Corregido: `20260706000015` agrega
+> 'mercadopago' y 'culqi' al constraint.
+>
+> **Nota sobre sandbox:** el OAuth de MP devuelve tokens de PRODUCCIÓN
+> (`APP_USR-`) incluso para el vendedor de prueba, así que el checkout rechaza
+> tarjetas de test. Para producción real esto es correcto; la prueba del split
+> (marketplace_fee 3%) y del webhook (renovación) ya está verificada.
+>
+> **RESUMEN FASE 1 — TODO listo del lado backend/panel:**
+>   1. ✅ BD (empresa_mp, pago_app, producto.visible_en_app)
+>   2. ✅ 4 endpoints api/mp/ desplegados
+>   3. ✅ OAuth del gym (conecta su cuenta MP)
+>   4. ✅ crear-pago con split 97/3
+>   5. ✅ webhook (renueva membresía / venta kardex / socio nuevo pendiente)
+>
+> **Falta (otras sesiones):** app Fase 1.b (botón Renovar → crear-pago), panel
+> "Pagos por activar" (Fase 1.d), integración SEE facturación (Fase 1.c),
+> selector "Conectar cobros" en Config del gym.
