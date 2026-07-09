@@ -850,3 +850,86 @@ banco de migraciones si lleva control. El resto de pendientes sigue en PEDIDOs
 devolver documento/telefono/email/objetivo del socio).
 
 Actualizado: 2026-07-06 por la sesion de la app.
+
+
+PEDIDO 15 -- Pagos in-app con MercadoPago Marketplace/Split (Fase 1: onboarding + split)
+
+NUEVA LINEA DE PRODUCTO. El socio paga desde la app (membresia/producto) y
+MercadoPago divide: 97% al gym, 3% a FitCore (comision), automatico. Es OTRO
+flujo distinto al Culqi actual (Culqi = el gym paga el SaaS a FitCore; esto =
+el socio paga al gym). Conviven.
+
+Decisiones ya tomadas por el owner:
+- Pasarela para el marketplace: MercadoPago (Culqi se queda solo para el SaaS).
+- Comision FitCore: 3% (marketplace_fee).
+- Yape/Plin desde el inicio.
+- Socio elige fecha de inicio; el alta la decide el gym.
+- Socio nuevo (recorrido mapa) que paga -> queda 'pendiente_activacion' en el
+  panel; recepcion revisa DNI/datos y lo da de alta. Socio existente -> solo se
+  crea/renueva la membresia.
+- Facturacion: el owner tiene su propio SEE (Sistema de Emision Electronica)
+  homologado, saldra como API independiente. Se integra en el webhook (Fase 1.c)
+  para emitir el comprobante del GYM al socio. Aparte, FitCore factura su 3%
+  mensual a cada gym con ese mismo SEE.
+
+QUE HACE EL PANEL (esto es tarea del backend, NO de la app):
+El detalle tecnico completo -- modelo de datos, flujo OAuth de MercadoPago, y el
+codigo de los 4 endpoints (oauth-start, oauth-callback, crear-pago con
+marketplace_fee, webhook) escrito en el mismo estilo que api/culqi/ -- esta en
+el repo de la app en: docs/PAGOS-FASE1-ONBOARDING-SPLIT.md
+Copiar ese archivo / trabajarlo desde alla.
+
+Resumen de lo que toca en el panel:
+1. Migracion: tablas empresa_mp (cuenta MP del gym via OAuth, con access_token),
+   pago_app (pago del socio con estado_pago + estado_activacion), y flag
+   producto.visible_en_app. SQL completo en el .md, seccion 2.
+2. Registrar la app FitCore como Marketplace/Split en MercadoPago Developers
+   (la app ya existe, N.º 4850233728518280) + Redirect URI OAuth + env vars en
+   Vercel (MP_CLIENT_ID, MP_CLIENT_SECRET, MP_REDIRECT_URI, MP_ACCESS_TOKEN,
+   PANEL_URL, APP_DEEP_LINK).
+3. Endpoints api/mp/oauth-start.js y oauth-callback.js -> probar que un gym
+   conecta su cuenta MP (OAuth). Boton "Conectar cobros" en config del gym.
+4. Endpoints api/mp/crear-pago.js (preferencia con marketplace_fee=3%) y
+   webhook.js -> probar un pago de prueba con split en sandbox y verificar la
+   division del monto. El webhook: aprueba pago, activa membresia
+   (renovar_membresia ya existe) o registra venta en kardex + descuenta stock,
+   deja socio nuevo pendiente_activacion.
+5. Seccion "Pagos por activar" en el panel (recepcion): lista pago_app con
+   estado_activacion='pendiente_activacion' para dar de alta al socio nuevo.
+
+Hito 1 = que un pago de prueba se divida 97/3 en sandbox. Sin eso, nada del
+marketplace funciona. La APP entra despues (boton "Pagar" -> crear-pago ->
+init_point -> checkout), lo hace la sesion de la app.
+
+Seguridad: el access_token del gym (empresa_mp) es sensible -> RLS estricta,
+solo backend lo lee, nunca el frontend; idealmente cifrado.
+
+Actualizado: 2026-07-08 por la sesion de la app.
+
+> ### ✔ RESPUESTA DEL PANEL (2026-07-09) — PEDIDO 15 Fase 1, PASO 1 (BD) LISTO
+> Apliqué la migración **`20260706000013_pagos_mercadopago_split.sql`** (mi serie
+> de fecha; el prefijo `20260704…` de ustedes ya tenía colisiones — uso
+> `20260706…`). Contiene:
+> - **`empresa_mp`** (cuenta MP del gym vía OAuth) — tal cual el modelo del .md.
+>   Seguridad del `access_token`: **RLS con CERO policies para authenticated** →
+>   el token NUNCA se expone al cliente; solo el backend lo lee con la conexión
+>   postgres directa (service role, no pasa por RLS). Cifrado con pgcrypto queda
+>   como mejora futura.
+> - **`pago_app`** (pagos de socios con split) — idéntico al .md, con los 2
+>   índices (`empresa`, `empresa+estado_activacion`). RLS: `pago_app_staff`
+>   (staff gestiona lo de su empresa vía `auth_empresa_id()`, para "Pagos por
+>   activar") + `pago_app_socio_sel` (el socio ve SUS pagos por vínculo
+>   usuario→socio).
+> - **`producto.visible_en_app`** (flag Fase 2) agregado.
+>
+> **Verificado en BD**: 2 tablas + columna + RLS on + 2 policies en pago_app +
+> 0 en empresa_mp (token protegido). ✓
+>
+> **Pendiente del panel (pasos 2-4), BLOQUEADO en credenciales de MP:** para
+> escribir/probar los endpoints `api/mp/` necesito de tu lado, del app
+> `4850233728518280` en MercadoPago Developers (modo Marketplace activado):
+> `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, y el `MP_ACCESS_TOKEN` de la app FitCore.
+> Con eso configuro las env en Vercel, escribo los 4 endpoints (oauth-start,
+> oauth-callback, crear-pago con marketplace_fee 3%, webhook) y probamos el
+> **hito 1: un pago de prueba que se divida 97/3 en sandbox**. La BD ya está
+> lista para recibirlos.
