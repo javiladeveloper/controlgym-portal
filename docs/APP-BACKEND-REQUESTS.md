@@ -49,6 +49,54 @@ comidas, "Enviar al socio" (`enviado_at`), sugerencias de ejercicios desde
 > suyo / staff lee su gym. **Incluye `empresa_id` — mándalo en el insert.** El RPC `evolucion_socio`
 > (opcional) quedó pendiente: arma las queries directo o pídelo cuando lo necesites.
 
+## PEDIDO 18 — Tienda del socio: comprar productos por app y recogerlos en el gym → ✅ BACKEND LISTO (2026-07-09)
+
+El gym marca qué productos vende por app; el socio los compra desde la app
+(MercadoPago split, igual que las membresías) y los recoge en el mostrador.
+Todo el backend está listo y probado E2E. **La app necesita construir su parte:
+catálogo + botón comprar.**
+
+**Campos nuevos en `producto`** (migración `20260706000023`):
+- `imagen_url` (text) — foto del producto (URL pública). **Obligatoria** para
+  vender por app.
+- `descripcion` (text) — sabor/tamaño/para qué sirve.
+- `visible_en_app` (bool) — ya existía; el panel ahora lo controla con un toggle.
+
+**Catálogo para la app** — lista los productos comprables de la sede:
+```sql
+select p.id, p.nombre, p.descripcion, p.precio, p.imagen_url, i.stock
+  from producto p
+  join inventario_sede i on i.producto_id = p.id
+ where p.empresa_id = <empresa> and i.sede_id = <sede>
+   and p.visible_en_app = true and p.deleted_at is null
+   and i.stock > 0;
+```
+(RLS del socio ya permite leer productos de su empresa. Si prefieren una RPC
+dedicada `catalogo_app(sede)`, la creo — avísenme.)
+
+**Comprar** — MISMO endpoint que las membresías:
+```
+POST /api/mp/crear-pago
+Body: { empresa_id, tipo:'producto', ref_id:<producto_id>, sede_id,
+        socio_id:<socio>, nuevo?:{nombre,documento} }
+→ { init_point }   // abrir en el navegador/checkout de MP
+```
+El webhook, al aprobar: descuenta stock (reserva), registra la venta en caja, y
+deja el producto **"por entregar"**. El socio lo recoge; recepción lo marca
+entregado en el panel (Kardex → "Productos por entregar"). Si no recoge, el gym
+cancela y se repone el stock.
+
+**Sugerencia UX app:** tras comprar, mostrar "Recoge tu producto en el gym"
+con el nombre del producto. No hay envío a domicilio (Fase 1 = recojo).
+
+Backend: migraciones `20260706000022` (recojo) + `20260706000023` (imagen/desc),
+webhook actualizado. RPCs del panel: productos_por_entregar/entregar_producto/
+cancelar_compra_producto. Probado E2E (compra→reserva→entregar / cancelar→repone).
+
+Creado: 2026-07-09 (panel).
+
+---
+
 ## PEDIDO 1 — Paquete backend socio (BLOQUEANTE para el modo Socio) 🔴 → ✅ RESUELTO
 
 El comprometido en el handoff, tal cual:
