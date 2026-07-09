@@ -12,6 +12,7 @@ import {
   useDispositivos, useGuardarDispositivo,
   useCredenciales, useEnrolarCredencial, useQuitarCredencial,
 } from '../../hooks/useAcceso.js'
+import { useEstadoApiKey, useGenerarApiKey, useRevocarApiKey } from '../../hooks/useApiKey.js'
 import { toast } from '../../lib/toast.js'
 import { BASE_TOKENS as T } from '../../theme/tokens.js'
 
@@ -191,6 +192,9 @@ export default function TabAcceso() {
         </div>
       </div>
 
+      {/* ── Clave de conexión de hardware (molinetes/lectores) ──────────── */}
+      <ClaveConexion />
+
       {/* ── Lectores / dispositivos ─────────────────────────────────────── */}
       <Card className="p-5">
         <div className="flex items-center justify-between">
@@ -339,5 +343,100 @@ export default function TabAcceso() {
       </>
       )}
     </div>
+  )
+}
+
+// Clave de conexión: la API key que el "Agente Puente" (software en la PC del
+// gym) usa para que su molinete/lector hable con FitCore. Se genera de un clic,
+// se muestra UNA vez, y se pega en el agente. Esto es lo que permite conectar
+// hardware en cualquier sede sin configuración manual de nuestra parte.
+function ClaveConexion() {
+  const { empresa } = useAuth()
+  const estado = useEstadoApiKey(empresa?.id)
+  const generar = useGenerarApiKey(empresa?.id)
+  const revocar = useRevocarApiKey(empresa?.id)
+  const [claveVisible, setClaveVisible] = useState(null) // la clave en claro, solo tras generar
+
+  const soloAdmin = estado.data?.motivo === 'solo_admin'
+  const existe = estado.data?.existe === true
+
+  function onGenerar() {
+    if (existe && !window.confirm('Ya tienes una clave. Generar una nueva invalidará la anterior: los equipos con la clave vieja dejarán de funcionar hasta actualizarla. ¿Continuar?')) return
+    generar.mutate(undefined, {
+      onSuccess: (r) => { setClaveVisible(r.api_key); toast.ok('Clave generada. Cópiala ahora: no se volverá a mostrar.') },
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  function onCopiar() {
+    navigator.clipboard?.writeText(claveVisible).then(
+      () => toast.ok('Clave copiada'),
+      () => toast.error('No se pudo copiar; selecciónala manualmente'),
+    )
+  }
+
+  function onRevocar() {
+    if (!window.confirm('¿Revocar la clave? Tus molinetes/lectores dejarán de registrar accesos hasta que generes una nueva.')) return
+    revocar.mutate(undefined, {
+      onSuccess: () => { setClaveVisible(null); toast.ok('Clave revocada.') },
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  if (soloAdmin) return null // solo el admin gestiona el hardware
+
+  return (
+    <Card className="p-5">
+      <div className="text-[14.5px] font-extrabold">Clave de conexión de equipos</div>
+      <p className="mt-0.5 text-[12.5px] font-semibold leading-[1.5] text-muted">
+        Si instalas un <b>molinete o lector físico</b>, esta clave conecta tu equipo con FitCore.
+        Instala el <b>Agente FitCore</b> en la PC del gimnasio y pégale esta clave. No necesitas
+        que vayamos: tú lo activas.
+      </p>
+
+      {/* Clave recién generada (solo se ve una vez) */}
+      {claveVisible && (
+        <div className="mt-4 rounded-[12px] border border-orange/40 bg-orange/5 p-4">
+          <div className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-orange">Tu clave (cópiala ahora, no se vuelve a mostrar)</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-[8px] border border-line bg-white px-3 py-2 font-mono text-[12.5px] font-bold">{claveVisible}</code>
+            <button onClick={onCopiar} className="cursor-pointer rounded-[9px] border border-orange bg-white px-3 py-2 text-[12.5px] font-extrabold text-orange hover:bg-orange-50">Copiar</button>
+          </div>
+        </div>
+      )}
+
+      {estado.isLoading ? (
+        <div className="mt-4"><LoadingState variant="table" rows={1} /></div>
+      ) : existe ? (
+        <div className="mt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-line bg-[#FAFBFC] px-4 py-3">
+            <div>
+              <div className="flex items-center gap-2 text-[13px] font-extrabold">
+                <span className="text-success">✓</span> Clave activa
+                <span className="font-mono text-[12px] font-bold text-muted">{estado.data.prefix}…</span>
+              </div>
+              <div className="mt-0.5 text-[11.5px] font-semibold text-muted">
+                {estado.data.ultima_usada
+                  ? `Último equipo conectado: ${new Date(estado.data.ultima_usada).toLocaleString('es-PE')}`
+                  : 'Aún ningún equipo se ha conectado con esta clave.'}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onGenerar} disabled={generar.isPending} className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12.5px] font-extrabold text-muted hover:border-orange hover:text-orange">Regenerar</button>
+              <button onClick={onRevocar} disabled={revocar.isPending} className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12.5px] font-extrabold text-muted hover:border-red hover:text-red">Revocar</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <PrimaryButton onClick={onGenerar} disabled={generar.isPending}>
+            {generar.isPending ? 'Generando…' : 'Generar clave de conexión'}
+          </PrimaryButton>
+          <p className="mt-2 text-[11.5px] font-semibold text-faint">
+            Solo la necesitas si usas molinete o lector físico. Puedes generarla cuando instales tu equipo.
+          </p>
+        </div>
+      )}
+    </Card>
   )
 }
