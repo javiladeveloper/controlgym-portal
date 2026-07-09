@@ -34,4 +34,5 @@ export const PRESETS = {
   hero: { maxWidth: 1920, maxHeight: 1200, quality: 0.82 },
   galeria: { maxWidth: 1600, maxHeight: 1600, quality: 0.8 },
   sede: { maxWidth: 1600, maxHeight: 1200, quality: 0.8 },
+  producto: { maxWidth: 800, maxHeight: 800, quality: 0.82 },
 }

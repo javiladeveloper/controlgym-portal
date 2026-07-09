@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProductos, useMovimientosInventario } from '../hooks/useOperaciones.js'
+import { subirImagen } from '../hooks/useConfiguracion.js'
+import { useProductosPorEntregar, useEntregarProducto, useCancelarCompra } from '../hooks/useRecojo.js'
 import { money } from '../lib/uiHelpers.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
@@ -122,14 +124,31 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
 // Editar producto (precio, categoría, alerta de stock) y eliminarlo (soft).
 function ProductoModal({ producto, sedeId, moneda, onClose }) {
   const qc = useQueryClient()
+  const { empresa } = useAuth()
   const [f, setF] = useState({
     nombre: producto.nombre || '', categoria: producto.categoria || 'Otros',
     precio: String(producto.precio ?? ''), stock_minimo: String(producto.stock_minimo ?? 0),
+    descripcion: producto.descripcion || '', imagen_url: producto.imagen_url || '',
+    visible_en_app: producto.visible_en_app ?? false,
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmarDel, setConfirmarDel] = useState(false)
+  const [subiendo, setSubiendo] = useState(false)
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  async function onFoto(file) {
+    if (!file) return
+    setSubiendo(true); setError('')
+    try {
+      const url = await subirImagen(empresa.id, 'producto', file)
+      setF((s) => ({ ...s, imagen_url: url }))
+    } catch (e) {
+      setError('No se pudo subir la foto: ' + e.message)
+    } finally {
+      setSubiendo(false)
+    }
+  }
 
   function invalidar() {
     qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
@@ -138,10 +157,17 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
 
   async function guardar(e) {
     e?.preventDefault()
+    // Para vender por app: foto obligatoria (sin foto no se vende bien).
+    if (f.visible_en_app && !f.imagen_url) {
+      setError('Para vender este producto en la app, súbele una foto primero.')
+      return
+    }
     setBusy(true); setError('')
     const { error } = await supabase.from('producto').update({
       nombre: f.nombre.trim(), categoria: f.categoria,
       precio: Number(f.precio) || 0, stock_minimo: Number(f.stock_minimo) || 0,
+      descripcion: f.descripcion.trim() || null, imagen_url: f.imagen_url || null,
+      visible_en_app: f.visible_en_app,
     }).eq('id', producto.id)
     setBusy(false)
     if (error) { setError(error.message); return }
@@ -175,6 +201,48 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
           <Campo label={`Precio de venta (${moneda})`}><input type="number" step="0.1" min="0" value={f.precio} onChange={set('precio')} className={inputCls} /></Campo>
         </div>
         <Campo label="Alerta de stock bajo (unidades)"><input type="number" min="0" value={f.stock_minimo} onChange={set('stock_minimo')} className={inputCls} /></Campo>
+
+        {/* ── Venta por app: foto, descripción y el interruptor ───────────── */}
+        <div className="rounded-[12px] border border-line bg-[#FAFBFC] p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[13px] font-extrabold">Vender en la app 📱</div>
+              <div className="mt-0.5 text-[11.5px] font-semibold leading-[1.4] text-muted">
+                Si lo activas, tus socios podrán comprarlo desde la app y recogerlo en el gym.
+                Necesita foto. Solo se muestran los productos que actives.
+              </div>
+            </div>
+            <button type="button"
+              onClick={() => setF((s) => ({ ...s, visible_en_app: !s.visible_en_app }))}
+              className={`relative mt-0.5 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${f.visible_en_app ? 'bg-orange' : 'bg-line2'}`}
+              aria-label="Vender en la app">
+              <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${f.visible_en_app ? 'left-6' : 'left-1'}`} />
+            </button>
+          </div>
+
+          <div className="mt-3 flex items-start gap-3">
+            {/* Foto */}
+            <div className="flex-shrink-0">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[10px] border border-line bg-white">
+                {f.imagen_url
+                  ? <img src={f.imagen_url} alt="" className="h-full w-full object-cover" />
+                  : <span className="text-[10px] font-bold text-faint">sin foto</span>}
+              </div>
+              <label className="mt-1.5 block cursor-pointer text-center text-[11px] font-extrabold text-orange hover:underline">
+                {subiendo ? 'Subiendo…' : (f.imagen_url ? 'Cambiar' : 'Subir foto')}
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) onFoto(file); e.target.value = '' }} />
+              </label>
+            </div>
+            {/* Descripción */}
+            <label className="flex-1">
+              <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Descripción</span>
+              <textarea value={f.descripcion} onChange={set('descripcion')} rows={3}
+                className={inputCls + ' resize-none'} placeholder="Sabor, tamaño, para qué sirve… (lo verá el socio en la app)" />
+            </label>
+          </div>
+        </div>
+
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         {confirmarDel ? (
           <div className="flex items-center gap-2 rounded-[10px] border border-red-200 bg-red-50 px-3.5 py-2.5">
@@ -208,6 +276,24 @@ export default function Kardex() {
   const [verTodos, setVerTodos] = useState(false) // expandir la lista de movimientos del mes
   const productos = useProductos(sedeId)
   const movs = useMovimientosInventario(sedeId)
+  const porEntregar = useProductosPorEntregar(sedeId)
+  const entregar = useEntregarProducto(sedeId)
+  const cancelar = useCancelarCompra(sedeId)
+
+  function onEntregar(p) {
+    if (!window.confirm(`¿Entregar ${p.producto_nombre} a ${p.socio_nombre || 'el socio'}?`)) return
+    entregar.mutate(p.id, {
+      onSuccess: () => toast.ok('Producto entregado'),
+      onError: (e) => toast.error(e.message),
+    })
+  }
+  function onCancelarCompra(p) {
+    if (!window.confirm(`¿Cancelar la compra de ${p.producto_nombre}? Se repone el stock y se marca para reembolso. El dinero se devuelve por MercadoPago aparte.`)) return
+    cancelar.mutate({ pagoId: p.id, motivo: 'cancelado en mostrador' }, {
+      onSuccess: () => toast.ok('Compra cancelada · stock repuesto'),
+      onError: (e) => toast.error(e.message),
+    })
+  }
 
   async function anularMov(m) {
     setBusyAnular(true)
@@ -251,6 +337,42 @@ export default function Kardex() {
         <StatCard label="Ventas del mes" value={money(ventasMes, moneda)} delta={`hoy: ${money(ventasHoy, moneda)}`} deltaColor={T.success} />
         <StatCard label="Compras del mes" value={money(comprasMes, moneda)} delta="inversión en mercadería" />
       </div>
+
+      {/* Productos comprados por app, pendientes de que el socio los recoja */}
+      {(porEntregar.data?.length > 0) && (
+        <Card className="mt-[15px] p-5">
+          <div className="flex items-center gap-2">
+            <div className="text-[14.5px] font-extrabold">Productos por entregar 📦</div>
+            <Badge bg="#FEF3E2" color="#B7791F">{porEntregar.data.length}</Badge>
+          </div>
+          <p className="mt-0.5 text-[12px] font-semibold text-muted">
+            Comprados desde la app. El stock ya se descontó al pagar. Entrégalos cuando el socio venga.
+          </p>
+          <div className="mt-4 flex flex-col gap-2.5">
+            {porEntregar.data.map((p) => (
+              <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-[12px] border border-line bg-white px-3.5 py-3">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-[9px] border border-line bg-surface">
+                  {p.imagen_url ? <img src={p.imagen_url} alt="" className="h-full w-full object-cover" /> : <span className="text-[9px] font-bold text-faint">sin foto</span>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-extrabold">{p.producto_nombre}</div>
+                  <div className="text-[11.5px] font-semibold text-muted">
+                    {p.socio_nombre ? `${p.socio_nombre}${p.socio_codigo ? ` · N.º ${p.socio_codigo}` : ''}` : 'Socio'}
+                    {' · '}{p.moneda === 'PEN' ? 'S/' : ''}{Number(p.monto).toFixed(2)}
+                    {p.pagado_at ? ` · ${new Date(p.pagado_at).toLocaleDateString('es-PE')}` : ''}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => onEntregar(p)} disabled={entregar.isPending}
+                    className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">Entregar</button>
+                  <button onClick={() => onCancelarCompra(p)} disabled={cancelar.isPending}
+                    className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Cancelar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {productos.isLoading && <LoadingState variant="table" rows={5} />}
       {productos.error && <ErrorState error={productos.error} onRetry={productos.refetch} />}

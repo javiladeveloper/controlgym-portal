@@ -48,7 +48,7 @@ export function useProductos(sedeId) {
       // deja de aparecer. Sin esto, el "borrado" no lo sacaba de la tabla.
       const { data, error } = await supabase
         .from('inventario_sede')
-        .select('stock, producto:producto!inner(id, nombre, categoria, precio, stock_minimo, deleted_at)')
+        .select('stock, producto:producto!inner(id, nombre, categoria, precio, stock_minimo, deleted_at, imagen_url, descripcion, visible_en_app)')
         .eq('sede_id', sedeId)
         .is('producto.deleted_at', null)
       if (error) throw error

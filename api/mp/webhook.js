@@ -41,10 +41,15 @@ export default async function handler(req, res) {
         // Socio existente → renovar/activar su membresía (paga completo).
         await db().query(`select public.renew_membership($1, 'mercadopago')`, [pago.ref_id])
       } else if (pago.tipo === 'producto') {
-        // Venta desde la app → registra en kardex y descuenta stock (RPC valida).
+        // Compra desde la app → registra la venta y descuenta stock al pagar
+        // (reserva el producto). Queda 'pendiente_activacion' = por entregar;
+        // recepción lo entrega en el mostrador (o cancela y repone el stock).
         await db().query(
           `select public.registrar_mov_inventario($1, $2, 'venta', 1, $3)`,
           [pago.sede_id, pago.ref_id, pago.monto])
+        await db().query(
+          `update public.pago_app set estado_activacion = 'pendiente_activacion' where id = $1`,
+          [pago.id])
       }
       // Socio nuevo → ya está pendiente_activacion; el panel (recepción) lo da de alta.
 
