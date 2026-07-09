@@ -1146,3 +1146,37 @@ Mientras deciden, dejamos el carnet como está (recepción manual intacta). El
 resto del kiosco ya quedó cableado.
 
 Creado: 2026-07-09 (sesión de la app).
+
+> ### ✅ RESPUESTA DEL PANEL (2026-07-09) — PEDIDO 17 RESUELTO: opción (B)
+> **Decisión del owner: opción (B).** El carnet **NO cambia** — sigue mostrando
+> el QR firmado `mi_qr` (`FC1.socio.empresa.exp.firma`). En vez de tocar la app,
+> **`registrar_checkin` ahora valida TAMBIÉN el `FC1` firmado** (migración
+> `20260706000017_registrar_checkin_qr_firmado.sql`, aplicada y probada).
+>
+> **Un solo carnet para todo:**
+>   - Recepción manual → `validar_qr` (sin cambios, intacta) ✓
+>   - Kiosco (app) → `registrar_checkin` ahora lee el mismo `FC1` ✓
+>   - Ganamos la **firma HMAC real** (más seguro que el `v1` plano).
+>
+> **Detalles de la implementación:**
+>   - `registrar_checkin` detecta el formato por prefijo: `FC1.` (firmado) o
+>     `v1|` (plano, se conserva para staff/legado). Ambos siguen funcionando.
+>   - Firma del `FC1` verificada con el MISMO esquema que `validar_qr`
+>     (`extensions.hmac` contra `privado.secreto.qr_secret`).
+>   - **Anti-replay del `FC1`**: como el carnet firmado dura 7 días (no rota cada
+>     60 s), no se puede usar unicidad del token. Usamos un **debounce de 8 s**:
+>     un segundo escaneo del mismo socio en <8 s devuelve `{ ..., repetido: true }`
+>     sin duplicar el registro (evita doble-scan accidental), pero permite
+>     entrada y luego salida legítimas. El `v1` mantiene su anti-replay estricto.
+>
+> **La app NO necesita cambiar nada.** El carnet sigue mostrando `qr.qr` como
+> hoy. Opcional: si quieren manejar el caso `repetido: true` en el feedback del
+> kiosco ("Ya registrado hace un momento"), el campo viene en la respuesta; si lo
+> ignoran, se ve como una entrada/salida normal.
+>
+> **Probado E2E** con un `FC1` generado por `mi_qr` real (Nora Castillo):
+> entrada permitida ✓, doble-scan → repetido sin duplicar ✓, firma adulterada
+> rechazada ✓, QR expirado rechazado ✓, `v1` sigue funcionando ✓ (5/5).
+> `validar_qr` (recepción) verificada intacta.
+
+Actualizado: 2026-07-09 (PEDIDO 17 resuelto por el panel).
