@@ -135,7 +135,7 @@ export default function Bienvenida() {
 
   const planSlug = pendiente?.plan || empresa?.plan_slug
   const tipo = TIPO_POR_PLAN[planSlug] || 'fitness'
-  const esCadena = planSlug === 'cadena'
+  const esCadena = planSlug === 'pro' || planSlug === 'cadena'
   const nombreNegocio = pendiente?.nombre || empresa?.nombre
   const t = TITULOS[tipo]
 

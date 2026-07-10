@@ -242,23 +242,26 @@ const SLIDES = [
 ]
 
 // Cada plan tiene 2 precios: solo panel, o panel + app para socios (adicional).
+// Precio POR SEDE: cada sede del gimnasio paga su plan. Un gym con 3 sedes paga
+// 3× el plan. La calculadora de abajo hace el total. Los planes se diferencian
+// por FEATURES (qué tan completo es el gym), no por número de sedes.
 const PLANES = [
   {
     nombre: 'Estudio', base: 49, conApp: 79, popular: false, foto: '/landing/paso2.jpg',
     para: 'Yoga, pilates, baile y gimnasios pequeños',
-    features: ['1 sede · hasta 100 socios activos', '2 usuarios del panel', 'Socios, membresías y cobros', 'Clases y check-in', 'Página web con subdominio', 'Reportes básicos'],
-    no: ['CRM y captación desde redes'],
+    features: ['Socios, membresías y cobros', 'Clases y check-in', 'Página web con subdominio', 'Hasta 2 usuarios del panel', 'Reportes básicos'],
+    no: ['CRM y captación desde redes', 'Rutinas, kardex y finanzas'],
   },
   {
     nombre: 'Crecimiento', base: 99, conApp: 139, popular: true, foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
-    features: ['Hasta 3 sedes · socios ilimitados', 'Usuarios ilimitados', 'Todo lo de Estudio', 'CRM + captación con origen por red', 'Emails automáticos de interesados', 'Promociones aplicadas al cobro', 'Kardex, máquinas y finanzas', 'Personalización total (8 diseños)', 'Reportes en Excel'],
-    no: [],
+    features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'CRM + captación con origen por red', 'Rutinas y dietas (asignación por IMC)', 'Kardex, tienda en la app y máquinas', 'Finanzas y reportes en Excel', 'Promociones aplicadas al cobro', 'Personalización total (8 diseños)'],
+    no: ['Torniquetes, huella y cámaras'],
   },
   {
-    nombre: 'Cadena', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
-    para: 'Multi-sede, franquicias y gyms completos',
-    features: ['Sedes y socios ilimitados', 'Todo lo de Crecimiento', 'Torniquetes y huella', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
+    nombre: 'Pro', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
+    para: 'El gimnasio equipado que lo quiere todo',
+    features: ['Todo lo de Crecimiento', 'Torniquetes y huella (control de acceso)', 'Cámaras en vivo desde el panel', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
     no: [],
   },
 ]
@@ -546,6 +549,73 @@ function CarruselModulos() {
             style={{ width: idx === i ? 20 : 6, background: idx === i ? C.primary : 'rgba(255,255,255,0.14)' }} />
         ))}
       </div>
+    </div>
+  )
+}
+
+// Calculadora de precio: como se cobra POR SEDE, el gym elige plan y cuántas
+// sedes tiene → total = precio del plan × nº de sedes (+ app opcional por sede).
+function CalculadoraPrecio({ conApp: conAppInicial }) {
+  const [planIdx, setPlanIdx] = useState(1) // Crecimiento por defecto
+  const [sedes, setSedes] = useState(1)
+  const [conApp, setConApp] = useState(conAppInicial)
+  const plan = PLANES[planIdx]
+  const precioSede = conApp ? plan.conApp : plan.base
+  const total = precioSede * sedes
+
+  return (
+    <div className="mx-auto mt-10 max-w-[720px] rounded-xl p-6" style={{ background: C.surface, border: C.border }}>
+      <div className="text-center text-[16px] font-extrabold">Calcula tu precio</div>
+      <p className="mt-1 text-center text-[12.5px] font-semibold" style={{ color: C.muted }}>
+        Cobramos por sede. Elige tu plan y cuántas sedes tienes.
+      </p>
+
+      {/* Plan */}
+      <div className="mt-5">
+        <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Plan</div>
+        <div className="grid grid-cols-3 gap-2">
+          {PLANES.map((p, i) => (
+            <button key={p.nombre} onClick={() => setPlanIdx(i)}
+              className="rounded-lg px-3 py-2.5 text-[13px] font-extrabold transition-colors"
+              style={i === planIdx
+                ? { background: C.primary, color: '#fff' }
+                : { border: C.border, color: C.muted }}>
+              {p.nombre}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sedes */}
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Número de sedes</span>
+          <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{sedes} {sedes === 1 ? 'sede' : 'sedes'}</span>
+        </div>
+        <input type="range" min="1" max="10" value={sedes} onChange={(e) => setSedes(Number(e.target.value))}
+          className="w-full cursor-pointer accent-orange-500" style={{ accentColor: C.primary }} />
+        <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>1</span><span>10+</span></div>
+      </div>
+
+      {/* App opcional */}
+      <label className="mt-4 flex cursor-pointer items-center gap-2.5">
+        <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="h-4 w-4" style={{ accentColor: C.primary }} />
+        <span className="text-[13px] font-bold">Agregar la app para socios (+S/ {plan.conApp - plan.base}/mes por sede)</span>
+      </label>
+
+      {/* Total */}
+      <div className="mt-5 rounded-lg p-4 text-center" style={{ background: C.primary }}>
+        <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-white/80">Tu total mensual</div>
+        <div className="text-[34px] font-extrabold tracking-[-1px] text-white">
+          S/ {total.toLocaleString('es-PE')}<span className="text-[14px] font-semibold text-white/80">/mes</span>
+        </div>
+        <div className="text-[12px] font-semibold text-white/90">
+          {plan.nombre} · S/ {precioSede}/sede × {sedes} {sedes === 1 ? 'sede' : 'sedes'}
+        </div>
+      </div>
+      <p className="mt-3 text-center text-[11px] font-semibold" style={{ color: C.muted }}>
+        ¿Más de 10 sedes o varias marcas? <a href={`${APP_URL}/registro`} className="font-extrabold" style={{ color: C.primary }}>Hablemos de un precio especial →</a>
+      </p>
     </div>
   )
 }
@@ -860,12 +930,12 @@ export default function PlataformaLanding() {
               <div className="text-[15px] font-extrabold">{p.nombre}</div>
               <div className="mt-0.5 text-[12px] font-semibold" style={{ color: C.muted }}>{p.para}</div>
               <div className="mt-4 text-[38px] font-extrabold tracking-[-2px]">
-                S/ {conApp ? p.conApp : p.base}<span className="text-[14px] font-semibold" style={{ color: C.muted }}>/mes</span>
+                S/ {conApp ? p.conApp : p.base}<span className="text-[14px] font-semibold" style={{ color: C.muted }}>/mes por sede</span>
               </div>
               <div className="text-[11.5px] font-semibold" style={{ color: C.muted }}>
                 {conApp
-                  ? `S/ ${p.base} sin app · el adicional cubre a todos tus socios`
-                  : `+S/ ${p.conApp - p.base}/mes si luego quieres la app del socio`}
+                  ? `S/ ${p.base} sin app · cada sede incluye socios ilimitados`
+                  : `+S/ ${p.conApp - p.base}/mes por sede si quieres la app del socio`}
               </div>
               <ul className="mt-5 flex-1 space-y-2 text-[13px] font-semibold" style={{ color: C.muted }}>
                 {conApp && (
@@ -892,6 +962,9 @@ export default function PlataformaLanding() {
         <p className="mt-6 text-center text-[12px] font-semibold" style={{ color: C.muted }}>
           Todos los planes incluyen 1 mes de prueba gratis, sin tarjeta. Cambia de plan cuando quieras.
         </p>
+
+        {/* Calculadora: cuánto pagarías según plan, nº de sedes y si sumas la app */}
+        <CalculadoraPrecio conApp={conApp} />
 
         {/* Segmentos especiales: no todo negocio fitness es un gimnasio clásico */}
         <div className="mx-auto mt-10 max-w-[1000px] rounded-xl p-6" style={{ background: C.surface, border: C.border }}>

@@ -26,21 +26,21 @@ const PLANES = [
     desc: 'Clases, alumnos, reservas, cobros y tu página web — sin módulos de gimnasio que no usas. Un panel a la medida de tu estudio.',
     incluye: ['Clases y reservas con cupo', 'Alumnos y membresías', 'Página web con tu marca'] },
   { slug: 'estudio', nombre: 'Estudio', base: 49, app: 79, img: '/landing/capturas/web.jpg',
-    para: 'Gimnasios pequeños · 1 sede',
-    desc: 'Hasta 100 socios activos, 1 sede y 2 usuarios del panel. Socios, membresías, cobros, clases, check-in y tu página web.',
-    incluye: ['Hasta 100 socios · 1 sede', 'Membresías, cobros y check-in', 'Página web + reportes básicos'] },
+    para: 'Gimnasios pequeños',
+    desc: 'Socios, membresías, cobros, clases, check-in y tu página web. Hasta 2 usuarios del panel. Socios ilimitados en tu sede.',
+    incluye: ['Socios ilimitados por sede', 'Membresías, cobros y check-in', 'Página web + reportes básicos'] },
   { slug: 'ninos', nombre: 'Niños', base: 69, app: 109, img: '/landing/capturas/personal.jpg',
     para: 'Academias infantiles',
     desc: 'Alumnos con apoderados, clases por edades, control de recojo autorizado y tu página web. Pensado para escuelas deportivas de niños.',
     incluye: ['Alumnos con apoderados', 'Clases por edades', 'Recojo autorizado + página web'] },
   { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, app: 139, img: '/landing/capturas/finanzas.jpg', popular: true,
     para: 'El gym que quiere crecer',
-    desc: 'Socios ilimitados, hasta 3 sedes, CRM con captación por red, promociones al cobro, kardex, máquinas, finanzas y 8 diseños de página.',
-    incluye: ['Socios ilimitados · 3 sedes', 'CRM + captación desde redes', 'Kardex, finanzas y reportes Excel'] },
-  { slug: 'cadena', nombre: 'Cadena', base: 179, app: 229, img: '/landing/capturas/rutinas.jpg',
-    para: 'Multi-sede y franquicias',
-    desc: 'Sedes y socios ilimitados, torniquetes y huella, varias marcas en una cuenta y soporte prioritario por WhatsApp. Todo lo de Crecimiento y más.',
-    incluye: ['Sedes y socios ilimitados', 'Torniquetes y huella', 'Varias marcas + soporte prioritario'] },
+    desc: 'Socios ilimitados, CRM con captación por red, rutinas y dietas, promociones al cobro, kardex, máquinas, finanzas y 8 diseños de página.',
+    incluye: ['CRM + captación desde redes', 'Rutinas, kardex y finanzas', 'Reportes Excel · 8 diseños'] },
+  { slug: 'pro', nombre: 'Pro', base: 179, app: 229, img: '/landing/capturas/rutinas.jpg',
+    para: 'El gym equipado que lo quiere todo',
+    desc: 'Todo lo de Crecimiento + torniquetes y huella, cámaras en vivo, varias marcas en una cuenta y soporte prioritario por WhatsApp.',
+    incluye: ['Torniquetes, huella y cámaras', 'Varias marcas en una cuenta', 'Soporte prioritario WhatsApp'] },
 ]
 
 const money = (n) => `S/ ${Number(n).toLocaleString('es-PE')}`
@@ -147,7 +147,9 @@ export default function PlanesPublico() {
                     <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.5px', margin: '4px 0 8px' }}>{p.nombre}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 12 }}>
                       <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-1px' }}>{money(precio)}</span>
-                      <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted }}>/mes</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted }}>
+                        /mes{['estudio', 'crecimiento', 'pro', 'ninos'].includes(p.slug) ? ' por sede' : ''}
+                      </span>
                     </div>
                     <p style={{ fontSize: 13, lineHeight: 1.55, color: C.muted, fontWeight: 500, margin: '0 0 14px' }}>{p.desc}</p>
                     <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 18px', display: 'flex', flexDirection: 'column', gap: 7 }}>

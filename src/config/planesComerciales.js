@@ -3,10 +3,12 @@
 //
 // Gimnasios (categoría fitness) eligen entre 3 tamaños; los demás segmentos
 // tienen plan único pensado para lo que realmente usan.
+// Precio POR SEDE: cada sede paga su plan. Los planes se diferencian por
+// features (qué tan completo es el gym), no por número de sedes.
 export const PLANES_GYM = [
-  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Hasta 100 socios activos · 1 sede', limite: 100 },
-  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'Socios ilimitados · hasta 3 sedes', popular: true, limite: null },
-  { slug: 'cadena', nombre: 'Cadena', base: 179, conApp: 229, para: 'Socios y sedes ilimitados', limite: null },
+  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Lo esencial · socios ilimitados por sede', limite: null },
+  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'CRM, rutinas, kardex y finanzas', popular: true, limite: null },
+  { slug: 'pro', nombre: 'Pro', base: 179, conApp: 229, para: 'Torniquetes, huella, cámaras y multi-marca', limite: null },
 ]
 
 export const PLANES_SEGMENTO = {
