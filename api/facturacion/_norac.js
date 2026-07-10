@@ -11,7 +11,6 @@ function roundN(n, dec) {
   const f = 10 ** dec
   return Math.round((n + Number.EPSILON) * f) / f
 }
-const round2 = (n) => roundN(n, 2)
 
 // Precisión del valor_unitario en el payload de NORAC. SUNAT permite hasta 10
 // decimales en el precio unitario precisamente para este problema: con solo 2
@@ -96,6 +95,17 @@ export function construirLineas(lineas, totalConIgv) {
     ultima.valor_unitario = vuExacto
   }
 
+  // Guard: SUNAT rechaza precios unitarios negativos o cero. Esto puede pasar
+  // si el total es menor que la suma de los subtotales de las líneas (p.ej.
+  // líneas 80+5 con total=50): el ajuste de la última línea la empuja a un
+  // valor_unitario <= 0. Mejor abortar aquí con un error claro que mandar un
+  // payload inválido a NORAC.
+  for (const l of out) {
+    if (!(l.valor_unitario > 0)) {
+      throw new Error('cuadre inválido: valor_unitario <= 0 (total menor que la suma de líneas)')
+    }
+  }
+
   // Limpia los campos auxiliares internos y formatea valor_unitario como string
   // de punto fijo (sin notación exponencial) antes de devolver el payload.
   return out.map(({ _cant, valor_unitario, ...l }) => ({
@@ -106,6 +116,12 @@ export function construirLineas(lineas, totalConIgv) {
 
 export async function emitirEnNorac(cred, comp, lineas) {
   const esFactura = comp.tipo === '01'
+  let lineasNorac
+  try {
+    lineasNorac = construirLineas(lineas, Number(comp.total))
+  } catch (e) {
+    return { estado: 'error', error: e.message }
+  }
   const body = {
     tipo: comp.tipo,
     serie: esFactura ? cred.serie_factura : cred.serie_boleta,
@@ -117,7 +133,7 @@ export async function emitirEnNorac(cred, comp, lineas) {
       razon_social: comp.cliente_nombre || 'CLIENTE VARIOS',
       email: comp.cliente_email || '',
     },
-    lineas: construirLineas(lineas, Number(comp.total)),
+    lineas: lineasNorac,
   }
   let r
   try {
