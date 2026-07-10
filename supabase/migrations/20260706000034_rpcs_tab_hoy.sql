@@ -144,6 +144,7 @@ begin
     from public.socio s
     join public.membresia m on m.socio_id = s.id
       and m.empresa_id = p_empresa_id and m.estado = 'activa' and m.fecha_fin >= current_date
+      and m.deleted_at is null
     left join lateral (
       select max((c.ocurrido_en at time zone v_tz)::date) as ultimo_checkin
       from public.checkin c

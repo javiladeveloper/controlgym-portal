@@ -11,7 +11,7 @@ import {
 
 // Comisión de FitCore por cobro procesado en la app (debe coincidir con COMISION
 // en api/mp/crear-pago.js). Solo informativa aquí.
-const COMISION_PCT = 3
+const COMISION_PCT = 5
 
 export default function TabCobros() {
   const { empresa } = useAuth()

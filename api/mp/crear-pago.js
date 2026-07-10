@@ -1,6 +1,6 @@
 // POST /api/mp/crear-pago — el socio (desde la app) paga una membresía, un
 // producto, o un CARRITO de productos. Crea una preferencia de Checkout Pro con
-// marketplace_fee (3% para FitCore) usando el access_token DEL GYM. Devuelve
+// marketplace_fee (5% para FitCore) usando el access_token DEL GYM. Devuelve
 // init_point para la app. PEDIDO 15 Fase 1 + carrito.
 //
 // Body (membresía):  { empresa_id, tipo:'membresia', ref_id, socio_id?, sede_id?,
@@ -10,7 +10,7 @@
 //                      socio_id?, sede_id?, nuevo? }
 import { env, db } from '../_lib/db.js'
 
-const COMISION = 0.03 // 3% FitCore
+const COMISION = 0.05 // 5% FitCore
 
 // PEDIDO 23: precio efectivo con la oferta permanente del producto (si hay).
 // Misma lógica que el CASE de la RPC catalogo_app — el backend es quien decide
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
       headers: { authorization: `Bearer ${gym.access_token}`, 'content-type': 'application/json' },
       body: JSON.stringify({
         items: mpItems,
-        marketplace_fee: fee,                       // ← el 3% para FitCore
+        marketplace_fee: fee,                       // ← el 5% para FitCore
         external_reference: pagoId,                 // para casar el webhook
         back_urls: { success: `${env('APP_DEEP_LINK', 'fitcore://pago')}?ok=1` },
         auto_return: 'approved',
