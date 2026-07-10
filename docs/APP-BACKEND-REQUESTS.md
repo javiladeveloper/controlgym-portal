@@ -1786,6 +1786,29 @@ Creado: 2026-07-09 (sesión de la app).
 
 PEDIDO 28 -- Conectar el webhook de MercadoPago con NORAC (emisión de boleta SUNAT)
 
+✅ RESUELTO (2026-07-10, sesión del panel). Se construyó el subsistema completo de
+facturación electrónica NORAC en la rama feat/facturacion. El webhook ya crea el
+comprobante al aprobarse el pago y un worker lo emite a NORAC. NADA pendiente del
+lado de la app (solo abre el checkout, como decía). Detalles de la implementación:
+  - AUTH: se usa `X-API-Key: nrk_<...>` (API key scope=company por gym), NO el
+    `JWT + X-Company-Id` que describía este pedido — ese método era de la doc
+    API.md vieja; NORAC evolucionó a API keys y el owner confirmó que es el vigente.
+  - El gym pega su API key en el panel (Config › Facturación), guardada CIFRADA.
+    No hay tabla puente empresa→company_id: la key ya trae su company (scope).
+  - Emisión asíncrona (cola `comprobante` + worker `api/facturacion/emitir.js`,
+    cron cada 2 min + disparo al vuelo tras el pago). Best-effort: nunca tumba el
+    webhook. Claim atómico anti-doble-emisión.
+  - IGV: precios CON IGV → se desglosa a valor_unitario sin IGV (6 decimales para
+    cuadrar exacto, SUNAT/UBL lo permite). afectacion_igv='10'.
+  - CORREO: sí, NORAC manda la boleta por email al receptor.email — el worker lo
+    puebla con el email del socio. FitCore no manda el correo.
+  - Diseño completo: docs/superpowers/plans/2026-07-10-facturacion-config-y-emision.md
+  - PENDIENTE del owner (no del panel ni de la app): cargar en NORAC el certificado
+    .pfx + Clave SOL de cada gym + sunat_mode=production; y correr el E2E real con
+    una API key de NORAC beta. Vars de Vercel: CRON_SECRET, SELF_URL.
+
+--- pedido original (obsoleto, se deja como referencia histórica) ---
+
 ⚠️ NO es de la app; es backend/panel. La app no participa (solo abre el checkout).
 Lo canaliza la sesión de la app porque el owner ya coordinó con el equipo de Norac.
 
@@ -1849,3 +1872,52 @@ Impacto: cierra el ciclo de venta (pago → stock → boleta SUNAT al socio por
 email). No bloquea la app. 100% panel/backend + config del owner en Norac.
 
 Creado: 2026-07-10 (sesión de la app, canalizando la integración FitCore↔Norac).
+
+
+================================================================================
+PEDIDO 29 -- Activar/desactivar el "evento social" del gym + exponerlo al socio
+================================================================================
+
+CONTEXTO: la app ya implementó la GALERÍA DE EVENTOS FESTIVOS (idea Image Gym #7).
+El backend YA tiene lo suyo (confirmado en este mismo doc, sección "DEL PANEL A LA
+APP 2026-07-10 — Galería festiva"): RPC `subir_foto_social(p_foto_url, p_evento?)`
+sube al bucket `branding` en `<empresa_id>/social/<uuid>.jpg` y queda pendiente;
+RPC `galeria_social()` devuelve las APROBADAS `{id, autor, evento, foto_url,
+creado_at}`; y la moderación en el panel ("Fotos por aprobar"). Todo eso funciona.
+
+EL GAP: el owner pidió que el gym ACTIVE el evento desde el panel antes de que los
+socios puedan subir ("desde el panel deben solicitar y se le debe activar a los
+socios"). Hoy no hay forma de que la app sepa si hay un evento activo ni cómo se
+llama. Sin ese dato, la app deja el tab "Galería" OCULTO (patrón defensivo, igual
+que cobros_habilitados con la Tienda) — así que la feature está desplegada pero no
+se ve hasta que el panel exponga el flag.
+
+LO QUE TOCA HACER EN EL PANEL/BACKEND:
+
+1. Estado del evento por gym. Sugerencia mínima: dos columnas en `empresa`
+   - `evento_social_activo boolean not null default false`
+   - `evento_social text null`   (nombre del evento, ej. "Día del Padre")
+   (Un evento activo a la vez por gym; suficiente para v1. Si prefieres una tabla
+   `eventos_sociales`, ok, pero la app solo necesita saber "hay uno activo" + su
+   nombre.)
+
+2. Exponerlas en el BOOTSTRAP del socio, dentro del objeto `empresa`, con estos
+   nombres EXACTOS (la app ya deserializa por ellos):
+   - `empresa.evento_social_activo`  (bool)
+   - `empresa.evento_social`         (text, nullable)
+   Nullable/ausente → la app asume false → tab oculto. No rompe versiones viejas.
+
+3. Control en el panel para que el gym active/desactive el evento y le ponga
+   nombre (Config del gym o Dashboard → "Evento / Galería"). Al activar, el nombre
+   viaja a la app como título de la sección y como `p_evento` al subir.
+
+COMPORTAMIENTO ESPERADO EN LA APP (ya implementado, para que cuadre):
+- `evento_social_activo = true`  → aparece el tab "Galería" dentro del gym; el
+  socio ve las fotos aprobadas y puede subir (cámara/galería) → van a
+  subir_foto_social con `p_evento = evento_social`.
+- `evento_social_activo = false` → el tab no aparece.
+
+Impacto: enciende una feature ya construida en la app con 2 campos + un toggle en
+el panel. No toca las RPC ni el bucket (ya existen). Sin credenciales ni secretos.
+
+Creado: 2026-07-10 (sesión de la app — galería de eventos #7 ya implementada).

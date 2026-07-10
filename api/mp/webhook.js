@@ -78,26 +78,18 @@ export default async function handler(req, res) {
       }
       // Socio nuevo → ya está pendiente_activacion; el panel (recepción) lo da de alta.
 
-      // Fase 1.c — Comprobante electrónico (SEE). preparar_comprobante decide si
-      // el gym factura y devuelve los datos; si no factura, marca 'no_aplica' y
-      // seguimos. La emisión real es una llamada HTTP al proveedor del gym.
+      // Comprobante electrónico (SEE/NORAC): crea el comprobante en cola y dispara el worker.
       try {
-        const { rows: pr } = await db().query(
-          `select public.preparar_comprobante($1) as info`, [pago.id])
-        const info = pr[0]?.info
-        if (info?.emitir) {
-          // ─── PUNTO DE INTEGRACIÓN DEL PROVEEDOR SEE ────────────────────────
-          // Cuando se elija proveedor (Nubefact/Efact/…), aquí va el POST con
-          // { serie, monto, igv_incluido, concepto, cliente_nombre, cliente_doc,
-          //   ruc_emisor, razon_social_emisor } → respuesta con enlace_pdf.
-          // Luego: update pago_app set comprobante_estado='emitido',
-          //   comprobante_url=<pdf>, comprobante_serie=<serie>, comprobante_numero=<n>.
-          // Por ahora el andamiaje queda listo pero no emite (proveedor pendiente).
-          console.log('mp/webhook: comprobante por emitir (proveedor pendiente)', info.proveedor)
+        await db().query(`select public.crear_comprobante_pago_app($1)`, [pago.id])
+        // dispara el worker al vuelo (best-effort, no bloquea el 200 del webhook)
+        const selfUrl = env('SELF_URL') || ''
+        if (selfUrl) {
+          fetch(`${selfUrl}/api/facturacion/emitir`, {
+            method: 'POST', headers: { authorization: `Bearer ${env('CRON_SECRET')}` },
+          }).catch(() => {})
         }
       } catch (e) {
-        // La facturación nunca debe tumbar el webhook (el pago ya es válido).
-        console.error('mp/webhook preparar_comprobante', e)
+        console.error('mp/webhook crear_comprobante', e)
       }
     }
     return res.status(200).end()
