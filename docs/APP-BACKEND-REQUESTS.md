@@ -1680,3 +1680,26 @@ Impacto: mejora clave para gyms multi-sede. La app casi no cambia (solo el
 mensaje de sede en el carnet). El enrutamiento inteligente es 100% backend.
 
 Creado: 2026-07-09 (sesión de la app).
+
+---
+
+PEDIDO 27 -- Exponer empresa.estado en el bootstrap (bloqueo suave del gym vencido)
+
+La app implementa un bloqueo SUAVE: si el gym no está activo (dejó de pagar el
+SaaS), su tarjeta en el home aparece atenuada + "No disponible" y al tocarla
+muestra un aviso, sin dejar entrar. Los otros gyms del usuario siguen normal.
+Diseño: controlgym-app/docs/superpowers/specs/2026-07-09-bloqueo-gym-vencido-design.md
+
+Lo único que necesita la app del backend: **exponer `empresa.estado`** (ya existe:
+'activa'|'suspendida'|'cancelada') en el bootstrap, en dos lugares:
+  - `EmpresaAsociada` del staff (bootstrap general): agregar `estado`.
+  - `empresa` del socio en `get_mi_app_bootstrap`: agregar `estado`.
+
+La app lo lee como campo nullable: `activa = (estado == 'activa' o null)`. Si no
+viene, todo funciona como hoy (defensivo). Suspendida y cancelada bloquean igual.
+
+No hace falta nada más del backend: cuando el panel/cobros marque el gym como
+suspendida/cancelada (eso ya lo maneja el SaaS), la app lo refleja sola al leer
+el estado. Tarea chica del panel: solo agregar el campo al bootstrap.
+
+Creado: 2026-07-09 (sesión de la app).
