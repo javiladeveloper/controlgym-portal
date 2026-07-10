@@ -150,5 +150,12 @@ export async function emitirEnNorac(cred, comp, lineas) {
   if (!r.ok) return { estado: 'error', error: out.detail || `NORAC ${r.status}` }
   // queued = SUNAT caído, NORAC reintenta solo → seguimos pendiente
   if (out.estado === 'queued') return { estado: 'pendiente', norac_id: out.id }
-  return { estado: 'emitido', norac_id: out.id, serie_numero: out.numero, response_code: out.response_code }
+  // aceptado por SUNAT
+  if (['accepted', 'aceptado', 'emitido'].includes(out.estado))
+    return { estado: 'emitido', norac_id: out.id, serie_numero: out.numero, response_code: out.response_code }
+  // rechazado / observado por SUNAT
+  if (['rejected', 'rechazado', 'observado', 'error'].includes(out.estado))
+    return { estado: 'error', error: 'NORAC: ' + out.estado + (out.detail ? ' - ' + out.detail : ''), norac_id: out.id }
+  // estado desconocido → pendiente (reintenta), no asumir éxito
+  return { estado: 'pendiente', norac_id: out.id, error: 'estado NORAC desconocido: ' + out.estado }
 }

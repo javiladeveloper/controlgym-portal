@@ -19,10 +19,18 @@ export default async function handler(req, res) {
 
   let emitidos = 0
   for (const comp of pend) {
+    // Claim atómico: solo procesa si sigue 'pendiente' (evita doble emisión si
+    // el cron y el disparo al vuelo corren a la vez sobre el mismo comprobante).
+    const { rows: claim } = await pool.query(
+      `update public.comprobante set estado='emitiendo', actualizado_at=now()
+         where id=$1 and estado='pendiente' returning id`, [comp.id])
+    if (!claim.length) continue // otro worker ya lo tomó
+
     const { rows: cr } = await pool.query('select public.facturacion_credenciales($1) as c', [comp.empresa_id])
     const cred = cr[0].c
     if (!cred?.ok) {
-      await pool.query(`update public.comprobante set intentos = intentos + 1, error_msg = 'gym sin credenciales', actualizado_at = now() where id = $1`, [comp.id])
+      // Libera el claim (vuelve a 'pendiente') para no dejarlo atascado en 'emitiendo'.
+      await pool.query(`update public.comprobante set estado = 'pendiente', intentos = intentos + 1, error_msg = 'gym sin credenciales', actualizado_at = now() where id = $1`, [comp.id])
       continue
     }
     // Líneas: para 'venta' se leen de movimiento_financiero por venta_id; para
@@ -49,10 +57,11 @@ export default async function handler(req, res) {
         `update public.comprobante set estado='error', error_msg=$2, intentos=intentos+1, actualizado_at=now() where id=$1`,
         [comp.id, r.error])
     } else {
-      // pendiente (red o queued): incrementa intentos, guarda norac_id si vino
+      // pendiente (red o queued): vuelve a 'pendiente' (libera el claim) e
+      // incrementa intentos, guardando norac_id si vino
       await pool.query(
-        `update public.comprobante set intentos=intentos+1, norac_id=coalesce($2,norac_id),
-           error_msg=$3, actualizado_at=now() where id=$1`,
+        `update public.comprobante set estado='pendiente', intentos=intentos+1,
+           norac_id=coalesce($2,norac_id), error_msg=$3, actualizado_at=now() where id=$1`,
         [comp.id, r.norac_id || null, r.error || null])
     }
   }
