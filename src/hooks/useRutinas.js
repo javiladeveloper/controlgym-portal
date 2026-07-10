@@ -324,13 +324,21 @@ export function useEnviarPlan(socioId) {
   return useMutation({
     mutationFn: async ({ dietaId, rutinaId }) => {
       const ahora = new Date().toISOString()
+      // Atribuye QUIÉN envía el plan (para el reporte de atenciones de trainers).
+      // Las rutinas/dietas asignadas automáticamente por IMC/objetivo NO pasan por
+      // aquí, así que quedan sin entrenador/nutricionista y no cuentan como
+      // trabajo del equipo — solo cuenta cuando alguien las revisa y envía.
+      const { data: { user } } = await supabase.auth.getUser()
+      const uid = user?.id || null
       if (dietaId) {
-        const { error } = await supabase.from('dieta').update({ enviado_at: ahora }).eq('id', dietaId)
+        const patch = uid ? { enviado_at: ahora, nutricionista_id: uid } : { enviado_at: ahora }
+        const { error } = await supabase.from('dieta').update(patch).eq('id', dietaId)
         if (error) throw error
       }
       // La rutina también: sin enviado_at el socio NO la ve en su app
       if (rutinaId) {
-        const { error } = await supabase.from('rutina').update({ enviado_at: ahora }).eq('id', rutinaId)
+        const patch = uid ? { enviado_at: ahora, entrenador_id: uid } : { enviado_at: ahora }
+        const { error } = await supabase.from('rutina').update(patch).eq('id', rutinaId)
         if (error) throw error
       }
     },
