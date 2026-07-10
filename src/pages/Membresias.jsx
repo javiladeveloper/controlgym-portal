@@ -8,7 +8,7 @@ import PlanesModal from '../components/forms/PlanesModal.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
+import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia, useAlertarSocio } from '../hooks/useMembresias.js'
 import { estadoBadge, money, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
 import { waLink, msgRenovacion, msgRecibo } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
@@ -285,7 +285,17 @@ export default function Membresias() {
   const freeze = useToggleFreeze(sedeId)
   const renovar = useRenovar(sedeId)
   const anular = useAnularMembresia(sedeId)
+  const alertar = useAlertarSocio(sedeId)
   const qc = useQueryClient()
+
+  // Recordatorio de pago por app (push) + email al socio, al instante.
+  function recordarPago(m) {
+    if (!m.socio?.id) return
+    alertar.mutate(m.socio.id, {
+      onSuccess: (r) => toast.ok(r?.via ? `Recordatorio enviado (${r.via}) a ${r.socio}` : `Aviso registrado para ${r?.socio || m.socio.nombre}`),
+      onError: (e) => toast.error(e.message),
+    })
+  }
   const [planesOpen, setPlanesOpen] = useState(false)
   const [anulando, setAnulando] = useState(null) // membresía en confirmación de anulación
   const [cobrando, setCobrando] = useState(null) // membresía a la que se le registra el cobro
@@ -388,6 +398,11 @@ export default function Membresias() {
                       className="flex h-8 w-8 items-center justify-center rounded-[9px] transition-transform hover:scale-110"
                       style={{ background: '#25D366' }}><WhatsAppIcon size={17} /></a>
                   )}
+                  {/* Recordatorio por la app (push) + email, al instante */}
+                  <button onClick={() => recordarPago(m)} disabled={alertar.isPending} title="Avisarle por la app y correo"
+                    className="flex h-8 items-center gap-1 rounded-[9px] border border-line bg-white px-2.5 text-[11.5px] font-extrabold text-muted hover:border-orange hover:text-orange disabled:opacity-50">
+                    🔔 Recordar
+                  </button>
                   {saldo > 0 && (
                     <button onClick={() => setAbonando(m)}
                       className="cursor-pointer rounded-[9px] border-none bg-amber-500 px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-amber-600">

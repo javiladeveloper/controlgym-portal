@@ -95,3 +95,28 @@ export function useRenovar(sedeId) {
     },
   })
 }
+
+// Socios con deuda o por vencer (1-2 días) — para la sección "Por cobrar".
+export function useSociosPorCobrar(sedeId) {
+  return useQuery({
+    queryKey: ['socios-por-cobrar', sedeId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('socios_por_cobrar', { p_sede_id: sedeId || null })
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
+// Recordatorio manual a un socio (push + email al instante).
+export function useAlertarSocio(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (socioId) => {
+      const { data, error } = await supabase.rpc('alertar_socio', { p_socio_id: socioId })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['socios-por-cobrar', sedeId] }),
+  })
+}
