@@ -750,6 +750,9 @@ export default function Landing({ slug }) {
         return R ? <Fragment key={key}>{R()}</Fragment> : null
       })}
 
+      {/* Buzón de sugerencias */}
+      <BuzonSugerencias slug={slug} tema={tema} />
+
       {/* Footer */}
       <footer className="border-t border-line px-6 py-10" style={{ background: tema.color_navy }}>
         <div className="mx-auto flex max-w-[1000px] flex-col items-center gap-4 text-center">
@@ -923,5 +926,76 @@ function LeadModal({ slug, gym, interes, fuente, color, radius, onClose }) {
         )}
       </div>
     </div>
+  )
+}
+
+// Buzón de sugerencias en la página web del gym: el visitante/socio deja su
+// opinión o duda; llega al correo del gym y queda en su panel (RPC pública).
+function BuzonSugerencias({ slug, tema }) {
+  const [nombre, setNombre] = useState('')
+  const [contacto, setContacto] = useState('')
+  const [mensaje, setMensaje] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [ok, setOk] = useState(false)
+  const [error, setError] = useState('')
+  const primary = tema?.color_primary || '#FF6B35'
+
+  async function enviar(e) {
+    e.preventDefault()
+    if (!mensaje.trim()) { setError('Escribe tu sugerencia'); return }
+    setBusy(true); setError('')
+    try {
+      const { error } = await supabase.rpc('enviar_sugerencia', {
+        p_slug: slug, p_mensaje: mensaje.trim(),
+        p_nombre: nombre.trim() || null, p_contacto: contacto.trim() || null,
+      })
+      if (error) throw error
+      setOk(true); setNombre(''); setContacto(''); setMensaje('')
+    } catch (err) {
+      setError(err.message || 'No se pudo enviar. Intenta de nuevo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="px-6 py-14" style={{ background: `${primary}0d` }}>
+      <div className="mx-auto max-w-[560px]">
+        <div className="text-center">
+          <div className="text-[13px] font-extrabold uppercase tracking-[1px]" style={{ color: primary }}>Tu opinión cuenta</div>
+          <h2 className="mt-1.5 text-[26px] font-extrabold tracking-[-0.5px]">Buzón de sugerencias</h2>
+          <p className="mt-2 text-[13.5px] font-semibold text-muted">
+            ¿Una idea, duda o algo que mejorar? Escríbenos, lo leemos todo.
+          </p>
+        </div>
+
+        {ok ? (
+          <div className="mt-6 rounded-[14px] border border-line bg-white p-6 text-center">
+            <div className="text-[34px]">✅</div>
+            <div className="mt-2 text-[15px] font-extrabold">¡Gracias por tu sugerencia!</div>
+            <div className="mt-1 text-[13px] font-semibold text-muted">La revisaremos pronto.</div>
+            <button onClick={() => setOk(false)} className="mt-4 cursor-pointer text-[13px] font-extrabold" style={{ color: primary }}>Enviar otra</button>
+          </div>
+        ) : (
+          <form onSubmit={enviar} className="mt-6 flex flex-col gap-3 rounded-[14px] border border-line bg-white p-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre (opcional)"
+                className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+              <input value={contacto} onChange={(e) => setContacto(e.target.value)} placeholder="Correo o teléfono (opcional)"
+                className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+            </div>
+            <textarea value={mensaje} onChange={(e) => setMensaje(e.target.value)} rows={4} required
+              placeholder="Escribe tu sugerencia o duda…"
+              className="resize-none rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+            {error && <div className="rounded-[9px] bg-red-50 px-3 py-2 text-[12.5px] font-bold text-red">{error}</div>}
+            <button type="submit" disabled={busy}
+              className="rounded-[10px] py-3 text-[14px] font-extrabold text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
+              style={{ background: primary }}>
+              {busy ? 'Enviando…' : 'Enviar sugerencia'}
+            </button>
+          </form>
+        )}
+      </div>
+    </section>
   )
 }

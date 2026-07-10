@@ -128,7 +128,7 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
   const [f, setF] = useState({
     nombre: producto.nombre || '', categoria: producto.categoria || 'Otros',
     precio: String(producto.precio ?? ''), stock_minimo: String(producto.stock_minimo ?? 0),
-    descripcion: producto.descripcion || '', imagen_url: producto.imagen_url || '',
+    descripcion: producto.descripcion || '', beneficio: producto.beneficio || '', imagen_url: producto.imagen_url || '',
     visible_en_app: producto.visible_en_app ?? false,
     descuento_tipo: producto.descuento_tipo || '', descuento_valor: String(producto.descuento_valor ?? ''),
   })
@@ -168,7 +168,7 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
     const { error } = await supabase.from('producto').update({
       nombre: f.nombre.trim(), categoria: f.categoria,
       precio: Number(f.precio) || 0, stock_minimo: Number(f.stock_minimo) || 0,
-      descripcion: f.descripcion.trim() || null, imagen_url: f.imagen_url || null,
+      descripcion: f.descripcion.trim() || null, beneficio: f.beneficio.trim() || null, imagen_url: f.imagen_url || null,
       visible_en_app: f.visible_en_app,
       descuento_tipo: tieneOferta ? f.descuento_tipo : null,
       descuento_valor: tieneOferta ? (Number(f.descuento_valor) || 0) : null,
@@ -282,6 +282,12 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
                 className={inputCls + ' resize-none'} placeholder="Sabor, tamaño, para qué sirve… (lo verá el socio en la app)" />
             </label>
           </div>
+          {/* Beneficio: para suplementos, lo que el socio gana con el producto */}
+          <label className="mt-3 block">
+            <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Beneficio <span className="font-semibold normal-case text-faint">(ideal para suplementos)</span></span>
+            <input value={f.beneficio} onChange={set('beneficio')} className={inputCls}
+              placeholder="Ej: 24g de proteína · recuperación muscular · pre-entreno" />
+          </label>
         </div>
 
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
