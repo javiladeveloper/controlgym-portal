@@ -33,5 +33,6 @@ export default async function handler(req, res) {
   // rompía el flujo de conexión.) MP no tiene un `prompt=select_account`; para
   // que el dueño no vincule por error la cuenta de la sesión activa, el panel
   // recomienda hacer "Conectar cobros" en ventana de incógnito.
+  res.setHeader('Cache-Control', 'no-store') // que el navegador no reutilice una URL vieja
   return res.status(200).json({ url: authUrl.toString() })
 }

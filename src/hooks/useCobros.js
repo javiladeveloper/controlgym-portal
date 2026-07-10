@@ -19,6 +19,7 @@ export function useEstadoCobros(empresaId) {
 export async function conectarCobros() {
   const { data: sess } = await supabase.auth.getSession()
   const res = await fetch('/api/mp/oauth-start', {
+    cache: 'no-store', // nunca reutilizar una URL de autorización cacheada
     headers: { authorization: `Bearer ${sess?.session?.access_token || ''}` },
   })
   const out = await res.json()
