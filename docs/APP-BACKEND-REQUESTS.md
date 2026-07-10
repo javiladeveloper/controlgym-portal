@@ -1446,3 +1446,43 @@ Impacto: mejora de UX del trainer, no bloqueante. La app ya construye el tab con
 lo que hay; estas RPCs lo completan. Es tarea del panel/backend.
 
 Creado: 2026-07-09 (sesión de la app).
+
+---
+
+PEDIDO 23 -- Ofertas / descuentos en productos de la tienda
+
+El gym pone un producto en oferta (descuento PERMANENTE, en % o monto fijo). La
+app lo muestra (precio tachado + final + badge); el backend calcula y cobra el
+precio con descuento (la app NUNCA decide el monto — seguridad). Diseño:
+controlgym-app/docs/superpowers/specs/2026-07-09-ofertas-productos-design.md.
+
+Solo por PRODUCTO individual (no por categoría), permanente (sin fechas).
+
+1) Columnas en producto (migración):
+```sql
+alter table public.producto
+  add column if not exists descuento_tipo  text,      -- 'porcentaje' | 'monto' | null
+  add column if not exists descuento_valor numeric;   -- 15 (=15%) o 20 (=S/20)
+```
+   En oferta = descuento_tipo in ('porcentaje','monto') y descuento_valor > 0.
+   Precio efectivo (server-side):
+   - porcentaje: round(precio*(1 - valor/100), 2)
+   - monto:      max(0, round(precio - valor, 2))
+
+2) UI en el KARDEX del panel: por producto, elegir tipo (% o monto) + valor, o
+   "sin oferta". (Junto al toggle visible_en_app que ya existe.)
+
+3) `catalogo_app`: agregar al jsonb de cada producto:
+   `precio_final` (el efectivo calculado) + `descuento_tipo` + `descuento_valor`.
+   La app los lee (campos nullable; si no vienen, muestra sin oferta).
+
+4) `crear-pago`: al calcular el monto de cada línea de producto, usar el PRECIO
+   EFECTIVO (con descuento) en vez de p.precio directo. Hoy usa
+   `precioUnit = Number(p.precio)`; debe aplicar el descuento del producto ahí,
+   server-side. Así el socio paga el precio con oferta sin que la app lo mande.
+
+Impacto: mejora de la tienda, no bloqueante. La app ya está preparada (campos
+defensivos): si el backend no manda descuento, se ve como hoy. Es tarea del
+panel/backend.
+
+Creado: 2026-07-09 (sesión de la app).
