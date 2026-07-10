@@ -12,6 +12,16 @@ import { env, db } from '../_lib/db.js'
 
 const COMISION = 0.03 // 3% FitCore
 
+// PEDIDO 23: precio efectivo con la oferta permanente del producto (si hay).
+// Misma lógica que el CASE de la RPC catalogo_app — el backend es quien decide
+// el monto, nunca el cliente.
+function precioEfectivo(precio, tipo, valor) {
+  const p = Number(precio); const v = Number(valor)
+  if (tipo === 'porcentaje' && v > 0) return Math.round(p * (1 - v / 100) * 100) / 100
+  if (tipo === 'monto' && v > 0) return Math.max(0, Math.round((p - v) * 100) / 100)
+  return p
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
   const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo } = req.body || {}
@@ -59,7 +69,7 @@ export default async function handler(req, res) {
       monto = 0
       for (const l of lineas) {
         const { rows } = await db().query(
-          `select p.precio, p.nombre, coalesce(i.stock, 0) as stock
+          `select p.precio, p.nombre, p.descuento_tipo, p.descuento_valor, coalesce(i.stock, 0) as stock
              from public.producto p
              left join public.inventario_sede i
                on i.producto_id = p.id and i.sede_id = $3
@@ -71,7 +81,7 @@ export default async function handler(req, res) {
         if (sede_id && p.stock < l.cantidad) {
           return res.status(400).json({ error: `Sin stock suficiente de ${p.nombre} (quedan ${p.stock})` })
         }
-        const precioUnit = Number(p.precio)
+        const precioUnit = precioEfectivo(p.precio, p.descuento_tipo, p.descuento_valor)
         const subtotal = Math.round(precioUnit * l.cantidad * 100) / 100
         monto += subtotal
         carrito.push({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: precioUnit, subtotal, nombre: p.nombre })

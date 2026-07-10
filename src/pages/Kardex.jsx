@@ -130,6 +130,7 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
     precio: String(producto.precio ?? ''), stock_minimo: String(producto.stock_minimo ?? 0),
     descripcion: producto.descripcion || '', imagen_url: producto.imagen_url || '',
     visible_en_app: producto.visible_en_app ?? false,
+    descuento_tipo: producto.descuento_tipo || '', descuento_valor: String(producto.descuento_valor ?? ''),
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -163,11 +164,14 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
       return
     }
     setBusy(true); setError('')
+    const tieneOferta = f.descuento_tipo === 'porcentaje' || f.descuento_tipo === 'monto'
     const { error } = await supabase.from('producto').update({
       nombre: f.nombre.trim(), categoria: f.categoria,
       precio: Number(f.precio) || 0, stock_minimo: Number(f.stock_minimo) || 0,
       descripcion: f.descripcion.trim() || null, imagen_url: f.imagen_url || null,
       visible_en_app: f.visible_en_app,
+      descuento_tipo: tieneOferta ? f.descuento_tipo : null,
+      descuento_valor: tieneOferta ? (Number(f.descuento_valor) || 0) : null,
     }).eq('id', producto.id)
     setBusy(false)
     if (error) { setError(error.message); return }
@@ -201,6 +205,43 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
           <Campo label={`Precio de venta (${moneda})`}><input type="number" step="0.1" min="0" value={f.precio} onChange={set('precio')} className={inputCls} /></Campo>
         </div>
         <Campo label="Alerta de stock bajo (unidades)"><input type="number" min="0" value={f.stock_minimo} onChange={set('stock_minimo')} className={inputCls} /></Campo>
+
+        {/* ── Oferta permanente: % o monto fijo, con preview del precio final ── */}
+        <div className="rounded-[12px] border border-line bg-[#FAFBFC] p-3.5">
+          <div className="text-[13px] font-extrabold">Oferta permanente 🏷️</div>
+          <div className="mt-0.5 text-[11.5px] font-semibold leading-[1.4] text-muted">
+            Aplica un descuento fijo a este producto. Se ve así en el kardex, la tienda y el cobro (el precio con
+            descuento lo calcula el servidor).
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Campo label="Tipo de oferta">
+              <select value={f.descuento_tipo} onChange={set('descuento_tipo')} className={inputCls + ' cursor-pointer'}>
+                <option value="">Sin oferta</option>
+                <option value="porcentaje">Descuento %</option>
+                <option value="monto">Descuento monto fijo</option>
+              </select>
+            </Campo>
+            {(f.descuento_tipo === 'porcentaje' || f.descuento_tipo === 'monto') && (
+              <Campo label={f.descuento_tipo === 'porcentaje' ? 'Valor (%)' : `Valor (${moneda})`}>
+                <input type="number" step="0.1" min="0" value={f.descuento_valor} onChange={set('descuento_valor')} className={inputCls} />
+              </Campo>
+            )}
+          </div>
+          {(f.descuento_tipo === 'porcentaje' || f.descuento_tipo === 'monto') && Number(f.descuento_valor) > 0 && (
+            <div className="mt-3 flex items-center gap-2 text-[12.5px] font-extrabold">
+              <span className="text-faint line-through">{money(Number(f.precio) || 0, moneda)}</span>
+              <span className="text-orange">
+                {money(
+                  f.descuento_tipo === 'porcentaje'
+                    ? Math.max(0, (Number(f.precio) || 0) * (1 - (Number(f.descuento_valor) || 0) / 100))
+                    : Math.max(0, (Number(f.precio) || 0) - (Number(f.descuento_valor) || 0)),
+                  moneda
+                )}
+              </span>
+              <span className="font-semibold text-muted">precio final</span>
+            </div>
+          )}
+        </div>
 
         {/* ── Venta por app: foto, descripción y el interruptor ───────────── */}
         <div className="rounded-[12px] border border-line bg-[#FAFBFC] p-3.5">
