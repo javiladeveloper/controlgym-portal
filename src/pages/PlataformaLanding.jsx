@@ -256,12 +256,12 @@ const PLANES = [
     nombre: 'Crecimiento', base: 99, conApp: 139, popular: true, foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
     features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'CRM + captación con origen por red', 'Rutinas y dietas (asignación por IMC)', 'Kardex, tienda en la app y máquinas', 'Finanzas y reportes en Excel', 'Promociones aplicadas al cobro', 'Personalización total (8 diseños)'],
-    no: ['Control de acceso físico y cámaras', 'CRM con IA y reportes avanzados'],
+    no: ['Control de acceso físico y cámaras', 'Reportes avanzados de asistencia'],
   },
   {
     nombre: 'Pro', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
     para: 'El gimnasio equipado que lo quiere todo',
-    features: ['Todo lo de Crecimiento', 'Torniquetes, huella y molinetes', 'Cámaras en vivo desde el panel', 'Reportes avanzados de asistencia y atenciones', 'Varias marcas / franquicias en una cuenta', 'Facturación electrónica (boletas SUNAT) · pronto', 'CRM con IA que responde tus redes · pronto', 'Soporte prioritario por WhatsApp'],
+    features: ['Todo lo de Crecimiento', 'Torniquetes, huella y molinetes', 'Cámaras en vivo desde el panel', 'Reportes avanzados de asistencia y atenciones', 'Varias marcas / franquicias en una cuenta', 'Facturación electrónica (boletas SUNAT) · pronto', 'Soporte prioritario por WhatsApp'],
     no: [],
   },
 ]
