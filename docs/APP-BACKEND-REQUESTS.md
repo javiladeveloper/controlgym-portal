@@ -1374,3 +1374,34 @@ el checkout pero no procesa el retorno; se puede conectar cuando definan
 estado-pago. No bloquea lo de arriba.
 
 Creado: 2026-07-09 (sesión de la app, con pago real de prueba).
+
+---
+
+PEDIDO 21 -- Conectar cobros: forzar el SELECTOR de cuenta en el OAuth de MP
+
+Problema (reportado por el owner al probar): al desconectar y volver a "Conectar
+cobros", MercadoPago usa **la sesión activa del navegador** y vincula la cuenta
+automáticamente, SIN preguntar cuál usar. En producción cada dueño de gym conecta
+su propia cuenta MP; hay que evitar que se conecte la equivocada por error.
+
+`api/mp/oauth-start.js` hoy arma la URL de authorization así (sin forzar login):
+```
+https://auth.mercadopago.com/authorization
+  ?client_id=...&response_type=code&platform_id=mp&redirect_uri=...
+```
+
+**Qué se pide:** hacer que el flujo SIEMPRE muestre login/selector de cuenta,
+sin importar la sesión activa. Opciones a evaluar (MP no tiene un `prompt=
+select_account` como Google, así que suele resolverse con uno de estos):
+  - Anteponer un **logout de MP** antes de la authorization (redirigir por
+    `https://www.mercadopago.com/logout` o el endpoint de logout de MP y de ahí
+    a la authorization), para que no reuse la sesión.
+  - O documentar en el panel/UX que "Conectar cobros" se haga en ventana de
+    incógnito / cerrando sesión de MP primero (workaround, menos ideal).
+  - Revisar en la doc de OAuth de MP si su authorization admite algún parámetro
+    para forzar re-login.
+
+Impacto: importante en producción (multi-gym). No bloquea la app; es del panel.
+Mientras tanto el owner prueba con incógnito.
+
+Creado: 2026-07-09 (sesión de la app).
