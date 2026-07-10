@@ -74,7 +74,25 @@ export default function Plataforma() {
             <div className="rounded-card border border-line bg-white p-[17px]">
               <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">Volumen de los gyms (mes)</div>
               <div className="mt-1.5 text-[27px] font-extrabold text-green">{money(k.ingresos_gyms_mes, 'PEN')}</div>
-              <div className="mt-0.5 text-[12px] font-semibold text-muted">base para comisión online futura</div>
+              <div className="mt-0.5 text-[12px] font-semibold text-muted">todo lo que facturan tus gyms</div>
+            </div>
+          </div>
+
+          {/* Comisiones de MercadoPago (pagos por app) — el ingreso online de FitCore */}
+          <div className="mt-[15px]">
+            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">Cobros por app · MercadoPago (comisión 5%)</div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
+              <div className="rounded-card border border-line bg-navy p-[17px]">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-faint">Comisión este mes</div>
+                <div className="mt-1.5 text-[27px] font-extrabold text-white">{money(k.comision_mp_mes, 'PEN')}</div>
+                <div className="mt-0.5 text-[12px] font-semibold text-faint">total histórico {money(k.comision_mp_total, 'PEN')}</div>
+              </div>
+              <StatCard label="Volumen procesado (mes)" value={money(k.ventas_app_mes, 'PEN')}
+                delta={`${k.pagos_app_mes ?? 0} pagos por app`} deltaColor={T.success} />
+              <StatCard label="Volumen procesado (total)" value={money(k.ventas_app_total, 'PEN')} delta="desde el inicio" />
+              <StatCard label="Gyms con cobros conectados" value={k.gyms_con_cobros ?? 0}
+                delta={`de ${k.empresas ?? 0} gyms`}
+                deltaColor={k.gyms_con_cobros ? T.success : T.muted} variant={k.gyms_con_cobros ? 'accent' : 'default'} />
             </div>
           </div>
 
@@ -84,13 +102,13 @@ export default function Plataforma() {
               <div className="text-[14.5px] font-extrabold">Gimnasios</div>
               <div className="mt-0.5 text-[12px] font-semibold text-muted">Todos los clientes de la plataforma, del más reciente al más antiguo.</div>
             </div>
-            <div className="grid min-w-[660px] grid-cols-[1.8fr_1fr_1.1fr_0.7fr_0.8fr_1fr_1fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
-              <div>Gimnasio</div><div>Categoría</div><div>Plan / Estado</div><div>Socios</div><div>Leads mes</div><div>Ingresos mes</div><div>Página</div>
+            <div className="grid min-w-[820px] grid-cols-[1.8fr_1fr_1.1fr_0.6fr_0.7fr_1fr_1.1fr_0.9fr] items-center gap-3 bg-surface px-5 py-[11px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+              <div>Gimnasio</div><div>Categoría</div><div>Plan / Estado</div><div>Socios</div><div>Leads mes</div><div>Ingresos mes</div><div>Cobros app</div><div>Página</div>
             </div>
             {empresas.map((e) => {
               const cat = CAT_COLOR[e.categoria] || { bg: T.surface, color: T.muted }
               return (
-                <div key={e.id} className="grid min-w-[660px] grid-cols-[1.8fr_1fr_1.1fr_0.7fr_0.8fr_1fr_1fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
+                <div key={e.id} className="grid min-w-[820px] grid-cols-[1.8fr_1fr_1.1fr_0.6fr_0.7fr_1fr_1.1fr_0.9fr] items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
                   <div>
                     <div className="text-[13.5px] font-extrabold">{e.nombre}</div>
                     <div className="text-[11px] font-semibold text-muted">
@@ -112,6 +130,17 @@ export default function Plataforma() {
                   <div className="text-[13px] font-extrabold">{e.socios}</div>
                   <div className="text-[13px] font-bold" style={{ color: e.leads_mes > 0 ? T.success : T.faint }}>{e.leads_mes}</div>
                   <div className="text-[13px] font-extrabold">{money(e.ingresos_mes, 'PEN')}</div>
+                  {/* Cobros por app: si conectó MP, muestra volumen del mes; si no, "sin conectar" */}
+                  <div>
+                    {e.cobros_conectados ? (
+                      <>
+                        <div className="text-[13px] font-extrabold text-green">{money(e.ventas_app_mes, 'PEN')}</div>
+                        <div className="text-[10.5px] font-bold text-muted">comisión {money(e.comision_mp_mes, 'PEN')}</div>
+                      </>
+                    ) : (
+                      <span className="text-[11.5px] font-bold text-faint">sin conectar</span>
+                    )}
+                  </div>
                   <div>
                     {e.landing_activa ? (
                       <a href={urlPublica(e.slug)} target="_blank" rel="noreferrer"
