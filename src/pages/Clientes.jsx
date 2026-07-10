@@ -7,7 +7,7 @@ import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
-import { useClientes, useSocioFicha, useValidarFoto } from '../hooks/useClientes.js'
+import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor } from '../hooks/useClientes.js'
 import { toast } from '../lib/toast.js'
 import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
 
@@ -99,6 +99,9 @@ function Ficha({ socioId, onBack, onVerSocio }) {
           </div>
         </div>
       )}
+
+      {/* Autorización del apoderado (solo si es menor) */}
+      {ficha.es_menor && <AutorizacionMenor socioId={socioId} />}
 
       {editOpen && (
         <EditarSocioModal socio={ficha} onClose={() => setEditOpen(false)} onSaved={refetch} />
@@ -339,6 +342,72 @@ function Field({ label, value }) {
     <div>
       <FieldLabel>{label}</FieldLabel>
       <div className="mt-[3px] text-[14.5px] font-extrabold">{value}</div>
+    </div>
+  )
+}
+
+// Autorización virtual del apoderado para un socio menor. Muestra el estado y
+// permite registrar la firma (nombre + DNI del apoderado + consentimiento).
+function AutorizacionMenor({ socioId }) {
+  const est = useAutorizacionMenor(socioId)
+  const autorizar = useAutorizarMenor(socioId)
+  const [form, setForm] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [doc, setDoc] = useState('')
+  const estado = est.data?.estado
+  const inp = 'rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange'
+
+  function firmar() {
+    if (!nombre.trim()) { toast.error('Nombre del apoderado'); return }
+    autorizar.mutate({ autorizadoPor: nombre.trim(), documento: doc.trim() }, {
+      onSuccess: () => { toast.ok('Autorización registrada'); setForm(false); setNombre(''); setDoc('') },
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  return (
+    <div className="mt-4 rounded-[12px] border border-line bg-[#FAFBFC] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-[13.5px] font-extrabold">
+            🧒 Autorización del apoderado
+            {estado === 'autorizada' ? <Badge bg="#E6F5EF" color="#1D9E75">Autorizado</Badge>
+              : estado === 'revocada' ? <Badge bg="#FEE2E2" color="#B91C1C">Revocada</Badge>
+              : <Badge bg="#FEF3C7" color="#92400E">Sin autorización</Badge>}
+          </div>
+          {estado === 'autorizada' && (
+            <div className="mt-0.5 text-[12px] font-semibold text-muted">
+              Por {est.data.autorizado_por}{est.data.documento ? ` · DNI ${est.data.documento}` : ''}
+              {est.data.autorizada_at ? ` · ${new Date(est.data.autorizada_at).toLocaleDateString('es-PE')}` : ''}
+            </div>
+          )}
+        </div>
+        {!form && (
+          <button onClick={() => setForm(true)}
+            className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-muted hover:border-orange hover:text-orange">
+            {estado === 'autorizada' ? 'Actualizar' : 'Registrar autorización'}
+          </button>
+        )}
+      </div>
+
+      {form && (
+        <div className="mt-3">
+          <p className="mb-2 text-[12px] font-semibold leading-[1.5] text-muted">
+            Como apoderado del menor, autorizo su ingreso y participación en las actividades del
+            gimnasio, y declaro conocer las normas de seguridad.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del apoderado" className={inp} />
+            <input value={doc} onChange={(e) => setDoc(e.target.value)} placeholder="DNI del apoderado (opcional)" className={inp} />
+          </div>
+          <div className="mt-2.5 flex gap-2">
+            <button onClick={firmar} disabled={autorizar.isPending}
+              className="cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2 text-[12.5px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">Confirmar autorización</button>
+            <button onClick={() => setForm(false)}
+              className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-muted">Cancelar</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

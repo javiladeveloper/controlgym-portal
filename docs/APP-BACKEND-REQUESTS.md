@@ -36,6 +36,20 @@
 >   - **Panel:** recepción ve la foto pendiente en la ficha del socio y la
 >     Aprueba/Rechaza (ya implementado). Un usuario socio en varios gyms: su foto
 >     se aplica a todas sus fichas y cada gym la valida por separado.
+>
+> **4. Galería festiva (idea Image Gym #7) — la app la sube y la muestra:**
+>   - Subir foto: bucket `branding` bajo `<empresa_id>/social/<uuid>.jpg` →
+>     RPC **`subir_foto_social(p_foto_url, p_evento?)`** (evento = texto libre:
+>     "Día del padre"). Queda pendiente de moderación.
+>   - Ver galería: RPC **`galeria_social()`** (sin args) → array de fotos
+>     APROBADAS de la empresa del socio: `{id, autor, evento, foto_url, creado_at}`.
+>   - El gym modera desde el panel (Dashboard → "Fotos por aprobar"). Ya hecho.
+>
+> **5. Croquis de la sede (idea Image Gym #3) — la app lo muestra:**
+>   - El bootstrap del socio ahora trae `empresa.croquis_url` (imagen del plano de
+>     SU sede). La app lo muestra (ej. sección "Ubícate" / mapa del gym) para que
+>     el socio encuentre las máquinas. Campo nullable → si no hay, no mostrar.
+>   - El gym sube el croquis desde el panel (Config → Sedes → "Subir croquis"). Ya hecho.
 
 > ## 📌 DEL PANEL A LA APP (2026-07-10) — Membresía por sede (TODAS las reglas)
 >

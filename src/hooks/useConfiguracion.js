@@ -67,7 +67,7 @@ export function useSedes(empresaId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sede')
-        .select('id, nombre, direccion, telefono, aforo_max, activa, foto_url')
+        .select('id, nombre, direccion, telefono, aforo_max, activa, foto_url, croquis_url')
         .eq('empresa_id', empresaId)
         .is('deleted_at', null)
         .order('nombre')
@@ -85,13 +85,14 @@ export function useGuardarSede(empresaId) {
         const { error } = await supabase.from('sede').update({
           nombre: sede.nombre, direccion: sede.direccion, telefono: sede.telefono,
           aforo_max: sede.aforo_max, activa: sede.activa, foto_url: sede.foto_url,
+          croquis_url: sede.croquis_url,
         }).eq('id', sede.id)
         if (error) throw error
       } else {
         const { error } = await supabase.from('sede').insert({
           empresa_id: empresaId, nombre: sede.nombre, direccion: sede.direccion,
           telefono: sede.telefono, aforo_max: sede.aforo_max, activa: sede.activa ?? true,
-          foto_url: sede.foto_url,
+          foto_url: sede.foto_url, croquis_url: sede.croquis_url,
         })
         if (error) throw error
       }

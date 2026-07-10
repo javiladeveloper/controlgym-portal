@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useDashboardKpis, useAsistenciaPorHora, useCheckins, useIngresosPorDia } from '../hooks/useDashboard.js'
 import { useClientes } from '../hooks/useClientes.js'
 import { useCamaras } from '../hooks/useCamaras.js'
+import { useFotosPendientes, useModerarFoto } from '../hooks/useGaleria.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { waLink, msgCumple } from '../lib/whatsapp.js'
@@ -408,6 +409,9 @@ export default function Dashboard() {
 
       {/* Cámaras en vivo (solo admin/recepción, si el gym configuró alguna) */}
       {veIngresos && <CamarasEnVivo empresaId={empresa?.id} sedeId={sedeId} />}
+
+      {/* Fotos de la galería social por aprobar (solo si hay pendientes) */}
+      {veIngresos && <FotosPorAprobar empresaId={empresa?.id} />}
     </div>
   )
 }
@@ -450,6 +454,44 @@ function CamarasEnVivo({ empresaId, sedeId }) {
           ))}
         </div>
       )}
+    </Card>
+  )
+}
+
+// Fotos de la galería social (días festivos) por aprobar. Solo aparece si hay
+// pendientes; recepción/admin aprueba o rechaza antes de que se vean en la app.
+function FotosPorAprobar({ empresaId }) {
+  const fotos = useFotosPendientes(empresaId)
+  const moderar = useModerarFoto(empresaId)
+  const lista = fotos.data || []
+  if (lista.length === 0) return null
+
+  return (
+    <Card className="mt-[15px] p-5">
+      <div className="flex items-center gap-2">
+        <div className="text-[14.5px] font-extrabold">Fotos por aprobar 📸</div>
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-700">{lista.length}</span>
+      </div>
+      <div className="mt-0.5 text-[12px] font-semibold text-muted">
+        Fotos que tus socios subieron a la galería. Apruébalas para que se vean en la app.
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {lista.map((f) => (
+          <div key={f.id} className="overflow-hidden rounded-[12px] border border-line bg-white">
+            <img src={f.foto_url} alt="" className="aspect-square w-full object-cover" />
+            <div className="p-2.5">
+              <div className="text-[12.5px] font-extrabold">{f.autor || 'Socio'}</div>
+              {f.evento && <div className="text-[11px] font-semibold text-muted">{f.evento}</div>}
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => moderar.mutate({ fotoId: f.id, aprobar: true })} disabled={moderar.isPending}
+                  className="flex-1 cursor-pointer rounded-[8px] border-none bg-green-600 py-1.5 text-[12px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">Aprobar</button>
+                <button onClick={() => moderar.mutate({ fotoId: f.id, aprobar: false })} disabled={moderar.isPending}
+                  className="flex-1 cursor-pointer rounded-[8px] border border-line bg-white py-1.5 text-[12px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Rechazar</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </Card>
   )
 }

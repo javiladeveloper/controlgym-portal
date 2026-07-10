@@ -43,7 +43,7 @@ de socios con deuda a quienes se les manda alerta virtual de pago.
   Puente del molinete facial (Fase 2) cuando exista el hardware.
 - **Esfuerzo:** medio. **Valor: alto** (habilita el facial, diferenciador).
 
-### 3. Croquis del gimnasio con áreas y máquinas 🔴 falta (el más nuevo)
+### 3. Croquis del gimnasio con áreas y máquinas ✅ HECHO (2026-07-10, imagen por sede)
 **Qué pidió:** un mapa del gym en la app donde se vea cada área, sobre todo
 musculación — los socios se pierden buscando máquinas.
 - **Ya tenemos:** `maquina.zona` (texto). Nada visual.
@@ -74,7 +74,7 @@ de cada uno.
 - **Dónde vive:** página web (formulario) · panel (bandeja de sugerencias, opc.).
 - **Esfuerzo:** bajo. **Valor: medio** (agrado, sencillo).
 
-### 6. Autorización virtual para menores/adolescentes 🟡 base modelada
+### 6. Autorización virtual para menores/adolescentes ✅ HECHO (2026-07-10)
 **Qué pidió:** una autorización virtual para los jóvenes/adolescentes que vienen.
 - **Ya tenemos:** tabla `apoderado` + `apoderado_socio` (modelado). Categoría de
   gym "niños" con apoderados.
@@ -85,7 +85,7 @@ de cada uno.
   brainstorm del flujo legal/UX.
 - **Esfuerzo:** medio-alto. **Valor: medio** (nicho: gyms con menores).
 
-### 7. Galería de fotos en días festivos 🔴 falta (owner: la app recepciona)
+### 7. Galería de fotos en días festivos ✅ HECHO (2026-07-10)
 **Qué pidió:** la Sra. María quiere que los socios suban fotos en días festivos
 (ej. día del padre, foto con sus papás).
 - **Ya tenemos:** nada.

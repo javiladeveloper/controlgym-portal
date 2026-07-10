@@ -83,3 +83,30 @@ export function useValidarFoto(sedeId) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes', sedeId] }),
   })
 }
+
+// Autorización de un menor (estado + registrar la firma del apoderado).
+export function useAutorizacionMenor(socioId) {
+  return useQuery({
+    queryKey: ['autorizacion-menor', socioId],
+    enabled: !!socioId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('estado_autorizacion_menor', { p_socio_id: socioId })
+      if (error) throw error
+      return data // { estado, autorizado_por?, documento?, autorizada_at? }
+    },
+  })
+}
+
+export function useAutorizarMenor(socioId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ autorizadoPor, documento }) => {
+      const { data, error } = await supabase.rpc('autorizar_menor', {
+        p_socio_id: socioId, p_autorizado_por: autorizadoPor, p_documento: documento || null,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['autorizacion-menor', socioId] }),
+  })
+}

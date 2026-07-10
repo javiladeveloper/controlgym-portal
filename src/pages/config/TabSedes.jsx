@@ -9,7 +9,7 @@ import { toast } from '../../lib/toast.js'
 import DireccionAutocomplete from '../../components/forms/DireccionAutocomplete.jsx'
 import { BASE_TOKENS as T } from '../../theme/tokens.js'
 
-const EMPTY = { nombre: '', direccion: '', telefono: '', aforo_max: '', activa: true, foto_url: '' }
+const EMPTY = { nombre: '', direccion: '', telefono: '', aforo_max: '', activa: true, foto_url: '', croquis_url: '' }
 
 export default function TabSedes() {
   const { empresa } = useAuth()
@@ -19,6 +19,7 @@ export default function TabSedes() {
   const [edit, setEdit] = useState(null) // objeto sede en edición (o EMPTY para nueva)
   const [subiendo, setSubiendo] = useState(false)
   const fotoRef = useRef(null)
+  const croquisRef = useRef(null)
 
   // Flag "membresía por sede": el socio solo entra a la sede donde se registra.
   const [restringe, setRestringe] = useState(null) // null = cargando
@@ -41,6 +42,14 @@ export default function TabSedes() {
     try {
       const url = await subirImagen(empresa.id, 'sede', file)
       setEdit((s) => ({ ...s, foto_url: url }))
+    } catch (e) { alert('No se pudo subir: ' + e.message) } finally { setSubiendo(false) }
+  }
+
+  async function subirCroquis(file) {
+    setSubiendo(true)
+    try {
+      const url = await subirImagen(empresa.id, 'croquis', file)
+      setEdit((s) => ({ ...s, croquis_url: url }))
     } catch (e) { alert('No se pudo subir: ' + e.message) } finally { setSubiendo(false) }
   }
 
@@ -113,6 +122,21 @@ export default function TabSedes() {
                 </button>
                 {edit.foto_url && <button onClick={() => setEdit({ ...edit, foto_url: '' })} className="text-[12px] font-extrabold text-red">Quitar</button>}
                 <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) subirFoto(f); e.target.value = '' }} />
+              </div>
+            </div>
+            {/* Croquis / plano de la sede — el socio lo ve en la app para ubicarse */}
+            <div className="sm:col-span-2">
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Croquis del local 🗺️ <span className="font-semibold normal-case text-faint">(el socio lo ve en la app para ubicar las máquinas)</span></span>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="flex h-16 w-24 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface">
+                  {edit.croquis_url ? <img src={edit.croquis_url} alt="" className="h-full w-full object-contain" /> : <span className="text-[10px] font-bold text-faint">sin croquis</span>}
+                </div>
+                <button onClick={() => croquisRef.current?.click()} disabled={subiendo}
+                  className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+                  {subiendo ? 'Subiendo…' : 'Subir croquis'}
+                </button>
+                {edit.croquis_url && <button onClick={() => setEdit({ ...edit, croquis_url: '' })} className="text-[12px] font-extrabold text-red">Quitar</button>}
+                <input ref={croquisRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) subirCroquis(f); e.target.value = '' }} />
               </div>
             </div>
           </div>
