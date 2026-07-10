@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, Avatar } from '../components/ui.jsx'
+import { CrudCardGrid, AccionesCard } from '../components/CrudCardGrid.jsx'
 import { subirImagen } from '../hooks/useConfiguracion.js'
-import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { toast } from '../lib/toast.js'
@@ -116,7 +116,6 @@ export default function Sponsors() {
   const moneda = empresa?.moneda || 'PEN'
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [editar, setEditar] = useState(null) // convenio en edición
-  const [confirmarDel, setConfirmarDel] = useState(null)
   const { data, isLoading, error, refetch } = useSponsors()
 
   async function cambiarEstado(s, estado) {
@@ -127,79 +126,55 @@ export default function Sponsors() {
   async function eliminar(s) {
     const { error } = await supabase.from('sponsor')
       .update({ deleted_at: new Date().toISOString() }).eq('id', s.id)
-    setConfirmarDel(null)
     if (error) toast.error('No se pudo eliminar: ' + error.message)
     else refetch()
   }
 
   return (
-    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Sponsors</h1>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Convenios y auspicios de {empresa?.nombre}</p>
-        </div>
-        <button onClick={() => setNuevoOpen(true)}
-          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo convenio</button>
-      </div>
-
+    <CrudCardGrid
+      title="Sponsors"
+      subtitle={`Convenios y auspicios de ${empresa?.nombre || ''}`}
+      nuevoLabel="Nuevo convenio"
+      onNuevo={() => setNuevoOpen(true)}
+      isLoading={isLoading} error={error} onRetry={refetch}
+      emptyMessage="Sin convenios registrados."
+      items={data}
+      renderCard={(s) => {
+        const est = ESTADO[s.estado] || ESTADO.activo
+        return (
+          <Card key={s.id}
+            onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(s) }}
+            className="cursor-pointer p-[19px] transition hover:border-orange">
+            <div className="flex items-center gap-3">
+              {s.logo_url
+                ? <div className="flex h-11 w-[72px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-line bg-white"><img src={s.logo_url} alt="" className="h-full w-full object-contain" /></div>
+                : <Avatar ini={iniciales(s.nombre)} bg={T.chipNavy} color={T.navy} size={44} fontSize={15} />}
+              <div className="flex-1">
+                <div className="text-[15px] font-extrabold">{s.nombre} {s.mostrar_en_web && <span title="Visible en tu página web" className="text-[11px]">🌐</span>}</div>
+                <div className="text-[12px] font-semibold text-muted">{s.descripcion}</div>
+              </div>
+              <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
+            </div>
+            <div className="mt-3.5 flex items-center justify-between border-t border-line2 pt-[13px]">
+              <div className="text-[12.5px] font-bold text-muted">
+                Aporte: <span className="font-extrabold text-ink">{s.aporte_detalle || (s.aporte_monto ? money(s.aporte_monto, moneda) : '—')}</span>
+                {s.fecha_vencimiento ? <span className="ml-2">· vence {new Date(s.fecha_vencimiento).toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })}</span> : ''}
+              </div>
+              <AccionesCard
+                puedePausar={s.estado === 'activo'}
+                puedeActivar={s.estado !== 'activo'}
+                onPausar={() => cambiarEstado(s, 'pausado')}
+                onActivar={() => cambiarEstado(s, 'activo')}
+                onEditar={() => setEditar(s)}
+                onEliminar={() => eliminar(s)}
+              />
+            </div>
+          </Card>
+        )
+      }}
+    >
       {nuevoOpen && <ConvenioModal empresaId={empresa?.id} onClose={() => setNuevoOpen(false)} />}
       {editar && <ConvenioModal empresaId={empresa?.id} sponsor={editar} onClose={() => setEditar(null)} />}
-
-      {isLoading && <LoadingState variant="cards" rows={4} />}
-      {error && <ErrorState error={error} onRetry={refetch} />}
-      {!isLoading && (data || []).length === 0 && <EmptyState message="Sin convenios registrados." />}
-
-      {(data || []).length > 0 && (
-        <div className="mt-5 grid grid-cols-1 gap-[15px] md:grid-cols-2">
-          {data.map((s) => {
-            const est = ESTADO[s.estado] || ESTADO.activo
-            return (
-              <Card key={s.id}
-                onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(s) }}
-                className="cursor-pointer p-[19px] transition hover:border-orange">
-                <div className="flex items-center gap-3">
-                  {s.logo_url
-                    ? <div className="flex h-11 w-[72px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-line bg-white"><img src={s.logo_url} alt="" className="h-full w-full object-contain" /></div>
-                    : <Avatar ini={iniciales(s.nombre)} bg={T.chipNavy} color={T.navy} size={44} fontSize={15} />}
-                  <div className="flex-1">
-                    <div className="text-[15px] font-extrabold">{s.nombre} {s.mostrar_en_web && <span title="Visible en tu página web" className="text-[11px]">🌐</span>}</div>
-                    <div className="text-[12px] font-semibold text-muted">{s.descripcion}</div>
-                  </div>
-                  <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
-                </div>
-                <div className="mt-3.5 flex items-center justify-between border-t border-line2 pt-[13px]">
-                  <div className="text-[12.5px] font-bold text-muted">
-                    Aporte: <span className="font-extrabold text-ink">{s.aporte_detalle || (s.aporte_monto ? money(s.aporte_monto, moneda) : '—')}</span>
-                    {s.fecha_vencimiento ? <span className="ml-2">· vence {new Date(s.fecha_vencimiento).toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })}</span> : ''}
-                  </div>
-                  {confirmarDel === s.id ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10.5px] font-extrabold text-red">¿Eliminar?</span>
-                      <button onClick={() => eliminar(s)} className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1 text-[10.5px] font-extrabold text-white">Sí</button>
-                      <button onClick={() => setConfirmarDel(null)} className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-muted">No</button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      {s.estado === 'activo' ? (
-                        <button onClick={() => cambiarEstado(s, 'pausado')}
-                          className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-muted hover:border-amber-400 hover:text-amber-600">⏸ Pausar</button>
-                      ) : (
-                        <button onClick={() => cambiarEstado(s, 'activo')}
-                          className="cursor-pointer rounded-[8px] border border-green-300 bg-green-50 px-2.5 py-1 text-[10.5px] font-extrabold text-green-600">▶ Activar</button>
-                      )}
-                      <button onClick={() => setEditar(s)} title="Editar convenio"
-                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[12px] text-faint hover:text-orange">✏️</button>
-                      <button onClick={() => setConfirmarDel(s.id)}
-                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[11.5px] font-extrabold text-faint hover:text-red">🗑</button>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    </CrudCardGrid>
   )
 }

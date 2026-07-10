@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '../components/ui.jsx'
-import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
+import { CrudCardGrid, AccionesCard } from '../components/CrudCardGrid.jsx'
 import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { toast } from '../lib/toast.js'
@@ -134,7 +134,6 @@ export default function Promociones() {
   const qc = useQueryClient()
   const [nuevaOpen, setNuevaOpen] = useState(false)
   const [editar, setEditar] = useState(null) // campaña en edición
-  const [confirmarDel, setConfirmarDel] = useState(null)
   const { data, isLoading, error, refetch } = usePromociones()
 
   async function cambiarEstado(pr, estado) {
@@ -145,75 +144,51 @@ export default function Promociones() {
   async function eliminar(pr) {
     const { error } = await supabase.from('promocion')
       .update({ deleted_at: new Date().toISOString(), estado: 'finalizada' }).eq('id', pr.id)
-    setConfirmarDel(null)
     if (error) toast.error('No se pudo eliminar: ' + error.message)
     else qc.invalidateQueries({ queryKey: ['promociones'] })
   }
 
   return (
-    <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Promociones</h1>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Campañas para captar y retener socios · {empresa?.nombre}</p>
-        </div>
-        <button onClick={() => setNuevaOpen(true)}
-          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva campaña</button>
-      </div>
-
+    <CrudCardGrid
+      title="Promociones"
+      subtitle={`Campañas para captar y retener socios · ${empresa?.nombre || ''}`}
+      nuevoLabel="Nueva campaña"
+      onNuevo={() => setNuevaOpen(true)}
+      isLoading={isLoading} error={error} onRetry={refetch}
+      emptyMessage="Sin campañas registradas."
+      items={data}
+      renderCard={(pr) => {
+        const est = ESTADO[pr.estado] || ESTADO.activa
+        return (
+          <Card key={pr.id}
+            onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(pr) }}
+            className="cursor-pointer p-[19px] transition hover:border-orange">
+            <div className="flex items-center justify-between gap-2.5">
+              <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
+              <span className="text-[11.5px] font-bold text-faint">{pr.canal}</span>
+            </div>
+            <div className="mt-3 text-[16px] font-extrabold">{pr.nombre}</div>
+            <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">{pr.descripcion}</div>
+            <div className="mt-3.5 flex items-center justify-between border-t border-line2 pt-[13px]">
+              <div className="text-[12px] font-bold text-muted">
+                {pr.fecha_inicio ? new Date(pr.fecha_inicio).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : 'Vigente'}
+                {pr.canjes ? <span className="ml-2 font-extrabold text-orange">{pr.canjes} canjes</span> : null}
+              </div>
+              <AccionesCard
+                puedePausar={pr.estado === 'activa'}
+                puedeActivar={pr.estado !== 'activa' && pr.estado !== 'finalizada'}
+                onPausar={() => cambiarEstado(pr, 'pausada')}
+                onActivar={() => cambiarEstado(pr, 'activa')}
+                onEditar={() => setEditar(pr)}
+                onEliminar={() => eliminar(pr)}
+              />
+            </div>
+          </Card>
+        )
+      }}
+    >
       {nuevaOpen && <CampanaModal empresaId={empresa?.id} onClose={() => setNuevaOpen(false)} />}
       {editar && <CampanaModal empresaId={empresa?.id} promocion={editar} onClose={() => setEditar(null)} />}
-
-      {isLoading && <LoadingState variant="cards" rows={4} />}
-      {error && <ErrorState error={error} onRetry={refetch} />}
-      {!isLoading && (data || []).length === 0 && <EmptyState message="Sin campañas registradas." />}
-
-      {(data || []).length > 0 && (
-        <div className="mt-5 grid grid-cols-1 gap-[15px] md:grid-cols-2">
-          {data.map((pr) => {
-            const est = ESTADO[pr.estado] || ESTADO.activa
-            return (
-              <Card key={pr.id}
-                onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(pr) }}
-                className="cursor-pointer p-[19px] transition hover:border-orange">
-                <div className="flex items-center justify-between gap-2.5">
-                  <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
-                  <span className="text-[11.5px] font-bold text-faint">{pr.canal}</span>
-                </div>
-                <div className="mt-3 text-[16px] font-extrabold">{pr.nombre}</div>
-                <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">{pr.descripcion}</div>
-                <div className="mt-3.5 flex items-center justify-between border-t border-line2 pt-[13px]">
-                  <div className="text-[12px] font-bold text-muted">
-                    {pr.fecha_inicio ? new Date(pr.fecha_inicio).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : 'Vigente'}
-                    {pr.canjes ? <span className="ml-2 font-extrabold text-orange">{pr.canjes} canjes</span> : null}
-                  </div>
-                  {confirmarDel === pr.id ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10.5px] font-extrabold text-red">¿Eliminar?</span>
-                      <button onClick={() => eliminar(pr)} className="cursor-pointer rounded-[8px] border-none bg-red px-2.5 py-1 text-[10.5px] font-extrabold text-white">Sí</button>
-                      <button onClick={() => setConfirmarDel(null)} className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-muted">No</button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      {pr.estado === 'activa' ? (
-                        <button onClick={() => cambiarEstado(pr, 'pausada')} title="Pausar (deja de aplicar y sale de tu página web)"
-                          className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-muted hover:border-amber-400 hover:text-amber-600">⏸ Pausar</button>
-                      ) : pr.estado !== 'finalizada' ? (
-                        <button onClick={() => cambiarEstado(pr, 'activa')} title="Reactivar campaña"
-                          className="cursor-pointer rounded-[8px] border border-green-300 bg-green-50 px-2.5 py-1 text-[10.5px] font-extrabold text-green-600">▶ Activar</button>
-                      ) : null}
-                      <button onClick={() => setEditar(pr)} title="Editar campaña"
-                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[12px] text-faint hover:text-orange">✏️</button>
-                      <button onClick={() => setConfirmarDel(pr.id)} title="Eliminar campaña"
-                        className="cursor-pointer rounded-[8px] border-none bg-transparent px-1.5 py-1 text-[11.5px] font-extrabold text-faint hover:text-red">🗑</button>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    </CrudCardGrid>
   )
 }
