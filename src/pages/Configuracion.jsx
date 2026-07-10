@@ -11,6 +11,7 @@ import TabTextos from './config/TabTextos.jsx'
 import TabPlan from './config/TabPlan.jsx'
 import TabCobros from './config/TabCobros.jsx'
 import TabAcceso from './config/TabAcceso.jsx'
+import TabCamaras from './config/TabCamaras.jsx'
 
 const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
@@ -20,6 +21,7 @@ const TABS = [
   { key: 'pagina', label: 'Página web', Comp: TabPaginaWeb },
   { key: 'sedes', label: 'Sedes', Comp: TabSedes },
   { key: 'acceso', label: 'Control de acceso', Comp: TabAcceso },
+  { key: 'camaras', label: 'Cámaras 📹', Comp: TabCamaras },
   { key: 'contacto', label: 'Contacto', Comp: TabContacto },
   { key: 'redes', label: 'Redes sociales', Comp: TabRedes },
   { key: 'regional', label: 'Regional', Comp: TabRegional },

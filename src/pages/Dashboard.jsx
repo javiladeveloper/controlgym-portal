@@ -12,6 +12,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useDashboardKpis, useAsistenciaPorHora, useCheckins, useIngresosPorDia } from '../hooks/useDashboard.js'
 import { useClientes } from '../hooks/useClientes.js'
+import { useCamaras } from '../hooks/useCamaras.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { waLink, msgCumple } from '../lib/whatsapp.js'
@@ -379,6 +380,51 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {/* Cámaras en vivo (solo admin/recepción, si el gym configuró alguna) */}
+      {veIngresos && <CamarasEnVivo empresaId={empresa?.id} sedeId={sedeId} />}
     </div>
+  )
+}
+
+// Bloque colapsable de cámaras en vivo del gym. Embebe el enlace de la nube del
+// fabricante que el gym pegó en Config → Cámaras. Solo se muestra si hay cámaras.
+function CamarasEnVivo({ empresaId, sedeId }) {
+  const [abierto, setAbierto] = useState(false)
+  const camaras = useCamaras(empresaId, sedeId)
+  // Cámaras de la sede activa + las que aplican a "todas las sedes" (sede_id null)
+  const lista = (camaras.data || []).filter((c) => c.activa)
+  if (lista.length === 0) return null
+
+  return (
+    <Card className="mt-[15px] p-5">
+      <button onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent p-0 text-left">
+        <div>
+          <div className="text-[14.5px] font-extrabold">Cámaras en vivo 📹</div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">{lista.length} {lista.length === 1 ? 'cámara' : 'cámaras'} · toca para {abierto ? 'ocultar' : 'ver en vivo'}</div>
+        </div>
+        <span className="text-[18px] text-muted">{abierto ? '▲' : '▼'}</span>
+      </button>
+
+      {abierto && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {lista.map((c) => (
+            <div key={c.id} className="overflow-hidden rounded-[12px] border border-line bg-navy">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-[12.5px] font-extrabold text-white">{c.nombre}</span>
+                <span className="flex items-center gap-1 text-[10.5px] font-extrabold uppercase tracking-[0.5px] text-red-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400" /> en vivo
+                </span>
+              </div>
+              <div className="aspect-video w-full bg-black">
+                <iframe src={c.url_embed} title={c.nombre} allow="autoplay; fullscreen"
+                  className="h-full w-full border-none" referrerPolicy="no-referrer" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   )
 }
