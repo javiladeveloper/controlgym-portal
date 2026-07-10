@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Card } from '../components/ui.jsx'
+import { Card, Badge } from '../components/ui.jsx'
 import { TargetIcon, CheckIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { usePanel } from '../store.jsx'
@@ -13,6 +13,7 @@ import {
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
   useSolicitudesCarga, useResponderSolicitud,
 } from '../hooks/useRutinas.js'
+import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
 import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
@@ -356,6 +357,7 @@ function RutinasImpl() {
   const suplementosStock = (productos.data || []).filter((p) => p.categoria === 'Suplementos' && p.stock > 0)
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
   const [bancoOpen, setBancoOpen] = useState(false) // gestión del banco de ejercicios (media)
+  const [tab, setTab] = useState('socios') // 'socios' | 'plantillas'
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
   const diasIds = (rutina.data?.dias || []).map((d) => d.id)
@@ -413,16 +415,32 @@ function RutinasImpl() {
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Rutinas y dietas</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Genera el plan y envíalo a la app del socio</p>
         </div>
-        {veRutina && (
-          <button onClick={() => setBancoOpen(true)}
-            className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
-            🎬 Banco de ejercicios
-          </button>
-        )}
+        <div className="flex items-center gap-2.5">
+          <div className="flex rounded-[10px] border border-line bg-white p-1">
+            <button onClick={() => setTab('socios')}
+              className={`cursor-pointer rounded-[8px] border-none px-3.5 py-1.5 text-[12.5px] font-extrabold transition-colors ${tab === 'socios' ? 'bg-orange text-white' : 'bg-transparent text-muted hover:text-orange'}`}>
+              Por socio
+            </button>
+            <button onClick={() => setTab('plantillas')}
+              className={`cursor-pointer rounded-[8px] border-none px-3.5 py-1.5 text-[12.5px] font-extrabold transition-colors ${tab === 'plantillas' ? 'bg-orange text-white' : 'bg-transparent text-muted hover:text-orange'}`}>
+              Plantillas
+            </button>
+          </div>
+          {veRutina && tab === 'socios' && (
+            <button onClick={() => setBancoOpen(true)}
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
+              🎬 Banco de ejercicios
+            </button>
+          )}
+        </div>
       </div>
 
       {bancoOpen && <BancoEjerciciosModal onClose={() => setBancoOpen(false)} />}
 
+      {tab === 'plantillas' && <PlantillasPanel empresaId={empresa?.id} />}
+
+      {tab === 'socios' && (
+      <>
       {veRutina && (
         <SolicitudesCarga empresaId={empresa?.id}
           onIrSocio={(id) => { setSocioId(id); setBusqueda(''); setDiaSel(null); setEnviado(false) }} />
@@ -696,7 +714,84 @@ function RutinasImpl() {
           </div>
         </>
       )}
+      </>
+      )}
     </div>
+  )
+}
+
+// Pestaña "Plantillas": lista informativa de las plantillas de rutina/dieta
+// por objetivo (global del sistema vs. personalizada del gym). Sin editor de
+// contenido — el editor completo de ejercicios/comidas de la plantilla se
+// deja para una task futura; aquí solo se muestra qué plantilla aplicaría.
+function PlantillasPanel({ empresaId }) {
+  const objetivos = useObjetivos()
+  const rutinas = usePlantillasRutina(empresaId)
+  const dietas = usePlantillasDieta(empresaId)
+  const cargando = objetivos.isLoading || rutinas.isLoading || dietas.isLoading
+  const error = objetivos.error || rutinas.error || dietas.error
+
+  return (
+    <Card className="mt-[18px] p-[19px]">
+      <div className="text-[14.5px] font-extrabold">📋 Plantillas del plan automático</div>
+      <p className="mt-0.5 text-[12px] font-semibold text-muted">
+        Al inscribir a un socio con objetivo + peso + talla, el sistema copia estas plantillas (moduladas por su IMC) como su rutina y dieta iniciales.
+        Prioriza la plantilla personalizada del gym; si no existe, usa la global. El editor de ejercicios/comidas de cada plantilla llega en una próxima mejora.
+      </p>
+
+      {cargando && <div className="mt-4"><LoadingState variant="table" rows={4} /></div>}
+      {error && <ErrorState error={error} onRetry={() => { objetivos.refetch(); rutinas.refetch(); dietas.refetch() }} />}
+
+      {!cargando && !error && (
+        <div className="mt-4 flex flex-col gap-2.5">
+          {(objetivos.data || []).map((o) => {
+            const rGym = (rutinas.data || []).find((r) => r.objetivo_id === o.id && r.empresa_id)
+            const rGlobal = (rutinas.data || []).find((r) => r.objetivo_id === o.id && !r.empresa_id)
+            const dGym = (dietas.data || []).find((d) => d.objetivo_id === o.id && d.empresa_id)
+            const dGlobal = (dietas.data || []).find((d) => d.objetivo_id === o.id && !d.empresa_id)
+            const rutinaUsada = rGym || rGlobal
+            const dietaUsada = dGym || dGlobal
+            return (
+              <div key={o.id} className="rounded-xl border border-line bg-[#FAFBFC] p-[13px]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[13.5px] font-extrabold">{o.nombre}</div>
+                  {!o.tiene_plan && <Badge bg="#F1F2F4" color="#6B7280">Sin plan automático</Badge>}
+                </div>
+                {o.tiene_plan && (
+                  <div className="mt-2 flex flex-col gap-1.5 text-[12.5px] font-bold text-muted">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>🏋️ Rutina:</span>
+                      {rutinaUsada ? (
+                        <>
+                          <span className="text-ink">{rutinaUsada.nombre}</span>
+                          <Badge bg={rGym ? '#E7F6F0' : '#EEF1FF'} color={rGym ? '#1D9E75' : '#4C5AA8'}>
+                            {rGym ? 'Personalizada (tu gym)' : 'Global'}
+                          </Badge>
+                        </>
+                      ) : <span className="text-faint">— sin plantilla aún</span>}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>🍽️ Dieta:</span>
+                      {dietaUsada ? (
+                        <>
+                          <span className="text-ink">{dietaUsada.nombre}</span>
+                          <Badge bg={dGym ? '#E7F6F0' : '#EEF1FF'} color={dGym ? '#1D9E75' : '#4C5AA8'}>
+                            {dGym ? 'Personalizada (tu gym)' : 'Global'}
+                          </Badge>
+                        </>
+                      ) : <span className="text-faint">— sin plantilla aún</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          {(objetivos.data || []).length === 0 && (
+            <EmptyState message="Aún no hay objetivos en el catálogo." />
+          )}
+        </div>
+      )}
+    </Card>
   )
 }
 

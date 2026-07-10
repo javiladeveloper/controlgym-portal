@@ -9,6 +9,8 @@ import { money } from '../../lib/uiHelpers.js'
 import { waLink, msgRecibo } from '../../lib/whatsapp.js'
 import { verificarDni, textoVerificacion } from '../../lib/dni.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
+import { useObjetivos } from '../../hooks/usePlantillas.js'
+import { toast } from '../../lib/toast.js'
 
 const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
 
@@ -19,9 +21,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const { empresa } = useAuth()
   const planes = usePlanes()
   const promos = usePromociones()
+  const objetivos = useObjetivos()
   const [f, setF] = useState({
     nombre: prefill.nombre || '', telefono: prefill.telefono || '', email: prefill.email || '',
-    documento: prefill.documento || '', fecha_nacimiento: '', objetivo: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
+    documento: prefill.documento || '', fecha_nacimiento: '', objetivo: '', objetivo_id: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
+    peso_kg: '', talla_m: '',
   })
   const [verif, setVerif] = useState(null) // resultado de la verificación de DNI (MAXFIND)
   const [dupSocio, setDupSocio] = useState(null) // ya existe un socio con este documento
@@ -54,6 +58,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [exito, setExito] = useState(null) // { codigo, total, promo }
+  const [planAuto, setPlanAuto] = useState(null) // { asignado, objetivo, imc, categoria, rutina_dias, dieta_kcal_dia }
 
   // Traduce el error crudo de Postgres a un mensaje entendible. El índice
   // único uq_socio_documento_empresa lanza 23505 si el DNI ya existe (carrera
@@ -182,6 +187,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         : null,
       p_monto_inicial: enPartes && puedePartes ? inicial : null,
       p_precio_acordado: usaAcordado ? acordadoNum : null,
+      p_objetivo_id: f.objetivo_id || null,
     })
     setBusy(false)
     if (error) { setError(mensajeError(error)); return }
@@ -197,6 +203,29 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       if (verif?.encontrado === false || Object.keys(extra).length) {
         verificarDni({ dni: dniLimpio, nombre: f.nombre, alimentar: true, extra })
       }
+    }
+    // inscribir_socio no recibe peso/talla como parámetros, así que si el form
+    // los capturó, los guardamos aparte y RECIÉN entonces pedimos la asignación
+    // automática del plan (rutina+dieta según objetivo+IMC) — con el peso/talla
+    // ya persistidos, para que asignar_plan_automatico no falle por sin_peso_talla.
+    let planResultado = data.plan || null
+    const pesoNum = f.peso_kg ? Number(f.peso_kg) : null
+    const tallaNum = f.talla_m ? Number(f.talla_m) : null
+    if (data.socio_id && f.objetivo_id && pesoNum > 0 && tallaNum > 0) {
+      const { error: errUpd } = await supabase.from('socio')
+        .update({ peso_kg: pesoNum, talla_m: tallaNum }).eq('id', data.socio_id)
+      if (!errUpd) {
+        const { data: planData, error: errPlan } = await supabase.rpc('asignar_plan_automatico', { p_socio_id: data.socio_id })
+        if (!errPlan) planResultado = planData
+      }
+    } else if (data.socio_id && (pesoNum > 0 || tallaNum > 0)) {
+      // Aunque no haya objetivo (o el plan no se haya podido asignar), igual
+      // guardamos el peso/talla capturados: no se pierden datos del socio.
+      await supabase.from('socio').update({ peso_kg: pesoNum || null, talla_m: tallaNum || null }).eq('id', data.socio_id)
+    }
+    setPlanAuto(planResultado)
+    if (planResultado?.asignado) {
+      toast.ok(`Plan asignado: ${planResultado.objetivo} · ${planResultado.rutina_dias} días + dieta ${planResultado.dieta_kcal_dia} kcal (IMC ${planResultado.imc}, ${planResultado.categoria})`)
     }
     setExito({ codigo: data.codigo, total: data.total_cobrado, saldo: Number(data.saldo || 0), promo: data.promo_aplicada, codigosInvitados: data.codigos_invitados || [] })
     qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
@@ -229,6 +258,17 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             </div>
           )}
         </div>
+        {planAuto?.asignado && (
+          <div className="mt-2.5 rounded-[10px] bg-[#EEF1FF] px-3.5 py-2.5 text-[12px] font-bold text-[#4C5AA8]">
+            🏋️ Plan asignado: <b>{planAuto.objetivo}</b> · {planAuto.rutina_dias} días de rutina + dieta {planAuto.dieta_kcal_dia} kcal
+            <span className="block font-semibold text-[#6672B8]">IMC {planAuto.imc} ({planAuto.categoria}) — revísalo en Rutinas.</span>
+          </div>
+        )}
+        {f.objetivo_id && planAuto && !planAuto.asignado && planAuto.motivo === 'sin_peso_talla' && (
+          <div className="mt-2.5 rounded-[10px] bg-amber-50 px-3.5 py-2.5 text-[12px] font-bold text-amber-800">
+            ⚖️ Falta peso/talla — el plan automático quedó pendiente. Complétalo en la ficha del socio para generarlo.
+          </div>
+        )}
         {f.telefono && Number(exito.total) > 0 && (
           <a href={waLink(f.telefono, msgRecibo({
               socio: f.nombre, gym: empresa?.nombre, concepto: `Inscripción${plan ? ' ' + plan.nombre : ''}`,
@@ -332,7 +372,28 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
           <Campo label="Fecha de nacimiento"><input type="date" max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
         </div>
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
-        <Campo label="Objetivo">
+        <Campo label="Objetivo (con plan automático)" hint="Si eliges uno de estos, con el peso y talla te generamos rutina + dieta según su IMC.">
+          <select value={f.objetivo_id} onChange={set('objetivo_id')} className={inputCls + ' cursor-pointer'}>
+            <option value="">Sin objetivo</option>
+            {(objetivos.data || []).map((o) => (
+              <option key={o.id} value={o.id}>{o.nombre}</option>
+            ))}
+          </select>
+        </Campo>
+        {f.objetivo_id && (
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Peso (kg)">
+              <input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder="70" />
+            </Campo>
+            <Campo label="Talla (m)">
+              <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder="1.70" />
+            </Campo>
+          </div>
+        )}
+        {f.objetivo_id && (!f.peso_kg || !f.talla_m) && (
+          <p className="-mt-1.5 text-[11px] font-semibold text-faint">Completa peso y talla para que el plan se asigne automáticamente ahora; si no, quedará pendiente.</p>
+        )}
+        <Campo label="Otro objetivo (texto libre, opcional)">
           <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
         </Campo>
         </>
