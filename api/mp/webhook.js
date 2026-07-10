@@ -10,14 +10,26 @@ export default async function handler(req, res) {
     const payId = req.query['data.id'] || req.query.id || req.body?.data?.id
     if (topic !== 'payment' || !payId) return res.status(200).end() // ignora otros topics
 
-    // Buscamos primero el pago local por el payment id (si ya lo teníamos) o,
-    // más común, leemos el payment en MP para obtener el external_reference.
-    // Para leer el payment usamos el access_token de la app FitCore (marketplace);
-    // si no alcanza, resolvemos por external_reference → empresa_mp (token del gym).
-    let mpPay = await fetch(`https://api.mercadopago.com/v1/payments/${payId}`, {
-      headers: { authorization: `Bearer ${env('MP_ACCESS_TOKEN')}` },
-    }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    // En un pago con SPLIT (marketplace), el payment vive en la cuenta DEL GYM,
+    // no en la de FitCore: leerlo con MP_ACCESS_TOKEN (FitCore) da 404. Por eso
+    // probamos leerlo con el token de FitCore primero (por si es un pago directo)
+    // y, si falla, con el token de cada gym que tenga cobros conectados hasta que
+    // uno lo resuelva. Así obtenemos el external_reference = pago_app.id.
+    async function leerPayment(token) {
+      return fetch(`https://api.mercadopago.com/v1/payments/${payId}`, {
+        headers: { authorization: `Bearer ${token}` },
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    }
 
+    let mpPay = await leerPayment(env('MP_ACCESS_TOKEN'))
+    if (!mpPay?.id) {
+      // Recorremos los tokens de los gyms conectados (el pago es de uno de ellos).
+      const { rows: gyms } = await db().query(`select access_token from public.empresa_mp`)
+      for (const g of gyms) {
+        mpPay = await leerPayment(g.access_token)
+        if (mpPay?.id) break
+      }
+    }
     if (!mpPay?.id) return res.status(200).end()
 
     const pagoId = mpPay.external_reference
