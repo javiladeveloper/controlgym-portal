@@ -5,19 +5,63 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
-> ## 📌 DEL PANEL A LA APP (2026-07-10) — Membresía por sede
-> Nuevo modelo para gyms con varias sedes: el socio queda atado a la sede donde
-> se registra (`socio.sede_id`); solo entra ahí, salvo que tenga un **plan
-> multisede** (`plan.multisede`). El gym lo activa con `empresa.restringe_sede`
-> (default false → la mayoría no lo usa). El check-in ya lo valida en el panel
-> (`checkin_manual` → motivo `otra_sede`). **Lo que la app debería agregar:**
-> - En el perfil del socio, si su gym tiene varias sedes, permitir **solicitar
->   cambio de sede** (es gratis). Puede ser un update directo de `socio.sede_id`
->   (con RLS del socio) o una RPC `cambiar_mi_sede(p_sede_id)` si prefieren que el
->   panel la exponga — avísenme y la creo. Recepción también lo hace desde la ficha.
-> - Al mostrar el carnet, si el socio intenta entrar a otra sede y su plan no es
->   multisede, el check-in del kiosco lo denegará (cuando se implemente la
->   validación de sede en `registrar_checkin` — hoy solo `checkin_manual` la aplica).
+> ## 📌 DEL PANEL A LA APP (2026-07-10) — Membresía por sede (TODAS las reglas)
+>
+> Modelo de negocio para gyms con **varias sedes**: la membresía del socio se ata
+> a la sede donde se registró. Es **opt-in por gym** — la mayoría NO lo usa, así
+> que por defecto todo sigue igual (cualquier socio entra a cualquier sede).
+>
+> ### Las reglas exactas (cómo se decide si un socio entra a una sede)
+> El socio PUEDE entrar a una sede si se cumple **cualquiera** de estas 3:
+> 1. **El gym no restringe** — `empresa.restringe_sede = false` (default). → entra
+>    a cualquier sede, siempre. La mayoría de gyms está así.
+> 2. **Es su propia sede** — la sede del check-in == `socio.sede_id`.
+> 3. **Tiene plan multisede activo** — su membresía activa y vigente usa un plan
+>    con `plan.multisede = true`. → entra a cualquier sede aunque el gym restrinja.
+>
+> Si NINGUNA se cumple → **denegado**, motivo `otra_sede`. Además, SIEMPRE se exige
+> membresía activa vigente (si no, motivo `membresia_vencida`, tiene prioridad).
+>
+> ### Datos (todos ya existen en la BD)
+> - `empresa.restringe_sede` (bool, default false) — el gym lo activa desde el
+>   panel (Config → Sedes, solo si tiene 2+ sedes).
+> - `socio.sede_id` — la sede a la que está atado el socio.
+> - `plan.multisede` (bool) — el plan "premium" que da acceso a todas las sedes
+>   (el gym lo cobra más caro; ya se marca en el panel: Membresías → plan →
+>   "Válido en todas las sedes").
+> - Helper server-side: `socio_puede_entrar_sede(p_socio_id, p_sede_id) → bool`
+>   (SECURITY DEFINER, grant a authenticated) — la app puede llamarlo para saber
+>   de antemano si el socio podrá entrar a una sede X.
+>
+> ### Cambiar de sede = GRATIS
+> El socio puede moverse de sede sin costo. Lo puede hacer:
+> - **Recepción** desde la ficha del socio (ya funciona: update `socio.sede_id`).
+> - **El socio desde la app** (esto es lo que la app debe agregar). Opciones:
+>   (a) update directo de `socio.sede_id` con la RLS del socio (`usuario_id =
+>   auth.uid()`), o (b) una RPC `cambiar_mi_sede(p_sede_id)` que el panel expone
+>   si prefieren validar server-side (que la sede pertenezca al mismo gym). **Si
+>   quieren la RPC, avísenme y la creo** — díganme cuál prefieren.
+>
+> ### Lo que la app debería mostrar/hacer
+> 1. En el **perfil del socio**, si su gym tiene 2+ sedes, mostrar su sede actual
+>    y permitir **cambiar de sede** (con el flujo de arriba). Si el gym no
+>    restringe, el cambio es cosmético pero igual útil (define su "sede base").
+> 2. Opcional: en el **carnet**, si `restringe_sede` y el plan NO es multisede,
+>    aclarar "Válido en: <nombre de su sede>" para que el socio sepa. El bootstrap
+>    del socio puede exponer `restringe_sede` + `plan.multisede` si lo necesitan
+>    para pintar esto — pídanlo y lo agrego a `get_mi_app_bootstrap`.
+>
+> ### Estado del check-in (importante)
+> - **`checkin_manual`** (recepción/lector manual): YA valida la sede. ✅
+> - **`registrar_checkin`** (kiosco QR de la app): **aún NO valida la sede** — hay
+>   un matiz (el kiosco debe validar contra la sede FÍSICA donde está instalado,
+>   no la del socio) que el panel resolverá en una siguiente iteración. Por ahora
+>   el kiosco deja entrar sin chequear sede. Si sus gyms con este modelo usan el
+>   modo kiosco, avísenme para priorizarlo.
+>
+> **Nada de esto bloquea a la app hoy** — es funcionalidad nueva para gyms
+> multi-sede que trabajan con membresía por local. Coordinar el flujo de cambio
+> de sede (RPC vs update directo) antes de implementarlo.
 
 > ## ✅ RESUELTOS por el panel (2026-07-09, tanda 20-24)
 > - **PEDIDO 20** ✅ Webhook leía el payment con token FitCore en vez del gym
