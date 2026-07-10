@@ -35,6 +35,13 @@ export const BASE_TOKENS = {
   danger: '#E24B4A',
   dangerBg: '#FCEAEA',
   dangerTint: '#F5CFCF',
+  // Aviso / atención (ámbar). El panel ya venía usando este ámbar de facto
+  // para avisos; se formaliza como token para que todos lo usen igual.
+  warning: '#B45309', // texto/acento ámbar (contraste AA sobre warningBg)
+  warningStrong: '#92400E', // texto ámbar más oscuro (títulos de aviso)
+  warningBg: '#FEF3C7', // fondo suave de aviso
+  warningSoft: '#F59E0B', // relleno sólido (botón/badge de aviso)
+  warningBorder: '#FDE68A', // borde de card de aviso
 
   // Neutros / texto
   ink: '#141B2E', // texto principal

@@ -484,7 +484,7 @@ function FotosPorAprobar({ empresaId }) {
               {f.evento && <div className="text-[11px] font-semibold text-muted">{f.evento}</div>}
               <div className="mt-2 flex gap-2">
                 <button onClick={() => moderar.mutate({ fotoId: f.id, aprobar: true })} disabled={moderar.isPending}
-                  className="flex-1 cursor-pointer rounded-[8px] border-none bg-green-600 py-1.5 text-[12px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">Aprobar</button>
+                  className="flex-1 cursor-pointer rounded-[8px] border-none bg-green py-1.5 text-[12px] font-extrabold text-white hover:bg-green-600 disabled:opacity-50">Aprobar</button>
                 <button onClick={() => moderar.mutate({ fotoId: f.id, aprobar: false })} disabled={moderar.isPending}
                   className="flex-1 cursor-pointer rounded-[8px] border border-line bg-white py-1.5 text-[12px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Rechazar</button>
               </div>

@@ -10,6 +10,7 @@ import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor } from '../hooks/useClientes.js'
 import { toast } from '../lib/toast.js'
 import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
+import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function fmtFecha(iso) {
   if (!iso) return '—'
@@ -93,7 +94,7 @@ function Ficha({ socioId, onBack, onVerSocio }) {
           </div>
           <div className="flex gap-2">
             <button onClick={() => onValidarFoto(true)} disabled={validarFoto.isPending}
-              className="cursor-pointer rounded-[9px] border-none bg-green-600 px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">Aprobar</button>
+              className="cursor-pointer rounded-[9px] border-none bg-green px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-green-600 disabled:opacity-50">Aprobar</button>
             <button onClick={() => onValidarFoto(false)} disabled={validarFoto.isPending}
               className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Rechazar</button>
           </div>
@@ -107,10 +108,10 @@ function Ficha({ socioId, onBack, onVerSocio }) {
         <EditarSocioModal socio={ficha} onClose={() => setEditOpen(false)} onSaved={refetch} />
       )}
 
-      <div className="mt-[18px] grid grid-cols-2 gap-[15px]">
+      <div className="mt-[18px] grid grid-cols-1 gap-[15px] lg:grid-cols-2">
         <Card className="p-[19px]">
           <div className="mb-3 text-[14px] font-extrabold">Datos del socio</div>
-          <div className="grid grid-cols-2 gap-[13px]">
+          <div className="grid grid-cols-2 gap-[13px] sm:grid-cols-2">
             <Field label="Edad" value={edadDe(ficha.fecha_nacimiento)} />
             <Field label="Teléfono" value={ficha.telefono || '—'} />
             <Field label="Talla" value={ficha.talla_m ? `${ficha.talla_m} m` : '—'} />
@@ -371,9 +372,9 @@ function AutorizacionMenor({ socioId }) {
         <div>
           <div className="flex items-center gap-2 text-[13.5px] font-extrabold">
             🧒 Autorización del apoderado
-            {estado === 'autorizada' ? <Badge bg="#E6F5EF" color="#1D9E75">Autorizado</Badge>
-              : estado === 'revocada' ? <Badge bg="#FEE2E2" color="#B91C1C">Revocada</Badge>
-              : <Badge bg="#FEF3C7" color="#92400E">Sin autorización</Badge>}
+            {estado === 'autorizada' ? <Badge bg={T.successBg} color={T.success}>Autorizado</Badge>
+              : estado === 'revocada' ? <Badge bg={T.dangerBg} color={T.danger}>Revocada</Badge>
+              : <Badge bg={T.warningBg} color={T.warningStrong}>Sin autorización</Badge>}
           </div>
           {estado === 'autorizada' && (
             <div className="mt-0.5 text-[12px] font-semibold text-muted">

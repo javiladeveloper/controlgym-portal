@@ -300,7 +300,7 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
             <div className="flex items-center gap-2">
               <button disabled={responder.isPending}
                 onClick={() => responder.mutate({ solicitud: s, aprobar: true }, { onError: (e) => toast.error(e.message) })}
-                className="cursor-pointer rounded-[9px] border-none bg-green-600 px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">
+                className="cursor-pointer rounded-[9px] border-none bg-green px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-600 disabled:opacity-50">
                 ✓ Aprobar{s.carga_deseada ? ` ${s.carga_deseada}` : ''}
               </button>
               <button onClick={() => { setRechazando(s.id); setNota('') }}

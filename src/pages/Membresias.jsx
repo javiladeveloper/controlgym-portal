@@ -488,7 +488,7 @@ export default function Membresias() {
                 <div className="text-[13px] font-bold">{m.plan?.nombre}</div>
                 {saldoDe(m) > 0 ? (
                   <button onClick={() => setAbonando(m)} title="Pagó en partes — clic para registrar un abono"
-                    className={`cursor-pointer rounded-full border-none px-2 py-0.5 text-[10.5px] font-extrabold ${m.estado === 'vencida' ? 'bg-red text-white hover:bg-red-600' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}`}>
+                    className={`cursor-pointer rounded-full border-none px-2 py-0.5 text-[10.5px] font-extrabold ${m.estado === 'vencida' ? 'bg-red text-white hover:opacity-90' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}`}>
                     {m.estado === 'vencida' ? '🚨 ' : ''}Debe {money(saldoDe(m), moneda)} · Abonar
                   </button>
                 ) : (

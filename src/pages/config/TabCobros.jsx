@@ -132,7 +132,7 @@ export default function TabCobros() {
         <Card className="p-5">
           <div className="flex items-center gap-2">
             <div className="text-[14.5px] font-extrabold">Pagos por activar</div>
-            <Badge bg={T.warningBg || '#FEF3E2'} color={T.warning || '#B7791F'}>{pagos.length}</Badge>
+            <Badge bg={T.warningBg} color={T.warningStrong}>{pagos.length}</Badge>
           </div>
           <p className="mt-0.5 text-[12px] font-semibold text-muted">
             Socios nuevos que pagaron su membresía desde la app. Actívalos para registrarlos en tu gimnasio.
