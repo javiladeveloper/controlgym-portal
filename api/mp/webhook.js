@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         // dispara el worker al vuelo (best-effort, no bloquea el 200 del webhook)
         const selfUrl = env('SELF_URL') || ''
         if (selfUrl) {
-          fetch(`${selfUrl}/api/facturacion/emitir`, {
+          fetch(`${selfUrl}/api/facturacion`, {
             method: 'POST', headers: { authorization: `Bearer ${env('CRON_SECRET')}` },
           }).catch(() => {})
         }

@@ -47,7 +47,7 @@ export function useProbarNorac() {
   return useMutation({
     mutationFn: async () => {
       const jwt = (await supabase.auth.getSession()).data.session?.access_token
-      const res = await fetch('/api/facturacion/probar', {
+      const res = await fetch('/api/facturacion?action=probar', {
         method: 'POST',
         headers: { authorization: `Bearer ${jwt}` },
       })

@@ -99,7 +99,7 @@ export default function TabPlan() {
     setBusy(true); setFase('activando'); setMsg(null)
     try {
       const { data: sess } = await supabase.auth.getSession()
-      const res = await fetch('/api/culqi/agregar-app', {
+      const res = await fetch('/api/culqi?action=agregar-app', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -136,7 +136,7 @@ export default function TabPlan() {
           setFase('activando')
           try {
             const { data: sess } = await supabase.auth.getSession()
-            const res = await fetch('/api/culqi/suscribir', {
+            const res = await fetch('/api/culqi?action=suscribir', {
               method: 'POST',
               headers: {
                 'content-type': 'application/json',

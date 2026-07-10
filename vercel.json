@@ -4,6 +4,6 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/facturacion/emitir", "schedule": "0 3 * * *" }
+    { "path": "/api/facturacion", "schedule": "0 3 * * *" }
   ]
 }
