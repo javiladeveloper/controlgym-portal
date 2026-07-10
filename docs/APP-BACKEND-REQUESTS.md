@@ -1405,3 +1405,44 @@ Impacto: importante en producción (multi-gym). No bloquea la app; es del panel.
 Mientras tanto el owner prueba con incógnito.
 
 Creado: 2026-07-09 (sesión de la app).
+
+---
+
+PEDIDO 22 -- 3 RPCs para el tab "Hoy" del entrenador en la app
+
+La app agrega un tab "Hoy" al entrenador (trabajo diario en un vistazo). Diseño:
+controlgym-app/docs/superpowers/specs/2026-07-09-trainer-tab-hoy-design.md.
+Las tarjetas son defensivas: si la RPC no existe, la tarjeta simplemente no
+aparece — así la app ya lanza el tab con la parte que sí tiene datos (bandeja de
+ayuda, que ya funciona). Estas 3 RPCs enriquecen el resto cuando puedan.
+
+Todas: SECURITY DEFINER, grant execute to authenticated, scope al gym del staff
+(solo su empresa; validar que auth.uid() sea staff de p_empresa_id). Devuelven
+jsonb (la app decodifica con decodeAs, como catalogo_app).
+
+1) resumen_dia_trainer(p_empresa_id uuid) → jsonb
+   { presentes_hoy, socios_activos, adherencia_promedio, entrenaron_hoy }
+   - presentes_hoy: socios con checkin HOY en el gym.
+   - socios_activos: socios con estado activo / membresía vigente.
+   - adherencia_promedio: % promedio del gym (rango sugerido últimos 14 días;
+     el panel define la fórmula exacta, misma base que el semáforo del socio).
+   - entrenaron_hoy: registros de entreno de HOY (registro_entreno).
+
+2) cargas_pendientes_gym(p_empresa_id uuid) → jsonb array
+   [{ socio_id, socio_nombre, ejercicio, carga_pedida }, ...]
+   - Las solicitudes de subir carga de TODO el gym que esperan veredicto del
+     trainer (hoy la app solo las ve entrando a la ficha de cada socio, con
+     SolicitudesRepositorio.pendientesDe(socioId)). Esto es la versión global.
+
+3) socios_en_riesgo(p_empresa_id uuid, p_dias int) → jsonb array
+   [{ socio_id, nombre, dias_sin_venir }, ...]
+   - Socios activos (membresía vigente) que NO tienen checkin en los últimos
+     p_dias días (la app llama con p_dias=7). Usa la tabla `checkin`.
+   - Ordenar por dias_sin_venir DESC (los más "fríos" primero).
+   - Solo aplica si el gym controla acceso (carnet QR). Si el gym no usa checkin,
+     puede devolver [] y la app oculta la tarjeta.
+
+Impacto: mejora de UX del trainer, no bloqueante. La app ya construye el tab con
+lo que hay; estas RPCs lo completan. Es tarea del panel/backend.
+
+Creado: 2026-07-09 (sesión de la app).
