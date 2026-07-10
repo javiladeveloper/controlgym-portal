@@ -1786,6 +1786,29 @@ Creado: 2026-07-09 (sesión de la app).
 
 PEDIDO 28 -- Conectar el webhook de MercadoPago con NORAC (emisión de boleta SUNAT)
 
+✅ RESUELTO (2026-07-10, sesión del panel). Se construyó el subsistema completo de
+facturación electrónica NORAC en la rama feat/facturacion. El webhook ya crea el
+comprobante al aprobarse el pago y un worker lo emite a NORAC. NADA pendiente del
+lado de la app (solo abre el checkout, como decía). Detalles de la implementación:
+  - AUTH: se usa `X-API-Key: nrk_<...>` (API key scope=company por gym), NO el
+    `JWT + X-Company-Id` que describía este pedido — ese método era de la doc
+    API.md vieja; NORAC evolucionó a API keys y el owner confirmó que es el vigente.
+  - El gym pega su API key en el panel (Config › Facturación), guardada CIFRADA.
+    No hay tabla puente empresa→company_id: la key ya trae su company (scope).
+  - Emisión asíncrona (cola `comprobante` + worker `api/facturacion/emitir.js`,
+    cron cada 2 min + disparo al vuelo tras el pago). Best-effort: nunca tumba el
+    webhook. Claim atómico anti-doble-emisión.
+  - IGV: precios CON IGV → se desglosa a valor_unitario sin IGV (6 decimales para
+    cuadrar exacto, SUNAT/UBL lo permite). afectacion_igv='10'.
+  - CORREO: sí, NORAC manda la boleta por email al receptor.email — el worker lo
+    puebla con el email del socio. FitCore no manda el correo.
+  - Diseño completo: docs/superpowers/plans/2026-07-10-facturacion-config-y-emision.md
+  - PENDIENTE del owner (no del panel ni de la app): cargar en NORAC el certificado
+    .pfx + Clave SOL de cada gym + sunat_mode=production; y correr el E2E real con
+    una API key de NORAC beta. Vars de Vercel: CRON_SECRET, SELF_URL.
+
+--- pedido original (obsoleto, se deja como referencia histórica) ---
+
 ⚠️ NO es de la app; es backend/panel. La app no participa (solo abre el checkout).
 Lo canaliza la sesión de la app porque el owner ya coordinó con el equipo de Norac.
 
