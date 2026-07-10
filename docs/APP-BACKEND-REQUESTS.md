@@ -51,17 +51,31 @@
 >    del socio puede exponer `restringe_sede` + `plan.multisede` si lo necesitan
 >    para pintar esto — pídanlo y lo agrego a `get_mi_app_bootstrap`.
 >
-> ### Estado del check-in (importante)
-> - **`checkin_manual`** (recepción/lector manual): YA valida la sede. ✅
-> - **`registrar_checkin`** (kiosco QR de la app): **aún NO valida la sede** — hay
->   un matiz (el kiosco debe validar contra la sede FÍSICA donde está instalado,
->   no la del socio) que el panel resolverá en una siguiente iteración. Por ahora
->   el kiosco deja entrar sin chequear sede. Si sus gyms con este modelo usan el
->   modo kiosco, avísenme para priorizarlo.
+> ### Staff (trainers/personal): SIN restricción de sede, pero registra dónde marca
+> El staff **NO** se bloquea por sede (rota libremente entre sedes). Pero su
+> ingreso debe quedar registrado en la sede **física** donde marca. Por eso:
+> - **`registrar_checkin`** (kiosco) ahora recibe **`p_sede_id`** = la sede FÍSICA
+>   donde está el kiosco. Firma nueva:
+>   `registrar_checkin(p_token, p_origen, p_dispositivo, p_sede_id)`. **La app
+>   DEBE mandarlo.**
+>   - Con `p_sede_id` → el checkin y (si es staff) su `asistencia_staff` quedan en
+>     ESA sede (la del kiosco). Correcto para staff que rota.
+>   - Sin `p_sede_id` → compat: cae a la sede deducida (del socio o la asignada
+>     del staff). Para multi-sede **mándenlo siempre**.
+>   - **Acción app:** cada kiosco debe conocer su sede (al activar el modo kiosco,
+>     el recepcionista elige la sede del dispositivo) y pasarla como `p_sede_id`.
+>     Si necesitan exponer la sede en el bootstrap/config del kiosco, avísenme.
 >
-> **Nada de esto bloquea a la app hoy** — es funcionalidad nueva para gyms
-> multi-sede que trabajan con membresía por local. Coordinar el flujo de cambio
-> de sede (RPC vs update directo) antes de implementarlo.
+> ### Estado del check-in por sede
+> - **`checkin_manual`** (recepción): valida sede del SOCIO + registra la sede. ✅
+> - **`registrar_checkin`** (kiosco): registra la sede física (`p_sede_id`) para
+>   socios y staff. ✅ La **validación de sede del socio** en el kiosco (denegar al
+>   socio que no puede entrar a esa sede física) es el siguiente paso — hoy el
+>   kiosco registra la sede correcta pero aún no deniega al socio por sede. Si sus
+>   gyms multi-sede usan kiosco + membresía por sede, avísenme y lo priorizo.
+>
+> **Nada de esto bloquea a la app hoy.** Coordinar: (1) flujo de cambio de sede
+> (RPC vs update directo), (2) que el kiosco mande `p_sede_id`.
 
 > ## ✅ RESUELTOS por el panel (2026-07-09, tanda 20-24)
 > - **PEDIDO 20** ✅ Webhook leía el payment con token FitCore en vez del gym
