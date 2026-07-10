@@ -1681,6 +1681,38 @@ mensaje de sede en el carnet). El enrutamiento inteligente es 100% backend.
 
 Creado: 2026-07-09 (sesión de la app).
 
+> ### ✅ RESUELTO por el panel (2026-07-10) — partes 1 y 2
+> **Parte 1 (bootstrap):** `get_mi_app_bootstrap` ya expone en cada `empresa`:
+>   - `restringe_sede` (bool) y `sede_nombre` (nombre de la sede del socio).
+>   La app los lee para el carnet ("Válido en: <sede>" o "todas las sedes").
+>   Migración `20260710000002`. Probado (Nora → restringe_sede=false, sede_nombre="Sede Principal").
+>
+> **Parte 2 (ayuda enrutada por sede):** implementado 100% backend, la app casi
+> no cambia:
+>   - **Push:** el trigger `trg_solicitud_ayuda_alta` ahora usa
+>     `trainers_para_ayuda(empresa, sede_del_socio)` → si el gym usa control de
+>     acceso (qr_kiosco/qr_lector/biometrico), el push va SOLO a los trainers
+>     presentes cuya sede de check-in de hoy = la del socio; si no, a todos.
+>   - **Bandeja:** nueva RPC **`bandeja_ayuda()`** (sin args, usa la sesión del
+>     trainer) que devuelve las ayudas `pendiente/en_camino` filtradas por SU sede
+>     (su último check-in de entrada de hoy) cuando el gym usa control de acceso;
+>     si no, todas. Migración `20260710000003`. **ACCIÓN APP:** migrar la lectura
+>     de la bandeja de `from("solicitud_ayuda")` directo → `rpc("bandeja_ayuda")`.
+>     Devuelve el mismo shape (id, motivo, ejercicio_nombre, ubicacion_texto,
+>     mensaje_socio, estado, atendida_por, creado_at, sede_id, socio{nombre,codigo},
+>     atiende{nombre}). Los estados activos siguen siendo pendiente/en_camino.
+>
+> **Sede del socio (para enrutar):** su check-in de entrada de hoy → si no marcó,
+> `solicitud_ayuda.sede_id` → si no, `socio.sede_id`.
+>
+> **Parte 3 (check-in de ingreso obligatorio del trainer):** es regla de flujo/UX
+> del panel — el check-in del trainer ya determina su sede; reforzar el recordatorio
+> en el panel queda para una iteración de UX (no bloquea). El backend ya asume que
+> la sede del trainer = su check-in de hoy (con fallback a asistencia_staff).
+>
+> **Owner decidió:** el socio NO cambia de sede desde la app (solo la ve). Por eso
+> NO se creó `cambiar_mi_sede`. Recepción lo hace desde el panel (ya funciona).
+
 ---
 
 PEDIDO 27 -- Exponer empresa.estado en el bootstrap (bloqueo suave del gym vencido)
