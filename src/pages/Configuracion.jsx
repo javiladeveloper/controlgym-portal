@@ -2,29 +2,29 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import TabMarca from './config/TabMarca.jsx'
 import TabWeb from './config/TabWeb.jsx'
-import TabSedes from './config/TabSedes.jsx'
-import TabNegocio from './config/TabNegocio.jsx'
 import TabPlan from './config/TabPlan.jsx'
 import TabCobros from './config/TabCobros.jsx'
-import TabAcceso from './config/TabAcceso.jsx'
-import TabCamaras from './config/TabCamaras.jsx'
+import TabAccesoCamaras from './config/TabAccesoCamaras.jsx'
+import TabNegocioSedes from './config/TabNegocioSedes.jsx'
 
 const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
   { key: 'cobros', label: 'Cobros 💰', Comp: TabCobros },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'pagina', label: 'Página web', Comp: TabWeb },
-  { key: 'sedes', label: 'Sedes', Comp: TabSedes },
-  { key: 'acceso', label: 'Control de acceso', Comp: TabAcceso },
-  { key: 'camaras', label: 'Cámaras 📹', Comp: TabCamaras },
-  { key: 'negocio', label: 'Datos del negocio', Comp: TabNegocio },
+  { key: 'acceso', label: 'Acceso y cámaras', Comp: TabAccesoCamaras },
+  { key: 'negocio', label: 'Datos del negocio', Comp: TabNegocioSedes },
 ]
+
+// Deep-links viejos → nueva pestaña que los contiene (no romper enlaces guardados).
+const ALIAS = { sedes: 'negocio', camaras: 'acceso' }
 
 export default function Configuracion() {
   const { empresa } = useAuth()
   // Deep-link: /configuracion?tab=marca abre esa pestaña directo
   const [tab, setTab] = useState(() => {
-    const t = new URLSearchParams(window.location.search).get('tab')
+    let t = new URLSearchParams(window.location.search).get('tab')
+    t = ALIAS[t] || t
     return TABS.some((x) => x.key === t) ? t : 'plan'
   })
   const Active = TABS.find((t) => t.key === tab)?.Comp
