@@ -180,6 +180,8 @@ export default function TabPaginaWeb() {
   const { empresa, tema, reloadBootstrap } = useAuth()
   const guardar = useGuardarEmpresa(empresa?.id)
   const [L, setL] = useState(null) // objeto landing en edición
+  const [eslogan, setEslogan] = useState('')             // columna empresa.eslogan
+  const [bienvenida, setBienvenida] = useState('')       // columna empresa.mensaje_bienvenida
   const [ok, setOk] = useState(false)
   const [busy, setBusy] = useState('')
   const heroRef = useRef(null)
@@ -243,13 +245,19 @@ export default function TabPaginaWeb() {
   }
 
   useEffect(() => {
-    if (empresa) setL(landingBase(empresa))
+    if (empresa) {
+      setL(landingBase(empresa))
+      setEslogan(empresa.eslogan || '')
+      setBienvenida(empresa.mensaje_bienvenida || '')
+    }
   }, [empresa])
 
   if (!L) return <div className="text-[13px] text-muted">Cargando…</div>
   const upd = (patch) => { setL((s) => ({ ...s, ...patch })); setOk(false) }
-  // ¿Hay cambios sin guardar respecto al último landing guardado?
+  // ¿Hay cambios sin guardar respecto al último landing/textos guardado?
   const dirty = JSON.stringify(L) !== JSON.stringify(landingBase(empresa))
+    || eslogan !== (empresa?.eslogan || '')
+    || bienvenida !== (empresa?.mensaje_bienvenida || '')
 
   // Antes de subir la portada, revisamos que la imagen sirva como fondo:
   // resolución suficiente y sin formato banner (esos traen texto y se cortan).
@@ -296,7 +304,7 @@ export default function TabPaginaWeb() {
   }
 
   function onGuardar() {
-    guardar.mutate({ landing: L }, {
+    guardar.mutate({ landing: L, eslogan, mensaje_bienvenida: bienvenida }, {
       onSuccess: async () => { setOk(true); await reloadBootstrap() },
       onError: (e) => alert('No se pudo guardar: ' + e.message),
     })
@@ -304,15 +312,38 @@ export default function TabPaginaWeb() {
 
   return (
     <div className="max-w-[820px]">
-      {/* Portada */}
+      {/* Textos de portada: titular (eslogan) y subtítulo (mensaje de bienvenida)
+          que se muestran sobre la foto de portada de la página pública. Antes
+          vivían en una pestaña "Textos" aparte; se integran aquí porque es donde
+          se ven. Son columnas de empresa, no del jsonb landing. */}
       <Card className="p-[19px]">
+        <div className="text-[14.5px] font-extrabold">Textos de portada</div>
+        <p className="mt-0.5 text-[12px] font-semibold text-muted">El eslogan y el mensaje que aparecen sobre la foto de portada de tu página.</p>
+        <div className="mt-4 flex flex-col gap-3.5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Eslogan</span>
+            <input value={eslogan} onChange={(e) => { setEslogan(e.target.value); setOk(false) }} placeholder="Tu mejor versión empieza hoy"
+              className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Mensaje de bienvenida</span>
+            <textarea value={bienvenida} onChange={(e) => { setBienvenida(e.target.value); setOk(false) }} rows={3}
+              placeholder="¡Bienvenido a nuestra comunidad fitness!"
+              className="resize-none rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+          </label>
+        </div>
+      </Card>
+
+      {/* Portada */}
+      <Card className="mt-4 p-[19px]">
         <div className="text-[14.5px] font-extrabold">Foto de portada (hero)</div>
         <p className="mt-0.5 text-[12px] font-semibold text-muted">Imagen de fondo del banner principal de tu página.</p>
         <div className="mt-4 overflow-hidden rounded-xl border border-line" style={{ height: 180, background: '#141B2E', position: 'relative' }}>
           {L.hero_url && <img src={L.hero_url} alt="" className="h-full w-full object-cover" style={{ objectPosition: `center ${L.hero_pos ?? 50}%` }} />}
           <div className="absolute inset-0" style={{ background: `rgba(20,27,46,${L.hero_overlay})` }} />
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-            <div className="text-[18px] font-extrabold">{empresa.eslogan || 'Tu eslogan aquí'}</div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
+            <div className="text-[18px] font-extrabold">{eslogan || 'Tu eslogan aquí'}</div>
+            {bienvenida && <div className="mt-1 text-[12px] font-semibold text-white/75 line-clamp-2">{bienvenida}</div>}
           </div>
         </div>
         <div className="mt-3 flex items-center gap-4">
@@ -892,7 +923,7 @@ export default function TabPaginaWeb() {
         {/* Descartar: revierte al último guardado (como en Marca). Nota: las
             imágenes ya subidas al storage no se borran aquí — solo se quita su
             referencia del landing sin guardar. */}
-        {dirty && <button onClick={() => { setL(landingBase(empresa)); setOk(false) }}
+        {dirty && <button onClick={() => { setL(landingBase(empresa)); setEslogan(empresa.eslogan || ''); setBienvenida(empresa.mensaje_bienvenida || ''); setOk(false) }}
           className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Descartar</button>}
         {ok && <span className="text-[13px] font-extrabold text-green-600">Guardado ✓</span>}
         {empresa.slug && <a href={urlPublica(empresa.slug)} target="_blank" rel="noreferrer" className="ml-auto text-[13px] font-extrabold text-orange">Ver mi página →</a>}

@@ -7,7 +7,6 @@ import TabSedes from './config/TabSedes.jsx'
 import TabContacto from './config/TabContacto.jsx'
 import TabRedes from './config/TabRedes.jsx'
 import TabRegional from './config/TabRegional.jsx'
-import TabTextos from './config/TabTextos.jsx'
 import TabPlan from './config/TabPlan.jsx'
 import TabCobros from './config/TabCobros.jsx'
 import TabAcceso from './config/TabAcceso.jsx'
@@ -25,7 +24,6 @@ const TABS = [
   { key: 'contacto', label: 'Contacto', Comp: TabContacto },
   { key: 'redes', label: 'Redes sociales', Comp: TabRedes },
   { key: 'regional', label: 'Regional', Comp: TabRegional },
-  { key: 'textos', label: 'Textos', Comp: TabTextos },
 ]
 
 export default function Configuracion() {
