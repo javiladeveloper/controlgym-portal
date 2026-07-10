@@ -63,12 +63,28 @@ function CheckinModal({ sedeId, onClose }) {
         p_socio_id: socio.id, p_sede_id: sedeId, p_direccion: direccion,
       })
       if (error) { setResultado({ resultado: 'error', motivo: error.message, socio: socio.nombre }); return }
-      setResultado(data)
+      setResultado({ ...data, socio_id: socio.id }) // guardamos el id para el cambio de sede
       qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
       qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
       qc.invalidateQueries({ queryKey: ['asistencia-hora', sedeId] })
     } catch (e) {
       setResultado({ resultado: 'error', motivo: e?.message || 'Error de red', socio: socio.nombre })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Cambiar al socio a ESTA sede (gratis) cuando fue denegado por 'otra_sede'.
+  // Actualiza socio.sede_id y reintenta el check-in.
+  async function cambiarSedeYReintentar() {
+    if (!resultado?.socio_id) return
+    setBusy(true)
+    try {
+      const { error } = await supabase.from('socio').update({ sede_id: sedeId }).eq('id', resultado.socio_id)
+      if (error) throw error
+      await registrar({ id: resultado.socio_id, nombre: resultado.socio }, 'entrada')
+    } catch (e) {
+      setResultado({ ...resultado, motivo: e.message })
     } finally {
       setBusy(false)
     }
@@ -85,11 +101,20 @@ function CheckinModal({ sedeId, onClose }) {
             <div className="mt-1 text-[14px] font-bold">{resultado.socio}</div>
             {resultado.motivo && (
               <div className="mt-1.5 text-[12.5px] font-bold text-red">
-                {resultado.motivo === 'membresia_vencida' ? 'Membresía vencida — ofrécele renovar' : resultado.motivo}
+                {resultado.motivo === 'membresia_vencida' ? 'Membresía vencida — ofrécele renovar'
+                  : resultado.motivo === 'otra_sede' ? 'Su membresía es de otra sede'
+                  : resultado.motivo}
               </div>
             )}
           </div>
-          <div className="mt-4 flex gap-2.5">
+          {/* Denegado por sede: opción de moverlo a esta sede (gratis) */}
+          {resultado.motivo === 'otra_sede' && resultado.socio_id && (
+            <button onClick={cambiarSedeYReintentar} disabled={busy}
+              className="mt-3 w-full cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-60">
+              Cambiar a esta sede y dejar entrar (gratis)
+            </button>
+          )}
+          <div className="mt-3 flex gap-2.5">
             <button onClick={() => { setResultado(null); setQ('') }}
               className="flex-1 cursor-pointer rounded-[10px] border border-line bg-white py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">Otro socio</button>
             <button onClick={onClose}

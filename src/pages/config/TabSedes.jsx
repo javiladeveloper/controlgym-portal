@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, PrimaryButton, Badge } from '../../components/ui.jsx'
 import { LoadingState, ErrorState } from '../../components/states.jsx'
 import { useRef } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useSedes, useGuardarSede, subirImagen } from '../../hooks/useConfiguracion.js'
+import { useSedes, useGuardarSede, useGuardarEmpresa, subirImagen } from '../../hooks/useConfiguracion.js'
+import { supabase } from '../../lib/supabaseClient.js'
+import { toast } from '../../lib/toast.js'
 import DireccionAutocomplete from '../../components/forms/DireccionAutocomplete.jsx'
 import { BASE_TOKENS as T } from '../../theme/tokens.js'
 
@@ -13,9 +15,26 @@ export default function TabSedes() {
   const { empresa } = useAuth()
   const sedes = useSedes(empresa?.id)
   const guardar = useGuardarSede(empresa?.id)
+  const guardarEmpresa = useGuardarEmpresa(empresa?.id)
   const [edit, setEdit] = useState(null) // objeto sede en edición (o EMPTY para nueva)
   const [subiendo, setSubiendo] = useState(false)
   const fotoRef = useRef(null)
+
+  // Flag "membresía por sede": el socio solo entra a la sede donde se registra.
+  const [restringe, setRestringe] = useState(null) // null = cargando
+  useEffect(() => {
+    if (!empresa?.id) return
+    supabase.from('empresa').select('restringe_sede').eq('id', empresa.id).single()
+      .then(({ data }) => setRestringe(data?.restringe_sede ?? false))
+  }, [empresa?.id])
+  function toggleRestringe(nuevo) {
+    setRestringe(nuevo)
+    guardarEmpresa.mutate({ restringe_sede: nuevo }, {
+      onSuccess: () => toast.ok(nuevo ? 'Membresía atada a la sede' : 'Acceso libre a todas las sedes'),
+      onError: (e) => { setRestringe(!nuevo); toast.error(e.message) },
+    })
+  }
+  const nSedes = sedes.data?.length || 0
 
   async function subirFoto(file) {
     setSubiendo(true)
@@ -39,6 +58,29 @@ export default function TabSedes() {
         <p className="text-[13px] font-semibold text-muted">Gestiona las sedes de tu empresa: ubicación, aforo y estado.</p>
         {!edit && <PrimaryButton onClick={() => setEdit({ ...EMPTY })}>Nueva sede</PrimaryButton>}
       </div>
+
+      {/* Membresía por sede: solo tiene sentido con 2+ sedes */}
+      {nSedes >= 2 && restringe !== null && (
+        <Card className="mt-4 p-[19px]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[14px] font-extrabold">Membresía atada a la sede</div>
+              <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">
+                Si lo activas, cada socio <b>solo entra a la sede donde se registró</b>. Para acceder a
+                todas, necesita un <b>plan multisede</b> (lo marcas en Membresías). Cambiar a un socio de
+                sede es gratis desde su ficha. Déjalo apagado si tus socios entran a cualquier sede.
+              </div>
+            </div>
+            <button
+              onClick={() => toggleRestringe(!restringe)}
+              disabled={guardarEmpresa.isPending}
+              className={`relative mt-1 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${restringe ? 'bg-orange' : 'bg-line2'} disabled:opacity-60`}
+              aria-label="Membresía por sede">
+              <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${restringe ? 'left-6' : 'left-1'}`} />
+            </button>
+          </div>
+        </Card>
+      )}
 
       {/* Formulario de alta/edición */}
       {edit && (
