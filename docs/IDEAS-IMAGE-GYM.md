@@ -32,7 +32,7 @@ de socios con deuda a quienes se les manda alerta virtual de pago.
 - **Dónde vive:** panel (lista de deudores + acción) · app socio (recibe el push).
 - **Esfuerzo:** medio. **Valor comercial: ALTO** (morosidad es el dolor #1).
 
-### 2. Foto del socio para reconocimiento facial (la sube él) 🔴 falta
+### 2. Foto del socio para reconocimiento facial (la sube él) ✅ HECHO (2026-07-10, backend+panel; falta app subir)
 **Qué pidió:** cada socio sube su propia foto; con estándares de cómo debe verse.
 - **Ya tenemos:** nada (socio no tiene columna de foto). El molinete facial es
   Fase 2 (hardware).

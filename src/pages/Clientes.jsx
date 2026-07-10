@@ -7,7 +7,8 @@ import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
-import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
+import { useClientes, useSocioFicha, useValidarFoto } from '../hooks/useClientes.js'
+import { toast } from '../lib/toast.js'
 import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
 
 function fmtFecha(iso) {
@@ -37,7 +38,15 @@ function imcDe(talla, peso) {
 function Ficha({ socioId, onBack, onVerSocio }) {
   const navigate = useNavigate()
   const { data: ficha, isLoading, error, refetch } = useSocioFicha(socioId)
+  const validarFoto = useValidarFoto()
   const [editOpen, setEditOpen] = useState(false)
+
+  function onValidarFoto(aprobar) {
+    validarFoto.mutate({ socioId, aprobar }, {
+      onSuccess: () => { toast.ok(aprobar ? 'Foto aprobada' : 'Foto rechazada'); refetch() },
+      onError: (e) => toast.error(e.message),
+    })
+  }
 
   if (isLoading) return <div className="px-7 pt-6"><LoadingState variant="cards" rows={2} /></div>
   if (error) return <div className="px-7 pt-6"><ErrorState error={error} onRetry={refetch} /></div>
@@ -55,7 +64,12 @@ function Ficha({ socioId, onBack, onVerSocio }) {
       </button>
 
       <div className="mt-4 flex items-center gap-4">
-        <Avatar ini={iniciales(ficha.nombre)} bg={av.bg} color={av.color} size={58} fontSize={19} />
+        {/* Foto del socio si la subió y está aprobada; si no, iniciales */}
+        {ficha.foto_url && ficha.foto_estado === 'aprobada' ? (
+          <img src={ficha.foto_url} alt={ficha.nombre} className="h-[58px] w-[58px] flex-shrink-0 rounded-full object-cover" />
+        ) : (
+          <Avatar ini={iniciales(ficha.nombre)} bg={av.bg} color={av.color} size={58} fontSize={19} />
+        )}
         <div className="flex-1">
           <div className="text-[21px] font-extrabold tracking-[-0.3px]">{ficha.nombre}</div>
           <div className="mt-0.5 text-[13px] font-semibold text-muted">
@@ -68,6 +82,23 @@ function Ficha({ socioId, onBack, onVerSocio }) {
           Generar rutina y dieta
         </PrimaryButton>
       </div>
+
+      {/* Foto pendiente de validar (la subió el socio desde su app) */}
+      {ficha.foto_estado === 'pendiente' && ficha.foto_url && (
+        <div className="mt-4 flex flex-wrap items-center gap-4 rounded-[12px] border border-amber-200 bg-amber-50 p-4">
+          <img src={ficha.foto_url} alt="" className="h-16 w-16 flex-shrink-0 rounded-[10px] object-cover" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[13.5px] font-extrabold text-amber-800">Foto por validar</div>
+            <div className="text-[12px] font-semibold text-amber-700">El socio subió su foto para el reconocimiento facial. Revísala: rostro de frente, buena luz, sin gorra ni lentes.</div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onValidarFoto(true)} disabled={validarFoto.isPending}
+              className="cursor-pointer rounded-[9px] border-none bg-green-600 px-3.5 py-2 text-[12.5px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50">Aprobar</button>
+            <button onClick={() => onValidarFoto(false)} disabled={validarFoto.isPending}
+              className="cursor-pointer rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">Rechazar</button>
+          </div>
+        </div>
+      )}
 
       {editOpen && (
         <EditarSocioModal socio={ficha} onClose={() => setEditOpen(false)} onSaved={refetch} />

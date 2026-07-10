@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 
 // Lista de socios de una sede, con su membresía vigente y última visita.
@@ -9,7 +9,7 @@ export function useClientes(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('socio')
-        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,precio_pagado,matricula_pagada,monto_pagado,plan(nombre,precio),promocion:promocion(id,nombre,tipo))')
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,foto_url,foto_estado,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,precio_pagado,matricula_pagada,monto_pagado,plan(nombre,precio),promocion:promocion(id,nombre,tipo))')
         .order('fecha_fin', { referencedTable: 'membresia', ascending: false })
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
@@ -28,7 +28,7 @@ export function useSocioFicha(socioId) {
     queryFn: async () => {
       const { data: socio, error } = await supabase
         .from('socio')
-        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,precio_pagado,matricula_pagada,monto_pagado,plan(nombre,precio),promocion:promocion(id,nombre,tipo))')
+        .select('id,codigo,nombre,documento,fecha_nacimiento,telefono,email,objetivo,talla_m,peso_kg,estado,es_menor,foto_url,foto_estado,membresia!membresia_socio_id_fkey(id,estado,fecha_inicio,fecha_fin,precio_pagado,matricula_pagada,monto_pagado,plan(nombre,precio),promocion:promocion(id,nombre,tipo))')
         .order('fecha_fin', { referencedTable: 'membresia', ascending: false })
         .eq('id', socioId)
         .single()
@@ -68,5 +68,18 @@ export function useSocioFicha(socioId) {
 
       return { ...socio, visitas: visitas || [], entradas8sem: entradas || [], grupoPromo }
     },
+  })
+}
+
+// Recepción aprueba/rechaza la foto que subió el socio (para el facial).
+export function useValidarFoto(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ socioId, aprobar }) => {
+      const { data, error } = await supabase.rpc('validar_foto_socio', { p_socio_id: socioId, p_aprobar: aprobar })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes', sedeId] }),
   })
 }

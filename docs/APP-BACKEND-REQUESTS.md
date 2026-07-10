@@ -19,6 +19,23 @@
 > 'recordatorio_pago', socio_id, ...}`. La app solo debe manejar el tap del push
 > (llevar al perfil/renovar). Usa el sistema de push existente — nada nuevo que
 > instalar, solo enrutar el `tipo` si quieren una pantalla específica.
+>
+> **3. Foto del socio (idea Image Gym #2) — la app la sube:** el socio sube su
+> propia foto desde su perfil (para el carnet y el futuro reconocimiento facial).
+>   - **Storage:** subir la imagen al bucket `branding` (mismo patrón que las
+>     fotos de producto/sede) bajo `<empresa_id>/socios/<socio_id>.jpg`, obtener
+>     su URL pública, y llamar la RPC **`subir_mi_foto(p_foto_url)`** → deja la
+>     foto en estado `pendiente`. (RPC ya creada, grant a authenticated.)
+>   - **Guía de estándares** (mostrar en la app antes de subir): rostro de
+>     **frente**, **buena luz**, **sin gorra ni lentes**, fondo claro, solo la
+>     persona. Idealmente cuadrada.
+>   - **Estado:** el bootstrap del socio ahora trae `socio.foto_url` +
+>     `socio.foto_estado` (`sin_foto` | `pendiente` | `aprobada` | `rechazada`).
+>     La app muestra: sin foto → botón "Subir mi foto"; pendiente → "En revisión";
+>     aprobada → la muestra en el carnet; rechazada → "Vuelve a subirla".
+>   - **Panel:** recepción ve la foto pendiente en la ficha del socio y la
+>     Aprueba/Rechaza (ya implementado). Un usuario socio en varios gyms: su foto
+>     se aplica a todas sus fichas y cada gym la valida por separado.
 
 > ## 📌 DEL PANEL A LA APP (2026-07-10) — Membresía por sede (TODAS las reglas)
 >
