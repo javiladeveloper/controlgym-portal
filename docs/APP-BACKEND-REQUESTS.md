@@ -1375,6 +1375,23 @@ estado-pago. No bloquea lo de arriba.
 
 Creado: 2026-07-09 (sesión de la app, con pago real de prueba).
 
+> ### ✅ RESUELTO por el panel (2026-07-09) — era el token equivocado
+> **Causa raíz encontrada:** el webhook leía el payment con `MP_ACCESS_TOKEN`
+> (token de FitCore/marketplace), pero en un pago con SPLIT el payment vive en la
+> cuenta DEL GYM. Resultado: `GET /v1/payments/168051294672` daba **404 Payment
+> not found** con el token de FitCore → el webhook salía en la línea `if
+> (!mpPay?.id) return 200` sin descontar stock. Confirmado en vivo: 404 con token
+> FitCore, 200 con token del gym.
+> **Fix (desplegado):** el webhook ahora intenta con el token de FitCore y, si da
+> 404, recorre los tokens de los gyms conectados (`empresa_mp`) hasta resolver el
+> payment y su `external_reference`. Los pagos futuros se procesan solos.
+> **Tu pago real reparado:** agua S/3 → aprobado, stock 21→20, ahora "por
+> entregar" en Kardex. (Había un 2º pago pendiente de las 21:59 que quedó sin
+> confirmar — si también lo pagaste, avisar para repararlo; no se tocó por no
+> tener confirmación de pago.)
+> `PANEL_URL` estaba bien (`https://app.fitcorecenter.com`) y el webhook responde
+> 200 — no era eso. Era el token.
+
 ---
 
 PEDIDO 21 -- Conectar cobros: forzar el SELECTOR de cuenta en el OAuth de MP
