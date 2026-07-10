@@ -1334,3 +1334,43 @@ Nota: `catalogo_app` NO debe exponer stock exacto (solo listar lo que tiene
 stock). El precio/monto lo valida `crear-pago` server-side igual que hoy.
 
 Creado: 2026-07-09 (sesión de la app).
+
+---
+
+PEDIDO 20 -- 🐛 Pago de producto APROBADO pero el webhook NO descontó el stock
+
+El flujo de compra desde la app funciona: el socio abre el checkout de MercadoPago
+y **paga de verdad** (aprobado). PERO el stock del kardex NO baja y la venta no
+aparece como "por entregar" en recepción. El webhook (api/mp/webhook.js) tiene el
+código correcto (registrar_mov_inventario 'venta' + estado_activacion=
+'pendiente_activacion'), así que el problema es que **el webhook no se ejecutó o
+falló** — no llegó la notificación de MP, o falló al procesarla.
+
+**Datos del pago real para rastrear (prueba E2E del owner, 2026-07-09):**
+- Producto: Agua mineral 625 ml — S/ 3, en MaximusGym.
+- Comprador/socio: jonathan.joan.avila@gmail.com (Jonathan Avila).
+- Vendedor (gym MP): Jonathan Huamolle, ID comerciante 69008504.
+- **N.º de operación MP: 168051294672**. Aprobado 9 jul 17:28. Interbank Débito.
+- El split operó: total S/3, comisión MP -S/1,30, el gym recibió S/1,70.
+
+**Qué revisar en el panel/backend:**
+1. ¿MercadoPago llamó a `${PANEL_URL}/api/mp/webhook`? Verificar que `PANEL_URL`
+   en Vercel apunte a la URL pública real (¿es app.fitcorecenter.com?). Si
+   `notification_url` está mal, MP nunca avisa → stock no baja.
+2. ¿La app de MP tiene el webhook configurado y la `notification_url` se acepta?
+   (a veces MP exige la URL registrada en el panel de MP Developers).
+3. Revisar logs del webhook en Vercel para ese pago (external_reference =
+   pago_app.id): ¿se ejecutó? ¿falló registrar_mov_inventario?
+4. Verificar en `pago_app` el estado del pago con operación 168051294672:
+   ¿quedó en 'pendiente' (webhook no llegó) o 'aprobado' pero sin descuento?
+
+Esto es 100% backend/panel: la app ya hizo su parte (checkout abierto, pago
+aprobado). El descuento de stock + "por entregar" + que recepción marque
+entregado ocurre en el webhook, no en la app.
+
+**Del lado app (opcional, para UX):** cuando el socio vuelve del checkout por el
+deep link, mostrar "✅ Compra lista, recoge en el gym" + código. Hoy la app abre
+el checkout pero no procesa el retorno; se puede conectar cuando definan
+estado-pago. No bloquea lo de arriba.
+
+Creado: 2026-07-09 (sesión de la app, con pago real de prueba).
