@@ -119,6 +119,10 @@ export default function TabCobros() {
               Te llevaremos a MercadoPago para autorizar la conexión. Necesitas ser el titular
               de la cuenta del gimnasio. Es gratis y puedes desconectarlo cuando quieras.
             </p>
+            <p className="mt-1.5 text-[11.5px] font-semibold text-faint">
+              Sugerencia: si tienes otra cuenta de MercadoPago abierta en el navegador, hazlo en
+              una ventana de incógnito para asegurarte de vincular la cuenta correcta del gimnasio.
+            </p>
           </div>
         )}
       </Card>

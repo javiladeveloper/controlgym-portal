@@ -27,14 +27,11 @@ export default async function handler(req, res) {
   authUrl.searchParams.set('redirect_uri', env('MP_REDIRECT_URI'))
   authUrl.searchParams.set('state', empresaId) // qué gym volvió (firmar/verificar en prod)
 
-  // Forzar el SELECTOR de cuenta: MP no expone prompt=select_account. Anteponemos
-  // el logout de MP (dominio Perú) que, al terminar, redirige a la authorization,
-  // para que el dueño del gym elija/inicie sesión con SU cuenta en vez de que MP
-  // reuse la sesión activa del navegador y vincule la equivocada. El parámetro de
-  // retorno de este logout es `go`. Si en algún flujo el logout no cortara la
-  // sesión, el panel recomienda además "Conectar cobros" en ventana de incógnito.
-  const url = new URL('https://www.mercadopago.com.pe/logout')
-  url.searchParams.set('go', authUrl.toString())
-
-  return res.status(200).json({ url: url.toString() })
+  // Redirige DIRECTO a la authorization de MercadoPago. (Antes anteponíamos
+  // `mercadopago.com.pe/logout?go=...` para forzar el selector de cuenta, pero
+  // MP no expone ese logout público con `go`: devolvía "esta página no existe" y
+  // rompía el flujo de conexión.) MP no tiene un `prompt=select_account`; para
+  // que el dueño no vincule por error la cuenta de la sesión activa, el panel
+  // recomienda hacer "Conectar cobros" en ventana de incógnito.
+  return res.status(200).json({ url: authUrl.toString() })
 }

@@ -9,8 +9,10 @@
 > - **PEDIDO 20** ✅ Webhook leía el payment con token FitCore en vez del gym
 >   (split) → 404 → no descontaba stock. Fix: recorre tokens de gyms conectados.
 >   Pago real del owner reparado. Desplegado.
-> - **PEDIDO 21** ✅ OAuth fuerza selector de cuenta: `oauth-start` antepone el
->   logout de MP (`mercadopago.com.pe/logout?go=<authorization>`). Desplegado.
+> - **PEDIDO 21** ⚠️ REVERTIDO: el prefijo `mercadopago.com.pe/logout?go=<authorization>`
+>   NO es una ruta pública de MP y devolvía "esta página no existe", rompiendo
+>   "Conectar cobros". `oauth-start` vuelve a redirigir DIRECTO a la authorization;
+>   el selector de cuenta se recomienda vía ventana de incógnito (nota en el panel).
 > - **PEDIDO 22** ✅ 3 RPCs del tab "Hoy" (`resumen_dia_trainer`,
 >   `cargas_pendientes_gym`, `socios_en_riesgo`) — migración `20260706000034`.
 >   Todas security definer, gating por `auth_empresa_id()`, devuelven jsonb.
