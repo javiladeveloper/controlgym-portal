@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import TabMarca from './config/TabMarca.jsx'
-import TabSitio from './config/TabSitio.jsx'
-import TabPaginaWeb from './config/TabPaginaWeb.jsx'
+import TabWeb from './config/TabWeb.jsx'
 import TabSedes from './config/TabSedes.jsx'
 import TabNegocio from './config/TabNegocio.jsx'
 import TabPlan from './config/TabPlan.jsx'
@@ -14,8 +13,7 @@ const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
   { key: 'cobros', label: 'Cobros 💰', Comp: TabCobros },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
-  { key: 'sitio', label: 'Sitio web', Comp: TabSitio },
-  { key: 'pagina', label: 'Página web', Comp: TabPaginaWeb },
+  { key: 'pagina', label: 'Página web', Comp: TabWeb },
   { key: 'sedes', label: 'Sedes', Comp: TabSedes },
   { key: 'acceso', label: 'Control de acceso', Comp: TabAcceso },
   { key: 'camaras', label: 'Cámaras 📹', Comp: TabCamaras },

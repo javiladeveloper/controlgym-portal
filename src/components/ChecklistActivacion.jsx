@@ -36,7 +36,7 @@ export default function ChecklistActivacion() {
     { ok: !!tema?.logo_url, icon: '🎨', label: 'Sube tu logo y elige tus colores', to: '/configuracion?tab=marca' },
     { ok: !!L.hero_url, icon: '🖼️', label: 'Ponle portada a tu página web', to: '/configuracion?tab=pagina' },
     { ok: estado.data.socios > 0, icon: '💪', label: `Registra tu primer ${empresa?.plan_slug === 'trainer' ? 'cliente' : 'socio'}`, to: '/clientes' },
-    { ok: estado.data.visitas > 0, icon: '📣', label: 'Comparte tu página en tus redes', to: '/configuracion?tab=sitio' },
+    { ok: estado.data.visitas > 0, icon: '📣', label: 'Comparte tu página en tus redes', to: '/configuracion?tab=pagina' },
     { ok: estado.data.pagoActivo, icon: '💳', label: 'Activa tu plan (sigue gratis tu primer mes)', to: '/configuracion?tab=plan' },
   ]
   const hechos = items.filter((i) => i.ok).length
