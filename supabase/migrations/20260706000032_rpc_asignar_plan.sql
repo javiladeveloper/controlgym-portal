@@ -6,7 +6,7 @@ declare
   v_pr uuid; v_pd uuid; v_rut uuid; v_die uuid;
   v_nota text := 'Plan sugerido según tu objetivo e IMC. Consulta a tu entrenador; no reemplaza indicación médica.';
   v_nota_imc text := ''; v_carga_suave boolean := false;
-  v_dia record; v_new_dia uuid; v_kcal_dia int;
+  v_dia record; v_new_dia uuid; v_kcal_dia int := 0;
 begin
   select * into v_socio from public.socio where id = p_socio_id;
   if v_socio.id is null then return jsonb_build_object('asignado', false, 'motivo', 'socio_inexistente'); end if;
