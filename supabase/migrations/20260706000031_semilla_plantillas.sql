@@ -27,34 +27,34 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Fullbody A + cardio') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla libre' limit 1), 'Sentadilla libre', 3, '15', '45 seg', 'peso corporal', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Flexiones de pecho' limit 1), 'Flexiones de pecho', 3, '12', '45 seg', 'peso corporal', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo con mancuerna' limit 1), 'Remo con mancuerna', 3, '15', '45 seg', 'moderada', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas caminando' limit 1), 'Zancadas caminando', 3, '12 por pierna', '45 seg', 'peso corporal o ligera', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Salto de soga' limit 1), 'Salto de soga', 3, '1 min', '30 seg', '-', 5),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha' and nombre not ilike '%lateral%' limit 1), 'Plancha', 3, '30-40 seg', '30 seg', '-', 6);
+    (v_dia, null, 'Sentadilla libre', 3, '15', '45 seg', 'peso corporal', 1),
+    (v_dia, null, 'Flexiones de pecho', 3, '12', '45 seg', 'peso corporal', 2),
+    (v_dia, null, 'Remo con mancuerna', 3, '15', '45 seg', 'moderada', 3),
+    (v_dia, null, 'Zancadas caminando', 3, '12 por pierna', '45 seg', 'peso corporal o ligera', 4),
+    (v_dia, null, 'Salto de soga', 3, '1 min', '30 seg', '-', 5),
+    (v_dia, null, 'Plancha', 3, '30-40 seg', '30 seg', '-', 6);
 
   -- Día 2 - Miércoles: Fullbody B + cardio
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 3, 'Fullbody B + cardio') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Peso muerto rumano' limit 1), 'Peso muerto rumano', 3, '15', '45 seg', 'ligera-moderada', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press con mancuernas' limit 1), 'Press con mancuernas', 3, '12', '45 seg', 'moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Jalón al pecho' limit 1), 'Jalón al pecho', 3, '15', '45 seg', 'moderada', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Mountain climbers' limit 1), 'Mountain climbers', 3, '40 seg', '30 seg', '-', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Burpees' limit 1), 'Burpees', 3, '10', '40 seg', '-', 5),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Crunch abdominal' limit 1), 'Crunch abdominal', 3, '20', '30 seg', '-', 6);
+    (v_dia, null, 'Peso muerto rumano', 3, '15', '45 seg', 'ligera-moderada', 1),
+    (v_dia, null, 'Press con mancuernas', 3, '12', '45 seg', 'moderada', 2),
+    (v_dia, null, 'Jalón al pecho', 3, '15', '45 seg', 'moderada', 3),
+    (v_dia, null, 'Mountain climbers', 3, '40 seg', '30 seg', '-', 4),
+    (v_dia, null, 'Burpees', 3, '10', '40 seg', '-', 5),
+    (v_dia, null, 'Crunch abdominal', 3, '20', '30 seg', '-', 6);
 
   -- Día 3 - Viernes: Fullbody C + cardio
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 5, 'Fullbody C + cardio') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Prensa de piernas' limit 1), 'Prensa de piernas', 3, '15', '45 seg', 'moderada', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo en polea baja' limit 1), 'Remo en polea baja', 3, '15', '45 seg', 'moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones laterales' limit 1), 'Elevaciones laterales', 3, '15', '30 seg', 'ligera', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Hip thrust' limit 1), 'Hip thrust', 3, '15', '45 seg', 'moderada', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Trotadora' and nombre not ilike '%ProRun%' limit 1), 'Trotadora', 1, '15-20 min', '-', 'ritmo moderado', 5),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Russian twist' limit 1), 'Russian twist', 3, '20', '30 seg', '-', 6);
+    (v_dia, null, 'Prensa de piernas', 3, '15', '45 seg', 'moderada', 1),
+    (v_dia, null, 'Remo en polea baja', 3, '15', '45 seg', 'moderada', 2),
+    (v_dia, null, 'Elevaciones laterales', 3, '15', '30 seg', 'ligera', 3),
+    (v_dia, null, 'Hip thrust', 3, '15', '45 seg', 'moderada', 4),
+    (v_dia, null, 'Trotadora', 1, '15-20 min', '-', 'ritmo moderado', 5),
+    (v_dia, null, 'Russian twist', 3, '20', '30 seg', '-', 6);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Bajar de peso — nutrición base',
@@ -81,41 +81,41 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Pecho + tríceps') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press banca plano' limit 1), 'Press banca plano', 4, '8-10', '90 seg', 'alta', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press banca inclinado' limit 1), 'Press banca inclinado', 4, '8-10', '90 seg', 'alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Aperturas con mancuernas' limit 1), 'Aperturas con mancuernas', 3, '10-12', '60 seg', 'moderada', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Fondos en paralelas' limit 1), 'Fondos en paralelas', 3, '8-10', '75 seg', 'peso corporal/lastre', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Extensión de tríceps en polea' limit 1), 'Extensión de tríceps en polea', 3, '10-12', '60 seg', 'moderada', 5);
+    (v_dia, null, 'Press banca plano', 4, '8-10', '90 seg', 'alta', 1),
+    (v_dia, null, 'Press banca inclinado', 4, '8-10', '90 seg', 'alta', 2),
+    (v_dia, null, 'Aperturas con mancuernas', 3, '10-12', '60 seg', 'moderada', 3),
+    (v_dia, null, 'Fondos en paralelas', 3, '8-10', '75 seg', 'peso corporal/lastre', 4),
+    (v_dia, null, 'Extensión de tríceps en polea', 3, '10-12', '60 seg', 'moderada', 5);
 
   -- Día 2 - Martes: Espalda + bíceps
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 2, 'Espalda + bíceps') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Peso muerto' and nombre not ilike '%rumano%' limit 1), 'Peso muerto', 4, '6-8', '2 min', 'alta', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Dominadas' limit 1), 'Dominadas', 4, '8-10', '90 seg', 'peso corporal/lastre', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo con barra' limit 1), 'Remo con barra', 4, '8-10', '90 seg', 'alta', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Curl de bíceps con barra' limit 1), 'Curl de bíceps con barra', 3, '10-12', '60 seg', 'moderada', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Curl martillo' limit 1), 'Curl martillo', 3, '10-12', '60 seg', 'moderada', 5);
+    (v_dia, null, 'Peso muerto', 4, '6-8', '2 min', 'alta', 1),
+    (v_dia, null, 'Dominadas', 4, '8-10', '90 seg', 'peso corporal/lastre', 2),
+    (v_dia, null, 'Remo con barra', 4, '8-10', '90 seg', 'alta', 3),
+    (v_dia, null, 'Curl de bíceps con barra', 3, '10-12', '60 seg', 'moderada', 4),
+    (v_dia, null, 'Curl martillo', 3, '10-12', '60 seg', 'moderada', 5);
 
   -- Día 3 - Jueves: Pierna
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 4, 'Pierna') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla con barra' limit 1), 'Sentadilla con barra', 4, '8-10', '2 min', 'alta', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Prensa de piernas' limit 1), 'Prensa de piernas', 4, '10-12', '90 seg', 'alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Peso muerto rumano' limit 1), 'Peso muerto rumano', 3, '10-12', '90 seg', 'moderada-alta', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Curl femoral' limit 1), 'Curl femoral', 3, '10-12', '60 seg', 'moderada', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevación de talones' limit 1), 'Elevación de talones', 4, '15', '45 seg', 'moderada', 5);
+    (v_dia, null, 'Sentadilla con barra', 4, '8-10', '2 min', 'alta', 1),
+    (v_dia, null, 'Prensa de piernas', 4, '10-12', '90 seg', 'alta', 2),
+    (v_dia, null, 'Peso muerto rumano', 3, '10-12', '90 seg', 'moderada-alta', 3),
+    (v_dia, null, 'Curl femoral', 3, '10-12', '60 seg', 'moderada', 4),
+    (v_dia, null, 'Elevación de talones', 4, '15', '45 seg', 'moderada', 5);
 
   -- Día 4 - Sábado: Hombro + brazo
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 6, 'Hombro + brazo') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press militar' and nombre not ilike '%mancuernas%' limit 1), 'Press militar', 4, '8-10', '90 seg', 'alta', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones laterales' limit 1), 'Elevaciones laterales', 4, '12-15', '45 seg', 'ligera-moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Pájaros%' limit 1), 'Pájaros (posterior)', 3, '12-15', '45 seg', 'ligera', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press francés' limit 1), 'Press francés', 3, '10-12', '60 seg', 'moderada', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Curl alterno con mancuernas' limit 1), 'Curl alterno con mancuernas', 3, '10-12', '60 seg', 'moderada', 5);
+    (v_dia, null, 'Press militar', 4, '8-10', '90 seg', 'alta', 1),
+    (v_dia, null, 'Elevaciones laterales', 4, '12-15', '45 seg', 'ligera-moderada', 2),
+    (v_dia, null, 'Pájaros (posterior)', 3, '12-15', '45 seg', 'ligera', 3),
+    (v_dia, null, 'Press francés', 3, '10-12', '60 seg', 'moderada', 4),
+    (v_dia, null, 'Curl alterno con mancuernas', 3, '10-12', '60 seg', 'moderada', 5);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Ganar masa muscular — nutrición base',
@@ -141,29 +141,29 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Circuito A tren superior') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press con mancuernas' limit 1), 'Press con mancuernas', 3, '12-15', '45 seg', 'moderada', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo con mancuerna' limit 1), 'Remo con mancuerna', 3, '12-15', '45 seg', 'moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones frontales' limit 1), 'Elevaciones frontales', 3, '12-15', '30 seg', 'ligera', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Fondos de tríceps en banco' limit 1), 'Fondos de tríceps en banco', 3, '12-15', '45 seg', 'peso corporal', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha' and nombre not ilike '%lateral%' limit 1), 'Plancha', 3, '40 seg', '30 seg', '-', 5);
+    (v_dia, null, 'Press con mancuernas', 3, '12-15', '45 seg', 'moderada', 1),
+    (v_dia, null, 'Remo con mancuerna', 3, '12-15', '45 seg', 'moderada', 2),
+    (v_dia, null, 'Elevaciones frontales', 3, '12-15', '30 seg', 'ligera', 3),
+    (v_dia, null, 'Fondos de tríceps en banco', 3, '12-15', '45 seg', 'peso corporal', 4),
+    (v_dia, null, 'Plancha', 3, '40 seg', '30 seg', '-', 5);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 3, 'Circuito B tren inferior') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla libre' limit 1), 'Sentadilla libre', 3, '15-18', '45 seg', 'peso corporal/ligera', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas con mancuernas' limit 1), 'Zancadas con mancuernas', 3, '12 por pierna', '45 seg', 'ligera', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Hip thrust' limit 1), 'Hip thrust', 3, '15', '45 seg', 'moderada', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevación de talones' limit 1), 'Elevación de talones', 3, '18-20', '30 seg', 'moderada', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Russian twist' limit 1), 'Russian twist', 3, '20', '30 seg', '-', 5);
+    (v_dia, null, 'Sentadilla libre', 3, '15-18', '45 seg', 'peso corporal/ligera', 1),
+    (v_dia, null, 'Zancadas con mancuernas', 3, '12 por pierna', '45 seg', 'ligera', 2),
+    (v_dia, null, 'Hip thrust', 3, '15', '45 seg', 'moderada', 3),
+    (v_dia, null, 'Elevación de talones', 3, '18-20', '30 seg', 'moderada', 4),
+    (v_dia, null, 'Russian twist', 3, '20', '30 seg', '-', 5);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 5, 'Circuito C fullbody + cardio') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Jalón al pecho' limit 1), 'Jalón al pecho', 3, '12-15', '45 seg', 'moderada', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Prensa de piernas' limit 1), 'Prensa de piernas', 3, '15', '45 seg', 'moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones laterales' limit 1), 'Elevaciones laterales', 3, '15', '30 seg', 'ligera', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Mountain climbers' limit 1), 'Mountain climbers', 3, '40 seg', '30 seg', '-', 4),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Bicicleta estacionaria' limit 1), 'Bicicleta estacionaria', 1, '15 min', '-', 'ritmo moderado', 5);
+    (v_dia, null, 'Jalón al pecho', 3, '12-15', '45 seg', 'moderada', 1),
+    (v_dia, null, 'Prensa de piernas', 3, '15', '45 seg', 'moderada', 2),
+    (v_dia, null, 'Elevaciones laterales', 3, '15', '30 seg', 'ligera', 3),
+    (v_dia, null, 'Mountain climbers', 3, '40 seg', '30 seg', '-', 4),
+    (v_dia, null, 'Bicicleta estacionaria', 1, '15 min', '-', 'ritmo moderado', 5);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Tonificar — nutrición base',
@@ -189,34 +189,34 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Sentadilla + accesorios pierna') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla con barra' limit 1), 'Sentadilla con barra', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Prensa de piernas' limit 1), 'Prensa de piernas', 3, '6-8', '2 min', 'alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Peso muerto rumano' limit 1), 'Peso muerto rumano', 3, '6', '2 min', 'alta', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevación de talones' limit 1), 'Elevación de talones', 4, '8', '90 seg', 'alta', 4);
+    (v_dia, null, 'Sentadilla con barra', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
+    (v_dia, null, 'Prensa de piernas', 3, '6-8', '2 min', 'alta', 2),
+    (v_dia, null, 'Peso muerto rumano', 3, '6', '2 min', 'alta', 3),
+    (v_dia, null, 'Elevación de talones', 4, '8', '90 seg', 'alta', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 2, 'Press banca + empuje') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press banca plano' limit 1), 'Press banca plano', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press banca inclinado' limit 1), 'Press banca inclinado', 3, '6-8', '2 min', 'alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Fondos en paralelas' limit 1), 'Fondos en paralelas', 3, '6-8', '90 seg', 'lastre si es posible', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Extensión de tríceps en polea' limit 1), 'Extensión de tríceps en polea', 3, '8', '90 seg', 'moderada-alta', 4);
+    (v_dia, null, 'Press banca plano', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
+    (v_dia, null, 'Press banca inclinado', 3, '6-8', '2 min', 'alta', 2),
+    (v_dia, null, 'Fondos en paralelas', 3, '6-8', '90 seg', 'lastre si es posible', 3),
+    (v_dia, null, 'Extensión de tríceps en polea', 3, '8', '90 seg', 'moderada-alta', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 4, 'Peso muerto + tirón') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Peso muerto' and nombre not ilike '%rumano%' limit 1), 'Peso muerto', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo con barra' limit 1), 'Remo con barra', 4, '6', '2 min', 'alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Dominadas' limit 1), 'Dominadas', 4, '6-8', '2 min', 'lastre si es posible', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Curl de bíceps con barra' limit 1), 'Curl de bíceps con barra', 3, '8', '90 seg', 'moderada-alta', 4);
+    (v_dia, null, 'Peso muerto', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
+    (v_dia, null, 'Remo con barra', 4, '6', '2 min', 'alta', 2),
+    (v_dia, null, 'Dominadas', 4, '6-8', '2 min', 'lastre si es posible', 3),
+    (v_dia, null, 'Curl de bíceps con barra', 3, '8', '90 seg', 'moderada-alta', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 5, 'Press militar + hombro') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press militar' and nombre not ilike '%mancuernas%' limit 1), 'Press militar', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press Arnold' limit 1), 'Press Arnold', 3, '6-8', '2 min', 'alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Encogimientos de trapecio' limit 1), 'Encogimientos de trapecio', 4, '8', '90 seg', 'alta', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones laterales' limit 1), 'Elevaciones laterales', 3, '10', '60 seg', 'moderada', 4);
+    (v_dia, null, 'Press militar', 5, '5', '2-3 min', 'alta (85-90% 5RM)', 1),
+    (v_dia, null, 'Press Arnold', 3, '6-8', '2 min', 'alta', 2),
+    (v_dia, null, 'Encogimientos de trapecio', 4, '8', '90 seg', 'alta', 3),
+    (v_dia, null, 'Elevaciones laterales', 3, '10', '60 seg', 'moderada', 4);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Fuerza — nutrición base',
@@ -242,32 +242,34 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Cardio continuo + core') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Trotadora' and nombre not ilike '%ProRun%' limit 1), 'Trotadora', 1, '25-30 min', '-', 'ritmo constante moderado', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha' and nombre not ilike '%lateral%' limit 1), 'Plancha', 3, '45 seg', '20 seg', '-', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevación de piernas' limit 1), 'Elevación de piernas', 3, '15', '20 seg', '-', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Russian twist' limit 1), 'Russian twist', 3, '25', '20 seg', '-', 4);
+    (v_dia, null, 'Trotadora', 1, '25-30 min', '-', 'ritmo constante moderado', 1),
+    (v_dia, null, 'Plancha', 3, '45 seg', '20 seg', '-', 2),
+    (v_dia, null, 'Elevación de piernas', 3, '15', '20 seg', '-', 3),
+    (v_dia, null, 'Russian twist', 3, '25', '20 seg', '-', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 2, 'Circuito HIIT') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Burpees' limit 1), 'Burpees', 4, '45 seg', '15 seg', '-', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Salto de soga' limit 1), 'Salto de soga', 4, '45 seg', '15 seg', '-', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Mountain climbers' limit 1), 'Mountain climbers', 4, '45 seg', '15 seg', '-', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas caminando' limit 1), 'Zancadas caminando', 4, '45 seg', '15 seg', 'peso corporal', 4);
+    (v_dia, null, 'Burpees', 4, '45 seg', '15 seg', '-', 1),
+    (v_dia, null, 'Salto de soga', 4, '45 seg', '15 seg', '-', 2),
+    (v_dia, null, 'Mountain climbers', 4, '45 seg', '15 seg', '-', 3),
+    (v_dia, null, 'Zancadas caminando', 4, '45 seg', '15 seg', 'peso corporal', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 4, 'Remo ergómetro + circuito') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo ergómetro' limit 1), 'Remo ergómetro', 5, '3 min', '1 min', 'ritmo sostenido', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla libre' limit 1), 'Sentadilla libre', 3, '20', '20 seg', 'peso corporal', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Flexiones de pecho' limit 1), 'Flexiones de pecho', 3, '15', '20 seg', 'peso corporal', 3);
+    (v_dia, null, 'Remo ergómetro', 5, '3 min', '1 min', 'ritmo sostenido', 1),
+    (v_dia, null, 'Sentadilla libre', 3, '20', '20 seg', 'peso corporal', 2),
+    (v_dia, null, 'Flexiones de pecho', 3, '15', '20 seg', 'peso corporal', 3),
+    (v_dia, null, 'Mountain climbers', 3, '40 seg', '20 seg', '-', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 6, 'Bicicleta + core resistencia') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Bicicleta estacionaria' limit 1), 'Bicicleta estacionaria', 1, '30 min', '-', 'intervalos moderados/altos', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Rueda abdominal' limit 1), 'Rueda abdominal', 3, '12', '30 seg', '-', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha lateral' limit 1), 'Plancha lateral', 3, '30 seg por lado', '20 seg', '-', 3);
+    (v_dia, null, 'Bicicleta estacionaria', 1, '30 min', '-', 'intervalos moderados/altos', 1),
+    (v_dia, null, 'Rueda abdominal', 3, '12', '30 seg', '-', 2),
+    (v_dia, null, 'Plancha lateral', 3, '30 seg por lado', '20 seg', '-', 3),
+    (v_dia, null, 'Jumping jacks', 3, '45 seg', '20 seg', '-', 4);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Resistencia / cardio — nutrición base',
@@ -293,26 +295,26 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Fullbody A moderado') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla libre' limit 1), 'Sentadilla libre', 3, '12', '60 seg', 'peso corporal/ligera', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press con mancuernas' limit 1), 'Press con mancuernas', 3, '12', '60 seg', 'ligera-moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo con mancuerna' limit 1), 'Remo con mancuerna', 3, '12', '60 seg', 'ligera-moderada', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha' and nombre not ilike '%lateral%' limit 1), 'Plancha', 3, '30 seg', '30 seg', '-', 4);
+    (v_dia, null, 'Sentadilla libre', 3, '12', '60 seg', 'peso corporal/ligera', 1),
+    (v_dia, null, 'Press con mancuernas', 3, '12', '60 seg', 'ligera-moderada', 2),
+    (v_dia, null, 'Remo con mancuerna', 3, '12', '60 seg', 'ligera-moderada', 3),
+    (v_dia, null, 'Plancha', 3, '30 seg', '30 seg', '-', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 3, 'Fullbody B moderado') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas caminando' limit 1), 'Zancadas caminando', 3, '10 por pierna', '60 seg', 'peso corporal', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Jalón al pecho' limit 1), 'Jalón al pecho', 3, '12', '60 seg', 'moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones laterales' limit 1), 'Elevaciones laterales', 3, '12', '45 seg', 'ligera', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Crunch abdominal' limit 1), 'Crunch abdominal', 3, '15', '30 seg', '-', 4);
+    (v_dia, null, 'Zancadas caminando', 3, '10 por pierna', '60 seg', 'peso corporal', 1),
+    (v_dia, null, 'Jalón al pecho', 3, '12', '60 seg', 'moderada', 2),
+    (v_dia, null, 'Elevaciones laterales', 3, '12', '45 seg', 'ligera', 3),
+    (v_dia, null, 'Crunch abdominal', 3, '15', '30 seg', '-', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 5, 'Fullbody C + cardio ligero') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Prensa de piernas' limit 1), 'Prensa de piernas', 3, '12', '60 seg', 'moderada', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo en polea baja' limit 1), 'Remo en polea baja', 3, '12', '60 seg', 'moderada', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Puente de glúteo' limit 1), 'Puente de glúteo', 3, '15', '45 seg', 'peso corporal', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Bicicleta estacionaria' limit 1), 'Bicicleta estacionaria', 1, '15 min', '-', 'ritmo suave-moderado', 4);
+    (v_dia, null, 'Prensa de piernas', 3, '12', '60 seg', 'moderada', 1),
+    (v_dia, null, 'Remo en polea baja', 3, '12', '60 seg', 'moderada', 2),
+    (v_dia, null, 'Puente de glúteo', 3, '15', '45 seg', 'peso corporal', 3),
+    (v_dia, null, 'Bicicleta estacionaria', 1, '15 min', '-', 'ritmo suave-moderado', 4);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Salud general — nutrición base',
@@ -338,18 +340,18 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 2, 'Movilidad + activación tren superior') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha' and nombre not ilike '%lateral%' limit 1), 'Plancha', 2, '15-20 seg', '45 seg', 'peso corporal', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Pájaros%' limit 1), 'Pájaros (posterior)', 2, '12', '45 seg', 'muy ligera/banda', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevaciones frontales' limit 1), 'Elevaciones frontales', 2, '10', '45 seg', 'muy ligera', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Puente de glúteo' limit 1), 'Puente de glúteo', 2, '12', '45 seg', 'peso corporal', 4);
+    (v_dia, null, 'Plancha', 2, '15-20 seg', '45 seg', 'peso corporal', 1),
+    (v_dia, null, 'Pájaros (posterior)', 2, '12', '45 seg', 'muy ligera/banda', 2),
+    (v_dia, null, 'Elevaciones frontales', 2, '10', '45 seg', 'muy ligera', 3),
+    (v_dia, null, 'Puente de glúteo', 2, '12', '45 seg', 'peso corporal', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 4, 'Movilidad + activación tren inferior') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla libre' limit 1), 'Sentadilla libre (rango parcial)', 2, '10', '60 seg', 'peso corporal', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Elevación de talones' limit 1), 'Elevación de talones', 2, '12', '45 seg', 'peso corporal', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas caminando' limit 1), 'Zancadas caminando (paso corto)', 2, '8 por pierna', '60 seg', 'peso corporal', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha lateral' limit 1), 'Plancha lateral', 2, '15 seg por lado', '45 seg', 'peso corporal', 4);
+    (v_dia, null, 'Sentadilla libre (rango parcial)', 2, '10', '60 seg', 'peso corporal', 1),
+    (v_dia, null, 'Elevación de talones', 2, '12', '45 seg', 'peso corporal', 2),
+    (v_dia, null, 'Zancadas caminando (paso corto)', 2, '8 por pierna', '60 seg', 'peso corporal', 3),
+    (v_dia, null, 'Plancha lateral', 2, '15 seg por lado', '45 seg', 'peso corporal', 4);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Rehabilitación — nutrición base',
@@ -375,34 +377,34 @@ begin
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 1, 'Fuerza de base tren inferior') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Sentadilla con barra' limit 1), 'Sentadilla con barra', 4, '6', '2 min', 'alta', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Peso muerto rumano' limit 1), 'Peso muerto rumano', 3, '8', '90 seg', 'moderada-alta', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas con mancuernas' limit 1), 'Zancadas con mancuernas', 3, '10 por pierna', '90 seg', 'moderada', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Hip thrust' limit 1), 'Hip thrust', 3, '10', '90 seg', 'moderada-alta', 4);
+    (v_dia, null, 'Sentadilla con barra', 4, '6', '2 min', 'alta', 1),
+    (v_dia, null, 'Peso muerto rumano', 3, '8', '90 seg', 'moderada-alta', 2),
+    (v_dia, null, 'Zancadas con mancuernas', 3, '10 por pierna', '90 seg', 'moderada', 3),
+    (v_dia, null, 'Hip thrust', 3, '10', '90 seg', 'moderada-alta', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 2, 'Pliometría + potencia') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Burpees' limit 1), 'Burpees', 4, '10', '60 seg', '-', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Salto de soga' limit 1), 'Salto de soga', 4, '1 min', '45 seg', '-', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Mountain climbers' limit 1), 'Mountain climbers', 3, '40 seg', '30 seg', '-', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Zancadas caminando' limit 1), 'Zancadas caminando (explosivas)', 3, '10 por pierna', '60 seg', 'peso corporal', 4);
+    (v_dia, null, 'Burpees', 4, '10', '60 seg', '-', 1),
+    (v_dia, null, 'Salto de soga', 4, '1 min', '45 seg', '-', 2),
+    (v_dia, null, 'Mountain climbers', 3, '40 seg', '30 seg', '-', 3),
+    (v_dia, null, 'Zancadas caminando (explosivas)', 3, '10 por pierna', '60 seg', 'peso corporal', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 4, 'Fuerza de base tren superior') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press banca plano' limit 1), 'Press banca plano', 4, '6-8', '2 min', 'alta', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Dominadas' limit 1), 'Dominadas', 4, '6-8', '2 min', 'peso corporal/lastre', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Press militar' and nombre not ilike '%mancuernas%' limit 1), 'Press militar', 3, '8', '90 seg', 'moderada-alta', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Fondos en paralelas' limit 1), 'Fondos en paralelas', 3, '8-10', '90 seg', 'peso corporal', 4);
+    (v_dia, null, 'Press banca plano', 4, '6-8', '2 min', 'alta', 1),
+    (v_dia, null, 'Dominadas', 4, '6-8', '2 min', 'peso corporal/lastre', 2),
+    (v_dia, null, 'Press militar', 3, '8', '90 seg', 'moderada-alta', 3),
+    (v_dia, null, 'Fondos en paralelas', 3, '8-10', '90 seg', 'peso corporal', 4);
 
   insert into public.plantilla_rutina_dia (plantilla_rutina_id, dia_semana, foco)
   values (v_pr, 6, 'Circuito funcional + core') returning id into v_dia;
   insert into public.plantilla_rutina_ejercicio (plantilla_rutina_dia_id, ejercicio_id, nombre, series, reps, descanso, carga, orden) values
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Remo ergómetro' limit 1), 'Remo ergómetro', 4, '2 min', '45 seg', 'ritmo alto', 1),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Rueda abdominal' limit 1), 'Rueda abdominal', 3, '12', '45 seg', '-', 2),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Plancha lateral' limit 1), 'Plancha lateral', 3, '30 seg por lado', '30 seg', '-', 3),
-    (v_dia, (select id from public.ejercicio where nombre ilike 'Russian twist' limit 1), 'Russian twist', 3, '25', '30 seg', '-', 4);
+    (v_dia, null, 'Remo ergómetro', 4, '2 min', '45 seg', 'ritmo alto', 1),
+    (v_dia, null, 'Rueda abdominal', 3, '12', '45 seg', '-', 2),
+    (v_dia, null, 'Plancha lateral', 3, '30 seg por lado', '30 seg', '-', 3),
+    (v_dia, null, 'Russian twist', 3, '25', '30 seg', '-', 4);
 
   insert into public.plantilla_dieta (empresa_id, objetivo_id, nombre, suplementos)
   values (null, v_obj, 'Preparación deportiva — nutrición base',
