@@ -4,9 +4,7 @@ import TabMarca from './config/TabMarca.jsx'
 import TabSitio from './config/TabSitio.jsx'
 import TabPaginaWeb from './config/TabPaginaWeb.jsx'
 import TabSedes from './config/TabSedes.jsx'
-import TabContacto from './config/TabContacto.jsx'
-import TabRedes from './config/TabRedes.jsx'
-import TabRegional from './config/TabRegional.jsx'
+import TabNegocio from './config/TabNegocio.jsx'
 import TabPlan from './config/TabPlan.jsx'
 import TabCobros from './config/TabCobros.jsx'
 import TabAcceso from './config/TabAcceso.jsx'
@@ -21,9 +19,7 @@ const TABS = [
   { key: 'sedes', label: 'Sedes', Comp: TabSedes },
   { key: 'acceso', label: 'Control de acceso', Comp: TabAcceso },
   { key: 'camaras', label: 'Cámaras 📹', Comp: TabCamaras },
-  { key: 'contacto', label: 'Contacto', Comp: TabContacto },
-  { key: 'redes', label: 'Redes sociales', Comp: TabRedes },
-  { key: 'regional', label: 'Regional', Comp: TabRegional },
+  { key: 'negocio', label: 'Datos del negocio', Comp: TabNegocio },
 ]
 
 export default function Configuracion() {
