@@ -1503,3 +1503,40 @@ defensivos): si el backend no manda descuento, se ve como hoy. Es tarea del
 panel/backend.
 
 Creado: 2026-07-09 (sesión de la app).
+
+---
+
+PEDIDO 24 -- Subir la comisión de FitCore de 3% a 5% (decisión del owner)
+
+Cambio de negocio: la comisión de FitCore (marketplace_fee) pasa de 3% a 5%.
+En `api/mp/crear-pago.js`: `const COMISION = 0.03` → `0.05`. Actualizar también
+los comentarios ("3% para FitCore" → "5%"). Es 1 línea + comentarios.
+
+Contexto (para el mensaje a los gyms): sigue siendo modelo simple, un solo % sin
+fijo. MercadoPago cobra su ~5.3% aparte (pasarela). El owner mantiene el discurso
+honesto: "FitCore 5%, MercadoPago aparte, recibes el resto al instante".
+
+No afecta la app (solo manda producto_id+cantidad; el backend calcula el fee).
+Tarea del panel/backend.
+
+---
+
+PEDIDO 25 -- Dashboard de super-admin FitCore (NO es de la app — es del panel)
+
+⚠️ Esto NO es un pedido de la app al backend; es una feature PROPIA del panel
+web. Lo dejo aquí solo para que el agente del panel lo tome. El owner quiere un
+dashboard de plataforma (solo para él, dueño de FitCore) para ver su negocio:
+  - Total facturado en COMISIONES (el 5% acumulado, por periodo).
+  - Nº de gyms activos / con cobros conectados.
+  - Ventas totales procesadas por app (membresías + productos), por gym.
+  - Idealmente ligado a la cuenta MercadoPago de plataforma (el MP_ACCESS_TOKEN)
+    para conciliar lo que MP liberó como marketplace_fee.
+
+Es una vista de super-admin en el PANEL web (no en la app móvil — se ve mejor en
+pantalla grande, es herramienta de negocio del owner). Requiere: rol/acceso de
+super-admin, consultas agregadas sobre pago_app (fee, estado, empresa), y quizás
+la API de MercadoPago para el liberado real del fee.
+
+Tarea 100% del panel. La app no participa.
+
+Creado: 2026-07-09 (sesión de la app, canalizando pedidos del owner al panel).
