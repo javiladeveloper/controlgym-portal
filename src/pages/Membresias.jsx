@@ -14,8 +14,7 @@ import { waLink, msgRenovacion, msgRecibo } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { WhatsAppIcon } from '../components/icons.jsx'
-
-const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
+import { METODOS_PAGO } from '../lib/pagos.js'
 
 // Cuándo vencería si se renueva hoy (espejo de renew_membership: desde el
 // vencimiento actual si aún no pasó, o desde hoy si ya venció)

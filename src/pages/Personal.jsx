@@ -11,13 +11,12 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { usePersonal } from '../hooks/useOperaciones.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import { METODOS_PAGO } from '../lib/pagos.js'
 
 const ROLES = [
   ['admin', 'Administrador'], ['recepcion', 'Recepción'], ['entrenador', 'Entrenador'],
   ['nutricionista', 'Nutricionista'], ['mantenimiento', 'Mantenimiento'],
 ]
-
-const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta']]
 const BANCOS = ['BCP', 'Interbank', 'BBVA', 'Scotiabank', 'BanBif', 'Banco de la Nación', 'Caja Arequipa', 'Caja Huancayo', 'Otro']
 
 // Copia al portapapeles con confirmación

@@ -11,8 +11,7 @@ import { verificarDni, textoVerificacion } from '../../lib/dni.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
 import { useObjetivos } from '../../hooks/usePlantillas.js'
 import { toast } from '../../lib/toast.js'
-
-const METODOS_PAGO = [['efectivo', 'Efectivo'], ['yape', 'Yape'], ['plin', 'Plin'], ['tarjeta', 'Tarjeta (POS)'], ['transferencia', 'Transferencia']]
+import { METODOS_PAGO } from '../../lib/pagos.js'
 
 // Alta de socio (+ membresía y cobro con promoción y método de pago).
 // Si viene de un lead (leadId), lo convierte.
