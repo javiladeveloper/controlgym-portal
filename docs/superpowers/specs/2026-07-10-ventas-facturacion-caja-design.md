@@ -205,21 +205,24 @@ llama `POST /api/documents/{norac_id}/void` y marca `anulado`.
 
 ### Frontend
 
-1. **Config › Facturación** (nueva tab / usa `empresa_facturacion`):
+1. **Config › Facturación** (nueva tab / usa `empresa_facturacion`, **solo admin**):
    toggle "Emitir boletas y facturas", RUC, razón social, serie boleta/factura,
-   campo API key NORAC (write-only, muestra `••••` + "Probar conexión"). Llama
-   `guardar_facturacion` + una RPC/endpoint nuevo para guardar la key cifrada y
-   probar (`GET /health` o `GET /api/documents?limit=1` a NORAC).
+   **correlativo inicial (opcional)**, campo API key NORAC (write-only, muestra
+   `••••` + "Probar conexión"). Nota de ayuda: "usa una serie que no hayas usado
+   antes para no duplicar con tus boletas previas". Llama `guardar_facturacion` +
+   una RPC/endpoint nuevo para guardar la key cifrada y probar
+   (`GET /health` o `GET /api/documents?limit=1` a NORAC).
 2. **Sección Ventas (POS):** ver "Sección Ventas (POS)" arriba. Aquí vive el
    selector de método de pago y el bloque colapsado "¿Boleta con datos o
    factura?". Kardex pierde el flujo de venta.
 3. **Badges + "Ver boleta":** en Ventas (historial de ventas del día),
    Membresías y la lista de pagos, cada movimiento con comprobante muestra estado
    (Emitida/Pendiente/Observada/Anulada) y, si `emitido`, botón "Ver boleta"
-   (abre PDF) + **"Enviar por correo"** (`POST /api/documents/{id}/email` con el
-   email a pedido — útil cuando el cliente da su correo después). Si
-   `observado`/`error`, botón "Reintentar" (resetea a `pendiente`). El correo ya
-   sale **solo** al emitir si el receptor tenía email; el botón es para reenviar.
+   (abre PDF) + **"Imprimir"** (abre el PDF en pestaña nueva para Ctrl+P) +
+   **"Enviar por correo"** (`POST /api/documents/{id}/email` con el email a pedido
+   — útil cuando el cliente da su correo después). Si `observado`/`error`, botón
+   "Reintentar" (resetea a `pendiente`). El correo ya sale **solo** al emitir si
+   el receptor tenía email; el botón es para reenviar.
 4. **Finanzas:** arqueo por denominaciones en el cierre, "+ Gasto de caja",
    e "Historial de caja" (ver "Caja chica" arriba).
 
@@ -291,6 +294,38 @@ de la RPC). El CHECK de `metodo_pago` ya cubre los métodos.
 pantalla nueva); los gastos son un modal chico; el historial es una tarjeta
 colapsada al pie de Finanzas. Nada satura la pantalla principal.
 
+## Decisiones finas (reglas de negocio)
+
+- **Abono parcial → boleta por lo cobrado.** Cada pago emite su propia boleta por
+  el monto realmente cobrado (no por el total del plan). El caso normal (pago
+  completo) es idéntico: una boleta = un cobro = un ingreso en caja. Esto mantiene
+  la caja cuadrada y no factura dinero no recibido. `crear_comprobante` recibe el
+  `p_total` = monto cobrado en ese movimiento.
+- **Redondeo IGV (CRÍTICO).** SUNAT rechaza comprobantes descuadrados por
+  céntimos. Regla: se calcula `base` y `igv` por comprobante desde el `total`
+  cobrado (`base = round(total/1.18, 2)`, `igv = total − base`), y las **líneas**
+  se derivan de ese total. Para carrito multi-ítem, el `valor_unitario` de cada
+  línea = `round((subtotal_item/1.18)/cantidad, 2)`; cualquier diferencia de
+  céntimos entre la suma de líneas y el total se **absorbe con un descuento/ajuste
+  de la última línea** para que `Σ líneas == total` exacto. El worker valida el
+  cuadre antes de enviar a NORAC.
+- **Impresión en mostrador:** tras cobrar, botón **"Imprimir"** abre el PDF de
+  NORAC (`GET /api/documents/{id}/pdf`) en pestaña nueva → el navegador imprime a
+  cualquier impresora (Ctrl+P). Sin integración de impresora térmica por ahora
+  (fase futura si un gym la pide). El PDF A4 con QR se ajusta en el diálogo.
+- **Correo:** todas las boletas se envían por correo automáticamente si el
+  receptor tiene email (lo puebla el worker). Botón "Enviar por correo" para
+  reenviar a pedido.
+- **Correlativo / serie:** por defecto cada gym usa una **serie limpia** en NORAC
+  (correlativo desde 1 — NORAC lo autoincrementa). Config incluye un campo
+  **opcional "correlativo inicial"** para gyms que continúan una numeración
+  previa (se documenta que deben usar una serie no usada antes para no chocar con
+  SUNAT). NORAC lleva el correlativo; FitCore solo manda la serie.
+- **Permisos:** **recepción** usa el POS (vender, cobrar, emitir, imprimir) y la
+  caja del día. **Solo admin** configura la facturación (RUC, serie, API key
+  NORAC) y ve el historial de caja completo. Gating por rol en UI + RLS
+  (`empresa_facturacion` ya es admin-only; el POS/caja para admin+recepción).
+
 ## Manejo de errores
 
 - **Gym sin facturación activa:** no se crea comprobante; la venta funciona igual.
@@ -314,6 +349,13 @@ colapsada al pie de Finanzas. Nada satura la pantalla principal.
 - Notas de crédito por devolución parcial (más allá de la anulación simple).
 - Descarga de XML/CDR (NORAC no los expone por HTTP hoy).
 - Facturación del propio SaaS (el 3%/5% de FitCore a cada gym) — problema aparte.
+- **App del socio (coordinación con el otro agente):** cuando el socio compra
+  in-app y se le emite boleta, debería poder **ver/descargar su boleta** desde la
+  app. Se documenta en `docs/APP-BACKEND-REQUESTS.md` (el backend expondrá el
+  `comprobante` del socio + link al PDF). El correo automático ya le llega si tiene
+  email; la vista en la app es un extra a coordinar.
+- Impresora térmica de tickets (58/80mm) con formato compacto — por ahora se
+  imprime el PDF A4 de NORAC.
 
 ## Verificación
 
@@ -325,9 +367,18 @@ colapsada al pie de Finanzas. Nada satura la pantalla principal.
 - Cobro/renovación de membresía desde el POS → comprobante emitido.
 - Pago in-app aprobado → comprobante emitido (webhook).
 - Boleta con DNI y factura con RUC opcionales funcionan.
+- **Redondeo IGV cuadra:** carrito de varios ítems con precios que no dividen
+  exacto (ej. S/3 + S/25) → `Σ valor_unitario·cantidad + IGV == total` exacto;
+  NORAC acepta (no rechaza por céntimos).
+- **Abono parcial:** membresía anual pagada en 2 → 2 boletas por lo cobrado; la
+  suma de boletas = total del plan; caja cuadra.
+- Botón "Imprimir" abre el PDF; "Enviar por correo" reenvía; correo automático
+  llega si el receptor tenía email.
 - NORAC apagado → la venta igual confirma; comprobante `pendiente`; al volver
   NORAC el cron lo emite.
 - Anular venta con comprobante emitido → `void` en NORAC → `anulado`.
+- Recepción no ve la config de facturación ni el historial completo de caja
+  (solo admin).
 
 **POS:**
 - La sección Ventas cobra productos (carrito multi-ítem con ofertas) y membresía.
