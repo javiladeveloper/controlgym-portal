@@ -5,6 +5,30 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ✅ RESUELTOS por el panel (2026-07-09, tanda 20-24)
+> - **PEDIDO 20** ✅ Webhook leía el payment con token FitCore en vez del gym
+>   (split) → 404 → no descontaba stock. Fix: recorre tokens de gyms conectados.
+>   Pago real del owner reparado. Desplegado.
+> - **PEDIDO 21** ✅ OAuth fuerza selector de cuenta: `oauth-start` antepone el
+>   logout de MP (`mercadopago.com.pe/logout?go=<authorization>`). Desplegado.
+> - **PEDIDO 22** ✅ 3 RPCs del tab "Hoy" (`resumen_dia_trainer`,
+>   `cargas_pendientes_gym`, `socios_en_riesgo`) — migración `20260706000034`.
+>   Todas security definer, gating por `auth_empresa_id()`, devuelven jsonb.
+>   Contratos: resumen_dia_trainer→`{presentes_hoy, socios_activos,
+>   adherencia_promedio, entrenaron_hoy}`; cargas_pendientes_gym→`[{socio_id,
+>   socio_nombre, ejercicio, carga_pedida}]`; socios_en_riesgo(p_empresa_id,
+>   p_dias)→`[{socio_id, nombre, dias_sin_venir}]`. Probadas E2E.
+> - **PEDIDO 23** ✅ Ofertas/descuentos permanentes por producto. `producto`
+>   +`descuento_tipo`/`descuento_valor`; `catalogo_app` ahora devuelve
+>   `precio_final`+`descuento_tipo`+`descuento_valor`; `crear-pago` cobra el
+>   precio efectivo server-side (la app nunca decide el monto); UI en Kardex.
+>   Migraciones `20260706000035`/`36`. Demo: "Barra proteica" de MaximusGym con
+>   10% off (precio_final S/9 de S/10) para que se vea en la tienda.
+> - **PEDIDO 24** ✅ Comisión de FitCore 3% → 5% (`crear-pago` COMISION=0.05 +
+>   panel Cobros muestra 5%). Desplegado.
+> - **PEDIDO 25** (dashboard super-admin de FitCore) — pendiente; es feature del
+>   panel, no de la app. Se aborda por separado.
+
 ## Estado de la app hoy (para contexto)
 
 Modo Staff ya funciona contra el backend real: lista de socios, ficha con
