@@ -5,6 +5,20 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📌 DEL PANEL A LA APP (2026-07-10) — Membresía por sede
+> Nuevo modelo para gyms con varias sedes: el socio queda atado a la sede donde
+> se registra (`socio.sede_id`); solo entra ahí, salvo que tenga un **plan
+> multisede** (`plan.multisede`). El gym lo activa con `empresa.restringe_sede`
+> (default false → la mayoría no lo usa). El check-in ya lo valida en el panel
+> (`checkin_manual` → motivo `otra_sede`). **Lo que la app debería agregar:**
+> - En el perfil del socio, si su gym tiene varias sedes, permitir **solicitar
+>   cambio de sede** (es gratis). Puede ser un update directo de `socio.sede_id`
+>   (con RLS del socio) o una RPC `cambiar_mi_sede(p_sede_id)` si prefieren que el
+>   panel la exponga — avísenme y la creo. Recepción también lo hace desde la ficha.
+> - Al mostrar el carnet, si el socio intenta entrar a otra sede y su plan no es
+>   multisede, el check-in del kiosco lo denegará (cuando se implemente la
+>   validación de sede en `registrar_checkin` — hoy solo `checkin_manual` la aplica).
+
 > ## ✅ RESUELTOS por el panel (2026-07-09, tanda 20-24)
 > - **PEDIDO 20** ✅ Webhook leía el payment con token FitCore en vez del gym
 >   (split) → 404 → no descontaba stock. Fix: recorre tokens de gyms conectados.
