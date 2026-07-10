@@ -69,6 +69,13 @@ pantallas.
     firmó y reintenta solo (no es error).
 - **PDF:** `GET /api/documents/{id}/pdf` (application/pdf con QR). No expone
   XML/CDR por HTTP.
+- **Correo automático (nuevo):** si el body de `/api/emit` lleva
+  `receptor.email` poblado, NORAC envía el comprobante por email (PDF + XML +
+  CDR adjuntos) **automáticamente al aceptar SUNAT** (best-effort; requiere que
+  la instancia NORAC tenga `EMAIL_ENABLED=true` + Resend). Si `email` va vacío
+  `""` → no envía, no falla. El schema de `/api/emit` no cambió.
+- **Reenviar correo:** `POST /api/documents/{id}/email` body `{ to }` — reenvía
+  a un correo a pedido (fuerza el envío aunque el automático esté apagado).
 - **Anular:** `POST /api/documents/{id}/void` body `{ motivo }`.
 - **Sin webhook:** el estado `queued`→`accepted` se consulta con
   `GET /api/documents/{id}` (polling).
@@ -115,6 +122,7 @@ comprobante
   cliente_tipo_doc text default '0'  -- '0' | '1' DNI | '6' RUC
   cliente_num_doc text               -- null / DNI / RUC
   cliente_nombre text default 'CLIENTE VARIOS'
+  cliente_email text                 -- para el correo automático de NORAC + reenviar
   moneda text default 'PEN'
   base numeric(12,2)                 -- sin IGV
   igv numeric(12,2)
@@ -185,6 +193,13 @@ pago in-app, `ref_id` es la membresía / `pago_app` (una línea). El POS genera 
 - Boleta con DNI → `{ tipo_doc:"1", num_doc:DNI, razon_social:nombre }`
 - Factura → `{ tipo_doc:"6", num_doc:RUC, razon_social:razón_social }`
 
+**Email del receptor (aprovecha el correo automático de NORAC):** el worker
+puebla `receptor.email` cuando lo tenemos — para membresía/pago in-app, el email
+del socio (`socio.email` / `pago_app.nuevo_email`); para venta de producto, el
+email opcional del cliente si lo ingresaron. Si no hay email → se manda `""` y
+NORAC no envía (boleta simple sin correo, sin error). Se guarda
+`comprobante.cliente_email` para poder **reenviar** desde la UI.
+
 **Anulación:** al anular una venta/membresía con comprobante `emitido`, el worker
 llama `POST /api/documents/{norac_id}/void` y marca `anulado`.
 
@@ -201,7 +216,10 @@ llama `POST /api/documents/{norac_id}/void` y marca `anulado`.
 3. **Badges + "Ver boleta":** en Ventas (historial de ventas del día),
    Membresías y la lista de pagos, cada movimiento con comprobante muestra estado
    (Emitida/Pendiente/Observada/Anulada) y, si `emitido`, botón "Ver boleta"
-   (abre PDF). Si `observado`/`error`, botón "Reintentar" (resetea a `pendiente`).
+   (abre PDF) + **"Enviar por correo"** (`POST /api/documents/{id}/email` con el
+   email a pedido — útil cuando el cliente da su correo después). Si
+   `observado`/`error`, botón "Reintentar" (resetea a `pendiente`). El correo ya
+   sale **solo** al emitir si el receptor tenía email; el botón es para reenviar.
 4. **Finanzas:** arqueo por denominaciones en el cierre, "+ Gasto de caja",
    e "Historial de caja" (ver "Caja chica" arriba).
 
