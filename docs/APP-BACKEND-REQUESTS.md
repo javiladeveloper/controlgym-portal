@@ -1781,3 +1781,71 @@ suspendida/cancelada (eso ya lo maneja el SaaS), la app lo refleja sola al leer
 el estado. Tarea chica del panel: solo agregar el campo al bootstrap.
 
 Creado: 2026-07-09 (sesión de la app).
+
+---
+
+PEDIDO 28 -- Conectar el webhook de MercadoPago con NORAC (emisión de boleta SUNAT)
+
+⚠️ NO es de la app; es backend/panel. La app no participa (solo abre el checkout).
+Lo canaliza la sesión de la app porque el owner ya coordinó con el equipo de Norac.
+
+CONTEXTO: cuando un socio compra un producto por app y el pago se aprueba, el gym
+debe emitirle una BOLETA electrónica (SUNAT). El motor de facturación es NORAC
+(sistema propio del owner), ya homologado en beta (ResponseCode 0). El webhook
+`api/mp/webhook.js` YA tiene el punto de integración preparado (Fase 1.c:
+`preparar_comprobante` devuelve { serie, monto, igv_incluido, concepto,
+cliente_nombre, cliente_doc, ... } y hay un `// PUNTO DE INTEGRACIÓN DEL
+PROVEEDOR SEE` con console.log). Falta ENCHUFAR Norac ahí.
+
+API DE NORAC (guía completa: norac-facturacion/docs/API.md):
+- Base URL: https://norac-facturacion.onrender.com
+- Auth: JWT (POST /api/auth/login o /api/auth/google) + header `X-Company-Id:
+  <company_id>`.
+- Emitir: `POST /api/emit`
+  {
+    "tipo": "03",                    // 03 boleta (01 factura si el socio da RUC)
+    "serie": "B001",
+    "fecha_emision": "2026-07-10",
+    "receptor": { "tipo_doc": "1", "num_doc": "<DNI socio>",
+                  "razon_social": "<nombre socio>", "email": "<email socio>" },
+    "lineas": [ { "descripcion": "<producto>", "cantidad": "1",
+                  "valor_unitario": "<precio sin IGV>", "afectacion_igv": "10" } ]
+  }
+  → { id, numero:"B001-00000012", estado:"accepted", importe_total, igv, ... }
+  IMPORTANTE: Norac ENVÍA la boleta por email al `receptor.email` (ya lo resolvió
+  el equipo de Norac). Así que FitCore NO necesita mandar el correo — solo pasar
+  el email del socio en el receptor.
+
+LO QUE TOCA HACER EN EL PANEL:
+1. Mapeo `empresa_fitcore → company_id_norac` (cada gym es una empresa en Norac
+   con su propio certificado SUNAT). Guardar el company_id de Norac por gym
+   (p. ej. una columna `empresa.norac_company_id` o tabla puente). Solo los gyms
+   que facturan lo tendrán.
+2. En el webhook, tras `preparar_comprobante` con `info.emitir = true`: llamar a
+   `POST /api/emit` de Norac con auth (token de servicio de Norac + X-Company-Id
+   del gym) y el body de arriba (mapear cliente_nombre/doc/email + líneas del
+   carrito: producto, cantidad, valor_unitario SIN IGV, afectacion_igv=10).
+3. Guardar la respuesta: `update pago_app set comprobante_estado='emitido',
+   comprobante_numero=<numero>, comprobante_id_norac=<id>` (y opcional
+   comprobante_url si se quiere link al PDF: GET /api/documents/{id}/pdf).
+4. La facturación NUNCA debe tumbar el webhook (el pago ya es válido) — envolver
+   en try/catch y dejar log si Norac falla; reintentar aparte.
+
+DATOS QUE NORAC NECESITA Y HAY QUE ASEGURAR EN EL PAGO:
+- DNI del socio (num_doc) + nombre + EMAIL (para que Norac lo mande). Hoy
+  preparar_comprobante ya da cliente_nombre/cliente_doc; agregar el EMAIL del
+  socio si no viene.
+- Por línea: valor_unitario SIN IGV (Norac calcula el IGV). Hoy los precios de
+  producto son CON IGV incluido → dividir /1.18 al armar la línea (o mandar el
+  neto). Confirmar con Norac si prefiere bruto+afectación o neto.
+
+CREDENCIALES: el owner debe cargar en Norac (por cada gym que facture) su
+certificado .pfx + Clave SOL y poner sunat_mode=production
+(POST /api/config/certificate + PUT /api/config/sunat). Sin eso Norac no emite
+válido. A FUTURO Norac será PSE/OSE → el gym ya no cargará certificado (más
+simple); el contrato de /api/emit no cambia.
+
+Impacto: cierra el ciclo de venta (pago → stock → boleta SUNAT al socio por
+email). No bloquea la app. 100% panel/backend + config del owner en Norac.
+
+Creado: 2026-07-10 (sesión de la app, canalizando la integración FitCore↔Norac).
