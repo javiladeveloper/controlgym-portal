@@ -18,7 +18,7 @@ app socio / página web), **esfuerzo**, y el **orden recomendado**.
 
 ## Las 8 ideas
 
-### 1. Alertas de vencimiento y deuda (1–2 días antes) 🟡 tenemos base
+### 1. Alertas de vencimiento y deuda (1–2 días antes) ✅ HECHO (2026-07-10)
 **Qué pidió:** avisar a cada socio 1–2 días antes del vencimiento; y una lista
 de socios con deuda a quienes se les manda alerta virtual de pago.
 - **Ya tenemos:** `recordar_vencimientos_socios()` manda **email** a los que
@@ -53,7 +53,7 @@ musculación — los socios se pierden buscando máquinas.
 - **Dónde vive:** app socio (lo ve) · panel (el gym sube/edita el croquis).
 - **Esfuerzo:** alto (el (a) es medio). **Valor: medio** (buen "wow", no urgente).
 
-### 4. Listado de suplementos con precio y beneficio 🟢 casi listo
+### 4. Listado de suplementos con precio y beneficio ✅ HECHO (2026-07-10)
 **Qué pidió:** en la app, lista de suplementos que venden con precio y beneficio
 de cada uno.
 - **Ya tenemos:** la **tienda** (kardex `visible_en_app` con foto, precio,
@@ -63,7 +63,7 @@ de cada uno.
 - **Dónde vive:** app socio (los ve en la tienda) · panel (los edita en Kardex).
 - **Esfuerzo:** bajo. **Valor: medio** (ya casi está, remate fácil).
 
-### 5. Buzón de sugerencias virtual 🔴 falta (owner: en la página web)
+### 5. Buzón de sugerencias virtual ✅ HECHO (2026-07-10, en la web)
 **Qué pidió:** un buzón donde los socios dejan opiniones y dudas.
 - **Ya tenemos:** nada.
 - **Decisión del owner:** va en la **página web** del gym, con un correo de la

@@ -5,6 +5,21 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📌 DEL PANEL A LA APP (2026-07-10) — beneficio + alertas de vencimiento
+> **1. Suplementos con beneficio (idea Image Gym #4):** `catalogo_app` ahora
+> devuelve un campo **`beneficio`** (text, nullable) por producto — junto a los
+> ya existentes (nombre, precio, precio_final, imagen_url, descripcion,
+> descuento_*). La app debería mostrarlo en la tienda (ideal para suplementos:
+> "24g de proteína · recuperación muscular"). Campo nullable → si no viene, no
+> mostrar nada. Agregar `beneficio` al modelo `ProductoTienda`.
+>
+> **2. Push de vencimiento (idea Image Gym #1):** el socio ahora recibe push
+> **1-2 días antes** de que venza su membresía (además del email), y push manual
+> cuando recepción se lo envía. El `data` del push trae `{tipo:'vencimiento'|
+> 'recordatorio_pago', socio_id, ...}`. La app solo debe manejar el tap del push
+> (llevar al perfil/renovar). Usa el sistema de push existente — nada nuevo que
+> instalar, solo enrutar el `tipo` si quieren una pantalla específica.
+
 > ## 📌 DEL PANEL A LA APP (2026-07-10) — Membresía por sede (TODAS las reglas)
 >
 > Modelo de negocio para gyms con **varias sedes**: la membresía del socio se ata
