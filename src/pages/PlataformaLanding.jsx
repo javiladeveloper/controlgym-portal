@@ -256,12 +256,12 @@ const PLANES = [
     nombre: 'Crecimiento', base: 99, conApp: 139, popular: true, foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
     features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'CRM + captación con origen por red', 'Rutinas y dietas (asignación por IMC)', 'Kardex, tienda en la app y máquinas', 'Finanzas y reportes en Excel', 'Promociones aplicadas al cobro', 'Personalización total (8 diseños)'],
-    no: ['Torniquetes, huella y cámaras'],
+    no: ['Control de acceso físico y cámaras', 'CRM con IA y reportes avanzados'],
   },
   {
     nombre: 'Pro', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
     para: 'El gimnasio equipado que lo quiere todo',
-    features: ['Todo lo de Crecimiento', 'Torniquetes y huella (control de acceso)', 'Cámaras en vivo desde el panel', 'Varias marcas en una cuenta', 'Soporte prioritario por WhatsApp'],
+    features: ['Todo lo de Crecimiento', 'Torniquetes, huella y molinetes', 'Cámaras en vivo desde el panel', 'Reportes avanzados de asistencia y atenciones', 'Varias marcas / franquicias en una cuenta', 'Facturación electrónica (boletas SUNAT) · pronto', 'CRM con IA que responde tus redes · pronto', 'Soporte prioritario por WhatsApp'],
     no: [],
   },
 ]
@@ -929,13 +929,15 @@ export default function PlataformaLanding() {
               )}
               <div className="text-[15px] font-extrabold">{p.nombre}</div>
               <div className="mt-0.5 text-[12px] font-semibold" style={{ color: C.muted }}>{p.para}</div>
-              <div className="mt-4 text-[38px] font-extrabold tracking-[-2px]">
-                S/ {conApp ? p.conApp : p.base}<span className="text-[14px] font-semibold" style={{ color: C.muted }}>/mes por sede</span>
+              <div className="mt-4 flex items-baseline gap-1.5">
+                <span className="text-[38px] font-extrabold tracking-[-2px]">S/ {conApp ? p.conApp : p.base}</span>
+                <span className="text-[14px] font-semibold" style={{ color: C.muted }}>/ mes</span>
               </div>
-              <div className="text-[11.5px] font-semibold" style={{ color: C.muted }}>
+              <div className="text-[12px] font-extrabold" style={{ color: C.primary }}>por cada sede</div>
+              <div className="mt-1 text-[11.5px] font-semibold" style={{ color: C.muted }}>
                 {conApp
-                  ? `S/ ${p.base} sin app · cada sede incluye socios ilimitados`
-                  : `+S/ ${p.conApp - p.base}/mes por sede si quieres la app del socio`}
+                  ? `S/ ${p.base} sin app · socios ilimitados en cada sede`
+                  : `+S/ ${p.conApp - p.base} por sede si sumas la app del socio`}
               </div>
               <ul className="mt-5 flex-1 space-y-2 text-[13px] font-semibold" style={{ color: C.muted }}>
                 {conApp && (
