@@ -1624,3 +1624,45 @@ la API de MercadoPago para el liberado real del fee.
 Tarea 100% del panel. La app no participa.
 
 Creado: 2026-07-09 (sesión de la app, canalizando pedidos del owner al panel).
+
+---
+
+PEDIDO 26 -- Sedes en el bootstrap del socio + AYUDA enrutada por sede
+
+Del handoff de sedes del panel (arriba en este archivo) + decisiones del owner.
+Diseño: controlgym-app/docs/superpowers/specs/2026-07-09-sedes-y-ayuda-por-sede-design.md
+
+Decisiones del owner (para NO sobre-construir):
+- El socio SOLO VE su sede en la app; NUNCA la cambia desde la app (recepción lo
+  hace en el panel). → NO se necesita la RPC cambiar_mi_sede ni el selector.
+- Trainers sin restricción de sede en la app.
+- Las ayudas del socio deben llegar solo a los trainers de la sede donde el socio
+  está. → esto es lo importante de este pedido.
+
+1) BOOTSTRAP DEL SOCIO (`get_mi_app_bootstrap`): agregar dentro de cada `empresa`:
+   - `restringe_sede` (bool, de empresa.restringe_sede).
+   - `sede_nombre` (text, nombre de la sede del socio = sede de socio.sede_id).
+   La app los lee para mostrar en el carnet "Válido en: <sede>" o "Válido en todas
+   las sedes". Campos nullable/default → si no vienen, la app no muestra nada.
+
+2) AYUDA ENRUTADA POR SEDE (lo grande):
+   Hoy la ayuda del socio llega a TODOS los trainers presentes del gym. En gyms
+   multi-sede eso es un problema. Nueva lógica (toda en el backend):
+   - Si el gym usa control de acceso (metodo_checkin qr_kiosco/qr_lector/
+     biometrico): la ayuda va SOLO a los trainers PRESENTES cuyo check-in de hoy
+     es en la sede donde el socio está.
+     • Sede del TRAINER = su check-in de INGRESO de hoy (tabla checkin).
+     • Sede del SOCIO   = su check-in de hoy; si no marcó, socio.sede_id.
+   - Si el gym NO usa control de acceso: la ayuda va a TODOS (como hoy).
+   Implementar en: (a) la bandeja de ayudas del trainer — que venga filtrada por
+   su sede desde el servidor (RPC `bandeja_ayuda` o filtro en la lectura), la app
+   la consume tal cual; y (b) el PUSH de ayuda — solo a los trainers de esa sede.
+
+3) REGLA DE NEGOCIO: con control de acceso, el check-in de INGRESO del trainer es
+   OBLIGATORIO (es lo que determina su sede para dirigirle las ayudas). Reforzarlo
+   en el panel/flujo del trainer.
+
+Impacto: mejora clave para gyms multi-sede. La app casi no cambia (solo el
+mensaje de sede en el carnet). El enrutamiento inteligente es 100% backend.
+
+Creado: 2026-07-09 (sesión de la app).
