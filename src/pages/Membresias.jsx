@@ -9,7 +9,7 @@ import Modal, { Campo, BotonesModal, inputCls } from '../components/Modal.jsx'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePlanes, useMembresias, useToggleFreeze, useRenovar, useAnularMembresia } from '../hooks/useMembresias.js'
-import { estadoBadge, money, fechaLocal } from '../lib/uiHelpers.js'
+import { estadoBadge, money, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
 import { waLink, msgRenovacion, msgRecibo } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
@@ -481,8 +481,8 @@ export default function Membresias() {
                 )}
               </div>
               <div><Badge bg={st.bg} color={st.color}>{st.label}</Badge></div>
-              <div className="text-[12.5px] font-bold text-muted">
-                {m.fecha_fin ? fechaLocal(m.fecha_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
+              <div className={`text-[12.5px] font-bold ${claseVence(m.fecha_fin, !deBaja)}`}>
+                {fechaCorta(m.fecha_fin)}
               </div>
               {esAdmin && anulando === m.id ? (
                 <div className="flex flex-wrap items-center justify-end gap-1.5">

@@ -85,6 +85,26 @@ export function fechaLocal(f) {
   return new Date(s)
 }
 
+// Fecha corta local, ej. "02 ene". '—' si no hay fecha.
+export function fechaCorta(f) {
+  const d = fechaLocal(f)
+  return d ? d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'
+}
+
+// Clase de color para la fecha de vencimiento de una membresía, según urgencia:
+// rojo si ya venció, ámbar si vence en <=7 días, gris si vigente / sin fecha /
+// socio de baja (activo=false). Unifica el semáforo de "Vence" en Clientes y
+// Membresías.
+export function claseVence(fechaFin, activo = true) {
+  const fin = activo ? fechaLocal(fechaFin) : null
+  if (!fin) return 'text-muted'
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const dias = Math.round((fin - hoy) / 86400000)
+  if (dias < 0) return 'text-red'
+  if (dias <= 7) return 'text-amber-600'
+  return 'text-muted'
+}
+
 // ¿Dos fechas caen el MISMO día del calendario local?
 export function mismoDia(a, b) {
   const x = fechaLocal(a), y = fechaLocal(b)

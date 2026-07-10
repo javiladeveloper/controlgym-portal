@@ -8,7 +8,7 @@ import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha } from '../hooks/useClientes.js'
-import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal } from '../lib/uiHelpers.js'
+import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
 
 function fmtFecha(iso) {
   if (!iso) return '—'
@@ -283,23 +283,9 @@ export default function Clientes() {
                   )}
                 </div>
                 <div><Badge bg={st.bg} color={st.color}>{st.label}</Badge></div>
-                {(() => {
-                  // Señal visual de urgencia: rojo si ya venció, ámbar si vence
-                  // en los próximos 7 días, gris si está vigente/sin membresía.
-                  const fin = mem?.fecha_fin ? fechaLocal(mem.fecha_fin) : null
-                  let cls = 'text-muted'
-                  if (fin && !deBaja) {
-                    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-                    const dias = Math.round((fin - hoy) / 86400000)
-                    if (dias < 0) cls = 'text-red'
-                    else if (dias <= 7) cls = 'text-amber-600'
-                  }
-                  return (
-                    <div className={`text-[12.5px] font-semibold ${cls}`}>
-                      {fin ? fin.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—'}
-                    </div>
-                  )
-                })()}
+                <div className={`text-[12.5px] font-semibold ${claseVence(mem?.fecha_fin, !deBaja)}`}>
+                  {fechaCorta(mem?.fecha_fin)}
+                </div>
                 <div className="flex items-center justify-end gap-1.5">
                   <button onClick={() => setEditar(c)} title="Editar socio"
                     className="cursor-pointer rounded-[9px] border border-line bg-white px-2.5 py-2 text-[12px] text-muted hover:border-orange hover:text-orange">✏️</button>
