@@ -73,8 +73,8 @@ export default async function handler(req, res) {
             [pago.sede_id, pago.ref_id, pago.monto])
         }
         await db().query(
-          `update public.pago_app set estado_activacion = 'pendiente_activacion' where id = $1`,
-          [pago.id])
+          `update public.pago_app set estado_activacion = $2 where id = $1`,
+          [pago.id, pago.canal === 'mostrador' ? 'no_aplica' : 'pendiente_activacion'])
       }
       // Socio nuevo → ya está pendiente_activacion; el panel (recepción) lo da de alta.
 

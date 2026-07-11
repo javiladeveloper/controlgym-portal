@@ -24,7 +24,8 @@ function precioEfectivo(precio, tipo, valor) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
-  const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo } = req.body || {}
+  const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal } = req.body || {}
+  const canalPago = ['app', 'mostrador'].includes(canal) ? canal : 'app'
   if (!empresa_id || !tipo) return res.status(400).json({ error: 'Faltan datos del pago' })
   if (!['membresia', 'producto'].includes(tipo)) return res.status(400).json({ error: 'Tipo inválido' })
 
@@ -102,11 +103,11 @@ export default async function handler(req, res) {
     const { rows: pagoRows } = await db().query(
       `insert into public.pago_app
          (empresa_id, sede_id, socio_id, tipo, concepto, ref_id, monto, comision_fitcore,
-          fecha_inicio, estado_activacion, nuevo_nombre, nuevo_documento, nuevo_email, nuevo_telefono)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id`,
+          fecha_inicio, estado_activacion, nuevo_nombre, nuevo_documento, nuevo_email, nuevo_telefono, canal)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id`,
       [empresa_id, sede_id || null, socio_id || null, tipo, concepto, refUnico, monto, fee,
        fecha_inicio || null, socio_id ? 'no_aplica' : 'pendiente_activacion',
-       nuevo?.nombre || null, nuevo?.documento || null, nuevo?.email || null, nuevo?.telefono || null])
+       nuevo?.nombre || null, nuevo?.documento || null, nuevo?.email || null, nuevo?.telefono || null, canalPago])
     const pagoId = pagoRows[0].id
 
     // 3b) persistimos las líneas del carrito (también para 1 producto, así el
