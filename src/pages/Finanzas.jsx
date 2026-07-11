@@ -2,13 +2,23 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
+import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useFinanzas } from '../hooks/useOperaciones.js'
+import { useRegistrarGastoCaja, useHistorialCaja } from '../hooks/useCaja.js'
 import { money, mismoMesAnio, mismoDia } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+
+const METODOS_GASTO = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'yape', label: 'Yape' },
+  { value: 'plin', label: 'Plin' },
+  { value: 'tarjeta', label: 'Tarjeta' },
+  { value: 'transferencia', label: 'Transferencia' },
+]
 
 // Fecha de HOY en hora LOCAL como 'YYYY-MM-DD' (no UTC): toISOString() usaría UTC
 // y cerca de medianoche en Perú (UTC-5) daría el día siguiente, desalineando la
@@ -29,6 +39,49 @@ const DENOMINACIONES = [
   { key: 'm0_50', label: 'S/ 0.50', valor: 0.5 }, { key: 'm0_20', label: 'S/ 0.20', valor: 0.2 },
   { key: 'm0_10', label: 'S/ 0.10', valor: 0.1 },
 ]
+
+// Modal "− Gasto de caja": motivo + monto + método. La RPC valida caja
+// abierta/monto/motivo y descuenta del efectivo esperado si el método es
+// efectivo (Yape/tarjeta/transferencia no tocan el arqueo de billetes).
+function ModalGastoCaja({ sedeId, onClose }) {
+  const [motivo, setMotivo] = useState('')
+  const [monto, setMonto] = useState('')
+  const [metodoPago, setMetodoPago] = useState('efectivo')
+  const registrar = useRegistrarGastoCaja(sedeId)
+
+  function guardar() {
+    registrar.mutate({ monto: Number(monto), motivo, metodoPago }, {
+      onSuccess: () => {
+        toast.ok('Gasto registrado' + (metodoPago === 'efectivo' ? ' — descontado del efectivo esperado' : ''))
+        onClose()
+      },
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  const invalido = !motivo.trim() || !(Number(monto) > 0)
+
+  return (
+    <Modal title="− Gasto de caja" subtitle="Compras menores, taxi, agua, etc." onClose={onClose}>
+      <div className="flex flex-col gap-3.5">
+        <Campo label="Motivo">
+          <input type="text" value={motivo} onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Ej: agua para el gym" className={inputCls} autoFocus />
+        </Campo>
+        <Campo label="Monto S/">
+          <input type="number" step="0.01" min="0.01" value={monto} onChange={(e) => setMonto(e.target.value)}
+            placeholder="0.00" className={inputCls} />
+        </Campo>
+        <Campo label="Método">
+          <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} className={inputCls}>
+            {METODOS_GASTO.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </Campo>
+      </div>
+      <BotonesModal onCancel={onClose} onSubmit={guardar} busy={registrar.isPending} disabled={invalido} submitLabel="Registrar gasto" />
+    </Modal>
+  )
+}
 
 // ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
 // esperado = fondo inicial + ingresos en efectivo − gastos en efectivo (hoy)
@@ -51,6 +104,7 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   const [cerrando, setCerrando] = useState(false)
   const [mostrarArqueo, setMostrarArqueo] = useState(false)
   const [arqueo, setArqueo] = useState({}) // { key: cantidad } — conteo por denominación
+  const [mostrarGasto, setMostrarGasto] = useState(false)
 
   // Cambia la cantidad de una denominación y recalcula el total → llena "Conté S/"
   // automáticamente. Si el usuario luego edita "Conté S/" a mano, ese valor manda
@@ -209,6 +263,10 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
                     {Math.abs(diferencia) < 0.01 ? 'cuadra ✓' : (diferencia > 0 ? 'sobran ' : 'faltan ') + money(Math.abs(diferencia), moneda)}
                   </span>
                 )}
+                <button type="button" onClick={() => setMostrarGasto(true)}
+                  className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange">
+                  − Gasto de caja
+                </button>
                 <button onClick={cerrar} disabled={cerrando || contado === ''}
                   className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
                   Cerrar caja
@@ -247,6 +305,73 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
         </div>
       )}
       {!c && !esAdmin && null}
+      {mostrarGasto && <ModalGastoCaja sedeId={sedeId} onClose={() => setMostrarGasto(false)} />}
+    </Card>
+  )
+}
+
+// Tabla de cierres pasados. Vive en un sub-componente aparte para que el hook
+// useHistorialCaja (y su query a Supabase) solo se monte cuando el usuario
+// expande la card — no en cada carga de la página de Finanzas.
+function TablaHistorialCaja({ sedeId, moneda }) {
+  const historial = useHistorialCaja(sedeId)
+  return (
+    <div className="mt-3.5 border-t border-line2 pt-3.5">
+      {historial.isLoading && <LoadingState variant="table" rows={3} />}
+      {historial.isError && <ErrorState error={historial.error} onRetry={historial.refetch} />}
+      {!historial.isLoading && !historial.isError && (historial.data || []).length === 0 && (
+        <EmptyState message="Aún no hay cierres de caja" />
+      )}
+      {!historial.isLoading && !historial.isError && (historial.data || []).length > 0 && (
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+              <div>Fecha</div><div className="text-right">Fondo</div><div className="text-right">Esperado</div>
+              <div className="text-right">Contado</div><div className="text-right">Diferencia</div><div>Abrió / cerró</div>
+            </div>
+            {historial.data.map((h) => {
+              const esperado = Number(h.efectivo_esperado ?? 0)
+              const contado = Number(h.saldo_final ?? 0)
+              const dif = contado - esperado
+              const cuadro = Math.abs(dif) < 0.01
+              return (
+                <div key={h.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] items-center gap-3 border-b border-line2 py-2.5">
+                  <div className="text-[12.5px] font-bold">
+                    {new Date(h.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </div>
+                  <div className="text-right text-[12.5px] font-extrabold">{money(h.saldo_inicial, moneda)}</div>
+                  <div className="text-right text-[12.5px] font-extrabold">{money(esperado, moneda)}</div>
+                  <div className="text-right text-[12.5px] font-extrabold">{money(contado, moneda)}</div>
+                  <div className="text-right">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cuadro ? 'bg-green-50 text-green-600' : 'bg-red/10 text-red'}`}>
+                      {cuadro ? 'cuadró ✓' : (dif > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(dif), moneda)}
+                    </span>
+                  </div>
+                  <div className="text-[11.5px] font-semibold text-muted">
+                    {h.abierta?.nombre || '—'} / {h.cerrada?.nombre || '—'}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Card colapsada por defecto al pie de Finanzas. TablaHistorialCaja (y su
+// query) solo se monta tras expandir, así no se consulta de gratis.
+function HistorialCaja({ sedeId, moneda }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-[15px] p-[19px]">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent p-0 text-left">
+        <div className="text-[14.5px] font-extrabold">📒 Historial de caja</div>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver cierres ▼'}</span>
+      </button>
+      {abierto && <TablaHistorialCaja sedeId={sedeId} moneda={moneda} />}
     </Card>
   )
 }
@@ -451,6 +576,9 @@ export default function Finanzas() {
           })}
         </Card>
       )}
+
+      {/* Historial de cierres de caja: colapsado por defecto, al pie de la página */}
+      <HistorialCaja sedeId={sedeId} moneda={moneda} />
     </div>
   )
 }
