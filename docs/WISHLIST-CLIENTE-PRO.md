@@ -36,7 +36,7 @@
 | Pedido | Base de datos que ya existe |
 |---|---|
 | Historial de pagos y membresías del cliente | `movimiento_financiero` + `membresia` por socio → pestaña en la ficha |
-| Control de aforo (en vivo) | `sede.aforo_max` + check-ins entrada/salida → contador en dashboard |
+| Control de aforo (en vivo) POR SEDE | `sede.aforo_max` + check-ins → contador en dashboard. AMPLIADO (2026-07-11): (a) alerta push/email al admin al pasar umbral (80%/100%); (b) aforo visible PARA EL SOCIO en la app ("34/80 — moderado") para decidir si ir → handoff al agente de la app. MATIZ: gyms sin marca de salida → expiración automática (~2h) como estima el rubro. |
 | Reporte de membresías congeladas | tabla `congelamiento` |
 | Reporte de ausentes (no vienen hace X días) | `checkin` (última visita ya se muestra en Clientes) |
 | Venta por día / semana / mes | `movimiento_financiero` (Finanzas ya agrupa por mes) |
@@ -124,6 +124,7 @@ ingreso: "análisis inteligente de promociones y precios = Leadia, +S/XX/mes".
   campañas (cumpleaños, NPS, promos por segmento). Molinete/huella ya era Pro.
 - **Add-ons que suman al costo:** App del socio (ya existe), **Leadia IA**
   (recomendaciones de precio/plan), WhatsApp Business API, firma certificada.
+- **Canales de campañas:** email (Resend, YA existe, sin costo extra) como canal base; push de la app; WhatsApp API solo como premium opcional con costo. El owner prefirió email sobre WhatsApp para las alertas.
 - **IA ya anunciada al cliente** como herramienta a futuro: venderla como
   "roadmap, se contrata aparte cuando salga" — SIN fecha comprometida.
 - Pendiente: reflejar este corte en la página de precios del landing (esperando
