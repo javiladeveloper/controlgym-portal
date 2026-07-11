@@ -378,13 +378,16 @@ begin
   v_tz := coalesce(v_tz, 'America/Lima');
   v_hoy := (now() at time zone v_tz)::date;
 
+  -- Existencia/tenencia de la sede SEPARADA del aforo_max: una sede legitima
+  -- sin aforo configurado devuelve aforo_max null (la UI oculta la tarjeta),
+  -- no un error enganoso.
+  if not exists (select 1 from public.sede s
+                  where s.id = p_sede_id and s.empresa_id = v_empresa) then
+    raise exception 'Sede no encontrada o sin acceso';
+  end if;
   select s.aforo_max into v_aforo_max
   from public.sede s
   where s.id = p_sede_id and s.empresa_id = v_empresa;
-
-  if v_aforo_max is null then
-    raise exception 'Sede no encontrada o sin acceso';
-  end if;
 
   with entradas_hoy as (
     select
@@ -421,9 +424,10 @@ begin
       and sa.ocurrido_en > e.ocurrido_en
   );
 
+  -- Sin aforo configurado -> pct null (la UI no muestra porcentaje ni barra).
   v_pct := case when v_aforo_max > 0
                 then round((v_dentro::numeric / v_aforo_max) * 100, 1)
-                else 0 end;
+                else null end;
 
   return jsonb_build_object(
     'dentro', v_dentro,
