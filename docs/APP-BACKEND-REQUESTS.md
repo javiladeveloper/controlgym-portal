@@ -1739,6 +1739,12 @@ Creado: 2026-07-09 (sesión de la app).
 >     `trainers_para_ayuda(empresa, sede_del_socio)` → si el gym usa control de
 >     acceso (qr_kiosco/qr_lector/biometrico), el push va SOLO a los trainers
 >     presentes cuya sede de check-in de hoy = la del socio; si no, a todos.
+>   - ACTUALIZACIÓN 2026-07-11: la RPC ahora acepta `p_empresa_id uuid` OPCIONAL
+>     (la app ya la llamaba con ese arg y PostgREST no hallaba la firma → 'No se
+>     pudo cargar las ayudas'). La llamada actual de la app YA FUNCIONA sin
+>     cambios. Si viene una empresa ajena a la sesión → []. Fix backend
+>     20260711000003. También arreglado: push en silencio cuando el trainer
+>     marcó ingreso sin sede (20260711000002).
 >   - **Bandeja:** nueva RPC **`bandeja_ayuda()`** (sin args, usa la sesión del
 >     trainer) que devuelve las ayudas `pendiente/en_camino` filtradas por SU sede
 >     (su último check-in de entrada de hoy) cuando el gym usa control de acceso;
