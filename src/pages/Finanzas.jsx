@@ -20,6 +20,16 @@ function hoyLocalStr() {
   return `${d.getFullYear()}-${mes}-${dia}`
 }
 
+// Denominaciones de billetes/monedas (soles) para el arqueo de caja al cierre.
+const DENOMINACIONES = [
+  { key: 'b200', label: 'S/ 200', valor: 200 }, { key: 'b100', label: 'S/ 100', valor: 100 },
+  { key: 'b50', label: 'S/ 50', valor: 50 },   { key: 'b20', label: 'S/ 20', valor: 20 },
+  { key: 'b10', label: 'S/ 10', valor: 10 },   { key: 'm5', label: 'S/ 5', valor: 5 },
+  { key: 'm2', label: 'S/ 2', valor: 2 },      { key: 'm1', label: 'S/ 1', valor: 1 },
+  { key: 'm0_50', label: 'S/ 0.50', valor: 0.5 }, { key: 'm0_20', label: 'S/ 0.20', valor: 0.2 },
+  { key: 'm0_10', label: 'S/ 0.10', valor: 0.1 },
+]
+
 // ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
 // esperado = fondo inicial + ingresos en efectivo − gastos en efectivo (hoy)
 function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
@@ -39,6 +49,19 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   const [contado, setContado] = useState('')
   const [abriendo, setAbriendo] = useState(false)
   const [cerrando, setCerrando] = useState(false)
+  const [mostrarArqueo, setMostrarArqueo] = useState(false)
+  const [arqueo, setArqueo] = useState({}) // { key: cantidad } — conteo por denominación
+
+  // Cambia la cantidad de una denominación y recalcula el total → llena "Conté S/"
+  // automáticamente. Si el usuario luego edita "Conté S/" a mano, ese valor manda
+  // (la grilla no se borra, pero deja de ser la fuente de verdad hasta que se
+  // vuelva a tocar un contador).
+  function setCantidad(key, cantidad) {
+    const next = { ...arqueo, [key]: cantidad }
+    setArqueo(next)
+    const total = DENOMINACIONES.reduce((n, d) => n + (Number(next[d.key]) || 0) * d.valor, 0)
+    setContado(String(Math.round(total * 100) / 100))
+  }
 
   const caja = useQuery({
     queryKey: ['caja', sedeId, hoy],
@@ -86,12 +109,19 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
 
   async function cerrar() {
     setCerrando(true)
+    // Si hay al menos un conteo > 0 en la grilla, guardamos el detalle del arqueo
+    // (solo las denominaciones contadas, para no ensuciar el jsonb con ceros).
+    const hayArqueo = Object.values(arqueo).some((n) => Number(n) > 0)
+    const detalle = hayArqueo
+      ? Object.fromEntries(Object.entries(arqueo).filter(([, n]) => Number(n) > 0))
+      : null
     // Condicionamos el cierre a estado='abierta': si otra recepción ya la cerró,
     // el update no afecta filas y avisamos, en vez de pisar su cierre.
     const { data: filas, error } = await supabase.from('caja')
       .update({
         saldo_final: Number(contado) || 0, estado: 'cerrada', cerrada_por: usuarioId,
         efectivo_esperado: esperadoVivo, // congela el esperado al momento del cierre
+        arqueo_detalle: detalle,
       })
       .eq('id', c.id)
       .eq('estado', 'abierta')
@@ -167,19 +197,39 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
             <div className="text-[15px] font-extrabold text-orange">{money(esperado, moneda)}</div></div>
 
           {c.estado === 'abierta' ? (
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className="text-[12.5px] font-bold">Conté S/</span>
-              <input type="number" step="0.01" min="0" value={contado} onChange={(e) => setContado(e.target.value)}
-                placeholder={String(esperado)} className="w-[100px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
-              {diferencia !== null && (
-                <span className={`text-[12px] font-extrabold ${Math.abs(diferencia) < 0.01 ? 'text-green-600' : 'text-red'}`}>
-                  {Math.abs(diferencia) < 0.01 ? 'cuadra ✓' : (diferencia > 0 ? 'sobran ' : 'faltan ') + money(Math.abs(diferencia), moneda)}
-                </span>
+            <div className="ml-auto w-full sm:w-auto">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="text-[12.5px] font-bold">Conté S/</span>
+                <input type="number" step="0.01" min="0" value={contado} onChange={(e) => setContado(e.target.value)}
+                  placeholder={String(esperado)} className="w-[100px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
+                {diferencia !== null && (
+                  <span className={`text-[12px] font-extrabold ${Math.abs(diferencia) < 0.01 ? 'text-green-600' : 'text-red'}`}>
+                    {Math.abs(diferencia) < 0.01 ? 'cuadra ✓' : (diferencia > 0 ? 'sobran ' : 'faltan ') + money(Math.abs(diferencia), moneda)}
+                  </span>
+                )}
+                <button onClick={cerrar} disabled={cerrando || contado === ''}
+                  className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+                  Cerrar caja
+                </button>
+              </div>
+              <div className="mt-1.5 flex justify-end">
+                <button type="button" onClick={() => setMostrarArqueo((v) => !v)}
+                  className="cursor-pointer border-none bg-transparent p-0 text-[11.5px] font-extrabold text-muted hover:text-orange">
+                  🧮 {mostrarArqueo ? 'Ocultar conteo' : 'Contar billetes'}
+                </button>
+              </div>
+              {mostrarArqueo && (
+                <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {DENOMINACIONES.map((d) => (
+                    <label key={d.key} className="flex items-center gap-1.5 rounded-[9px] border border-line bg-white px-2 py-1.5">
+                      <span className="text-[11px] font-extrabold text-muted">{d.label}</span>
+                      <input type="number" step="1" min="0" value={arqueo[d.key] ?? ''}
+                        onChange={(e) => setCantidad(d.key, e.target.value)}
+                        placeholder="0" className="w-full min-w-0 rounded-[7px] border border-line bg-white px-1.5 py-1 text-[12px] font-extrabold outline-none focus:border-orange" />
+                    </label>
+                  ))}
+                </div>
               )}
-              <button onClick={cerrar} disabled={cerrando || contado === ''}
-                className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
-                Cerrar caja
-              </button>
             </div>
           ) : (
             <div className="ml-auto text-right">
@@ -201,7 +251,7 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
 
 const CAT_LABEL = {
   membresia: 'Membresías', venta_kardex: 'Venta de productos', compra: 'Compra de productos',
-  planilla: 'Planilla (sueldos)', mantenimiento: 'Mantenimiento',
+  planilla: 'Planilla (sueldos)', mantenimiento: 'Mantenimiento', caja_chica: 'Caja chica',
 }
 const catLabel = (c) => CAT_LABEL[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Otros')
 
