@@ -66,7 +66,10 @@ export default async function handler(req, res) {
         ? items.map((i) => ({ producto_id: i.producto_id, cantidad: Math.max(1, parseInt(i.cantidad, 10) || 1) }))
         : [{ producto_id: ref_id, cantidad: 1 }]
 
-      // Validamos CADA producto server-side: existe, visible en app, y con stock.
+      // Validamos CADA producto server-side: existe, con stock. La app solo
+      // vende catálogo visible_en_app; el mostrador (POS) vende TODO el
+      // inventario, igual que vender_carrito local — por eso el filtro
+      // visible_en_app se relaja solo para canal 'mostrador'.
       monto = 0
       for (const l of lineas) {
         const { rows } = await db().query(
@@ -75,14 +78,18 @@ export default async function handler(req, res) {
              left join public.inventario_sede i
                on i.producto_id = p.id and i.sede_id = $3
             where p.id = $1 and p.empresa_id = $2
-              and p.visible_en_app = true and p.deleted_at is null`,
-          [l.producto_id, empresa_id, sede_id || null])
+              and (p.visible_en_app = true or $4 = 'mostrador') and p.deleted_at is null`,
+          [l.producto_id, empresa_id, sede_id || null, canalPago])
         if (!rows[0]) return res.status(400).json({ error: 'Un producto del carrito no está disponible' })
         const p = rows[0]
         if (sede_id && p.stock < l.cantidad) {
           return res.status(400).json({ error: `Sin stock suficiente de ${p.nombre} (quedan ${p.stock})` })
         }
-        const precioUnit = precioEfectivo(p.precio, p.descuento_tipo, p.descuento_valor)
+        // En mostrador se cobra lo que el POS muestra (precio de lista); las
+        // ofertas de la app son del canal app (consistente con vender_carrito local).
+        const precioUnit = canalPago === 'mostrador'
+          ? Number(p.precio)
+          : precioEfectivo(p.precio, p.descuento_tipo, p.descuento_valor)
         const subtotal = Math.round(precioUnit * l.cantidad * 100) / 100
         monto += subtotal
         carrito.push({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: precioUnit, subtotal, nombre: p.nombre })

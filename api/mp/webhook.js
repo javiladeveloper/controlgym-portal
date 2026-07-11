@@ -40,6 +40,25 @@ export default async function handler(req, res) {
     if (!pago) return res.status(200).end()
     if (pago.estado_pago === 'aprobado') return res.status(200).end() // idempotente
 
+    // El cajero canceló este cobro de mostrador (cerró el modal QR) ANTES de que
+    // MP confirme. Si el cliente ya había pagado el link, no registramos venta
+    // ni stock ni comprobante — solo dejamos rastro y avisamos al admin.
+    if (pago.estado_pago === 'cancelado') {
+      if (mpPay.status === 'approved') {
+        await db().query(
+          `update public.pago_app set mp_payment_id = $1, pagado_at = now() where id = $2`,
+          [String(mpPay.id), pagoId])
+        await db().query(
+          `insert into public.notificacion
+             (empresa_id, sede_id, tipo, titulo, subtitulo, nivel, ref_tipo, ref_id)
+           values ($1,$2,'pago_cancelado_pagado','⚠️ Pago recibido de un cobro cancelado',$3,'warning','pago_app',$4)`,
+          [pago.empresa_id, pago.sede_id,
+           `Se recibió S/${pago.monto} de un cobro que recepción canceló — reembolsar en MercadoPago o registrar la venta manual`,
+           pago.id])
+      }
+      return res.status(200).end()
+    }
+
     const aprobado = mpPay.status === 'approved'
     await db().query(
       `update public.pago_app

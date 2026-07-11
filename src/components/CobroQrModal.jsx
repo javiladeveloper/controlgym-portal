@@ -8,10 +8,12 @@ import Modal from './Modal.jsx'
 import { useEstadoPagoPos } from '../hooks/useVentas.js'
 import { money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import { supabase } from '../lib/supabaseClient.js'
 
 export default function CobroQrModal({ pagoId, initPoint, monto, moneda, telefono, gymNombre, onPagado, onClose }) {
   const estado = useEstadoPagoPos(pagoId)
   const aprobado = estado.data?.estado_pago === 'aprobado'
+  const rechazado = estado.data?.estado_pago === 'rechazado'
   const avisado = useRef(false)
 
   useEffect(() => {
@@ -23,8 +25,16 @@ export default function CobroQrModal({ pagoId, initPoint, monto, moneda, telefon
 
   function enviarPorWhatsapp() {
     const mensaje = `Paga tu compra aquí${gymNombre ? ` en ${gymNombre}` : ''}: ${initPoint}`
-    const numero = telefono ? `51${telefono}` : ''
+    const tel = (telefono || '').replace(/\D/g, '')
+    const numero = tel.length === 9 ? '51' + tel : tel
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+  }
+
+  function cancelarCobro() {
+    if (pagoId) {
+      supabase.rpc('cancelar_pago_mostrador', { p_pago_id: pagoId }).catch(() => {})
+    }
+    onClose()
   }
 
   return (
@@ -52,15 +62,17 @@ export default function CobroQrModal({ pagoId, initPoint, monto, moneda, telefon
           className="w-full rounded-[10px] px-3.5 py-2.5 text-center text-[13px] font-extrabold"
           style={aprobado
             ? { background: T.successBg, color: T.successDark }
-            : { background: T.warningBg, color: T.warning }}
+            : rechazado
+              ? { background: T.dangerBg, color: T.danger }
+              : { background: T.warningBg, color: T.warning }}
         >
-          {aprobado ? '✓ Pagado' : '⏳ Esperando el pago…'}
+          {aprobado ? '✓ Pagado' : rechazado ? '✕ Pago rechazado — intenta con otro medio' : '⏳ Esperando el pago…'}
         </div>
 
         {!aprobado && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={cancelarCobro}
             className="cursor-pointer rounded-[10px] border-none bg-transparent px-3 py-1.5 text-[12.5px] font-extrabold text-muted hover:text-ink"
           >
             Cancelar cobro

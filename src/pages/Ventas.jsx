@@ -283,7 +283,9 @@ export default function Ventas() {
   // custom no viaja al backend de MP hoy — se deshabilita el chip y se avisa.
   const precioPlanMembresia = Number(membresiaSel?.plan?.precio ?? 0)
   const montoMembresiaEditado = modo === 'membresia' && Number(montoMembresia || 0) !== precioPlanMembresia
-  const mpDisponible = modo === 'producto' || !montoMembresiaEditado
+  // Factura (RUC) tampoco viaja por MP hoy: se emite cobrando en el POS.
+  const esFactura = tipoDoc === '6'
+  const mpDisponible = (modo === 'producto' || !montoMembresiaEditado) && !esFactura
 
   // Si el usuario edita el monto de la membresía (o cambia de socio) mientras
   // MercadoPago está seleccionado, el chip deja de estar disponible: se
@@ -490,14 +492,16 @@ export default function Ventas() {
                 ))}
                 <button type="button" disabled={!mpDisponible}
                   onClick={() => mpDisponible && setMetodoPago('mercadopago')}
-                  title={!mpDisponible ? 'Por MercadoPago se cobra el precio del plan completo' : undefined}
+                  title={esFactura ? 'Las facturas se emiten cobrando en el POS (efectivo/tarjeta); por MercadoPago solo boleta.' : (!mpDisponible ? 'Por MercadoPago se cobra el precio del plan completo' : undefined)}
                   className={`cursor-pointer rounded-full border-none px-3 py-1.5 text-[11.5px] font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${metodoPago === 'mercadopago' ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-ink'}`}>
                   📲 MercadoPago
                 </button>
               </div>
               {!mpDisponible && (
                 <p className="mt-1.5 text-[11px] font-semibold text-faint">
-                  Por MercadoPago se cobra el precio del plan completo ({money(precioPlanMembresia, moneda)}).
+                  {esFactura
+                    ? 'Las facturas se emiten cobrando en el POS (efectivo/tarjeta); por MercadoPago solo boleta.'
+                    : `Por MercadoPago se cobra el precio del plan completo (${money(precioPlanMembresia, moneda)}).`}
                 </p>
               )}
             </div>
