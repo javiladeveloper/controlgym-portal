@@ -10,7 +10,7 @@ import Modal, { inputCls } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { useDashboardKpis, useAsistenciaPorHora, useCheckins, useIngresosPorDia } from '../hooks/useDashboard.js'
+import { useDashboardKpis, useCheckins, useAforo } from '../hooks/useDashboard.js'
 import { useClientes } from '../hooks/useClientes.js'
 import { useCamaras } from '../hooks/useCamaras.js'
 import { useFotosPendientes, useModerarFoto } from '../hooks/useGaleria.js'
@@ -175,11 +175,6 @@ function CheckinModal({ sedeId, onClose }) {
   )
 }
 
-function hourColor(count, max) {
-  const ratio = max ? count / max : 0
-  return ratio >= 0.8 ? T.primary : ratio >= 0.5 ? T.primarySoft : T.primaryTint
-}
-
 // Etiqueta legible del método de ingreso (antes se mostraba "Huella verificada"
 // para TODO acceso permitido, aunque fuera QR, DNI manual, rostro, etc.).
 function etiquetaMetodo(metodo) {
@@ -198,13 +193,6 @@ function etiquetaMetodo(metodo) {
   }
 }
 
-// Etiquetas 6a..8p para las 15 franjas horarias (6:00–20:00)
-const HORAS = Array.from({ length: 15 }, (_, i) => {
-  const h = 6 + i
-  const label = h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`
-  return { h, label }
-})
-
 export default function Dashboard() {
   const navigate = useNavigate()
   const { sedeId, sedeNombre } = usePanel()
@@ -213,9 +201,8 @@ export default function Dashboard() {
   const veIngresos = rol === 'admin' || rol === 'recepcion'
   const [checkinOpen, setCheckinOpen] = useState(false)
   const kpis = useDashboardKpis(sedeId)
-  const horas = useAsistenciaPorHora(sedeId)
   const checkins = useCheckins(sedeId)
-  const ingresos = useIngresosPorDia(sedeId)
+  const aforo = useAforo(sedeId)
   const clientes = useClientes(sedeId)
 
   // Cumpleaños del mes 🎂. Se saluda a todo socio "en el gym" (activo o moroso:
@@ -240,10 +227,10 @@ export default function Dashboard() {
     : NaN
   const aforoDelta = Number.isFinite(aforoPct) ? `aforo ${Math.round(aforoPct)}%` : ' '
 
-  // Mapear asistencia por hora al arreglo de 15 franjas
-  const horaMap = new Map((horas.data || []).map((r) => [r.hora, Number(r.total)]))
-  const barras = HORAS.map(({ h, label }) => ({ label, count: horaMap.get(h) || 0 }))
-  const maxCount = Math.max(1, ...barras.map((b) => b.count))
+  // Color de la barra de aforo en vivo según el % ocupado.
+  const aforoBar = aforo.data && aforo.data.aforo_max
+    ? (aforo.data.pct >= 90 ? 'bg-red' : aforo.data.pct >= 70 ? 'bg-amber-500' : 'bg-green')
+    : null
 
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
@@ -266,32 +253,22 @@ export default function Dashboard() {
             <div className="mt-1.5 text-[27px] font-extrabold text-orange">{kpis.data.por_vencer_7d ?? 0}</div>
             <div className="mt-0.5 text-[12px] font-bold text-muted">membresías</div>
           </div>
+          {aforoBar && (
+            <div className="rounded-card border border-line bg-white p-[17px]">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">🏟️ Aforo ahora</div>
+              <div className="mt-1.5 text-[27px] font-extrabold tabular-nums text-ink">
+                {aforo.data.dentro}<span className="text-[15px] font-bold text-faint">/{aforo.data.aforo_max}</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line2">
+                <div className={`h-full rounded-full ${aforoBar}`} style={{ width: `${Math.min(100, Math.max(0, aforo.data.pct))}%` }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Chart + live check-ins */}
-      <div className="mt-[15px] grid grid-cols-1 gap-[15px] lg:grid-cols-[1.55fr_1fr]">
-        <Card className="p-[19px]">
-          <div className="text-[14.5px] font-extrabold">Asistencia de hoy por hora</div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">6:00 am — 8:00 pm</div>
-          {horas.error && (
-            <div className="mt-4 flex h-[180px] flex-col items-center justify-center gap-2 text-center text-[12.5px] font-semibold text-red">
-              <span>No se pudo cargar la asistencia por hora.</span>
-              <button onClick={() => horas.refetch()} className="cursor-pointer font-extrabold underline">Reintentar</button>
-            </div>
-          )}
-          {!horas.error && (
-          <div className="mt-4 flex h-[180px] items-stretch gap-[7px]">
-            {barras.map((b) => (
-              <div key={b.label} className="flex flex-1 flex-col items-center justify-end gap-1.5">
-                <div className="w-full rounded-t-[6px]" style={{ height: `${Math.round((b.count / maxCount) * 100)}%`, minHeight: 2, background: hourColor(b.count, maxCount) }} title={`${b.count} socios`} />
-                <div className="text-[9.5px] font-bold text-faint">{b.label}</div>
-              </div>
-            ))}
-          </div>
-          )}
-        </Card>
-
+      {/* Live check-ins (el histórico de asistencia por hora/día vive en Reportes) */}
+      <div className="mt-[15px] grid grid-cols-1 gap-[15px]">
         <Card className="flex flex-col p-[19px]">
           <div className="flex items-center justify-between">
             <div className="text-[14.5px] font-extrabold">Check-ins</div>
@@ -342,6 +319,10 @@ export default function Dashboard() {
               )
             })}
           </div>
+          <button onClick={() => navigate('/reportes?tab=asistencia')}
+            className="mt-2 cursor-pointer self-start border-none bg-transparent p-0 text-[11.5px] font-extrabold text-orange hover:underline">
+            Ver tendencias en Reportes →
+          </button>
         </Card>
       </div>
 
@@ -371,33 +352,13 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Ingresos por día: cuánta plata entró en las últimas 2 semanas (solo quien ve plata) */}
-      {veIngresos && (ingresos.data || []).some((d) => d.total > 0) && (() => {
-        const serie = ingresos.data
-        const maxIng = Math.max(1, ...serie.map((d) => d.total))
-        const totalIng = serie.reduce((n, d) => n + d.total, 0)
-        return (
-          <Card className="mt-[15px] p-[19px]">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <div className="text-[14.5px] font-extrabold">Ingresos por día</div>
-                <div className="mt-0.5 text-[12px] font-semibold text-muted">Últimos 14 días · membresías + ventas</div>
-              </div>
-              <div className="text-[18px] font-extrabold" style={{ color: T.success }}>{money(totalIng, moneda)}</div>
-            </div>
-            <div className="mt-4 flex h-[130px] items-stretch gap-[6px]">
-              {serie.map((d) => (
-                <div key={d.fecha.toISOString()} className="group flex flex-1 flex-col items-center justify-end gap-1.5">
-                  <div className="w-full rounded-t-[5px] transition-opacity group-hover:opacity-80"
-                    style={{ height: `${Math.round((d.total / maxIng) * 100)}%`, minHeight: 2, background: d.total ? T.success : T.line2 }}
-                    title={`${d.fecha.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}: ${money(d.total, moneda)}`} />
-                  <div className="text-[9px] font-bold text-faint">{d.fecha.getDate()}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )
-      })()}
+      {/* La serie de ingresos por día (últimos 14 días) ya vive en Reportes → Ventas */}
+      {veIngresos && (
+        <button onClick={() => navigate('/reportes?tab=ventas')}
+          className="mt-[15px] cursor-pointer border-none bg-transparent p-0 text-[12px] font-extrabold text-orange hover:underline">
+          Ver ingresos por día en Reportes →
+        </button>
+      )}
 
       {/* Accesos rápidos: cada tarjeta lleva al módulo correspondiente */}
       <div className="mt-[15px] grid grid-cols-1 gap-[15px] lg:grid-cols-3">

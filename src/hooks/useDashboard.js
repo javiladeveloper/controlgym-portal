@@ -74,6 +74,24 @@ export function useIngresosPorDia(sedeId) {
   })
 }
 
+// Aforo en vivo (RPC aforo_actual): { dentro, aforo_max, pct }. Si la sede no
+// configuró aforo, aforo_max viene null — el consumidor decide no renderizar.
+// retry:false porque si la sede no existe la RPC lanza y no queremos reintentar
+// en loop; refetchInterval de 30s para que la tarjeta se sienta "en vivo".
+export function useAforo(sedeId) {
+  return useQuery({
+    queryKey: ['aforo-actual', sedeId],
+    enabled: !!sedeId,
+    retry: false,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('aforo_actual', { p_sede_id: sedeId })
+      if (error) throw error
+      return data // { dentro, aforo_max, pct }
+    },
+  })
+}
+
 // Últimos check-ins de la sede (para el panel "en vivo").
 export function useCheckins(sedeId) {
   return useQuery({
