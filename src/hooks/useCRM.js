@@ -82,3 +82,56 @@ export function useToggleTarea(sedeId) {
     onSettled: () => qc.invalidateQueries({ queryKey: ['lead-tareas', sedeId] }),
   })
 }
+
+// Crea un seguimiento (tarea) para un lead. tipo ∈ TAREA_TIPOS (incluye 'llamada').
+export function useCrearTarea(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ leadId, tipo, detalle, vence_at, empresaId }) => {
+      const { error } = await supabase.from('lead_tarea').insert({
+        lead_id: leadId, empresa_id: empresaId, tipo, detalle: detalle || null,
+        vence_at: vence_at || null, completada: false,
+      })
+      if (error) throw error
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['lead-tareas', sedeId] })
+      qc.invalidateQueries({ queryKey: ['agenda-comercial'] })
+    },
+  })
+}
+
+// Debe calzar con el CHECK constraint de lead_tarea.tipo (20260703000010_crm.sql).
+export const TAREA_TIPOS = ['llamada', 'whatsapp', 'visita', 'email']
+export const TAREA_TIPO_LABEL = { llamada: '📞 Llamada', whatsapp: '💬 WhatsApp', visita: '🏋️ Visita', email: '📧 Email' }
+export const TAREA_TIPO_ICONO = { llamada: '📞', whatsapp: '💬', visita: '🏋️', email: '📧' }
+
+// Agenda comercial: tareas vencidas / de hoy / próximos 7 días, de TODA la
+// empresa (la RPC ya filtra por auth_empresa_id()). Se monta solo cuando el
+// usuario expande la card (patrón TablaHistorialCaja de Finanzas.jsx) para
+// no consultar de gratis en cada carga del CRM.
+export function useAgendaComercial(enabled) {
+  return useQuery({
+    queryKey: ['agenda-comercial'],
+    enabled: !!enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('agenda_comercial')
+      if (error) throw error
+      return data || { vencidas: [], hoy: [], proximas: [] }
+    },
+  })
+}
+
+// Ex-socios (reactivación): últimos p_meses. Igual que la agenda, se monta
+// solo al expandir la card.
+export function useExSocios(meses, enabled) {
+  return useQuery({
+    queryKey: ['ex-socios', meses],
+    enabled: !!enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('ex_socios', { p_meses: meses })
+      if (error) throw error
+      return data || []
+    },
+  })
+}

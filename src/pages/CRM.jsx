@@ -10,7 +10,10 @@ import { verificarDni, textoVerificacion } from '../lib/dni.js'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
-import { useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL } from '../hooks/useCRM.js'
+import {
+  useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL,
+  useCrearTarea, useAgendaComercial, useExSocios, TAREA_TIPOS, TAREA_TIPO_LABEL, TAREA_TIPO_ICONO,
+} from '../hooks/useCRM.js'
 import { iniciales } from '../lib/uiHelpers.js'
 import { waLink, msgLead } from '../lib/whatsapp.js'
 import { toast } from '../lib/toast.js'
@@ -138,6 +141,216 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
   )
 }
 
+// Fila compacta de una tarea de agenda: hora/fecha · tipo · lead · detalle · asignado.
+function FilaAgenda({ t, conFecha }) {
+  const icono = TAREA_TIPO_ICONO[t.tipo] || '📝'
+  const fh = t.vence_at ? new Date(t.vence_at) : null
+  const cuando = fh
+    ? conFecha
+      ? fh.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) + ' · ' + fh.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+      : fh.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+    : '—'
+  return (
+    <div className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+      <span className="w-[92px] flex-shrink-0 font-extrabold text-faint">{cuando}</span>
+      <span className="flex-shrink-0" title={t.tipo}>{icono}</span>
+      <span className="min-w-0 flex-1 truncate font-extrabold">{t.lead_nombre}</span>
+      {t.detalle && <span className="hidden min-w-0 flex-[1.4] truncate font-semibold text-muted sm:block">{t.detalle}</span>}
+      <span className="flex-shrink-0 text-[11px] font-bold text-faint">{t.asignado_nombre || 'Sin asignar'}</span>
+    </div>
+  )
+}
+
+function GrupoAgenda({ titulo, color, items, conFecha }) {
+  if (!items.length) return null
+  return (
+    <div className="mt-3 first:mt-0">
+      <div className="px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color }}>{titulo} · {items.length}</div>
+      {items.map((t) => <FilaAgenda key={t.id} t={t} conFecha={conFecha} />)}
+    </div>
+  )
+}
+
+// Card colapsada por defecto arriba del pipeline. El hook (y su RPC) solo se
+// monta cuando el usuario expande, igual que TablaHistorialCaja en Finanzas.jsx.
+function AgendaComercial() {
+  const [abierto, setAbierto] = useState(false)
+  const agenda = useAgendaComercial(abierto)
+  const vencidas = agenda.data?.vencidas || []
+  const nVencidas = vencidas.length
+  return (
+    <Card className="mt-5 overflow-hidden">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
+        <div className="flex items-center gap-2">
+          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento</span>
+          {nVencidas > 0 && (
+            <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: T.dangerBg, color: T.danger }}>
+              {nVencidas} vencida{nVencidas > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver agenda ▼'}</span>
+      </button>
+      {abierto && (
+        <div className="border-t border-line2">
+          {agenda.isLoading && <LoadingState variant="table" rows={3} />}
+          {agenda.isError && <ErrorState error={agenda.error} onRetry={agenda.refetch} />}
+          {!agenda.isLoading && !agenda.isError && (
+            (vencidas.length + (agenda.data?.hoy?.length || 0) + (agenda.data?.proximas?.length || 0)) === 0 ? (
+              <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin tareas pendientes en los próximos 7 días.</div>
+            ) : (
+              <div className="pb-2">
+                <GrupoAgenda titulo="Vencidas" color={T.danger} items={vencidas} conFecha />
+                <GrupoAgenda titulo="Hoy" color={T.warning} items={agenda.data?.hoy || []} />
+                <GrupoAgenda titulo="Próximas 7 días" color={T.muted} items={agenda.data?.proximas || []} conFecha />
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// Fila de un ex-socio candidato a reactivación.
+function FilaExSocio({ ex, sedeId, empresaId, gymNombre }) {
+  const qc = useQueryClient()
+  const [creado, setCreado] = useState(false)
+  const wa = ex.telefono && waLink(ex.telefono,
+    `Hola ${(ex.nombre || '').split(' ')[0]}! 👋 Te extrañamos en ${gymNombre || 'el gimnasio'} — ¿te gustaría volver? Tenemos promociones para socios que regresan. 💪`)
+
+  async function crearLead() {
+    setCreado(true)
+    const { error } = await supabase.from('lead').insert({
+      empresa_id: empresaId, sede_id: sedeId, etapa: 'nuevo',
+      nombre: ex.nombre, telefono: ex.telefono || null,
+      fuente: 'Reactivación', nota: 'reactivacion — ex-socio',
+    })
+    if (error) { setCreado(false); toast.error('No se pudo crear el lead: ' + error.message); return }
+    qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+    toast.ok(`Lead creado para ${ex.nombre}`)
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-extrabold">{ex.nombre}</div>
+        <div className="truncate text-[11px] font-bold text-muted">{ex.ultimo_plan || 'Sin plan registrado'}</div>
+      </div>
+      <span className="flex-shrink-0 text-[11px] font-extrabold text-faint">venció hace {ex.vencio_hace_dias}d</span>
+      {wa && (
+        <a href={wa} target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
+          style={{ background: '#25D366' }}><WhatsAppIcon size={14} /></a>
+      )}
+      <button onClick={crearLead} disabled={creado}
+        className="flex-shrink-0 cursor-pointer rounded-lg border border-orange px-2.5 py-1.5 text-[10.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:cursor-default disabled:opacity-50">
+        {creado ? 'Lead creado ✓' : '+ Crear lead'}
+      </button>
+    </div>
+  )
+}
+
+// Card colapsada al pie del CRM. Igual patrón: hook (y RPC) montado solo al expandir.
+function ReactivacionExSocios({ sedeId, empresaId }) {
+  const { empresa } = useAuth()
+  const [abierto, setAbierto] = useState(false)
+  const [meses, setMeses] = useState(6)
+  const exSocios = useExSocios(meses, abierto)
+  return (
+    <Card className="mt-[15px] max-w-[860px] overflow-hidden">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
+        <div>
+          <div className="text-[14.5px] font-extrabold">↩️ Reactivación (ex-socios)</div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">Socios que no renovaron y podrían volver</div>
+        </div>
+        <span className="flex-shrink-0 text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver ex-socios ▼'}</span>
+      </button>
+      {abierto && (
+        <div className="border-t border-line2">
+          <div className="flex items-center gap-2 px-4 py-3">
+            <span className="text-[11.5px] font-bold text-muted">Vencidos hace:</span>
+            {[3, 6, 12].map((m) => (
+              <button key={m} onClick={() => setMeses(m)}
+                className="cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition-colors"
+                style={meses === m
+                  ? { background: T.chipNavy, color: T.navy, borderColor: T.chipNavy }
+                  : { background: 'transparent', color: '#9AA3B5', borderColor: T.line }}>
+                {m} meses
+              </button>
+            ))}
+          </div>
+          {exSocios.isLoading && <LoadingState variant="table" rows={3} />}
+          {exSocios.isError && <ErrorState error={exSocios.error} onRetry={exSocios.refetch} />}
+          {!exSocios.isLoading && !exSocios.isError && (exSocios.data || []).length === 0 && (
+            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin ex-socios en ese rango.</div>
+          )}
+          {!exSocios.isLoading && !exSocios.isError && (exSocios.data || []).map((ex) => (
+            <FilaExSocio key={ex.socio_id} ex={ex} sedeId={sedeId} empresaId={empresaId} gymNombre={empresa?.nombre} />
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// Form compacto para registrar un seguimiento (incluye 'llamada'). Vive plegado
+// bajo un botón "+ Tarea" para no ensuciar la card de Seguimientos por defecto.
+function NuevaTareaForm({ sedeId, empresaId, leads, onDone }) {
+  const crear = useCrearTarea(sedeId)
+  const [leadId, setLeadId] = useState('')
+  const [tipo, setTipo] = useState('llamada')
+  const [detalle, setDetalle] = useState('')
+  const [fecha, setFecha] = useState('')
+
+  async function guardar(e) {
+    e.preventDefault()
+    if (!leadId) return
+    try {
+      await crear.mutateAsync({ leadId, tipo, detalle, vence_at: fecha ? new Date(fecha).toISOString() : null, empresaId })
+      toast.ok('Seguimiento agendado')
+      onDone()
+    } catch (err) {
+      toast.error('No se pudo agendar: ' + err.message)
+    }
+  }
+
+  return (
+    <form onSubmit={guardar} className="flex flex-wrap items-end gap-2 border-t border-line2 px-5 py-3.5">
+      <label className="flex min-w-[160px] flex-1 flex-col gap-1">
+        <span className="text-[10.5px] font-extrabold uppercase tracking-[0.4px] text-muted">Lead</span>
+        <select required value={leadId} onChange={(e) => setLeadId(e.target.value)} className={inputCls + ' cursor-pointer text-[12.5px]'}>
+          <option value="">Elegir…</option>
+          {leads.map((l) => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+        </select>
+      </label>
+      <label className="flex w-[140px] flex-col gap-1">
+        <span className="text-[10.5px] font-extrabold uppercase tracking-[0.4px] text-muted">Tipo</span>
+        <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={inputCls + ' cursor-pointer text-[12.5px]'}>
+          {TAREA_TIPOS.map((t) => <option key={t} value={t}>{TAREA_TIPO_LABEL[t]}</option>)}
+        </select>
+      </label>
+      <label className="flex w-[150px] flex-col gap-1">
+        <span className="text-[10.5px] font-extrabold uppercase tracking-[0.4px] text-muted">Vence</span>
+        <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls + ' text-[12.5px]'} />
+      </label>
+      <label className="flex min-w-[160px] flex-1 flex-col gap-1">
+        <span className="text-[10.5px] font-extrabold uppercase tracking-[0.4px] text-muted">Detalle</span>
+        <input value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Opcional" className={inputCls + ' text-[12.5px]'} />
+      </label>
+      <div className="flex gap-1.5">
+        <button type="button" onClick={onDone} className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12px] font-extrabold text-muted hover:border-orange">Cancelar</button>
+        <button type="submit" disabled={crear.isPending || !leadId}
+          className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+          {crear.isPending ? 'Guardando…' : 'Agendar'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export default function CRM() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
@@ -166,6 +379,7 @@ export default function CRM() {
   }
   const [editar, setEditar] = useState(null) // lead en edición
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
+  const [nuevaTareaOpen, setNuevaTareaOpen] = useState(false)
   const leads = useLeads(sedeId)
   const avanzar = useAvanzarLead(sedeId)
   const tareas = useTareas(sedeId)
@@ -217,6 +431,8 @@ export default function CRM() {
         <StatCard label="En proceso" value={(leads.data?.length ?? 0) - inscritos} delta="en seguimiento" />
         <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas pendientes" variant="accent" />
       </div>
+
+      <AgendaComercial />
 
       {leads.isLoading && <LoadingState variant="cards" rows={4} />}
       {leads.error && <ErrorState error={leads.error} onRetry={leads.refetch} />}
@@ -306,10 +522,19 @@ export default function CRM() {
 
       {/* Seguimientos */}
       <Card className="mt-[15px] max-w-[860px] overflow-hidden">
-        <div className="px-5 py-4">
-          <div className="text-[14.5px] font-extrabold">Seguimientos de hoy</div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">Marca cada contacto como realizado</div>
+        <div className="flex items-center justify-between gap-3 px-5 py-4">
+          <div>
+            <div className="text-[14.5px] font-extrabold">Seguimientos de hoy</div>
+            <div className="mt-0.5 text-[12px] font-semibold text-muted">Marca cada contacto como realizado</div>
+          </div>
+          <button type="button" onClick={() => setNuevaTareaOpen((v) => !v)}
+            className="flex-shrink-0 cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-1.5 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50">
+            {nuevaTareaOpen ? 'Cerrar' : '+ Tarea'}
+          </button>
         </div>
+        {nuevaTareaOpen && (
+          <NuevaTareaForm sedeId={sedeId} empresaId={empresa?.id} leads={leads.data || []} onDone={() => setNuevaTareaOpen(false)} />
+        )}
         {tareas.isLoading && <LoadingState variant="table" rows={3} />}
         {tareas.error && !tareas.isLoading && (
           <ErrorState error={tareas.error} onRetry={tareas.refetch} />
@@ -329,7 +554,7 @@ export default function CRM() {
               </div>
               <span className="flex-shrink-0 rounded-full px-[11px] py-[5px] text-[11px] font-extrabold capitalize"
                 style={{ background: tipoNav ? T.chipNavy : T.successBg, color: tipoNav ? T.navy : T.success }}>
-                {t.tipo}
+                {tipoNav ? '📞 ' : ''}{t.tipo}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-extrabold" style={{ textDecoration: isDone ? 'line-through' : 'none' }}>{t.lead?.nombre}</div>
@@ -342,6 +567,8 @@ export default function CRM() {
           )
         })}
       </Card>
+
+      <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />
     </div>
   )
 }
