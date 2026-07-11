@@ -57,7 +57,9 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   // (la grilla no se borra, pero deja de ser la fuente de verdad hasta que se
   // vuelva a tocar un contador).
   function setCantidad(key, cantidad) {
-    const next = { ...arqueo, [key]: cantidad }
+    // Sin negativos: un "-3" colaría un total menor sin que se note al cerrar.
+    const limpia = Math.max(0, Math.floor(Number(cantidad) || 0))
+    const next = { ...arqueo, [key]: cantidad === '' ? '' : limpia }
     setArqueo(next)
     const total = DENOMINACIONES.reduce((n, d) => n + (Number(next[d.key]) || 0) * d.valor, 0)
     setContado(String(Math.round(total * 100) / 100))
