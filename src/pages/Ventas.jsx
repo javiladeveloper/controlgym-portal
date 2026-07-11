@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, PrimaryButton } from '../components/ui.jsx'
+import { Card, PrimaryButton, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { inputCls } from '../components/Modal.jsx'
 import { usePanel } from '../store.jsx'
@@ -10,6 +10,7 @@ import { useVenderCarrito, useCobrarMembresiaPos } from '../hooks/useVentas.js'
 import { money } from '../lib/uiHelpers.js'
 import { toast } from '../lib/toast.js'
 import { METODOS_PAGO } from '../lib/pagos.js'
+import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 // ── Buscador + grilla de productos: filtra por nombre, clic agrega al carrito ──
 function BuscadorProductos({ sedeId, onAgregar }) {
@@ -197,6 +198,7 @@ export default function Ventas() {
   const [numDoc, setNumDoc] = useState('')
   const [nombreCliente, setNombreCliente] = useState('')
   const [emailCliente, setEmailCliente] = useState('')
+  const [resultado, setResultado] = useState(null) // {total, comprobanteId} tras un cobro exitoso
 
   const venderCarrito = useVenderCarrito(sedeId)
   const cobrarMembresia = useCobrarMembresiaPos(sedeId)
@@ -255,26 +257,30 @@ export default function Ventas() {
     return { tipoDoc, numDoc: numDoc.trim(), nombre: nombreCliente.trim() || 'CLIENTE VARIOS', email: emailCliente.trim() || undefined }
   }
 
+  function onCobroExitoso(data) {
+    toast.ok(`Cobrado ${money(data?.total ?? total, moneda)}`)
+    setResultado({ total: data?.total ?? total, comprobanteId: data?.comprobante_id ?? null })
+    limpiar()
+  }
+
   function cobrar() {
     const cliente = armarCliente()
     if (modo === 'producto') {
       const items = carrito.map((it) => ({ producto_id: it.producto.id, cantidad: it.cantidad }))
       venderCarrito.mutate({ items, metodoPago, cliente }, {
-        onSuccess: (data) => {
-          toast.ok(`Cobrado ${money(data?.total ?? total, moneda)}${data?.comprobante_id ? ' — boleta generada' : ''}`)
-          limpiar()
-        },
+        onSuccess: onCobroExitoso,
         onError: (e) => toast.error('No se pudo cobrar: ' + e.message),
       })
     } else {
       cobrarMembresia.mutate({ membresiaId: membresiaSel.id, metodoPago, monto: total, cliente }, {
-        onSuccess: (data) => {
-          toast.ok(`Cobrado ${money(data?.total ?? total, moneda)}${data?.comprobante_id ? ' — boleta generada' : ''}`)
-          limpiar()
-        },
+        onSuccess: onCobroExitoso,
         onError: (e) => toast.error('No se pudo cobrar: ' + e.message),
       })
     }
+  }
+
+  function nuevaVenta() {
+    setResultado(null)
   }
 
   return (
@@ -286,6 +292,25 @@ export default function Ventas() {
         </div>
       </div>
 
+      {resultado && (
+        <Card className="mt-5 p-6">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="text-[15px] font-extrabold text-green">✓ Cobrado {money(resultado.total, moneda)}</div>
+            {resultado.comprobanteId ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <Badge bg={T.warningBg} color={T.warning}>Boleta pendiente</Badge>
+                <p className="text-[12.5px] font-semibold text-muted">Boleta en proceso — llegará por correo.</p>
+              </div>
+            ) : null}
+            <button type="button" onClick={nuevaVenta}
+              className="mt-2 cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">
+              Nueva venta
+            </button>
+          </div>
+        </Card>
+      )}
+
+      {!resultado && (
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
         {/* ── Columna izquierda: cobro ───────────────────────────────── */}
         <Card className="p-5">
@@ -410,6 +435,7 @@ export default function Ventas() {
           </Card>
         </div>
       </div>
+      )}
     </div>
   )
 }

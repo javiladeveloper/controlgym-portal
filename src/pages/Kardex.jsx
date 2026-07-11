@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
@@ -15,7 +16,7 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
   const qc = useQueryClient()
-  const [f, setF] = useState({ producto_id: productos[0]?.id || '__nuevo__', tipo: 'venta', cantidad: 1, monto: '', np_nombre: '', np_categoria: 'Suplementos', np_precio: '', np_stockmin: 5 })
+  const [f, setF] = useState({ producto_id: productos[0]?.id || '__nuevo__', tipo: 'compra', cantidad: 1, monto: '', np_nombre: '', np_categoria: 'Suplementos', np_precio: '', np_stockmin: 5 })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
@@ -26,11 +27,6 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
   }
 
   const prod = productos.find((p) => p.id === f.producto_id)
-  // Sugerido = precio unitario × cantidad (también para producto nuevo, usando el precio recién escrito)
-  const precioUnit = prod ? Number(prod.precio) : Number(f.np_precio) || 0
-  const montoSugerido = precioUnit * (Number(f.cantidad) || 0)
-  // En ventas el total viene lleno con el cálculo; si el usuario escribe, manda lo suyo
-  const montoMostrado = f.tipo === 'venta' && f.monto === '' ? (montoSugerido || '') : f.monto
 
   async function guardar(e) {
     e?.preventDefault()
@@ -47,9 +43,9 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
         if (error) throw error
         productoId = data.id
       }
-      // Un total explícito en venta/compra debe ser positivo: un monto 0 o
-      // negativo ensuciaría la caja (p. ej. una venta que RESTA de caja).
-      if ((f.tipo === 'venta' || f.tipo === 'compra') && f.monto !== '' && Number(f.monto) <= 0) {
+      // Un total explícito en compra debe ser positivo: un monto 0 o
+      // negativo ensuciaría la caja.
+      if (f.tipo === 'compra' && f.monto !== '' && Number(f.monto) <= 0) {
         throw new Error('El total de la operación debe ser mayor a 0')
       }
       const { error } = await supabase.rpc('registrar_mov_inventario', {
@@ -69,7 +65,7 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
   }
 
   return (
-    <Modal title="Registrar movimiento" subtitle="Venta o compra: actualiza stock y caja" onClose={onClose}>
+    <Modal title="Registrar movimiento" subtitle="Compra o ajuste: actualiza stock y caja" onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
         <Campo label="Producto">
           <select value={f.producto_id} onChange={setProducto} className={inputCls + ' cursor-pointer'}>
@@ -94,25 +90,21 @@ function MovimientoModal({ sedeId, empresaId, productos, moneda, onClose }) {
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <Campo label="Tipo" hint={f.producto_id === '__nuevo__' && f.tipo === 'venta' ? 'Un producto nuevo empieza con stock 0: primero regístrale una compra.' : undefined}>
+          <Campo label="Tipo">
             <select value={f.tipo} onChange={set('tipo')} className={inputCls + ' cursor-pointer'}>
-              <option value="venta">Venta (sale stock, entra a caja)</option>
               <option value="compra">Compra (entra stock, sale de caja)</option>
               <option value="ajuste">Ajuste de inventario (+)</option>
             </select>
           </Campo>
           <Campo label="Cantidad (unidades)"
-            hint={f.tipo === 'venta'
-              ? (prod ? `Disponible: ${prod.stock} uds.` : undefined)
-              : `En unidades sueltas, no paquetes: 4 paquetes de 12 = 48.${prod ? ` El stock quedará en ${Number(prod.stock) + (Number(f.cantidad) || 0)} uds.` : ''}`}>
+            hint={`En unidades sueltas, no paquetes: 4 paquetes de 12 = 48.${prod ? ` El stock quedará en ${Number(prod.stock) + (Number(f.cantidad) || 0)} uds.` : ''}`}>
             <input type="number" min="1" value={f.cantidad} onChange={set('cantidad')} className={inputCls} />
           </Campo>
         </div>
         <Campo label={`Total de la operación (${moneda})`}
-          hint={f.tipo === 'venta' ? 'Se calcula solo (precio × cantidad). Cámbialo únicamente si cobraste otro monto, p. ej. con descuento.'
-            : f.tipo === 'compra' ? 'Lo que le pagas al proveedor por esta compra (costo total, no el precio de venta).'
+          hint={f.tipo === 'compra' ? 'Lo que le pagas al proveedor por esta compra (costo total, no el precio de venta).'
             : 'El ajuste no mueve caja; puedes dejarlo vacío.'}>
-          <input type="number" step="0.1" min="0" value={montoMostrado} onChange={set('monto')} className={inputCls} placeholder="0" />
+          <input type="number" step="0.1" min="0" value={f.monto} onChange={set('monto')} className={inputCls} placeholder="0" />
         </Campo>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         <BotonesModal onCancel={onClose} busy={busy} submitLabel="Registrar" />
@@ -312,6 +304,7 @@ function ProductoModal({ producto, sedeId, moneda, onClose }) {
 }
 
 export default function Kardex() {
+  const navigate = useNavigate()
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
   const qc = useQueryClient()
@@ -365,10 +358,16 @@ export default function Kardex() {
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Kardex</h1>
-          <p className="mt-0.5 text-[13px] font-semibold text-muted">Inventario y venta de productos · {sedeNombre}</p>
+          <p className="mt-0.5 text-[13px] font-semibold text-muted">Inventario de productos · {sedeNombre}</p>
         </div>
-        <button onClick={() => setMovOpen(true)}
-          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Registrar movimiento</button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/ventas')}
+            className="cursor-pointer border-none bg-transparent p-0 text-[12.5px] font-extrabold text-orange hover:underline">
+            ¿Vas a vender? Usa la sección Ventas →
+          </button>
+          <button onClick={() => setMovOpen(true)}
+            className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Registrar movimiento</button>
+        </div>
       </div>
 
       {movOpen && (
