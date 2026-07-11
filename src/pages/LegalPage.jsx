@@ -48,10 +48,19 @@ const DEVOLUCIONES = [
   ['7. Reclamos', 'Si no estás conforme con la atención, puedes registrar tu reclamo en nuestro Libro de Reclamaciones virtual (enlace en el pie de página), conforme a la Ley N° 29571.'],
 ]
 
+const ELIMINAR = [
+  ['1. Sobre esta página', 'Esta página explica cómo solicitar la eliminación de tu cuenta y de tus datos personales en FitCore (la app de tu gimnasio y su panel de gestión), operado por ' + TITULAR.razon + '.'],
+  ['2. Cómo solicitar la eliminación de tu cuenta', 'Escríbenos desde el correo asociado a tu cuenta a soporte@' + ROOT_DOMAIN + ' (o al WhatsApp +51 986 110 558) con el asunto "Eliminar mi cuenta", indicando tu nombre y el gimnasio al que perteneces. Confirmamos la recepción en un máximo de 2 días hábiles y procesamos la eliminación en un plazo máximo de 30 días.'],
+  ['3. Qué datos se eliminan', 'Al eliminar tu cuenta borramos tus datos personales asociados: nombre, correo, documento, teléfono, foto de socio y de galería, objetivos, medidas corporales (peso, IMC, % de grasa) y tu historial de actividad en la app. También se desvincula tu acceso mediante Google.'],
+  ['4. Qué datos se conservan y por cuánto tiempo', 'Por obligaciones legales, contables y tributarias (por ejemplo, comprobantes de pago emitidos), tu gimnasio puede conservar ciertos registros de transacciones por el plazo que exige la ley peruana, de forma disociada de tu perfil siempre que sea posible. Salvo esas excepciones legales, tus datos personales se eliminan de forma definitiva. Los respaldos (backups) que puedan contener copias se rotan y quedan sobrescritos en un máximo de 90 días.'],
+  ['5. Si eres socio de un gimnasio', 'Tus datos los administra el gimnasio al que perteneces. Puedes ejercer tu derecho de eliminación directamente con tu gimnasio o a través de nosotros escribiendo a soporte@' + ROOT_DOMAIN + '. Tramitaremos tu solicitud coordinando con tu gimnasio.'],
+]
+
 const DOCS = {
   terminos: { titulo: 'Términos y condiciones', secciones: [IDENTIFICACION, ...TERMINOS] },
   privacidad: { titulo: 'Política de privacidad', secciones: [IDENTIFICACION, ...PRIVACIDAD] },
   devoluciones: { titulo: 'Política de cambios y devoluciones', secciones: [IDENTIFICACION, ...DEVOLUCIONES] },
+  eliminar: { titulo: 'Eliminación de cuenta y datos', secciones: [IDENTIFICACION, ...ELIMINAR] },
 }
 
 export default function LegalPage({ doc = 'terminos' }) {
@@ -92,6 +101,7 @@ export default function LegalPage({ doc = 'terminos' }) {
           <a href="/terminos" style={{ color: doc === 'terminos' ? C.primary : C.muted }}>Términos</a>
           <a href="/privacidad" style={{ color: doc === 'privacidad' ? C.primary : C.muted }}>Privacidad</a>
           <a href="/devoluciones" style={{ color: doc === 'devoluciones' ? C.primary : C.muted }}>Cambios y devoluciones</a>
+          <a href="/eliminar-cuenta" style={{ color: doc === 'eliminar' ? C.primary : C.muted }}>Eliminar cuenta</a>
           <a href="/reclamaciones" style={{ color: C.muted }}>📖 Libro de Reclamaciones</a>
         </div>
 

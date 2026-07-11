@@ -32,7 +32,7 @@ const wantsPortal = window.location.hash === '#login' || window.location.pathnam
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
-const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad', '/devoluciones': 'devoluciones' }[window.location.pathname]
+const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad', '/devoluciones': 'devoluciones', '/eliminar-cuenta': 'eliminar' }[window.location.pathname]
 const esReclamaciones = window.location.pathname === '/reclamaciones'
 const esDemo = window.location.pathname === '/demo'
 const esPlanes = window.location.pathname === '/planes'
