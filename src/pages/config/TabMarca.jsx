@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card, PrimaryButton } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useGuardarTema, subirBranding } from '../../hooks/useConfiguracion.js'
+import { supabase } from '../../lib/supabaseClient.js'
+import { toast } from '../../lib/toast.js'
+import { useGuardarEmpresa, useGuardarTema, subirBranding } from '../../hooks/useConfiguracion.js'
 import { applyEmpresaTema } from '../../theme/tokens.js'
 import BrandPreview from './BrandPreview.jsx'
 
@@ -105,6 +107,7 @@ export default function TabMarca() {
   return (
     <div className="grid grid-cols-[1fr_1.1fr] gap-[15px]">
       <div className="flex flex-col gap-[15px]">
+        <EventoSocial empresaId={empresa?.id} />
         <Card className="p-[19px]">
           <div className="text-[14.5px] font-extrabold">Identidad</div>
           <label className="mt-4 flex flex-col gap-1.5">
@@ -178,5 +181,54 @@ export default function TabMarca() {
         <p className="mt-2 text-[11.5px] font-semibold text-faint">Así se verá el panel y la app con tu marca.</p>
       </div>
     </div>
+  )
+}
+
+// ── Evento social (galería festiva en la app) — PEDIDO 29 ────────────────────
+// El gym activa un evento (ej. "Día del Padre") y recién ahí la app muestra el
+// tab Galería para que los socios suban fotos (moderadas en el Dashboard).
+function EventoSocial({ empresaId }) {
+  const guardarEmpresa = useGuardarEmpresa(empresaId)
+  const [estado, setEstado] = useState(null) // {activo, nombre} | null cargando
+  useEffect(() => {
+    if (!empresaId) return
+    supabase.from('empresa').select('evento_social_activo, evento_social').eq('id', empresaId).single()
+      .then(({ data }) => setEstado({ activo: data?.evento_social_activo ?? false, nombre: data?.evento_social || '' }))
+  }, [empresaId])
+  if (!estado) return null
+
+  function guardar(next) {
+    setEstado(next)
+    guardarEmpresa.mutate({ evento_social_activo: next.activo, evento_social: next.nombre.trim() || null }, {
+      onSuccess: () => toast.ok(next.activo ? `Evento "${next.nombre}" activado — los socios ya pueden subir fotos` : 'Evento desactivado'),
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  return (
+    <Card className="p-[19px]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-[14.5px] font-extrabold">🎉 Evento social (galería en la app)</div>
+          <div className="mt-1 text-[12.5px] font-semibold leading-[1.5] text-muted">
+            Activa un evento (ej. "Día del Padre") y los socios podrán subir fotos desde la app.
+            Tú las apruebas en el Dashboard antes de que se publiquen.
+          </div>
+        </div>
+        <button onClick={() => guardar({ ...estado, activo: !estado.activo })}
+          disabled={guardarEmpresa.isPending || (!estado.activo && !estado.nombre.trim())}
+          className={`relative mt-1 h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-none transition-colors ${estado.activo ? 'bg-orange' : 'bg-line2'} disabled:opacity-60`}
+          aria-label="Evento social">
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${estado.activo ? 'left-6' : 'left-1'}`} />
+        </button>
+      </div>
+      <label className="mt-3 flex flex-col gap-1.5">
+        <span className="text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Nombre del evento</span>
+        <input value={estado.nombre} onChange={(e) => setEstado({ ...estado, nombre: e.target.value })}
+          onBlur={() => estado.activo && guardar(estado)}
+          placeholder={'Ej: Día del Padre, Halloween Fit…'}
+          className="rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[14px] outline-none focus:border-orange" />
+      </label>
+    </Card>
   )
 }

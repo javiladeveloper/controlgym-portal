@@ -1882,6 +1882,17 @@ Creado: 2026-07-10 (sesión de la app, canalizando la integración FitCore↔Nor
 
 ================================================================================
 PEDIDO 29 -- Activar/desactivar el "evento social" del gym + exponerlo al socio
+
+✅ RESUELTO (2026-07-11, sesión del panel). Migración 20260711000012:
+  - Columnas `empresa.evento_social_activo` (bool, default false) y
+    `empresa.evento_social` (text) creadas.
+  - Expuestas en `get_mi_app_bootstrap()` dentro de `empresa` con los nombres
+    EXACTOS pedidos — verificado con el bootstrap real del socio de prueba.
+  - Panel: Config › Marca → card "🎉 Evento social": nombre + toggle
+    (no deja activar sin nombre). Moderación sigue en Dashboard.
+La app no necesita cambios: al activar el evento aparece su tab Galería.
+
+--- pedido original ---
 ================================================================================
 
 CONTEXTO: la app ya implementó la GALERÍA DE EVENTOS FESTIVOS (idea Image Gym #7).
