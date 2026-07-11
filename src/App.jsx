@@ -16,6 +16,7 @@ import Rutinas from './pages/Rutinas.jsx'
 import Clases from './pages/Clases.jsx'
 import Promociones from './pages/Promociones.jsx'
 import Personal from './pages/Personal.jsx'
+import Ventas from './pages/Ventas.jsx'
 import Kardex from './pages/Kardex.jsx'
 import Maquinas from './pages/Maquinas.jsx'
 import Finanzas from './pages/Finanzas.jsx'
@@ -38,6 +39,7 @@ const PAGES = [
   ['clases', Clases],
   ['promociones', Promociones],
   ['personal', Personal],
+  ['ventas', Ventas],
   ['kardex', Kardex],
   ['maquinas', Maquinas],
   ['finanzas', Finanzas],

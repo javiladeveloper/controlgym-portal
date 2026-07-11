@@ -1,0 +1,50 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/supabaseClient.js'
+
+// Vende un carrito de productos (multi-ítem) → baja stock, caja, comprobante.
+export function useVenderCarrito(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ items, metodoPago, cliente }) => {
+      const { data, error } = await supabase.rpc('vender_carrito', {
+        p_sede_id: sedeId,
+        p_items: items, // [{producto_id, cantidad}]
+        p_metodo_pago: metodoPago || 'efectivo',
+        p_cliente_tipo_doc: cliente?.tipoDoc || '0',
+        p_cliente_num_doc: cliente?.numDoc || null,
+        p_cliente_nombre: cliente?.nombre || 'CLIENTE VARIOS',
+        p_cliente_email: cliente?.email || null,
+      })
+      if (error) throw error
+      return data // {venta_id, total, comprobante_id}
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+    },
+  })
+}
+
+// Cobra/renueva una membresía desde el POS + comprobante.
+export function useCobrarMembresiaPos(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ membresiaId, metodoPago, monto, cliente }) => {
+      const { data, error } = await supabase.rpc('cobrar_membresia_pos', {
+        p_membresia_id: membresiaId,
+        p_metodo_pago: metodoPago || 'efectivo',
+        p_monto: monto ?? null,
+        p_cliente_tipo_doc: cliente?.tipoDoc || '0',
+        p_cliente_num_doc: cliente?.numDoc || null,
+        p_cliente_nombre: cliente?.nombre || 'CLIENTE VARIOS',
+        p_cliente_email: cliente?.email || null,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
+      qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+    },
+  })
+}
