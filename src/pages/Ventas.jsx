@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, PrimaryButton, Badge } from '../components/ui.jsx'
+import { Card, PrimaryButton } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { inputCls } from '../components/Modal.jsx'
 import { usePanel } from '../store.jsx'
