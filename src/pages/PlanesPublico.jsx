@@ -39,8 +39,8 @@ const PLANES = [
     incluye: ['CRM + captación desde redes', 'Rutinas, kardex y finanzas', 'Reportes Excel · 8 diseños'] },
   { slug: 'pro', nombre: 'Pro', base: 179, app: 229, img: '/landing/capturas/rutinas.jpg',
     para: 'Gestión avanzada y KPIs',
-    desc: 'Todo lo de Crecimiento + reportes y KPIs de ventas y cancelación, metas y ranking de vendedores, alertas de seguimiento, reactivación de ex socios, aforo en vivo y control de acceso físico.',
-    incluye: ['Reportes avanzados y KPIs de ventas', 'Metas, ranking y alertas de seguimiento', 'Aforo en vivo y torniquetes'] },
+    desc: 'Todo lo de Crecimiento + reportes y KPIs de ventas y cancelación, metas y ranking de vendedores, alertas de seguimiento, reactivación de ex socios, aforo en vivo, cámaras y control de acceso físico.',
+    incluye: ['Reportes avanzados y KPIs de ventas', 'Metas, ranking y alertas de seguimiento', 'Aforo en vivo, torniquetes y cámaras'] },
 ]
 
 const money = (n) => `S/ ${Number(n).toLocaleString('es-PE')}`
