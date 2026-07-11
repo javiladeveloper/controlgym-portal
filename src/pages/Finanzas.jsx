@@ -9,7 +9,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useFinanzas } from '../hooks/useOperaciones.js'
 import { useRegistrarGastoCaja, useHistorialCaja } from '../hooks/useCaja.js'
-import { money, mismoMesAnio, mismoDia } from '../lib/uiHelpers.js'
+import { money, mismoMesAnio, mismoDia, fechaLocal } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const METODOS_GASTO = [
@@ -330,6 +330,10 @@ function TablaHistorialCaja({ sedeId, moneda }) {
               <div className="text-right">Contado</div><div className="text-right">Diferencia</div><div>Abrió / cerró</div>
             </div>
             {historial.data.map((h) => {
+              // Cierres previos a la columna efectivo_esperado no tienen contra
+              // qué cuadrar: se muestra '—' sin badge (un esperado=0 inventaría
+              // un "sobraron" falso por todo el contado).
+              const sinEsperado = h.efectivo_esperado == null
               const esperado = Number(h.efectivo_esperado ?? 0)
               const contado = Number(h.saldo_final ?? 0)
               const dif = contado - esperado
@@ -337,15 +341,17 @@ function TablaHistorialCaja({ sedeId, moneda }) {
               return (
                 <div key={h.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] items-center gap-3 border-b border-line2 py-2.5">
                   <div className="text-[12.5px] font-bold">
-                    {new Date(h.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
+                    {fechaLocal(h.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
                   </div>
                   <div className="text-right text-[12.5px] font-extrabold">{money(h.saldo_inicial, moneda)}</div>
-                  <div className="text-right text-[12.5px] font-extrabold">{money(esperado, moneda)}</div>
+                  <div className="text-right text-[12.5px] font-extrabold">{sinEsperado ? '—' : money(esperado, moneda)}</div>
                   <div className="text-right text-[12.5px] font-extrabold">{money(contado, moneda)}</div>
                   <div className="text-right">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cuadro ? 'bg-green-50 text-green-600' : 'bg-red/10 text-red'}`}>
-                      {cuadro ? 'cuadró ✓' : (dif > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(dif), moneda)}
-                    </span>
+                    {sinEsperado ? <span className="text-[11px] font-bold text-faint">—</span> : (
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cuadro ? 'bg-green-50 text-green-600' : 'bg-red/10 text-red'}`}>
+                        {cuadro ? 'cuadró ✓' : (dif > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(dif), moneda)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11.5px] font-semibold text-muted">
                     {h.abierta?.nombre || '—'} / {h.cerrada?.nombre || '—'}
