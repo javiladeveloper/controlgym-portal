@@ -14,6 +14,7 @@ import { useDashboardKpis, useCheckins, useAforo } from '../hooks/useDashboard.j
 import { useClientes } from '../hooks/useClientes.js'
 import { useCamaras } from '../hooks/useCamaras.js'
 import { useFotosPendientes, useModerarFoto } from '../hooks/useGaleria.js'
+import { useReporteComercial } from '../hooks/useReportes.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { waLink, msgCumple } from '../lib/whatsapp.js'
@@ -267,6 +268,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Metas de hoy por vendedor: solo si el gym configuró alguna meta diaria */}
+      {veIngresos && <MetasHoy usuario={usuario} rol={rol} moneda={moneda} />}
+
       {/* Live check-ins (el histórico de asistencia por hora/día vive en Reportes) */}
       <div className="mt-[15px] grid grid-cols-1 gap-[15px]">
         <Card className="flex flex-col p-[19px]">
@@ -387,6 +391,45 @@ export default function Dashboard() {
       {/* Fotos de la galería social por aprobar (solo si hay pendientes) */}
       {veIngresos && <FotosPorAprobar empresaId={empresa?.id} />}
     </div>
+  )
+}
+
+// Tarjeta compacta "Metas de hoy": venta de HOY vs meta diaria por vendedor.
+// Solo se muestra si hay al menos una meta configurada (algún meta_diaria >
+// 0 en por_dia_hoy) — si nadie tiene meta, la tarjeta no aporta nada y no se
+// pinta (directiva: solo lo accionable de HOY). Admin ve a todo el equipo;
+// recepción solo su propia fila (no es su lugar ver la meta de otros).
+function MetasHoy({ usuario, rol, moneda }) {
+  const q = useReporteComercial() // sin params = mes actual; por_dia_hoy siempre es de HOY
+  const filas = (q.data?.por_dia_hoy || []).filter((v) => Number(v.meta_diaria) > 0)
+  const propias = rol === 'admin' ? filas : filas.filter((v) => v.usuario_id === usuario?.id)
+  if (q.isLoading || q.error || propias.length === 0) return null
+
+  return (
+    <Card className="mt-[15px] p-[19px]">
+      <div className="text-[14.5px] font-extrabold">🎯 Metas de hoy</div>
+      <div className="mt-2.5 flex flex-col gap-2.5">
+        {propias.map((v) => {
+          const hoy = Number(v.hoy || 0)
+          const meta = Number(v.meta_diaria || 0)
+          const pct = meta > 0 ? Math.min(100, (hoy / meta) * 100) : 0
+          const cumplida = hoy >= meta
+          return (
+            <div key={v.usuario_id}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-[12.5px] font-extrabold text-ink">{v.nombre}</span>
+                <span className={`flex-shrink-0 text-[11.5px] font-extrabold ${cumplida ? 'text-green-600' : 'text-orange'}`}>
+                  {money(hoy, moneda)} de {money(meta, moneda)}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-line2">
+                <div className={`h-full rounded-full ${cumplida ? 'bg-green' : 'bg-orange'}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
   )
 }
 

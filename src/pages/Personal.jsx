@@ -9,6 +9,7 @@ import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePersonal } from '../hooks/useOperaciones.js'
+import { useMetaVendedor, useGuardarMetaVendedor } from '../hooks/useReportes.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { METODOS_PAGO } from '../lib/pagos.js'
@@ -55,6 +56,26 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+
+  // Meta diaria de venta: es independiente del resto (RPC propia), solo tiene
+  // sentido para quien vende (admin/recepción). Se muestra según el rol EN
+  // EDICIÓN (f.rol), para que al cambiarle el rol a "vendedor" aparezca al toque.
+  const metaActual = useMetaVendedor(colaborador.id)
+  const guardarMeta = useGuardarMetaVendedor()
+  const [meta, setMeta] = useState('')
+  useEffect(() => {
+    if (metaActual.data != null) setMeta(metaActual.data > 0 ? String(metaActual.data) : '')
+  }, [metaActual.data])
+  const puedeVender = f.rol === 'admin' || f.rol === 'recepcion'
+
+  async function guardarMetaDiaria() {
+    try {
+      await guardarMeta.mutateAsync({ usuarioId: colaborador.id, montoDiario: meta === '' ? 0 : Number(meta) })
+      toast.ok('Meta diaria actualizada')
+    } catch (err) {
+      toast.error('No se pudo guardar la meta: ' + err.message)
+    }
+  }
 
   async function guardar(e) {
     e?.preventDefault()
@@ -122,6 +143,23 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
             </Campo>
           </div>
         </div>
+
+        {/* Meta diaria de venta: solo aplica a quien vende (admin/recepción).
+            Guarda con su propio botón — no forma parte de "Guardar cambios"
+            porque usa la RPC guardar_meta_vendedor, no el update de arriba. */}
+        {puedeVender && (
+          <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+            <div className="mb-2.5 text-[12px] font-extrabold text-muted">🎯 Meta diaria de venta (S/) <span className="font-semibold">(vacío o 0 = sin meta)</span></div>
+            <div className="flex items-end gap-2">
+              <input type="number" step="0.01" min="0" value={meta} onChange={(e) => setMeta(e.target.value)}
+                className={inputCls} placeholder="200" disabled={metaActual.isLoading} />
+              <button type="button" onClick={guardarMetaDiaria} disabled={guardarMeta.isPending}
+                className="flex-shrink-0 cursor-pointer rounded-[10px] border-none bg-navy px-4 py-2.5 text-[12.5px] font-extrabold text-white hover:opacity-90 disabled:opacity-50">
+                {guardarMeta.isPending ? 'Guardando…' : 'Guardar meta'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Cuenta para transferirle el pago */}
         <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
