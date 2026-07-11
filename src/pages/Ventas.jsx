@@ -13,7 +13,7 @@ import { METODOS_PAGO } from '../lib/pagos.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 // ── Buscador + grilla de productos: filtra por nombre, clic agrega al carrito ──
-function BuscadorProductos({ sedeId, onAgregar }) {
+function BuscadorProductos({ sedeId, onAgregar, moneda }) {
   const productos = useProductos(sedeId)
   const [busca, setBusca] = useState('')
 
@@ -62,7 +62,7 @@ function BuscadorProductos({ sedeId, onAgregar }) {
                       {sinStock ? 'Sin stock' : `Stock: ${p.stock}`}
                     </div>
                   </div>
-                  <div className="flex-shrink-0 text-[13px] font-extrabold text-orange">{money(p.precio, 'PEN')}</div>
+                  <div className="flex-shrink-0 text-[13px] font-extrabold text-orange">{money(p.precio, moneda)}</div>
                 </button>
               )
             })}
@@ -258,8 +258,11 @@ export default function Ventas() {
   }
 
   function onCobroExitoso(data) {
-    toast.ok(`Cobrado ${money(data?.total ?? total, moneda)}`)
-    setResultado({ total: data?.total ?? total, comprobanteId: data?.comprobante_id ?? null })
+    // vender_carrito devuelve `total`; cobrar_membresia_pos devuelve `cobrado`.
+    // Se lee el monto real de la RPC (cualquiera de los dos) antes del fallback.
+    const cobrado = data?.total ?? data?.cobrado ?? total
+    toast.ok(`Cobrado ${money(cobrado, moneda)}`)
+    setResultado({ total: cobrado, comprobanteId: data?.comprobante_id ?? null })
     limpiar()
   }
 
@@ -329,7 +332,7 @@ export default function Ventas() {
           <div className="mt-4">
             {modo === 'producto' ? (
               <>
-                <BuscadorProductos sedeId={sedeId} onAgregar={agregarProducto} />
+                <BuscadorProductos sedeId={sedeId} onAgregar={agregarProducto} moneda={moneda} />
                 <div className="mt-4 border-t border-line2 pt-4">
                   <div className="mb-2 text-[12.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Carrito</div>
                   <Carrito items={carrito} onCambiarCantidad={cambiarCantidad} onQuitar={quitarDelCarrito} moneda={moneda} />
