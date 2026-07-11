@@ -7,9 +7,11 @@ import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
-import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor } from '../hooks/useClientes.js'
+import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos } from '../hooks/useClientes.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import { toast } from '../lib/toast.js'
-import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta } from '../lib/uiHelpers.js'
+import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta, money } from '../lib/uiHelpers.js'
+import { metodoPagoLabel } from '../lib/pagos.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 function fmtFecha(iso) {
@@ -38,6 +40,8 @@ function imcDe(talla, peso) {
 
 function Ficha({ socioId, onBack, onVerSocio }) {
   const navigate = useNavigate()
+  const { empresa } = useAuth()
+  const moneda = empresa?.moneda || 'PEN'
   const { data: ficha, isLoading, error, refetch } = useSocioFicha(socioId)
   const validarFoto = useValidarFoto()
   const [editOpen, setEditOpen] = useState(false)
@@ -197,6 +201,8 @@ function Ficha({ socioId, onBack, onVerSocio }) {
           ))}
         </Card>
       </div>
+
+      <HistorialPagos socioId={socioId} moneda={moneda} />
     </div>
   )
 }
@@ -344,6 +350,64 @@ function Field({ label, value }) {
       <FieldLabel>{label}</FieldLabel>
       <div className="mt-[3px] text-[14.5px] font-extrabold">{value}</div>
     </div>
+  )
+}
+
+// Tabla de pagos del socio (caja + app). Vive en un sub-componente aparte para
+// que el hook useHistorialPagos (y su query a Supabase) solo se monte cuando
+// el usuario expande la card — no en cada carga de la ficha.
+function TablaHistorialPagos({ socioId, moneda }) {
+  const historial = useHistorialPagos(socioId)
+  const pagos = historial.data || []
+  const total = pagos.reduce((acc, p) => acc + Number(p.monto || 0), 0)
+  return (
+    <div className="mt-3.5 border-t border-line2 pt-3.5">
+      {historial.isLoading && <LoadingState variant="table" rows={3} />}
+      {historial.isError && <ErrorState error={historial.error} onRetry={historial.refetch} />}
+      {!historial.isLoading && !historial.isError && pagos.length === 0 && (
+        <EmptyState message="Aún no hay pagos registrados" />
+      )}
+      {!historial.isLoading && !historial.isError && pagos.length > 0 && (
+        <>
+          <div className="mb-3 text-[13px] font-extrabold">
+            Total acumulado: <span className="text-orange">{money(total, moneda)}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[560px]">
+              <div className="grid grid-cols-[1fr_2fr_1fr_1fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+                <div>Fecha</div><div>Concepto</div><div>Método</div><div className="text-right">Monto</div>
+              </div>
+              {pagos.map((p, i) => (
+                <div key={i} className="grid grid-cols-[1fr_2fr_1fr_1fr] items-center gap-3 border-b border-line2 py-2.5">
+                  <div className="text-[12.5px] font-bold">
+                    {new Date(p.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </div>
+                  <div className="truncate text-[12.5px] font-semibold">{p.concepto || '—'}</div>
+                  <div className="text-[12px] font-semibold text-muted">{metodoPagoLabel(p.metodo)}</div>
+                  <div className="text-right text-[12.5px] font-extrabold">{money(p.monto, moneda)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Card colapsada por defecto en la ficha del socio. TablaHistorialPagos (y su
+// query) solo se monta tras expandir, así no se consulta de gratis.
+function HistorialPagos({ socioId, moneda }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-[15px] p-[19px]">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent p-0 text-left">
+        <div className="text-[14.5px] font-extrabold">💳 Historial de pagos</div>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver pagos ▼'}</span>
+      </button>
+      {abierto && <TablaHistorialPagos socioId={socioId} moneda={moneda} />}
+    </Card>
   )
 }
 

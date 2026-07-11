@@ -97,6 +97,19 @@ export function useAutorizacionMenor(socioId) {
   })
 }
 
+// Historial de pagos y membresías del socio (recibos de caja + compras de la app).
+export function useHistorialPagos(socioId) {
+  return useQuery({
+    queryKey: ['historial-pagos', socioId],
+    enabled: !!socioId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('historial_pagos_socio', { p_socio_id: socioId })
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
 export function useAutorizarMenor(socioId) {
   const qc = useQueryClient()
   return useMutation({
