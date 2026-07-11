@@ -37,6 +37,21 @@ export function useSociosKpis(sedeId) {
   })
 }
 
+// Reporte comercial: ranking de vendedores (ventas del período, cobros,
+// leads asignados/convertidos) y avance de hoy vs meta diaria. Por defecto
+// trae el mes actual si no se pasa desde/hasta. Es por EMPRESA, no por sede.
+export function useReporteComercial(desde, hasta) {
+  return useQuery({
+    queryKey: ['rep-comercial', desde, hasta],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('reporte_comercial', { p_desde: desde, p_hasta: hasta })
+      if (error) throw error
+      return data || { vendedores: [], por_dia_hoy: [] }
+    },
+    retry: false,
+  })
+}
+
 // Socios ausentes (sin marcar entrada) hace `dias` días o más. Los que nunca
 // vinieron traen ultima_visita/dias_ausente = null y van primero.
 export function useAusentes(sedeId, dias = 15) {
