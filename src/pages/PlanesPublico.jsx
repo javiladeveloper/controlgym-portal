@@ -38,9 +38,9 @@ const PLANES = [
     desc: 'Socios ilimitados, CRM con captación por red, rutinas y dietas, promociones al cobro, kardex, máquinas, finanzas y 8 diseños de página.',
     incluye: ['CRM + captación desde redes', 'Rutinas, kardex y finanzas', 'Reportes Excel · 8 diseños'] },
   { slug: 'pro', nombre: 'Pro', base: 179, app: 229, img: '/landing/capturas/rutinas.jpg',
-    para: 'El gym equipado que lo quiere todo',
-    desc: 'Todo lo de Crecimiento + control de acceso físico (torniquetes, huella), cámaras en vivo, reportes avanzados, multi-marca y soporte prioritario. Facturación SUNAT y CRM con IA muy pronto.',
-    incluye: ['Torniquetes, huella y cámaras', 'Reportes avanzados + multi-marca', 'Soporte prioritario WhatsApp'] },
+    para: 'Gestión avanzada y KPIs',
+    desc: 'Todo lo de Crecimiento + reportes y KPIs de ventas y cancelación, metas y ranking de vendedores, alertas de seguimiento, reactivación de ex socios, aforo en vivo y control de acceso físico.',
+    incluye: ['Reportes avanzados y KPIs de ventas', 'Metas, ranking y alertas de seguimiento', 'Aforo en vivo y torniquetes'] },
 ]
 
 const money = (n) => `S/ ${Number(n).toLocaleString('es-PE')}`

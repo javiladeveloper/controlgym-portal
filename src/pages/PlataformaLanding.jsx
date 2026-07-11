@@ -260,8 +260,8 @@ const PLANES = [
   },
   {
     nombre: 'Pro', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
-    para: 'El gimnasio equipado que lo quiere todo',
-    features: ['Todo lo de Crecimiento', 'Torniquetes, huella y molinetes', 'Cámaras en vivo desde el panel', 'Reportes avanzados de asistencia y atenciones', 'Varias marcas / franquicias en una cuenta', 'Facturación electrónica (boletas SUNAT) · pronto', 'Soporte prioritario por WhatsApp'],
+    para: 'Gestión avanzada y KPIs',
+    features: ['Todo lo de Crecimiento', 'Reportes avanzados y KPIs: ventas, cancelación y proyección de ingresos', 'Metas diarias y ranking de vendedores', 'Agenda de seguimiento con alertas de leads sin atender', 'Reactivación automática de ex socios', 'Aforo en vivo por sede con alertas', 'Verificación por foto en el check-in', 'Cumpleaños y campañas automáticas', 'Torniquetes, huella y molinetes'],
     no: [],
   },
 ]
