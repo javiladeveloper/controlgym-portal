@@ -2,13 +2,23 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
+import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { toast } from '../lib/toast.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useFinanzas } from '../hooks/useOperaciones.js'
-import { money, mismoMesAnio, mismoDia } from '../lib/uiHelpers.js'
+import { useRegistrarGastoCaja, useHistorialCaja } from '../hooks/useCaja.js'
+import { money, mismoMesAnio, mismoDia, fechaLocal } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+
+const METODOS_GASTO = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'yape', label: 'Yape' },
+  { value: 'plin', label: 'Plin' },
+  { value: 'tarjeta', label: 'Tarjeta' },
+  { value: 'transferencia', label: 'Transferencia' },
+]
 
 // Fecha de HOY en hora LOCAL como 'YYYY-MM-DD' (no UTC): toISOString() usaría UTC
 // y cerca de medianoche en Perú (UTC-5) daría el día siguiente, desalineando la
@@ -18,6 +28,59 @@ function hoyLocalStr() {
   const mes = String(d.getMonth() + 1).padStart(2, '0')
   const dia = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}-${mes}-${dia}`
+}
+
+// Denominaciones de billetes/monedas (soles) para el arqueo de caja al cierre.
+const DENOMINACIONES = [
+  { key: 'b200', label: 'S/ 200', valor: 200 }, { key: 'b100', label: 'S/ 100', valor: 100 },
+  { key: 'b50', label: 'S/ 50', valor: 50 },   { key: 'b20', label: 'S/ 20', valor: 20 },
+  { key: 'b10', label: 'S/ 10', valor: 10 },   { key: 'm5', label: 'S/ 5', valor: 5 },
+  { key: 'm2', label: 'S/ 2', valor: 2 },      { key: 'm1', label: 'S/ 1', valor: 1 },
+  { key: 'm0_50', label: 'S/ 0.50', valor: 0.5 }, { key: 'm0_20', label: 'S/ 0.20', valor: 0.2 },
+  { key: 'm0_10', label: 'S/ 0.10', valor: 0.1 },
+]
+
+// Modal "− Gasto de caja": motivo + monto + método. La RPC valida caja
+// abierta/monto/motivo y descuenta del efectivo esperado si el método es
+// efectivo (Yape/tarjeta/transferencia no tocan el arqueo de billetes).
+function ModalGastoCaja({ sedeId, onClose }) {
+  const [motivo, setMotivo] = useState('')
+  const [monto, setMonto] = useState('')
+  const [metodoPago, setMetodoPago] = useState('efectivo')
+  const registrar = useRegistrarGastoCaja(sedeId)
+
+  function guardar() {
+    registrar.mutate({ monto: Number(monto), motivo, metodoPago }, {
+      onSuccess: () => {
+        toast.ok('Gasto registrado' + (metodoPago === 'efectivo' ? ' — descontado del efectivo esperado' : ''))
+        onClose()
+      },
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  const invalido = !motivo.trim() || !(Number(monto) > 0)
+
+  return (
+    <Modal title="− Gasto de caja" subtitle="Compras menores, taxi, agua, etc." onClose={onClose}>
+      <div className="flex flex-col gap-3.5">
+        <Campo label="Motivo">
+          <input type="text" value={motivo} onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Ej: agua para el gym" className={inputCls} autoFocus />
+        </Campo>
+        <Campo label="Monto S/">
+          <input type="number" step="0.01" min="0.01" value={monto} onChange={(e) => setMonto(e.target.value)}
+            placeholder="0.00" className={inputCls} />
+        </Campo>
+        <Campo label="Método">
+          <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} className={inputCls}>
+            {METODOS_GASTO.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </Campo>
+      </div>
+      <BotonesModal onCancel={onClose} onSubmit={guardar} busy={registrar.isPending} disabled={invalido} submitLabel="Registrar gasto" />
+    </Modal>
+  )
 }
 
 // ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
@@ -39,6 +102,22 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   const [contado, setContado] = useState('')
   const [abriendo, setAbriendo] = useState(false)
   const [cerrando, setCerrando] = useState(false)
+  const [mostrarArqueo, setMostrarArqueo] = useState(false)
+  const [arqueo, setArqueo] = useState({}) // { key: cantidad } — conteo por denominación
+  const [mostrarGasto, setMostrarGasto] = useState(false)
+
+  // Cambia la cantidad de una denominación y recalcula el total → llena "Conté S/"
+  // automáticamente. Si el usuario luego edita "Conté S/" a mano, ese valor manda
+  // (la grilla no se borra, pero deja de ser la fuente de verdad hasta que se
+  // vuelva a tocar un contador).
+  function setCantidad(key, cantidad) {
+    // Sin negativos: un "-3" colaría un total menor sin que se note al cerrar.
+    const limpia = Math.max(0, Math.floor(Number(cantidad) || 0))
+    const next = { ...arqueo, [key]: cantidad === '' ? '' : limpia }
+    setArqueo(next)
+    const total = DENOMINACIONES.reduce((n, d) => n + (Number(next[d.key]) || 0) * d.valor, 0)
+    setContado(String(Math.round(total * 100) / 100))
+  }
 
   const caja = useQuery({
     queryKey: ['caja', sedeId, hoy],
@@ -86,12 +165,19 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
 
   async function cerrar() {
     setCerrando(true)
+    // Si hay al menos un conteo > 0 en la grilla, guardamos el detalle del arqueo
+    // (solo las denominaciones contadas, para no ensuciar el jsonb con ceros).
+    const hayArqueo = Object.values(arqueo).some((n) => Number(n) > 0)
+    const detalle = hayArqueo
+      ? Object.fromEntries(Object.entries(arqueo).filter(([, n]) => Number(n) > 0))
+      : null
     // Condicionamos el cierre a estado='abierta': si otra recepción ya la cerró,
     // el update no afecta filas y avisamos, en vez de pisar su cierre.
     const { data: filas, error } = await supabase.from('caja')
       .update({
         saldo_final: Number(contado) || 0, estado: 'cerrada', cerrada_por: usuarioId,
         efectivo_esperado: esperadoVivo, // congela el esperado al momento del cierre
+        arqueo_detalle: detalle,
       })
       .eq('id', c.id)
       .eq('estado', 'abierta')
@@ -167,19 +253,43 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
             <div className="text-[15px] font-extrabold text-orange">{money(esperado, moneda)}</div></div>
 
           {c.estado === 'abierta' ? (
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className="text-[12.5px] font-bold">Conté S/</span>
-              <input type="number" step="0.01" min="0" value={contado} onChange={(e) => setContado(e.target.value)}
-                placeholder={String(esperado)} className="w-[100px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
-              {diferencia !== null && (
-                <span className={`text-[12px] font-extrabold ${Math.abs(diferencia) < 0.01 ? 'text-green-600' : 'text-red'}`}>
-                  {Math.abs(diferencia) < 0.01 ? 'cuadra ✓' : (diferencia > 0 ? 'sobran ' : 'faltan ') + money(Math.abs(diferencia), moneda)}
-                </span>
+            <div className="ml-auto w-full sm:w-auto">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="text-[12.5px] font-bold">Conté S/</span>
+                <input type="number" step="0.01" min="0" value={contado} onChange={(e) => setContado(e.target.value)}
+                  placeholder={String(esperado)} className="w-[100px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-[13px] font-extrabold outline-none focus:border-orange" />
+                {diferencia !== null && (
+                  <span className={`text-[12px] font-extrabold ${Math.abs(diferencia) < 0.01 ? 'text-green-600' : 'text-red'}`}>
+                    {Math.abs(diferencia) < 0.01 ? 'cuadra ✓' : (diferencia > 0 ? 'sobran ' : 'faltan ') + money(Math.abs(diferencia), moneda)}
+                  </span>
+                )}
+                <button type="button" onClick={() => setMostrarGasto(true)}
+                  className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange">
+                  − Gasto de caja
+                </button>
+                <button onClick={cerrar} disabled={cerrando || contado === ''}
+                  className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
+                  Cerrar caja
+                </button>
+              </div>
+              <div className="mt-1.5 flex justify-end">
+                <button type="button" onClick={() => setMostrarArqueo((v) => !v)}
+                  className="cursor-pointer border-none bg-transparent p-0 text-[11.5px] font-extrabold text-muted hover:text-orange">
+                  🧮 {mostrarArqueo ? 'Ocultar conteo' : 'Contar billetes'}
+                </button>
+              </div>
+              {mostrarArqueo && (
+                <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {DENOMINACIONES.map((d) => (
+                    <label key={d.key} className="flex items-center gap-1.5 rounded-[9px] border border-line bg-white px-2 py-1.5">
+                      <span className="text-[11px] font-extrabold text-muted">{d.label}</span>
+                      <input type="number" step="1" min="0" value={arqueo[d.key] ?? ''}
+                        onChange={(e) => setCantidad(d.key, e.target.value)}
+                        placeholder="0" className="w-full min-w-0 rounded-[7px] border border-line bg-white px-1.5 py-1 text-[12px] font-extrabold outline-none focus:border-orange" />
+                    </label>
+                  ))}
+                </div>
               )}
-              <button onClick={cerrar} disabled={cerrando || contado === ''}
-                className="cursor-pointer rounded-[9px] border border-line bg-white px-4 py-2 text-[12.5px] font-extrabold text-ink hover:border-orange disabled:opacity-50">
-                Cerrar caja
-              </button>
             </div>
           ) : (
             <div className="ml-auto text-right">
@@ -195,13 +305,86 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
         </div>
       )}
       {!c && !esAdmin && null}
+      {mostrarGasto && <ModalGastoCaja sedeId={sedeId} onClose={() => setMostrarGasto(false)} />}
+    </Card>
+  )
+}
+
+// Tabla de cierres pasados. Vive en un sub-componente aparte para que el hook
+// useHistorialCaja (y su query a Supabase) solo se monte cuando el usuario
+// expande la card — no en cada carga de la página de Finanzas.
+function TablaHistorialCaja({ sedeId, moneda }) {
+  const historial = useHistorialCaja(sedeId)
+  return (
+    <div className="mt-3.5 border-t border-line2 pt-3.5">
+      {historial.isLoading && <LoadingState variant="table" rows={3} />}
+      {historial.isError && <ErrorState error={historial.error} onRetry={historial.refetch} />}
+      {!historial.isLoading && !historial.isError && (historial.data || []).length === 0 && (
+        <EmptyState message="Aún no hay cierres de caja" />
+      )}
+      {!historial.isLoading && !historial.isError && (historial.data || []).length > 0 && (
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+              <div>Fecha</div><div className="text-right">Fondo</div><div className="text-right">Esperado</div>
+              <div className="text-right">Contado</div><div className="text-right">Diferencia</div><div>Abrió / cerró</div>
+            </div>
+            {historial.data.map((h) => {
+              // Cierres previos a la columna efectivo_esperado no tienen contra
+              // qué cuadrar: se muestra '—' sin badge (un esperado=0 inventaría
+              // un "sobraron" falso por todo el contado).
+              const sinEsperado = h.efectivo_esperado == null
+              const esperado = Number(h.efectivo_esperado ?? 0)
+              const contado = Number(h.saldo_final ?? 0)
+              const dif = contado - esperado
+              const cuadro = Math.abs(dif) < 0.01
+              return (
+                <div key={h.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] items-center gap-3 border-b border-line2 py-2.5">
+                  <div className="text-[12.5px] font-bold">
+                    {fechaLocal(h.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </div>
+                  <div className="text-right text-[12.5px] font-extrabold">{money(h.saldo_inicial, moneda)}</div>
+                  <div className="text-right text-[12.5px] font-extrabold">{sinEsperado ? '—' : money(esperado, moneda)}</div>
+                  <div className="text-right text-[12.5px] font-extrabold">{money(contado, moneda)}</div>
+                  <div className="text-right">
+                    {sinEsperado ? <span className="text-[11px] font-bold text-faint">—</span> : (
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cuadro ? 'bg-green-50 text-green-600' : 'bg-red/10 text-red'}`}>
+                        {cuadro ? 'cuadró ✓' : (dif > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(dif), moneda)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11.5px] font-semibold text-muted">
+                    {h.abierta?.nombre || '—'} / {h.cerrada?.nombre || '—'}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Card colapsada por defecto al pie de Finanzas. TablaHistorialCaja (y su
+// query) solo se monta tras expandir, así no se consulta de gratis.
+function HistorialCaja({ sedeId, moneda }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-[15px] p-[19px]">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent p-0 text-left">
+        <div className="text-[14.5px] font-extrabold">📒 Historial de caja</div>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver cierres ▼'}</span>
+      </button>
+      {abierto && <TablaHistorialCaja sedeId={sedeId} moneda={moneda} />}
     </Card>
   )
 }
 
 const CAT_LABEL = {
   membresia: 'Membresías', venta_kardex: 'Venta de productos', compra: 'Compra de productos',
-  planilla: 'Planilla (sueldos)', mantenimiento: 'Mantenimiento',
+  planilla: 'Planilla (sueldos)', mantenimiento: 'Mantenimiento', caja_chica: 'Caja chica',
 }
 const catLabel = (c) => CAT_LABEL[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Otros')
 
@@ -399,6 +582,9 @@ export default function Finanzas() {
           })}
         </Card>
       )}
+
+      {/* Historial de cierres de caja: colapsado por defecto, al pie de la página */}
+      <HistorialCaja sedeId={sedeId} moneda={moneda} />
     </div>
   )
 }
