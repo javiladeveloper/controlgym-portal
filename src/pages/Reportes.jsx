@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ReporteVentas from '../components/reportes/ReporteVentas.jsx'
 import ReporteSocios from '../components/reportes/ReporteSocios.jsx'
+import ReporteComercial from '../components/reportes/ReporteComercial.jsx'
 import ReporteAsistencias from '../components/reportes/ReporteAsistencias.jsx'
 import ReporteAtenciones from '../components/reportes/ReporteAtenciones.jsx'
 import { usePanel } from '../store.jsx'
@@ -10,6 +11,8 @@ import { usePanel } from '../store.jsx'
 //    proyección del mes (ingresado + por renovar).
 //  · Socios: activos/nuevos/congeladas, churn de los últimos 6 meses y
 //    socios ausentes (con acción directa de WhatsApp).
+//  · Comercial: ranking de vendedores por ventas, cobros y conversión de
+//    leads asignados, por período (empresa completa, no por sede).
 //  · Asistencias (check-ins): por hora, día de la semana, mapa de calor,
 //    rango de horas y serie por día.
 //  · Personal: atenciones de entrenadores — ayudas/cargas atendidas +
@@ -17,6 +20,7 @@ import { usePanel } from '../store.jsx'
 const TABS = [
   { key: 'ventas', label: 'Ventas 💰', Comp: ReporteVentas },
   { key: 'socios', label: 'Socios 👥', Comp: ReporteSocios },
+  { key: 'comercial', label: 'Comercial 🎯', Comp: ReporteComercial },
   { key: 'asistencia', label: 'Asistencias 📊', Comp: ReporteAsistencias },
   { key: 'personal', label: 'Personal 🏋️', Comp: ReporteAtenciones },
 ]
