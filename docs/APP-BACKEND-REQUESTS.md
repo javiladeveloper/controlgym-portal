@@ -1927,3 +1927,47 @@ Impacto: enciende una feature ya construida en la app con 2 campos + un toggle e
 el panel. No toca las RPC ni el bucket (ya existen). Sin credenciales ni secretos.
 
 Creado: 2026-07-10 (sesión de la app — galería de eventos #7 ya implementada).
+
+================================================================================
+PEDIDO PANEL→APP: aforo visible para el socio (2026-07-11)
+================================================================================
+
+CONTEXTO: quick-win de la Ola 3 del wishlist ("aforo visible para el SOCIO en
+su app"). El panel/staff ya tenía `aforo_actual(p_sede_id)` para su propia
+vista; ahora hay una RPC equivalente pensada para el socio logueado en la app,
+sin necesitar `p_sede_id` (resuelve su propia sede).
+
+LO QUE YA ESTÁ LISTO EN EL BACKEND:
+
+RPC `aforo_mi_sede()` — sin parámetros, `security definer`, grant a
+`authenticated`. Resuelve el socio por `auth.uid()` (si el usuario es socio en
+varios gimnasios, elige el de la membresía ACTIVA con `fecha_fin` más lejana;
+si no tiene ninguna membresía activa en ningún gym, cae al registro de socio
+más reciente por `created_at`).
+
+Devuelve jsonb con esta forma:
+
+- Si el usuario no está vinculado como socio en ningún gym:
+  `{"encontrado": false}`
+
+- Si está vinculado pero su sede no tiene `aforo_max` configurado (el gym no
+  usa esta feature en esa sede):
+  `{"encontrado": true, "dentro": null, "aforo_max": null, "pct": null, "nivel": null}`
+
+- Si su sede sí tiene aforo configurado:
+  `{"encontrado": true, "dentro": 34, "aforo_max": 80, "pct": 42.5, "nivel": "moderado"}`
+
+  `nivel` ∈ `{"bajo","moderado","alto"}` según `pct`: bajo <50, moderado
+  50-79, alto >=80 (mismos cortes que la alerta interna al admin).
+
+USO SUGERIDO EN LA APP: tarjeta en el home del socio, tipo
+"¿Qué tan lleno está? 34/80 — moderado 🟡" (🟢 bajo, 🟡 moderado, 🔴 alto).
+Ocultar la tarjeta si `encontrado=false` o si `aforo_max` es null (mismo
+patrón defensivo que `cobros_habilitados`/`evento_social_activo`: la ausencia
+del dato oculta la UI, no rompe). Refresco sugerido: cada 60s mientras la
+pantalla esté visible (no hace falta websocket/realtime para esto).
+
+Migración: `supabase/migrations/20260711000011_ola3_quickwins.sql`.
+
+Creado: 2026-07-11 (sesión del panel — Ola 3 quick-wins: mantenimiento
+preventivo + alerta de aforo + esta RPC).
