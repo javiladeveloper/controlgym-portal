@@ -111,6 +111,24 @@ datos para eso; reglas + LLM funcionan desde el día 1 y escalan con historial).
 que Leadia es paquete aparte que suma al costo (no feature del Pro). Nueva línea de
 ingreso: "análisis inteligente de promociones y precios = Leadia, +S/XX/mes".
 
+## Corte de planes decidido por el owner (2026-07-11)
+
+- **Base (Estudio/Crecimiento):** operar el gym — socios, membresías, check-in,
+  POS + boleta SUNAT, caja, kardex, clases, rutinas, CRM básico, reportes
+  esenciales (ventas del mes, deudas, por vencer).
+- **PRO = "gestión avanzada y KPIs"** (justifica los +S/80): KPIs/analítica
+  (churn, proyección, aforo vivo, afluencia, historial de pagos por cliente),
+  gestión comercial (conversión/metas/rankings por asesor, SLA, agenda,
+  ex-socios), operación avanzada (reservas con posición + tiers, turnos del
+  personal, comisiones/vacaciones, mantenimiento preventivo, foto al check-in),
+  campañas (cumpleaños, NPS, promos por segmento). Molinete/huella ya era Pro.
+- **Add-ons que suman al costo:** App del socio (ya existe), **Leadia IA**
+  (recomendaciones de precio/plan), WhatsApp Business API, firma certificada.
+- **IA ya anunciada al cliente** como herramienta a futuro: venderla como
+  "roadmap, se contrata aparte cuando salga" — SIN fecha comprometida.
+- Pendiente: reflejar este corte en la página de precios del landing (esperando
+  OK del owner para tocar lo público).
+
 ## Notas de venta
 - El pedido confirma el pricing por sede/Pro: equipo comercial + multi-tier = cliente Pro.
 - Varios pedidos ya son fortalezas nuestras vs Fitco (facturación SUNAT integrada, POS, molinetes estándar).
