@@ -26,54 +26,6 @@ export function useDashboardKpis(sedeId) {
   })
 }
 
-// Asistencia por hora (RPC).
-export function useAsistenciaPorHora(sedeId) {
-  return useQuery({
-    queryKey: ['asistencia-hora', sedeId],
-    enabled: !!sedeId,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('rpc_asistencia_por_hora', { p_sede_id: sedeId })
-      if (error) throw error
-      return data // [{hora, total}]
-    },
-  })
-}
-
-// Ingresos por día de los últimos 14 días (para el gráfico de plata).
-export function useIngresosPorDia(sedeId) {
-  return useQuery({
-    queryKey: ['ingresos-dia', sedeId],
-    enabled: !!sedeId,
-    queryFn: async () => {
-      const desde = new Date()
-      desde.setDate(desde.getDate() - 13)
-      desde.setHours(0, 0, 0, 0)
-      const { data, error } = await supabase
-        .from('movimiento_financiero')
-        .select('fecha, monto, tipo')
-        .eq('sede_id', sedeId)
-        .eq('tipo', 'ingreso')
-        .gte('fecha', desde.toISOString())
-      if (error) throw error
-      // Serie completa de 14 días (con ceros donde no hubo ingresos).
-      // Se agrupa por día LOCAL (mismo criterio que las fechas mostradas en el
-      // gráfico); antes usaba toDateString() sobre UTC y un pago nocturno caía
-      // en el día equivocado, descuadrando la barra frente a lo cobrado.
-      const porDia = new Map()
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(desde)
-        d.setDate(desde.getDate() + i)
-        porDia.set(claveDiaLocal(d), { fecha: new Date(d), total: 0 })
-      }
-      for (const m of data || []) {
-        const k = claveDiaLocal(m.fecha)
-        if (k && porDia.has(k)) porDia.get(k).total += Number(m.monto || 0)
-      }
-      return [...porDia.values()]
-    },
-  })
-}
-
 // Aforo en vivo (RPC aforo_actual): { dentro, aforo_max, pct }. Si la sede no
 // configuró aforo, aforo_max viene null — el consumidor decide no renderizar.
 // retry:false porque si la sede no existe la RPC lanza y no queremos reintentar
