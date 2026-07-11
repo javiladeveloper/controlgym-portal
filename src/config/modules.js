@@ -29,6 +29,7 @@ export const MODULES = [
 
   { slug: 'clases',      label: 'Clases',           grupo: 'operacion', roles: null },
   { slug: 'personal',    label: 'Personal',         grupo: 'operacion', roles: ['admin'] },
+  { slug: 'ventas',      label: 'Ventas',           grupo: 'operacion', roles: ['admin', 'recepcion'], alwaysOn: true },
   { slug: 'kardex',      label: 'Kardex',           grupo: 'operacion', roles: ['admin', 'recepcion'] },
   { slug: 'maquinas',    label: 'Máquinas',         grupo: 'operacion', roles: ['admin', 'mantenimiento'] },
 
