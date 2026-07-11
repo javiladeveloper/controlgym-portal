@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, PrimaryButton, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { inputCls } from '../components/Modal.jsx'
@@ -7,7 +7,9 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useProductos } from '../hooks/useOperaciones.js'
 import { useMembresias } from '../hooks/useMembresias.js'
 import { useClientes } from '../hooks/useClientes.js'
-import { useVenderCarrito, useCobrarMembresiaPos } from '../hooks/useVentas.js'
+import { useVenderCarrito, useCobrarMembresiaPos, useCrearPagoMostrador } from '../hooks/useVentas.js'
+import CobroQrModal from '../components/CobroQrModal.jsx'
+import { useQueryClient } from '@tanstack/react-query'
 import { money } from '../lib/uiHelpers.js'
 import { toast } from '../lib/toast.js'
 import { METODOS_PAGO } from '../lib/pagos.js'
@@ -232,9 +234,12 @@ export default function Ventas() {
   const [nombreCliente, setNombreCliente] = useState('')
   const [emailCliente, setEmailCliente] = useState('')
   const [resultado, setResultado] = useState(null) // {total, comprobanteId} tras un cobro exitoso
+  const [cobroMp, setCobroMp] = useState(null) // {pagoId, initPoint, monto} mientras el modal QR está abierto
 
+  const qc = useQueryClient()
   const venderCarrito = useVenderCarrito(sedeId)
   const cobrarMembresia = useCobrarMembresiaPos(sedeId)
+  const crearPagoMostrador = useCrearPagoMostrador()
 
   function agregarProducto(p) {
     setCarrito((prev) => {
@@ -271,7 +276,21 @@ export default function Ventas() {
   const igv = total - total / 1.18
 
   const puedeCobrar = modo === 'producto' ? carrito.length > 0 : (!!membresiaSel && total > 0)
-  const busy = venderCarrito.isPending || cobrarMembresia.isPending
+  const busy = venderCarrito.isPending || cobrarMembresia.isPending || crearPagoMostrador.isPending
+
+  // MercadoPago cobra el monto que decide el backend (precio del plan, server-side).
+  // Si el usuario editó el monto de la membresía (abono parcial), ese monto
+  // custom no viaja al backend de MP hoy — se deshabilita el chip y se avisa.
+  const precioPlanMembresia = Number(membresiaSel?.plan?.precio ?? 0)
+  const montoMembresiaEditado = modo === 'membresia' && Number(montoMembresia || 0) !== precioPlanMembresia
+  const mpDisponible = modo === 'producto' || !montoMembresiaEditado
+
+  // Si el usuario edita el monto de la membresía (o cambia de socio) mientras
+  // MercadoPago está seleccionado, el chip deja de estar disponible: se
+  // regresa a efectivo para no dejar un método inválido elegido en silencio.
+  useEffect(() => {
+    if (!mpDisponible && metodoPago === 'mercadopago') setMetodoPago('efectivo')
+  }, [mpDisponible, metodoPago])
 
   function limpiar() {
     setCarrito([])
@@ -301,6 +320,10 @@ export default function Ventas() {
 
   function cobrar() {
     const cliente = armarCliente()
+    if (metodoPago === 'mercadopago') {
+      cobrarConMercadoPago(cliente)
+      return
+    }
     if (modo === 'producto') {
       const items = carrito.map((it) => ({ producto_id: it.producto.id, cantidad: it.cantidad }))
       venderCarrito.mutate({ items, metodoPago, cliente }, {
@@ -313,6 +336,36 @@ export default function Ventas() {
         onError: (e) => toast.error('No se pudo cobrar: ' + e.message),
       })
     }
+  }
+
+  // Cobro con MercadoPago: crea la preferencia (mostrador) y abre el modal QR.
+  // El webhook es quien registra la venta al aprobarse el pago — este flujo
+  // NUNCA llama a vender_carrito/cobrar_membresia_pos (sería doble venta).
+  function cobrarConMercadoPago(cliente) {
+    const payload = modo === 'producto'
+      ? {
+          empresaId: empresa.id, tipo: 'producto', sedeId, cliente,
+          items: carrito.map((it) => ({ producto_id: it.producto.id, cantidad: it.cantidad })),
+        }
+      : {
+          empresaId: empresa.id, tipo: 'membresia', sedeId, cliente,
+          refId: membresiaSel.id, socioId: membresiaSel.socio?.id,
+        }
+    crearPagoMostrador.mutate(payload, {
+      onSuccess: (data) => setCobroMp({ pagoId: data.pago_id, initPoint: data.init_point, monto: total }),
+      onError: (e) => toast.error('No se pudo generar el cobro: ' + e.message),
+    })
+  }
+
+  function onPagadoMp() {
+    const cobrado = cobroMp?.monto ?? total
+    qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
+    qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+    qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
+    toast.ok(`Cobrado ${money(cobrado, moneda)}`)
+    setResultado({ total: cobrado, comprobanteId: null, pagadoConMp: true })
+    setCobroMp(null)
+    limpiar()
   }
 
   function nuevaVenta() {
@@ -336,6 +389,12 @@ export default function Ventas() {
               <div className="flex flex-col items-center gap-1.5">
                 <Badge bg={T.warningBg} color={T.warning}>Boleta pendiente</Badge>
                 <p className="text-[12.5px] font-semibold text-muted">Boleta en proceso — llegará por correo.</p>
+              </div>
+            ) : null}
+            {resultado.pagadoConMp ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <Badge bg={T.warningBg} color={T.warning}>Boleta en proceso</Badge>
+                <p className="text-[12.5px] font-semibold text-muted">Pago confirmado por MercadoPago — la boleta llegará por correo.</p>
               </div>
             ) : null}
             <button type="button" onClick={nuevaVenta}
@@ -429,7 +488,18 @@ export default function Ventas() {
                     {l}
                   </button>
                 ))}
+                <button type="button" disabled={!mpDisponible}
+                  onClick={() => mpDisponible && setMetodoPago('mercadopago')}
+                  title={!mpDisponible ? 'Por MercadoPago se cobra el precio del plan completo' : undefined}
+                  className={`cursor-pointer rounded-full border-none px-3 py-1.5 text-[11.5px] font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${metodoPago === 'mercadopago' ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-ink'}`}>
+                  📲 MercadoPago
+                </button>
               </div>
+              {!mpDisponible && (
+                <p className="mt-1.5 text-[11px] font-semibold text-faint">
+                  Por MercadoPago se cobra el precio del plan completo ({money(precioPlanMembresia, moneda)}).
+                </p>
+              )}
             </div>
 
             {/* Bloque colapsable: boleta con datos / factura */}
@@ -485,11 +555,26 @@ export default function Ventas() {
               disabled={!puedeCobrar || busy}
               onClick={cobrar}
             >
-              {busy ? 'Cobrando…' : `Cobrar ${money(total, moneda)}`}
+              {busy
+                ? (metodoPago === 'mercadopago' ? 'Generando cobro…' : 'Cobrando…')
+                : (metodoPago === 'mercadopago' ? `Generar QR ${money(total, moneda)}` : `Cobrar ${money(total, moneda)}`)}
             </PrimaryButton>
           </Card>
         </div>
       </div>
+      )}
+
+      {cobroMp && (
+        <CobroQrModal
+          pagoId={cobroMp.pagoId}
+          initPoint={cobroMp.initPoint}
+          monto={cobroMp.monto}
+          moneda={moneda}
+          telefono={modo === 'membresia' ? membresiaSel?.socio?.telefono : undefined}
+          gymNombre={empresa?.nombre}
+          onPagado={onPagadoMp}
+          onClose={() => setCobroMp(null)}
+        />
       )}
     </div>
   )
