@@ -99,7 +99,15 @@ function CheckinModal({ sedeId, onClose }) {
             <div className={`text-[22px] font-extrabold ${resultado.resultado === 'permitido' ? 'text-green-600' : 'text-red'}`}>
               {resultado.resultado === 'permitido' ? '✓ Acceso permitido' : '✕ Acceso denegado'}
             </div>
+            {/* Foto aprobada del socio: recepción corrobora que es la misma persona
+                (anti-suplantación en gyms sin huellero). Sin foto → solo el nombre. */}
+            {resultado.foto_url && (
+              <img src={resultado.foto_url} alt="" className="mx-auto mt-2.5 h-24 w-24 rounded-[14px] border-2 border-white object-cover shadow" />
+            )}
             <div className="mt-1 text-[14px] font-bold">{resultado.socio}</div>
+            {resultado.foto_url && (
+              <div className="text-[11px] font-semibold text-muted">¿Es la misma persona?</div>
+            )}
             {resultado.motivo && (
               <div className="mt-1.5 text-[12.5px] font-bold text-red">
                 {resultado.motivo === 'membresia_vencida' ? 'Membresía vencida — ofrécele renovar'
@@ -312,7 +320,12 @@ export default function Dashboard() {
               const permit = c.resultado === 'permitido'
               return (
                 <div key={c.id} className="flex animate-fadeSlide items-center gap-2.5 border-b border-line2 py-[9.5px]">
-                  <Avatar ini={iniciales(c.socio?.nombre || '?')} bg={permit ? T.chipNavy : T.dangerBg} color={permit ? T.navy : T.danger} size={34} fontSize={12} />
+                  {/* Foto aprobada del socio = verificación visual de identidad (sin huellero) */}
+                  {c.socio?.foto_estado === 'aprobada' && c.socio?.foto_url ? (
+                    <img src={c.socio.foto_url} alt="" className={`h-[34px] w-[34px] flex-shrink-0 rounded-full object-cover ${permit ? '' : 'ring-2 ring-red'}`} />
+                  ) : (
+                    <Avatar ini={iniciales(c.socio?.nombre || '?')} bg={permit ? T.chipNavy : T.dangerBg} color={permit ? T.navy : T.danger} size={34} fontSize={12} />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] font-extrabold text-ink">{c.socio?.nombre || 'Desconocido'}</div>
                     <div className="text-[11px] font-bold" style={{ color: permit ? T.faint : T.danger }}>

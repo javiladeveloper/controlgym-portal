@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 
 // Dispara el worker de emisión al vuelo (best-effort, no bloquea la venta).
@@ -61,6 +61,41 @@ export function useCobrarMembresiaPos(sedeId) {
       qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
       qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
       dispararEmision(data)
+    },
+  })
+}
+
+// Cobro por pasarela en mostrador: crea la preferencia MP (cuenta del gym,
+// -5% FitCore) y devuelve el link/QR. El webhook registra la venta al aprobarse.
+export function useCrearPagoMostrador() {
+  return useMutation({
+    mutationFn: async ({ empresaId, tipo, items, refId, socioId, sedeId, cliente }) => {
+      const body = {
+        empresa_id: empresaId, tipo, sede_id: sedeId, canal: 'mostrador',
+        ...(tipo === 'producto' ? { items } : { ref_id: refId, socio_id: socioId }),
+        ...(cliente?.numDoc ? { nuevo: { nombre: cliente.nombre, documento: cliente.numDoc, email: cliente.email || null } } : {}),
+      }
+      const res = await fetch('/api/mp/crear-pago', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(out.error || 'No se pudo crear el cobro')
+      return out // { init_point, pago_id }
+    },
+  })
+}
+
+// Poll del estado mientras el modal QR está abierto (cada 4 s; se detiene al aprobar).
+export function useEstadoPagoPos(pagoId) {
+  return useQuery({
+    queryKey: ['estado-pago-pos', pagoId],
+    enabled: !!pagoId,
+    refetchInterval: (q) => (q.state.data?.estado_pago === 'aprobado' ? false : 4000),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('estado_pago_pos', { p_pago_id: pagoId })
+      if (error) throw error
+      return data
     },
   })
 }
