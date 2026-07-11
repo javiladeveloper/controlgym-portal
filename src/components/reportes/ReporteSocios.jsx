@@ -80,7 +80,7 @@ export default function ReporteSocios() {
 
           {churn.length > 0 && (
             <div>
-              <div className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Vencimientos y renovación · últimos 6 meses</div>
+              <div className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.5px] text-muted">Cancelación (churn) · últimos 6 meses</div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[520px] border-collapse">
                   <thead>
@@ -88,20 +88,22 @@ export default function ReporteSocios() {
                       <th className="px-2 py-2 text-left">Mes</th>
                       <th className="px-2 py-2 text-center">Vencidas</th>
                       <th className="px-2 py-2 text-center">No renovadas</th>
-                      <th className="px-2 py-2 text-center">Tasa de renovación</th>
+                      <th className="px-2 py-2 text-center">Tasa de cancelación</th>
                     </tr>
                   </thead>
                   <tbody>
                     {churn.map((c) => {
-                      const tasaRenovacion = 1 - Number(c.tasa || 0)
+                      // El cliente pidió "tasa de cancelación": se muestra el churn
+                      // directo (bajo = verde). La renovación es su complemento.
+                      const tasaCancel = Number(c.tasa || 0)
                       return (
                         <tr key={c.mes} className="border-t border-line2">
                           <td className="px-2 py-2.5 text-[13px] font-extrabold">{c.mes}</td>
                           <td className="px-2 py-2.5 text-center text-[13px] font-bold">{c.vencidas}</td>
                           <td className="px-2 py-2.5 text-center text-[13px] font-bold">{c.no_renovadas}</td>
                           <td className="px-2 py-2.5 text-center">
-                            <span className={`rounded-full px-2.5 py-0.5 text-[12.5px] font-extrabold ${tasaRenovacion >= 0.7 ? 'bg-green-50 text-green' : tasaRenovacion >= 0.4 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red'}`}>
-                              {Math.round(tasaRenovacion * 100)}%
+                            <span className={`rounded-full px-2.5 py-0.5 text-[12.5px] font-extrabold ${tasaCancel <= 0.3 ? 'bg-green-50 text-green' : tasaCancel <= 0.6 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red'}`}>
+                              {Math.round(tasaCancel * 100)}%
                             </span>
                           </td>
                         </tr>
