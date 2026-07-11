@@ -6,6 +6,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProductos } from '../hooks/useOperaciones.js'
 import { useMembresias } from '../hooks/useMembresias.js'
+import { useClientes } from '../hooks/useClientes.js'
 import { useVenderCarrito, useCobrarMembresiaPos } from '../hooks/useVentas.js'
 import { money } from '../lib/uiHelpers.js'
 import { toast } from '../lib/toast.js'
@@ -103,6 +104,38 @@ function Carrito({ items, onCambiarCantidad, onQuitar, moneda }) {
             className="flex-shrink-0 cursor-pointer rounded-lg border-none bg-transparent px-1 text-[13px] text-faint hover:text-red">✕</button>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Buscador de socio para la boleta: ya tenemos su DNI, nombre y correo ──
+// (el correo llega solo si el socio entró con Google o lo dio al inscribirse).
+// Un clic llena los datos del comprobante sin re-escribir nada.
+function BuscadorSocioBoleta({ sedeId, onElegir }) {
+  const clientes = useClientes(sedeId)
+  const [busca, setBusca] = useState('')
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase()
+    if (!q) return []
+    return (clientes.data || [])
+      .filter((s) => s.documento && (s.nombre?.toLowerCase().includes(q) || s.documento.includes(q)))
+      .slice(0, 6)
+  }, [clientes.data, busca])
+  return (
+    <div>
+      <input value={busca} onChange={(e) => setBusca(e.target.value)}
+        placeholder="🔍 ¿Es socio? Búscalo y sus datos se llenan solos" className={inputCls} />
+      {filtrados.length > 0 && (
+        <div className="mt-1.5 flex flex-col gap-1">
+          {filtrados.map((s) => (
+            <button key={s.id} type="button" onClick={() => { onElegir(s); setBusca('') }}
+              className="flex cursor-pointer items-center justify-between rounded-[8px] border border-line bg-white px-3 py-2 text-left text-[12.5px] font-bold hover:border-orange">
+              <span className="truncate">{s.nombre}</span>
+              <span className="ml-2 flex-shrink-0 text-[11.5px] font-semibold text-muted">DNI {s.documento}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -401,7 +434,19 @@ export default function Ventas() {
 
             {/* Bloque colapsable: boleta con datos / factura */}
             <div className="mt-4">
-              <button type="button" onClick={() => setComprobanteOpen((v) => !v)}
+              <button type="button" onClick={() => {
+                const abre = !comprobanteOpen
+                // Si se está cobrando la membresía de un socio, sus datos ya los
+                // tenemos (DNI/nombre/correo del padrón): se precargan al abrir.
+                // El usuario puede cambiarlos (p. ej. si la boleta va a otro nombre).
+                if (abre && modo === 'membresia' && membresiaSel?.socio?.documento && !numDoc) {
+                  setTipoDoc('1')
+                  setNumDoc(membresiaSel.socio.documento)
+                  setNombreCliente(membresiaSel.socio.nombre || '')
+                  setEmailCliente(membresiaSel.socio.email || '')
+                }
+                setComprobanteOpen(abre)
+              }}
                 className="flex w-full cursor-pointer items-center justify-between rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[12.5px] font-extrabold text-muted hover:border-orange hover:text-orange">
                 <span>¿Boleta con datos o factura?</span>
                 <span>{comprobanteOpen ? '▲' : '▼'}</span>
@@ -418,6 +463,13 @@ export default function Ventas() {
                       Factura RUC
                     </label>
                   </div>
+                  {tipoDoc === '1' && (
+                    <BuscadorSocioBoleta sedeId={sedeId} onElegir={(s) => {
+                      setNumDoc(s.documento || '')
+                      setNombreCliente(s.nombre || '')
+                      setEmailCliente(s.email || '')
+                    }} />
+                  )}
                   <input value={numDoc} onChange={(e) => setNumDoc(e.target.value)}
                     placeholder={tipoDoc === '6' ? 'RUC' : 'DNI'} className={inputCls} />
                   <input value={nombreCliente} onChange={(e) => setNombreCliente(e.target.value)}
