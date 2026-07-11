@@ -88,6 +88,10 @@
 
 1. **Ola 0 — Demo con lo que ya hay** (0 desarrollo): foto, deudas, vencimientos, afluencia, molinetes, WhatsApp links. Vender lo existente primero.
 2. **Ola 1 — Paquete de reportes** (los 10 📊): una sección Reportes ampliada. Es el mayor "wow por sol invertido" — todos los datos ya están.
+   **DIRECTIVA DE ORGANIZACIÓN (owner, 2026-07-11):** nada de lista plana ni bloques sueltos.
+   Reportes agrupado por categorías (Ventas · Socios · Asistencia · Personal · Comercial);
+   el Dashboard queda SOLO con lo accionable de HOY (vivo, por vencer, caja, aforo, meta del día)
+   — los históricos se MUDAN a Reportes. Entendible y manejable, no confuso.
 3. **Ola 2 — CRM comercial Pro** (asesores: conversión, metas, rankings, alertas SLA, agenda, ex-socios, cumpleaños). Este bloque ES el diferenciador para gyms con equipo de ventas → justifica plan Pro.
 4. **Ola 3 — Reservas con posición + tiers** (la feature L) + comisiones/vacaciones + mantenimiento preventivo.
 5. **Ola 4 — Integraciones con costo** (WhatsApp Business API, firma certificada) — solo si el cliente las paga.
