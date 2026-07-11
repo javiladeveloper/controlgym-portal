@@ -67,7 +67,7 @@
 ### Bloque OPERACIÓN DEL GYM
 | Pedido | Qué falta | Tamaño |
 |---|---|---|
-| Reservas grupales con posición en sala | `reserva_clase` existe (básica); falta: mapa de posiciones de la sala, y ventanas de reserva por tier (elite 60min antes, vip 45, básico 30) | **L** (la más grande) |
+| Reservas grupales con posición en sala | `reserva_clase` existe (básica); falta: mapa de posiciones de la sala + ventanas por tier. DISEÑO DECIDIDO (2026-07-11): el tier NO es una etiqueta en el socio — **deriva del PLAN** (nueva columna `plan.antelacion_reserva_min`: VIP 60, Gold 45, Básico 30 — configurable, cada gym nombra sus planes como quiera; `plan.badge` ya existe para el visual). Cero duplicidad de verdad: cambiar de plan actualiza el privilegio solo. La prioridad de posición sale gratis: quien reserva antes elige mejor puesto. Override manual por socio = YAGNI hasta que un gym lo pida. | **L** (la más grande) |
 | Comisiones del personal | planilla existe (sueldo, pago por clase); falta: comisiones de venta por asesor, control de vacaciones | M |
 | **Horarios/turnos del personal** | NO existe: definir turnos por empleado/sede y cruzar con asistencia real (tardanzas/faltas). Detectado en re-auditoría — iba dentro de "comisiones (asistencia, horario personal, vacaciones)" | M |
 | Alertas preventivas de mantenimiento | `mantenimiento.fecha_programada` existe → cron + push al admin cuando se acerca | S |
