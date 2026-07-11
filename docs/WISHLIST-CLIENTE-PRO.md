@@ -21,7 +21,7 @@
 
 | Pedido | Dónde está |
 |---|---|
-| Mostrar la foto del socio | Ficha del socio (foto + validación para facial) |
+| Mostrar la foto del socio | Ficha del socio (foto + validación). **Alcance real del cliente:** verla AL CHECK-IN para corroborar identidad (anti-suplantación) cuando el gym NO tiene huellero — eso falta y es talla S: RPCs de check-in devuelven foto aprobada + modal la muestra grande + EN VIVO con miniatura. Con biométrico el hardware ya verifica. |
 | Reporte de deudas / socios que incumplen | Membresías → saldos + botón 🔔 Recordar (`socios_por_cobrar`) |
 | Clientes por vencer | Dashboard + alertas automáticas (1-2 días antes + push) |
 | Recordatorio de vencidas | `recordar_vencimientos_socios` (email/push automático) |
@@ -69,6 +69,7 @@
 |---|---|---|
 | Reservas grupales con posición en sala | `reserva_clase` existe (básica); falta: mapa de posiciones de la sala, y ventanas de reserva por tier (elite 60min antes, vip 45, básico 30) | **L** (la más grande) |
 | Comisiones del personal | planilla existe (sueldo, pago por clase); falta: comisiones de venta por asesor, control de vacaciones | M |
+| **Horarios/turnos del personal** | NO existe: definir turnos por empleado/sede y cruzar con asistencia real (tardanzas/faltas). Detectado en re-auditoría — iba dentro de "comisiones (asistencia, horario personal, vacaciones)" | M |
 | Alertas preventivas de mantenimiento | `mantenimiento.fecha_programada` existe → cron + push al admin cuando se acerca | S |
 | WhatsApp nivel 2 (envío automático) | WhatsApp Business API de Meta: plantillas aprobadas + costo por conversación (~$0.05-0.07). Factible pero con costo recurrente del gym | M-L |
 | Firma digital de contratos (nivel aceptación) | contrato PDF + aceptación en la app (OTP/firma dibujada + timestamp). Válido como consentimiento comercial | M |
@@ -90,6 +91,25 @@
 3. **Ola 2 — CRM comercial Pro** (asesores: conversión, metas, rankings, alertas SLA, agenda, ex-socios, cumpleaños). Este bloque ES el diferenciador para gyms con equipo de ventas → justifica plan Pro.
 4. **Ola 3 — Reservas con posición + tiers** (la feature L) + comisiones/vacaciones + mantenimiento preventivo.
 5. **Ola 4 — Integraciones con costo** (WhatsApp Business API, firma certificada) — solo si el cliente las paga.
+
+## Marketing + IA (add-on Leadia)
+
+El "tema marketing" completo son 3 capas: (1) CRM comercial = Ola 2; (2) campañas
+segmentadas automáticas (cumpleaños, reactivación, promos dirigidas por segmento:
+ausentes/por vencer/morosos — canales push+email+WhatsApp); (3) **IA de
+recomendaciones de precio/plan por cliente**.
+
+**Arquitectura de la IA (decidida):** híbrida — SQL calcula el perfil de pago por
+cliente (sensibilidad al precio: ¿renueva a precio lleno o solo con promo?, promos
+pagadas años pasados, patrón/atrasos de pago, tendencia de asistencia = riesgo de
+fuga) → un LLM (Claude, modelo económico, batch mensual ≈ centavos) convierte ese
+perfil en recomendación explicada + redacta el mensaje de la promo + responde
+preguntas del admin en lenguaje natural. NO ML entrenado (gyms chicos no tienen
+datos para eso; reglas + LLM funcionan desde el día 1 y escalan con historial).
+
+**Negocio:** esto se empaqueta como **Leadia para gimnasios** — el owner ya definió
+que Leadia es paquete aparte que suma al costo (no feature del Pro). Nueva línea de
+ingreso: "análisis inteligente de promociones y precios = Leadia, +S/XX/mes".
 
 ## Notas de venta
 - El pedido confirma el pricing por sede/Pro: equipo comercial + multi-tier = cliente Pro.
