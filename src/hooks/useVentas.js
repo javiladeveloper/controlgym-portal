@@ -1,6 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 
+// Dispara el worker de emisión al vuelo (best-effort, no bloquea la venta).
+// Sin esto, la boleta de una venta de mostrador esperaría al cron diario:
+// el disparo instantáneo solo existía para pagos in-app (webhook MP).
+async function dispararEmision(data) {
+  if (!data?.comprobante_id) return // gym no factura → no hay nada que emitir
+  try {
+    const jwt = (await supabase.auth.getSession()).data.session?.access_token
+    fetch('/api/facturacion', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${jwt}` },
+    }).catch(() => {})
+  } catch { /* la boleta igual sale con el cron de respaldo */ }
+}
+
 // Vende un carrito de productos (multi-ítem) → baja stock, caja, comprobante.
 export function useVenderCarrito(sedeId) {
   const qc = useQueryClient()
@@ -18,9 +32,10 @@ export function useVenderCarrito(sedeId) {
       if (error) throw error
       return data // {venta_id, total, comprobante_id}
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['kardex', sedeId] })
       qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+      dispararEmision(data)
     },
   })
 }
@@ -42,9 +57,10 @@ export function useCobrarMembresiaPos(sedeId) {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['membresias', sedeId] })
       qc.invalidateQueries({ queryKey: ['finanzas', sedeId] })
+      dispararEmision(data)
     },
   })
 }

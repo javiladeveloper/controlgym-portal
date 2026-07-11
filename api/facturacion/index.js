@@ -49,10 +49,15 @@ async function probar(req, res) {
 
 // ── Worker: emite los comprobantes pendientes a NORAC (best-effort, idempotente) ──
 async function emitir(req, res) {
-  // Auth: cron manda Bearer CRON_SECRET; el disparo al vuelo también.
+  // Auth: el cron y el webhook mandan Bearer CRON_SECRET; el POS (frontend)
+  // manda el JWT del usuario logueado — no puede tener el CRON_SECRET.
+  // Aceptar ambos es seguro: el worker es idempotente (claim atómico por
+  // comprobante), así que una invocación de más no duplica emisiones.
   const secret = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  if (env('CRON_SECRET') && secret !== env('CRON_SECRET'))
-    return res.status(401).json({ error: 'no autorizado' })
+  if (env('CRON_SECRET') && secret !== env('CRON_SECRET')) {
+    const user = await usuarioDesdeJwt(req)
+    if (!user) return res.status(401).json({ error: 'no autorizado' })
+  }
 
   const pool = db()
   // Toma hasta 20 pendientes (todos los gyms) sin bloquear entre invocaciones.
