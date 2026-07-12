@@ -143,8 +143,11 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
   )
 }
 
-// Fila compacta de una tarea de agenda: hora/fecha · tipo · lead · detalle · asignado.
-function FilaAgenda({ t, conFecha }) {
+// Fila compacta de una tarea de agenda: check · hora/fecha · tipo · lead · detalle · asignado.
+// El check completa la tarea aquí mismo — la agenda es el ÚNICO panel de
+// seguimiento (antes había un segundo panel "Seguimientos de hoy" que
+// duplicaba esto y confundía: "arriba ya vemos los pendientes").
+function FilaAgenda({ t, conFecha, onCompletar }) {
   const icono = TAREA_TIPO_ICONO[t.tipo] || '📝'
   const fh = t.vence_at ? new Date(t.vence_at) : null
   const cuando = fh
@@ -154,6 +157,8 @@ function FilaAgenda({ t, conFecha }) {
     : '—'
   return (
     <div className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+      <button type="button" onClick={() => onCompletar(t)} title="Marcar como realizado"
+        className="flex h-6 w-6 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-[#C6CBD4] bg-transparent transition-colors hover:border-green hover:bg-green-50" />
       <span className="w-[92px] flex-shrink-0 font-extrabold text-faint">{cuando}</span>
       <span className="flex-shrink-0" title={t.tipo}>{icono}</span>
       <span className="min-w-0 flex-1 truncate font-extrabold">{t.lead_nombre}</span>
@@ -163,20 +168,25 @@ function FilaAgenda({ t, conFecha }) {
   )
 }
 
-function GrupoAgenda({ titulo, color, items, conFecha }) {
+function GrupoAgenda({ titulo, color, items, conFecha, onCompletar }) {
   if (!items.length) return null
   return (
     <div className="mt-3 first:mt-0">
       <div className="px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color }}>{titulo} · {items.length}</div>
-      {items.map((t) => <FilaAgenda key={t.id} t={t} conFecha={conFecha} />)}
+      {items.map((t) => <FilaAgenda key={t.id} t={t} conFecha={conFecha} onCompletar={onCompletar} />)}
     </div>
   )
 }
 
 // Card colapsada por defecto arriba del pipeline. El hook (y su RPC) solo se
 // monta cuando el usuario expande, igual que TablaHistorialCaja en Finanzas.jsx.
-function AgendaComercial() {
-  const [abierto, setAbierto] = useState(false)
+function AgendaComercial({ sedeId, empresaId, leads }) {
+  // Abierta por defecto: es EL panel de trabajo del seguimiento (único).
+  const [abierto, setAbierto] = useState(true)
+  const [nuevaTareaOpen, setNuevaTareaOpen] = useState(false)
+  const toggleTarea = useToggleTarea(sedeId)
+  const completar = (t) => toggleTarea.mutate({ id: t.id, completada: true },
+    { onSuccess: () => toast.ok(`Seguimiento con ${t.lead_nombre} realizado ✓`) })
   const { rol } = useAuth()
   // El RPC agenda_comercial filtra: el comunicador recibe SOLO sus tareas;
   // admin/recepción ven las del equipo. El texto acompaña esa realidad.
@@ -199,6 +209,18 @@ function AgendaComercial() {
         <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver agenda ▼'}</span>
       </button>
       {abierto && (
+        <div className="flex items-center justify-between border-t border-line2 px-5 py-2.5">
+          <span className="text-[11.5px] font-semibold text-muted">Marca el círculo cuando hagas el contacto · se archiva solo</span>
+          <button type="button" onClick={() => setNuevaTareaOpen((v) => !v)}
+            className="flex-shrink-0 cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-1.5 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50">
+            {nuevaTareaOpen ? 'Cerrar' : '+ Tarea'}
+          </button>
+        </div>
+      )}
+      {abierto && nuevaTareaOpen && (
+        <NuevaTareaForm sedeId={sedeId} empresaId={empresaId} leads={leads} onDone={() => setNuevaTareaOpen(false)} />
+      )}
+      {abierto && (
         <div className="border-t border-line2">
           {agenda.isLoading && <LoadingState variant="table" rows={3} />}
           {agenda.isError && <ErrorState error={agenda.error} onRetry={agenda.refetch} />}
@@ -207,9 +229,9 @@ function AgendaComercial() {
               <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin tareas pendientes en los próximos 7 días.</div>
             ) : (
               <div className="pb-2">
-                <GrupoAgenda titulo="Vencidas" color={T.danger} items={vencidas} conFecha />
-                <GrupoAgenda titulo="Hoy" color={T.warning} items={agenda.data?.hoy || []} />
-                <GrupoAgenda titulo="Próximas 7 días" color={T.muted} items={agenda.data?.proximas || []} conFecha />
+                <GrupoAgenda titulo="Vencidas" color={T.danger} items={vencidas} conFecha onCompletar={completar} />
+                <GrupoAgenda titulo="Hoy" color={T.warning} items={agenda.data?.hoy || []} onCompletar={completar} />
+                <GrupoAgenda titulo="Próximas 7 días" color={T.muted} items={agenda.data?.proximas || []} conFecha onCompletar={completar} />
               </div>
             )
           )}
@@ -471,11 +493,9 @@ export default function CRM() {
   }
   const [editar, setEditar] = useState(null) // lead en edición
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
-  const [nuevaTareaOpen, setNuevaTareaOpen] = useState(false)
   const leads = useLeads(sedeId)
   const avanzar = useAvanzarLead(sedeId)
-  const tareas = useTareas(sedeId)
-  const toggleTarea = useToggleTarea(sedeId)
+  const tareas = useTareas(sedeId) // solo para el KPI "Seguimientos hoy"
 
   const cols = ETAPAS.map((etapa) => ({
     etapa,
@@ -524,7 +544,7 @@ export default function CRM() {
         <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas con leads para hoy — el detalle está en la Agenda" variant="accent" />
       </div>
 
-      <AgendaComercial />
+      <AgendaComercial sedeId={sedeId} empresaId={empresa?.id} leads={leads.data || []} />
       <QueOfrecer moneda={empresa?.moneda} empresaId={empresa?.id} />
 
       {leads.isLoading && <LoadingState variant="cards" rows={4} />}
@@ -613,53 +633,7 @@ export default function CRM() {
         </div>
       )}
 
-      {/* Seguimientos */}
-      <Card className="mt-[15px] max-w-[860px] overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-5 py-4">
-          <div>
-            <div className="text-[14.5px] font-extrabold">Seguimientos de hoy</div>
-            <div className="mt-0.5 text-[12px] font-semibold text-muted">Marca cada contacto como realizado</div>
-          </div>
-          <button type="button" onClick={() => setNuevaTareaOpen((v) => !v)}
-            className="flex-shrink-0 cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-1.5 text-[11.5px] font-extrabold text-orange transition-colors hover:bg-orange-50">
-            {nuevaTareaOpen ? 'Cerrar' : '+ Tarea'}
-          </button>
-        </div>
-        {nuevaTareaOpen && (
-          <NuevaTareaForm sedeId={sedeId} empresaId={empresa?.id} leads={leads.data || []} onDone={() => setNuevaTareaOpen(false)} />
-        )}
-        {tareas.isLoading && <LoadingState variant="table" rows={3} />}
-        {tareas.error && !tareas.isLoading && (
-          <ErrorState error={tareas.error} onRetry={tareas.refetch} />
-        )}
-        {!tareas.error && (tareas.data || []).length === 0 && !tareas.isLoading && (
-          <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin seguimientos pendientes.</div>
-        )}
-        {(tareas.data || []).map((t) => {
-          const isDone = t.completada
-          const tipoNav = t.tipo === 'llamada'
-          return (
-            <div key={t.id} onClick={() => toggleTarea.mutate({ id: t.id, completada: !isDone })}
-              className="flex cursor-pointer items-center gap-3 border-t border-line2 px-5 py-3 hover:bg-[#FAFBFC]">
-              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2"
-                style={{ borderColor: isDone ? T.success : '#C6CBD4', background: isDone ? T.success : 'transparent' }}>
-                <CheckIcon size={12} opacity={isDone ? 1 : 0} />
-              </div>
-              <span className="flex-shrink-0 rounded-full px-[11px] py-[5px] text-[11px] font-extrabold capitalize"
-                style={{ background: tipoNav ? T.chipNavy : T.successBg, color: tipoNav ? T.navy : T.success }}>
-                {tipoNav ? '📞 ' : ''}{t.tipo}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-extrabold" style={{ textDecoration: isDone ? 'line-through' : 'none' }}>{t.lead?.nombre}</div>
-                {t.detalle && <div className="mt-px text-[11.5px] font-semibold text-muted">{t.detalle}</div>}
-              </div>
-              <div className="flex-shrink-0 text-[12px] font-extrabold text-faint">
-                {t.vence_at ? new Date(t.vence_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : ''}
-              </div>
-            </div>
-          )
-        })}
-      </Card>
+      {/* El panel "Seguimientos de hoy" vivía aquí duplicando la Agenda — fusionado arriba. */}
 
       <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />
     </div>

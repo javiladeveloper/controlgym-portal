@@ -79,7 +79,10 @@ export function useToggleTarea(sedeId) {
       return { prev }
     },
     onError: (_e, _v, ctx) => ctx?.prev && qc.setQueryData(['lead-tareas', sedeId], ctx.prev),
-    onSettled: () => qc.invalidateQueries({ queryKey: ['lead-tareas', sedeId] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['lead-tareas', sedeId] })
+      qc.invalidateQueries({ queryKey: ['agenda-comercial'] }) // la agenda es quien pinta las tareas
+    },
   })
 }
 
