@@ -9,7 +9,7 @@ export function useSociosSelect(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('socio')
-        .select('id, nombre, codigo, talla_m, peso_kg, objetivo')
+        .select('id, nombre, codigo, talla_m, peso_kg, objetivo, objetivo_id')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('nombre')
@@ -390,6 +390,29 @@ export function useResponderSolicitud(empresaId) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['solicitudes-carga', empresaId] })
       qc.invalidateQueries({ queryKey: ['rutina-ejercicios'] })
+    },
+  })
+}
+
+// Asignar plantilla (rutina + dieta) según objetivo e IMC — versión MANUAL del
+// flujo que corre solo en la inscripción. Guarda primero objetivo/peso/talla en
+// el socio (el RPC los lee de ahí) y luego copia las plantillas moduladas por IMC.
+export function useAsignarPlanAutomatico(socioId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ objetivoId, pesoKg, tallaM }) => {
+      const { error: e1 } = await supabase.from('socio')
+        .update({ objetivo_id: objetivoId, peso_kg: pesoKg, talla_m: tallaM })
+        .eq('id', socioId)
+      if (e1) throw e1
+      const { data, error } = await supabase.rpc('asignar_plan_automatico', { p_socio_id: socioId })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rutina', socioId] })
+      qc.invalidateQueries({ queryKey: ['dieta', socioId] })
+      qc.invalidateQueries({ queryKey: ['socios-select'] })
     },
   })
 }

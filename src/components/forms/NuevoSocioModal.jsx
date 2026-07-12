@@ -392,7 +392,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         {f.objetivo_id && (!f.peso_kg || !f.talla_m) && (
           <p className="-mt-1.5 text-[11px] font-semibold text-faint">Completa peso y talla para que el plan se asigne automáticamente ahora; si no, quedará pendiente.</p>
         )}
-        <Campo label="Otro objetivo (texto libre, opcional)">
+        <Campo label="Otro objetivo (texto libre, opcional)" hint="Solo descriptivo: se ve en su ficha y en su app, no genera plan. El plan automático sale del objetivo de arriba.">
           <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
         </Campo>
         </>

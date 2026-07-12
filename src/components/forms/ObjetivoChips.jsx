@@ -34,11 +34,15 @@ export default function ObjetivoChips({ value = '', onChange, placeholder = 'Esc
   function onKeyDown(e) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (texto.trim()) agregar(texto)
-      else if (disponibles[0]) agregar(disponibles[0])
-    } else if (e.key === 'Backspace' && !texto && chips.length) {
-      quitar(chips[chips.length - 1])
+      // Si lo escrito coincide con una sugerencia visible, Enter elige ESA
+      // sugerencia (canónica), no el texto crudo ("toni" → "Tonificar").
+      // Solo si nada coincide se agrega lo escrito como objetivo propio.
+      if (disponibles[0]) agregar(disponibles[0])
+      else if (texto.trim()) agregar(texto)
     }
+    // Backspace ya NO borra chips: borrar el texto de búsqueda con una pulsación
+    // de más se llevaba un objetivo elegido sin que el usuario lo notara.
+    // Para quitar un chip está su ✕.
   }
 
   return (

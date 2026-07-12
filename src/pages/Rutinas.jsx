@@ -11,8 +11,9 @@ import {
   useEjerciciosRutina, useGuardarEjercicio, useEliminarEjercicio,
   useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
-  useSolicitudesCarga, useResponderSolicitud,
+  useSolicitudesCarga, useResponderSolicitud, useAsignarPlanAutomatico,
 } from '../hooks/useRutinas.js'
+import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
@@ -315,6 +316,72 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
   )
 }
 
+// Asignar plantilla a mano: el flujo automático solo corre al inscribir (y solo
+// si el socio ya tenía objetivo + peso + talla). Este modal cubre a todos los
+// demás: pide/confirma esos 3 datos, los guarda en el socio y dispara el mismo
+// RPC que copia rutina + dieta de la plantilla del objetivo, moduladas por IMC.
+function AsignarPlantillaModal({ socio, onClose }) {
+  const objetivos = useObjetivos()
+  const conPlan = (objetivos.data || []).filter((o) => o.tiene_plan)
+  const [objetivoId, setObjetivoId] = useState(socio.objetivo_id || '')
+  const [peso, setPeso] = useState(socio.peso_kg || '')
+  const [talla, setTalla] = useState(socio.talla_m || '')
+  const asignar = useAsignarPlanAutomatico(socio.id)
+
+  const MOTIVOS = {
+    ya_tiene_plan: 'Este socio ya tiene una rutina activa. Elimínala primero si quieres reemplazarla por la plantilla.',
+    objetivo_sin_plan: 'Ese objetivo no tiene plantilla asociada.',
+    sin_peso_talla: 'Faltan peso y talla para calcular el IMC.',
+    sin_objetivo: 'Elige un objetivo para saber qué plantilla usar.',
+    socio_inexistente: 'No se encontró al socio.',
+  }
+
+  function submit(e) {
+    e.preventDefault()
+    let t = Number(talla)
+    if (t > 3) t = t / 100 // talla en cm (175) → metros, como en EditarSocioModal
+    asignar.mutate(
+      { objetivoId, pesoKg: Number(peso), tallaM: t },
+      {
+        onSuccess: (d) => {
+          if (d?.asignado) {
+            toast.ok(`Plantilla "${d.objetivo}" asignada · IMC ${d.imc}. Revisa y ajusta antes de enviarla a la app.`)
+            onClose()
+          } else {
+            toast.error(MOTIVOS[d?.motivo] || 'No se pudo asignar la plantilla.')
+          }
+        },
+        onError: (er) => toast.error(er.message),
+      },
+    )
+  }
+
+  return (
+    <Modal title="⚡ Usar plantilla" subtitle={`Copia la rutina y dieta del objetivo, ajustadas al IMC de ${socio.nombre}.`} onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-3.5">
+        <Campo label="Objetivo *">
+          <select required value={objetivoId} onChange={(e) => setObjetivoId(e.target.value)} className={inputCls + ' cursor-pointer'}>
+            <option value="">Elige un objetivo…</option>
+            {conPlan.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+          </select>
+        </Campo>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Peso (kg) *">
+            <input required type="number" step="0.1" min="1" value={peso} onChange={(e) => setPeso(e.target.value)} className={inputCls} placeholder="70" />
+          </Campo>
+          <Campo label="Talla (m) *">
+            <input required type="number" step="0.01" min="0.5" value={talla} onChange={(e) => setTalla(e.target.value)} className={inputCls} placeholder="1.70" />
+          </Campo>
+        </div>
+        <p className="-mt-1 text-[11.5px] font-semibold text-faint">
+          Estos datos se guardan en la ficha del socio. La plantilla llega con las calorías y cargas ya ajustadas a su IMC; luego puedes editar cada día.
+        </p>
+        <BotonesModal onCancel={onClose} busy={asignar.isPending} submitLabel="Asignar plantilla" />
+      </form>
+    </Modal>
+  )
+}
+
 function RutinasImpl() {
   const location = useLocation()
   const { sedeId } = usePanel()
@@ -340,6 +407,7 @@ function RutinasImpl() {
   // Cada especialista lo suyo: el nutricionista no toca la rutina;
   // entrenador y admin ven ambas (gyms sin nutricionista)
   const veRutina = rol !== 'nutricionista'
+  const objetivosCatalogo = useObjetivos().data || []
   // Si el socio vino por navegación y aún no está en la lista sede-scoped
   // (otra sede, o la lista no cargó todavía), usamos un socio "de vista"
   // mínimo con lo que trajo la navegación: el nombre se ve y las queries de
@@ -371,6 +439,7 @@ function RutinasImpl() {
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
   const [bancoOpen, setBancoOpen] = useState(false) // gestión del banco de ejercicios (media)
   const [tab, setTab] = useState('socios') // 'socios' | 'plantillas'
+  const [plantillaOpen, setPlantillaOpen] = useState(false) // modal "Usar plantilla"
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
   const diasIds = (rutina.data?.dias || []).map((d) => d.id)
@@ -449,6 +518,7 @@ function RutinasImpl() {
       </div>
 
       {bancoOpen && <BancoEjerciciosModal onClose={() => setBancoOpen(false)} />}
+      {plantillaOpen && socio && <AsignarPlantillaModal socio={socio} onClose={() => setPlantillaOpen(false)} />}
 
       {tab === 'plantillas' && <PlantillasPanel empresaId={empresa?.id} />}
 
@@ -511,7 +581,8 @@ function RutinasImpl() {
                     </div>
                   )
                 })()}
-                <Chip label="Objetivo:" value={socio.objetivo || '—'} accent />
+                {/* Texto libre del socio; si no tiene, el objetivo de catálogo (plan automático) */}
+                <Chip label="Objetivo:" value={socio.objetivo || objetivosCatalogo.find((o) => o.id === socio.objetivo_id)?.nombre || '—'} accent />
               </div>
             </div>
           </Card>
@@ -525,10 +596,16 @@ function RutinasImpl() {
                 <div className="mt-0.5 text-[12px] font-semibold text-muted">Elige el enfoque de cada día · se guarda al instante</div>
               </div>
               {!rutina.data && !rutina.isLoading && (
-                <button onClick={() => crearRutina.mutate()} disabled={crearRutina.isPending}
-                  className="cursor-pointer rounded-[10px] border-none bg-orange px-4 py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
-                  {crearRutina.isPending ? 'Creando…' : 'Crear rutina semanal'}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => setPlantillaOpen(true)}
+                    className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
+                    ⚡ Usar plantilla
+                  </button>
+                  <button onClick={() => crearRutina.mutate()} disabled={crearRutina.isPending}
+                    className="cursor-pointer rounded-[10px] border-none bg-orange px-4 py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+                    {crearRutina.isPending ? 'Creando…' : 'Crear rutina semanal'}
+                  </button>
+                </div>
               )}
             </div>
             {rutina.data?.dias?.length > 0 && (
@@ -603,7 +680,7 @@ function RutinasImpl() {
               </div>
             )}
             {!rutina.data && !rutina.isLoading && (
-              <div className="mt-3 text-[12.5px] font-semibold text-muted">Este socio aún no tiene rutina. Créala y ajusta cada día.</div>
+              <div className="mt-3 text-[12.5px] font-semibold text-muted">Este socio aún no tiene rutina. Créala desde cero, o usa una plantilla según su objetivo e IMC.</div>
             )}
 
             {/* Indicaciones generales del plan (el socio las ve en su app) */}
@@ -749,6 +826,7 @@ function PlantillasPanel({ empresaId }) {
       <div className="text-[14.5px] font-extrabold">📋 Plantillas del plan automático</div>
       <p className="mt-0.5 text-[12px] font-semibold text-muted">
         Al inscribir a un socio con objetivo + peso + talla, el sistema copia estas plantillas (moduladas por su IMC) como su rutina y dieta iniciales.
+        También puedes asignarlas a mano: en «Por socio», elige al socio y pulsa «⚡ Usar plantilla».
         Prioriza la plantilla personalizada del gym; si no existe, usa la global. El editor de ejercicios/comidas de cada plantilla llega en una próxima mejora.
       </p>
 

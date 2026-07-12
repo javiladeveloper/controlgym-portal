@@ -106,7 +106,7 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
           </Campo>
           <Campo label="Peso (kg)"><input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder="70" /></Campo>
         </div>
-        <Campo label="Objetivo">
+        <Campo label="Objetivo (texto libre)" hint="Descriptivo: se ve en su ficha y en su app. Para generarle rutina + dieta de plantilla, usa «⚡ Usar plantilla» en Rutinas.">
           <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
         </Campo>
 
