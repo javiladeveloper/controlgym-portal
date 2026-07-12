@@ -250,7 +250,9 @@ export default function Dashboard() {
       {kpis.data && (
         <div className="mt-[22px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
           {/* Un solo slot de aforo: con aforo_max configurado se muestra la tarjeta
-              en vivo (regla 2h + barra); sin configurar, el conteo simple del día.
+              en vivo (dentro = entró hoy y no marcó salida; el job nocturno
+              fitcontrol-cierre-checkins cierra las entradas que quedan abiertas);
+              sin configurar, el conteo simple del día.
               (Antes había DOS tarjetas para lo mismo — duplicado detectado en QA.) */}
           {/* Cada KPI navega a su detalle (pedido del owner: "clic en por vencer
               → quiénes son"). cursor-pointer + hover para que se note. */}
