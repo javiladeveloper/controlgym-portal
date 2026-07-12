@@ -283,7 +283,7 @@ function VacacionesModal({ staff, empresaId, onClose }) {
   }
 
   return (
-    <Modal title="🗓️ Vacaciones y permisos" subtitle="El cuadro del equipo — mientras dure el permiso, no recibe avisos del gym" onClose={onClose} width={780}>
+    <Modal title="🗓️ Asistencia y permisos" subtitle="El cuadro del equipo — mientras dure el permiso, no recibe avisos del gym" onClose={onClose} width={780}>
       {/* Registrar */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-[10px] border border-line bg-[#FAFBFC] p-3">
         <select value={nuevo.usuario} onChange={(e) => setNuevo((s) => ({ ...s, usuario: e.target.value }))}
@@ -1055,7 +1055,7 @@ export default function Personal() {
             )}
             <button onClick={() => setVacacionesOpen(true)}
               className="cursor-pointer rounded-[10px] border border-line bg-white px-[16px] py-[11px] text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
-              🗓️ Vacaciones y permisos
+              🗓️ Asistencia y permisos
             </button>
             <button onClick={() => setInvitarOpen(true)}
               className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Agregar colaborador</button>
