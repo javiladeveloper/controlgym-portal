@@ -25,7 +25,28 @@ function html({ titulo, descripcion, imagen, url }) {
 </head><body></body></html>`
 }
 
+// Última versión disponible de la app (para el aviso "nueva versión" que muestra
+// la app). Se sirve DESDE og.js — vía rewrite en vercel.json — para no crear una
+// función serverless nueva (el plan Hobby topa en 12). El valor lo pone el CI de
+// la app en la env var APP_ANDROID_LATEST de Vercel al subir un AAB.
+function responderVersion(res) {
+  res.setHeader('content-type', 'application/json; charset=utf-8')
+  res.setHeader('cache-control', 'public, s-maxage=300, stale-while-revalidate=600')
+  const android = parseInt(process.env.APP_ANDROID_LATEST || '0', 10) || 0
+  const ios = parseInt(process.env.APP_IOS_LATEST || '0', 10) || 0
+  return res.status(200).json({
+    android: { latest: android, url: 'https://play.google.com/store/apps/details?id=pe.fitcore.app' },
+    ios: { latest: ios, url: 'https://apps.apple.com/app/fitcore' },
+  })
+}
+
 export default async function handler(req, res) {
+  // Ruta de versión de la app (enrutada aquí por vercel.json para ahorrar función).
+  const ruta = String(req.url || '').split('?')[0]
+  if (ruta === '/api/app/version' || ruta.endsWith('/app/version')) {
+    return responderVersion(res)
+  }
+
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase()
   const sub = host.endsWith('.' + ROOT) ? host.slice(0, -(ROOT.length + 1)) : ''
   const fitcore = {
