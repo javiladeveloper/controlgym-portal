@@ -333,7 +333,10 @@ export default function Dashboard() {
                     <div className="text-[12px] font-extrabold text-ink">
                       {new Date(c.ocurrido_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div className="text-[10.5px] font-extrabold capitalize" style={{ color: permit ? T.success : T.danger }}>{c.direccion}</div>
+                    {/* Verde = entró · gris = salió · rojo = denegado (de un vistazo) */}
+                    <div className="text-[10.5px] font-extrabold capitalize" style={{ color: !permit ? T.danger : c.direccion === 'salida' ? T.muted : T.success }}>
+                      {c.direccion === 'salida' ? '↑ salida' : '↓ entrada'}
+                    </div>
                   </div>
                 </div>
               )
