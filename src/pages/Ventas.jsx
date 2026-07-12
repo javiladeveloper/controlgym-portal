@@ -150,7 +150,13 @@ function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, mo
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
     const lista = membresias.data || []
-    if (!q) return []
+    // Sin busqueda NO se queda en blanco ("no sale nada"): muestra los que
+    // vencen primero — los que con mas probabilidad vienen a renovar.
+    if (!q) {
+      return [...lista]
+        .sort((a, b) => new Date(a.fecha_fin || 8e15) - new Date(b.fecha_fin || 8e15))
+        .slice(0, 8)
+    }
     return lista.filter((m) =>
       m.socio?.nombre?.toLowerCase().includes(q) || m.socio?.codigo?.toLowerCase?.().includes(q) || m.socio?.codigo?.includes(busca)
     ).slice(0, 8)
@@ -198,6 +204,9 @@ function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, mo
           <div className="rounded-[10px] border border-dashed border-line px-4 py-6 text-center text-[12.5px] font-semibold text-muted">
             Sin resultados para "{busca}".
           </div>
+        )}
+        {!busca && filtradas.length > 0 && (
+          <div className="mt-2 mb-1 text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Vencen pronto — clic para cobrar su renovación</div>
         )}
         {filtradas.length > 0 && (
           <div className="mt-1 flex flex-col gap-1.5">
