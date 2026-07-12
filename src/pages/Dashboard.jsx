@@ -245,16 +245,10 @@ export default function Dashboard() {
       {kpis.error && <ErrorState error={kpis.error} onRetry={kpis.refetch} />}
       {kpis.data && (
         <div className="mt-[22px] grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
-          <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
-            delta={aforoDelta} />
-          <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta="con membresía vigente" />
-          {veIngresos && <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta="membresías + ventas" />}
-          <div className="rounded-card border border-orange-100 bg-orange-50 p-[17px]">
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-orange">Por vencer (7 días)</div>
-            <div className="mt-1.5 text-[27px] font-extrabold text-orange">{kpis.data.por_vencer_7d ?? 0}</div>
-            <div className="mt-0.5 text-[12px] font-bold text-muted">membresías</div>
-          </div>
-          {aforoBar && (
+          {/* Un solo slot de aforo: con aforo_max configurado se muestra la tarjeta
+              en vivo (regla 2h + barra); sin configurar, el conteo simple del día.
+              (Antes había DOS tarjetas para lo mismo — duplicado detectado en QA.) */}
+          {aforoBar ? (
             <div className="rounded-card border border-line bg-white p-[17px]">
               <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">🏟️ Aforo ahora</div>
               <div className="mt-1.5 text-[27px] font-extrabold tabular-nums text-ink">
@@ -264,7 +258,17 @@ export default function Dashboard() {
                 <div className={`h-full rounded-full ${aforoBar}`} style={{ width: `${Math.min(100, Math.max(0, aforo.data.pct))}%` }} />
               </div>
             </div>
+          ) : (
+            <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
+              delta={aforoDelta} />
           )}
+          <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta="con membresía vigente" />
+          {veIngresos && <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta="membresías + ventas" />}
+          <div className="rounded-card border border-orange-100 bg-orange-50 p-[17px]">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-orange">Por vencer (7 días)</div>
+            <div className="mt-1.5 text-[27px] font-extrabold text-orange">{kpis.data.por_vencer_7d ?? 0}</div>
+            <div className="mt-0.5 text-[12px] font-bold text-muted">membresías</div>
+          </div>
         </div>
       )}
 
