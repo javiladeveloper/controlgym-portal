@@ -183,7 +183,7 @@ function AgendaComercial() {
       <button type="button" onClick={() => setAbierto((v) => !v)}
         className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
         <div className="flex items-center gap-2">
-          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento <span className="ml-1 text-[11.5px] font-semibold text-muted">— tus tareas con leads: vencidas, de hoy y próximas</span></span>
+          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento <span className="ml-1 text-[11.5px] font-semibold text-muted">— tareas del equipo con leads: vencidas, de hoy y próximas · cada una muestra su responsable</span></span>
           {nVencidas > 0 && (
             <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: T.dangerBg, color: T.danger }}>
               {nVencidas} vencida{nVencidas > 1 ? 's' : ''}
