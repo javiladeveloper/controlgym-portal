@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, StatCard, Avatar } from '../components/ui.jsx'
 import { CheckIcon, WhatsAppIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState } from '../components/states.jsx'
@@ -419,6 +419,106 @@ function FilaExSocio({ ex, sedeId, empresaId, gymNombre, moneda }) {
   )
 }
 
+// Cohortes por campaña (pedido del cliente Pro): por cada promoción, cuántos
+// entraron con ella, cuántos siguen y QUIÉNES se fueron — listos para
+// contactar. El cálculo es SQL exacto (cohorte_campanias); la sugerencia de
+// QUÉ ofrecerles es el teaser de Leadia. Colapsada + query solo al expandir.
+function FilaCohortePerdido({ px, campana, sedeId, empresaId, gymNombre }) {
+  const qc = useQueryClient()
+  const [creado, setCreado] = useState(false)
+  const wa = px.telefono && waLink(px.telefono,
+    `¡Hola ${px.nombre.split(' ')[0]}! Te extrañamos en ${gymNombre} 💪 Entraste con la promo "${campana}" y queremos que vuelvas: tenemos ofertas nuevas. ¿Te cuento?`)
+  async function crearLead() {
+    setCreado(true)
+    const { error } = await supabase.from('lead').insert({
+      empresa_id: empresaId, sede_id: sedeId, etapa: 'nuevo',
+      nombre: px.nombre, telefono: px.telefono || null,
+      fuente: 'Reactivación', nota: `reactivación — entró con la campaña "${campana}"`,
+    })
+    if (error) { setCreado(false); toast.error('No se pudo crear el lead: ' + error.message); return }
+    qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+    toast.ok(`Lead creado para ${px.nombre}`)
+  }
+  return (
+    <div className="flex items-center gap-2.5 border-t border-line2 py-2 pl-3 text-[12.5px]">
+      <div className="min-w-0 flex-1 truncate font-bold">{px.nombre}</div>
+      <span className="flex-shrink-0 text-[11px] font-extrabold text-faint">venció hace {px.vencio_hace_dias}d</span>
+      {wa && (
+        <a href={wa} target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
+          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
+          style={{ background: '#25D366' }}><WhatsAppIcon size={13} /></a>
+      )}
+      <button onClick={crearLead} disabled={creado}
+        className="flex-shrink-0 cursor-pointer rounded-lg border border-orange px-2.5 py-1 text-[10.5px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:cursor-default disabled:opacity-50">
+        {creado ? 'Lead ✓' : '+ Crear lead'}
+      </button>
+    </div>
+  )
+}
+
+function CohorteCampaniasContenido({ sedeId, empresaId, gymNombre }) {
+  const cohortes = useQuery({
+    queryKey: ['cohorte-campanias'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('cohorte_campanias')
+      if (error) throw error
+      return data
+    },
+  })
+  const [abiertas, setAbiertas] = useState({}) // por campaña: mostrar perdidos
+  if (cohortes.isLoading) return <div className="px-5 py-3"><LoadingState variant="table" rows={2} /></div>
+  if (cohortes.isError) return <ErrorState error={cohortes.error} onRetry={cohortes.refetch} />
+  const lista = cohortes.data || []
+  if (!lista.length) return <div className="px-5 py-5 text-[12.5px] font-semibold text-muted">Aún no hay socios inscritos con campañas.</div>
+  return (
+    <div className="px-5 pb-4">
+      {lista.map((ca) => {
+        const retencion = ca.inscritos > 0 ? Math.round((ca.activos / ca.inscritos) * 100) : 0
+        const abierta = !!abiertas[ca.promocion_id]
+        return (
+          <div key={ca.promocion_id} className="border-t border-line2 py-3 first:border-t-0">
+            <div className={`flex flex-wrap items-center gap-3 ${ca.perdidos > 0 ? 'cursor-pointer' : ''}`}
+              onClick={() => ca.perdidos > 0 && setAbiertas((v) => ({ ...v, [ca.promocion_id]: !abierta }))}>
+              <div className="min-w-[160px] flex-1">
+                <div className="text-[13px] font-extrabold">🎁 {ca.nombre}</div>
+                <div className="mt-1 h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-line2">
+                  <div className="h-full rounded-full" style={{ width: `${retencion}%`, background: retencion >= 70 ? T.success : retencion >= 40 ? '#F59E0B' : T.danger }} />
+                </div>
+              </div>
+              <span className="text-[12px] font-bold text-muted">{ca.inscritos} entraron</span>
+              <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: T.successBg, color: T.success }}>{ca.activos} siguen</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${ca.perdidos > 0 ? '' : 'opacity-50'}`} style={{ background: T.dangerBg, color: T.danger }}>
+                {ca.perdidos} se fueron{ca.perdidos > 0 ? (abierta ? ' ▴' : ' ▾') : ''}
+              </span>
+              <span className="w-[64px] text-right text-[12px] font-extrabold" style={{ color: retencion >= 70 ? T.success : retencion >= 40 ? '#B45309' : T.danger }}>{retencion}%</span>
+            </div>
+            {abierta && (ca.perdidos_lista || []).map((px) => (
+              <FilaCohortePerdido key={px.socio_id} px={px} campana={ca.nombre} sedeId={sedeId} empresaId={empresaId} gymNombre={gymNombre} />
+            ))}
+          </div>
+        )
+      })}
+      <div className="pt-2 text-[11px] font-semibold text-faint">
+        % = retención (siguen activos / entraron). Clic en una campaña con bajas para ver quiénes se fueron y contactarlos.
+      </div>
+    </div>
+  )
+}
+
+function CohorteCampanias({ sedeId, empresaId, gymNombre }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-4 overflow-hidden">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
+        <span className="text-[14.5px] font-extrabold">📊 Resultados por campaña <span className="ml-1 text-[11.5px] font-semibold text-muted">— quiénes entraron con cada promo, quiénes siguen y quiénes se fueron</span></span>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver ▼'}</span>
+      </button>
+      {abierto && <div className="border-t border-line2"><CohorteCampaniasContenido sedeId={sedeId} empresaId={empresaId} gymNombre={gymNombre} /></div>}
+    </Card>
+  )
+}
+
 // Card colapsada al pie del CRM. Igual patrón: hook (y RPC) montado solo al expandir.
 function ReactivacionExSocios({ sedeId, empresaId }) {
   const { empresa } = useAuth()
@@ -716,6 +816,8 @@ export default function CRM() {
       )}
 
       {/* El panel "Seguimientos de hoy" vivía aquí duplicando la Agenda — fusionado arriba. */}
+
+      <CohorteCampanias sedeId={sedeId} empresaId={empresa?.id} gymNombre={empresa?.nombre} />
 
       <PerdidosPanel perdidos={(leads.data || []).filter((l) => l.etapa === 'perdido')} sedeId={sedeId} />
 
