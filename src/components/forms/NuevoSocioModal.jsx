@@ -18,7 +18,7 @@ import { METODOS_PAGO } from '../../lib/pagos.js'
 export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId = null }) {
   const qc = useQueryClient()
   const { empresa } = useAuth()
-  const planes = usePlanes()
+  const planes = usePlanes(empresa?.id)
   const promos = usePromociones()
   const objetivos = useObjetivos()
   const [f, setF] = useState({

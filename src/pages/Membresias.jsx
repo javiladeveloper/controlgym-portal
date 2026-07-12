@@ -280,7 +280,7 @@ export default function Membresias() {
   const { empresa, rol } = useAuth()
   const esAdmin = rol === 'admin' // baja/anulación/devolución son solo de admin
   const moneda = empresa?.moneda || 'PEN'
-  const planes = usePlanes()
+  const planes = usePlanes(empresa?.id)
   const membresias = useMembresias(sedeId)
   const freeze = useToggleFreeze(sedeId)
   const renovar = useRenovar(sedeId)

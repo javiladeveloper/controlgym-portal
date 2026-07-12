@@ -177,6 +177,10 @@ function GrupoAgenda({ titulo, color, items, conFecha }) {
 // monta cuando el usuario expande, igual que TablaHistorialCaja en Finanzas.jsx.
 function AgendaComercial() {
   const [abierto, setAbierto] = useState(false)
+  const { rol } = useAuth()
+  // El RPC agenda_comercial filtra: el comunicador recibe SOLO sus tareas;
+  // admin/recepción ven las del equipo. El texto acompaña esa realidad.
+  const esComunicador = rol === 'comunicador'
   const agenda = useAgendaComercial(abierto)
   const vencidas = agenda.data?.vencidas || []
   const nVencidas = vencidas.length
@@ -185,7 +189,7 @@ function AgendaComercial() {
       <button type="button" onClick={() => setAbierto((v) => !v)}
         className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
         <div className="flex items-center gap-2">
-          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento <span className="ml-1 text-[11.5px] font-semibold text-muted">— tareas del equipo con leads: vencidas, de hoy y próximas · cada una muestra su responsable</span></span>
+          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento <span className="ml-1 text-[11.5px] font-semibold text-muted">{esComunicador ? '— tus tareas con leads: vencidas, de hoy y próximas' : '— tareas del equipo con leads: vencidas, de hoy y próximas · cada una muestra su responsable'}</span></span>
           {nVencidas > 0 && (
             <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: T.dangerBg, color: T.danger }}>
               {nVencidas} vencida{nVencidas > 1 ? 's' : ''}
@@ -220,8 +224,8 @@ function AgendaComercial() {
 // owner: "los comunicadores deben poder ver las promociones y costos").
 // Mismo patrón que la agenda: colapsado por defecto y las queries montan
 // recién al expandir (el subcomponente es quien usa los hooks).
-function QueOfrecerContenido({ moneda }) {
-  const planes = usePlanes()
+function QueOfrecerContenido({ moneda, empresaId }) {
+  const planes = usePlanes(empresaId)
   const promos = usePromociones()
   const activas = (promos.data || []).filter((p) => p.estado === 'activa')
   const cargando = planes.isLoading || promos.isLoading
@@ -261,7 +265,7 @@ function QueOfrecerContenido({ moneda }) {
   )
 }
 
-function QueOfrecer({ moneda }) {
+function QueOfrecer({ moneda, empresaId }) {
   const [abierto, setAbierto] = useState(false)
   return (
     <Card className="mt-4 overflow-hidden">
@@ -270,13 +274,13 @@ function QueOfrecer({ moneda }) {
         <span className="text-[14.5px] font-extrabold">💰 Qué ofrecer <span className="ml-1 text-[11.5px] font-semibold text-muted">— planes con precio y promociones activas, para cotizar al toque</span></span>
         <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver precios ▼'}</span>
       </button>
-      {abierto && <QueOfrecerContenido moneda={moneda} />}
+      {abierto && <QueOfrecerContenido moneda={moneda} empresaId={empresaId} />}
     </Card>
   )
 }
 
 // Fila de un ex-socio candidato a reactivación.
-function FilaExSocio({ ex, sedeId, empresaId, gymNombre }) {
+function FilaExSocio({ ex, sedeId, empresaId, gymNombre, moneda }) {
   const qc = useQueryClient()
   const [creado, setCreado] = useState(false)
   const wa = ex.telefono && waLink(ex.telefono,
@@ -300,6 +304,13 @@ function FilaExSocio({ ex, sedeId, empresaId, gymNombre }) {
         <div className="truncate font-extrabold">{ex.nombre}</div>
         <div className="truncate text-[11px] font-bold text-muted">{ex.ultimo_plan || 'Sin plan registrado'}</div>
       </div>
+      {/* Si se fue debiendo, que se vea ANTES de invitarlo a volver: cambia
+          el discurso ("regularicemos tu saldo") y evita ofertas a morosos */}
+      {Number(ex.deuda) > 0 && (
+        <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-extrabold" style={{ background: T.dangerBg, color: T.danger }}>
+          se fue debiendo {money(ex.deuda, moneda)}
+        </span>
+      )}
       <span className="flex-shrink-0 text-[11px] font-extrabold text-faint">venció hace {ex.vencio_hace_dias}d</span>
       {wa && (
         <a href={wa} target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
@@ -369,7 +380,7 @@ function ReactivacionExSocios({ sedeId, empresaId }) {
             <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin ex-socios vencidos en ese rango. Prueba otro filtro.</div>
           )}
           {!exSocios.isLoading && !exSocios.isError && filtrados.map((ex) => (
-            <FilaExSocio key={ex.socio_id} ex={ex} sedeId={sedeId} empresaId={empresaId} gymNombre={empresa?.nombre} />
+            <FilaExSocio key={ex.socio_id} ex={ex} sedeId={sedeId} empresaId={empresaId} gymNombre={empresa?.nombre} moneda={empresa?.moneda} />
           ))}
         </div>
       )}
@@ -514,7 +525,7 @@ export default function CRM() {
       </div>
 
       <AgendaComercial />
-      <QueOfrecer moneda={empresa?.moneda} />
+      <QueOfrecer moneda={empresa?.moneda} empresaId={empresa?.id} />
 
       {leads.isLoading && <LoadingState variant="cards" rows={4} />}
       {leads.error && <ErrorState error={leads.error} onRetry={leads.refetch} />}

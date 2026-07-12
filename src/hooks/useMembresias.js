@@ -2,13 +2,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 
 // Planes de la empresa (nivel empresa, sin sede).
-export function usePlanes() {
+export function usePlanes(empresaId) {
   return useQuery({
-    queryKey: ['planes'],
+    // El filtro por empresa NO es opcional: un usuario del panel puede ser
+    // ademas SOCIO de otro gym, y la policy de la app (socio_app_plan) le
+    // abre los planes de ese gym — sin el .eq se mezclaban tarifarios
+    // ("porque hay 2 planes basicos?").
+    queryKey: ['planes', empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('plan')
         .select('*')
+        .eq('empresa_id', empresaId)
         .is('deleted_at', null)
         .order('orden')
       if (error) throw error
