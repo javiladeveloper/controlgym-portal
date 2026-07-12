@@ -44,11 +44,17 @@ export function useVenderCarrito(sedeId) {
 export function useCobrarMembresiaPos(sedeId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ membresiaId, metodoPago, monto, cliente }) => {
-      const { data, error } = await supabase.rpc('cobrar_membresia_pos', {
+    mutationFn: async ({ membresiaId, metodoPago, monto, cliente, promo }) => {
+      // Un solo RPC: cobra al titular y, si su promo de ORIGEN sigue vigente
+      // (2×1 de por vida, etc.), renueva también a su grupo con monto 0 y
+      // suma el canje. El servidor revalida el beneficio — no confía en el flag.
+      const { data, error } = await supabase.rpc('cobrar_renovacion_grupo_pos', {
         p_membresia_id: membresiaId,
         p_metodo_pago: metodoPago || 'efectivo',
         p_monto: monto ?? null,
+        p_con_beneficio: !!promo?.conBeneficio,
+        p_renovar_grupo: promo?.renovarGrupo !== false,
+        p_promocion_alt: promo?.promocionAlt || null,
         p_cliente_tipo_doc: cliente?.tipoDoc || '0',
         p_cliente_num_doc: cliente?.numDoc || null,
         p_cliente_nombre: cliente?.nombre || 'CLIENTE VARIOS',

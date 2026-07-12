@@ -144,7 +144,7 @@ function BuscadorSocioBoleta({ sedeId, onElegir }) {
 }
 
 // ── Buscador de socio + su membresía, con monto editable (abono/renovación) ──
-function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, moneda }) {
+function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, moneda, onContextoPromo }) {
   const membresias = useMembresias(sedeId)
   const [busca, setBusca] = useState('')
 
@@ -166,6 +166,20 @@ function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, mo
   const promosRenovacion = (promos.data || []).filter((pr) =>
     pr.estado === 'activa' && ['descuento_pct', 'descuento_monto', 'precio_especial'].includes(pr.tipo))
   const [promoAlt, setPromoAlt] = useState('')
+  const [renovarGrupo, setRenovarGrupo] = useState(true)
+
+  // El botón "Cobrar" vive en el padre: le reportamos qué promo interviene
+  // para que el cobro renueve al grupo y cuente el canje.
+  useEffect(() => {
+    if (!socioSel) { onContextoPromo?.(null); return }
+    const b = beneficio.data
+    onContextoPromo?.({
+      conBeneficio: !!b?.aplica,
+      renovarGrupo: !!b?.aplica && (b.grupo || []).length > 0 && renovarGrupo,
+      promocionAlt: !b?.aplica && promoAlt ? promoAlt : null,
+      grupoNombres: b?.aplica ? (b.grupo || []).map((g) => g.nombre) : [],
+    })
+  }, [socioSel, beneficio.data, promoAlt, renovarGrupo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prefill del monto cuando el beneficio aplica (solo si el usuario no lo tocó)
   useEffect(() => {
@@ -222,9 +236,10 @@ function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, mo
             </div>
             {beneficio.data.nota && <div className="mt-0.5 text-[11.5px] font-semibold text-green-700/80">{beneficio.data.nota}</div>}
             {(beneficio.data.grupo || []).length > 0 && (
-              <div className="mt-0.5 text-[11.5px] font-semibold text-green-700/80">
-                Grupo: {(beneficio.data.grupo || []).map((g) => g.nombre).join(', ')} — renuévalos también (monto 0).
-              </div>
+              <label className="mt-1.5 flex cursor-pointer items-center gap-2 text-[12px] font-extrabold text-green-700">
+                <input type="checkbox" checked={renovarGrupo} onChange={(e) => setRenovarGrupo(e.target.checked)} className="accent-green-600" />
+                Renovar también a {(beneficio.data.grupo || []).map((g) => g.nombre).join(' y ')} con este cobro (monto 0)
+              </label>
             )}
           </div>
         )}
@@ -302,6 +317,7 @@ export default function Ventas() {
   const [modo, setModo] = useState('producto') // 'producto' | 'membresia'
   const [carrito, setCarrito] = useState([]) // [{producto, cantidad}]
   const [membresiaSel, setMembresiaSel] = useState(null)
+  const [promoCtx, setPromoCtx] = useState(null) // qué promo interviene en esta renovación
   const [montoMembresia, setMontoMembresia] = useState('')
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [comprobanteOpen, setComprobanteOpen] = useState(false)
@@ -409,7 +425,7 @@ export default function Ventas() {
         onError: (e) => toast.error('No se pudo cobrar: ' + e.message),
       })
     } else {
-      cobrarMembresia.mutate({ membresiaId: membresiaSel.id, metodoPago, monto: total, cliente }, {
+      cobrarMembresia.mutate({ membresiaId: membresiaSel.id, metodoPago, monto: total, cliente, promo: promoCtx }, {
         onSuccess: onCobroExitoso,
         onError: (e) => toast.error('No se pudo cobrar: ' + e.message),
       })
@@ -516,6 +532,7 @@ export default function Ventas() {
                 monto={montoMembresia}
                 onMonto={setMontoMembresia}
                 moneda={moneda}
+                onContextoPromo={setPromoCtx}
               />
             )}
           </div>
