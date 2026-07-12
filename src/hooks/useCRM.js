@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 
 export const ETAPAS = ['nuevo', 'contactado', 'clase_prueba', 'inscrito']
-export const ETAPA_LABEL = { nuevo: 'Nuevo', contactado: 'Contactado', clase_prueba: 'Clase de prueba', inscrito: 'Inscrito' }
+export const ETAPA_LABEL = { nuevo: 'Nuevo', contactado: 'Contactado', clase_prueba: 'Clase de prueba', inscrito: 'Inscrito', perdido: 'Perdido' }
 
 export function useLeads(sedeId) {
   return useQuery({
@@ -11,7 +11,7 @@ export function useLeads(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead')
-        .select('id, nombre, telefono, email, documento, fuente, etapa, nota, socio_id, created_at')
+        .select('id, nombre, telefono, email, documento, fuente, etapa, nota, socio_id, created_at, motivo_perdida, perdido_at')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
@@ -135,6 +135,26 @@ export function useExSocios(meses, enabled) {
       const { data, error } = await supabase.rpc('ex_socios', { p_meses: meses })
       if (error) throw error
       return data || []
+    },
+  })
+}
+
+
+// Lead que no compró: no contesta / no le interesó / precio. Sale del embudo,
+// guarda el motivo y cierra sus tareas (RPC valida empresa y que no sea socio).
+export function useMarcarPerdido(sedeId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ leadId, motivo }) => {
+      const { data, error } = await supabase.rpc('marcar_lead_perdido', { p_lead_id: leadId, p_motivo: motivo || null })
+      if (error) throw error
+      if (!data?.ok) throw new Error(data?.motivo === 'ya_es_socio' ? 'Este lead ya es socio.' : 'No se pudo marcar como perdido.')
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+      qc.invalidateQueries({ queryKey: ['lead-tareas', sedeId] })
+      qc.invalidateQueries({ queryKey: ['agenda-comercial'] })
     },
   })
 }

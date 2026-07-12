@@ -13,6 +13,7 @@ import { usePanel } from '../store.jsx'
 import {
   useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL,
   useCrearTarea, useAgendaComercial, useExSocios, TAREA_TIPOS, TAREA_TIPO_LABEL, TAREA_TIPO_ICONO,
+  useMarcarPerdido,
 } from '../hooks/useCRM.js'
 import { iniciales, money } from '../lib/uiHelpers.js'
 import { waLink, msgLead } from '../lib/whatsapp.js'
@@ -301,6 +302,77 @@ function QueOfrecer({ moneda, empresaId }) {
   )
 }
 
+// "No todos al final se convierten": marcar un lead como PERDIDO con su motivo.
+// Sale del embudo, cierra sus tareas y deja de contar como carga del asesor.
+const MOTIVOS_PERDIDA = ['No contesta', 'No le interesó', 'Por precio', 'Se fue a otro gym']
+function PerderLeadModal({ lead, sedeId, onClose }) {
+  const marcar = useMarcarPerdido(sedeId)
+  const [motivo, setMotivo] = useState('No contesta')
+  function confirmar() {
+    marcar.mutate({ leadId: lead.id, motivo }, {
+      onSuccess: () => { toast.ok(`${lead.nombre} marcado como perdido (${motivo.toLowerCase()})`); onClose() },
+      onError: (e) => toast.error(e.message),
+    })
+  }
+  return (
+    <Modal title="Marcar como perdido" subtitle={`${lead.nombre} saldrá del embudo y sus tareas se cerrarán`} onClose={onClose} width={400}>
+      <div className="flex flex-col gap-2">
+        {MOTIVOS_PERDIDA.map((m) => (
+          <label key={m} className={`flex cursor-pointer items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[13px] font-bold ${motivo === m ? 'border-orange bg-orange-50' : 'border-line bg-white'}`}>
+            <input type="radio" name="motivo-perdida" checked={motivo === m} onChange={() => setMotivo(m)} className="accent-[#FF6B35]" />
+            {m}
+          </label>
+        ))}
+      </div>
+      <p className="mt-3 text-[11.5px] font-semibold text-faint">Queda guardado en "Perdidos" — se puede reabrir si vuelve a dar señales.</p>
+      <BotonesModal onCancel={onClose} busy={marcar.isPending} submitLabel="Marcar perdido" onSubmit={confirmar} />
+    </Modal>
+  )
+}
+
+// Perdidos: colapsado, solo lectura + Reabrir (vuelve a 'contactado' para no
+// disparar la rotación de 7 días con un reloj viejo).
+function PerdidosPanel({ perdidos, sedeId }) {
+  const qc = useQueryClient()
+  const [abierto, setAbierto] = useState(false)
+  if (!perdidos.length) return null
+  async function reabrir(ld) {
+    const { error } = await supabase.from('lead')
+      .update({ etapa: 'contactado', motivo_perdida: null, perdido_at: null }).eq('id', ld.id)
+    if (error) { toast.error('No se pudo reabrir: ' + error.message); return }
+    qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+    toast.ok(`${ld.nombre} reabierto — de vuelta al embudo`)
+  }
+  return (
+    <Card className="mt-4 overflow-hidden">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
+        <span className="text-[14.5px] font-extrabold">🚫 Perdidos <span className="ml-1 text-[11.5px] font-semibold text-muted">— no compraron o dejaron de responder · {perdidos.length}</span></span>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver ▼'}</span>
+      </button>
+      {abierto && (
+        <div className="border-t border-line2">
+          {perdidos.map((ld) => (
+            <div key={ld.id} className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-extrabold">{ld.nombre}</div>
+                <div className="truncate text-[11px] font-bold text-muted">{ld.fuente}{ld.motivo_perdida ? ` · ${ld.motivo_perdida}` : ''}</div>
+              </div>
+              <span className="flex-shrink-0 text-[11px] font-extrabold text-faint">
+                {ld.perdido_at ? new Date(ld.perdido_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : ''}
+              </span>
+              <button onClick={() => reabrir(ld)}
+                className="flex-shrink-0 cursor-pointer rounded-lg border border-line px-2.5 py-1.5 text-[10.5px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
+                ↩ Reabrir
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 // Fila de un ex-socio candidato a reactivación.
 function FilaExSocio({ ex, sedeId, empresaId, gymNombre, moneda }) {
   const qc = useQueryClient()
@@ -493,6 +565,7 @@ export default function CRM() {
   }
   const [editar, setEditar] = useState(null) // lead en edición
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
+  const [perder, setPerder] = useState(null) // lead a marcar como perdido
   const leads = useLeads(sedeId)
   const avanzar = useAvanzarLead(sedeId)
   const tareas = useTareas(sedeId) // solo para el KPI "Seguimientos hoy"
@@ -507,6 +580,7 @@ export default function CRM() {
   // puede estar en la columna "Inscrito" sin haberse convertido aún (arrastrado
   // a mano), así que contar por etapa inflaba el número.
   const inscritos = (leads.data || []).filter((l) => l.socio_id).length
+  const perdidos = (leads.data || []).filter((l) => l.etapa === 'perdido').length
 
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
@@ -531,6 +605,7 @@ export default function CRM() {
       {nuevoOpen && <ProspectoModal sedeId={sedeId} empresaId={empresa?.id} onClose={() => setNuevoOpen(false)} />}
       {campanaOpen && <CampanaWhatsAppModal sedeId={sedeId} onClose={() => setCampanaOpen(false)} />}
       {editar && <ProspectoModal sedeId={sedeId} empresaId={empresa?.id} lead={editar} onClose={() => setEditar(null)} />}
+      {perder && <PerderLeadModal lead={perder} sedeId={sedeId} onClose={() => setPerder(null)} />}
       {convertir && (
         <NuevoSocioModal
           sedeId={sedeId}
@@ -543,7 +618,7 @@ export default function CRM() {
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
         <StatCard label="Leads totales" value={leads.data?.length ?? 0} delta="en el embudo" />
         <StatCard label="Inscritos" value={inscritos} delta="convertidos" deltaColor={T.success} />
-        <StatCard label="En proceso" value={(leads.data?.length ?? 0) - inscritos} delta="en seguimiento" />
+        <StatCard label="En proceso" value={Math.max(0, (leads.data?.length ?? 0) - inscritos - perdidos)} delta="en seguimiento activo" />
         <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas con leads para hoy — el detalle está en la Agenda" variant="accent" />
       </div>
 
@@ -598,6 +673,10 @@ export default function CRM() {
                       })()}
                       <button onClick={() => setEditar(ld)} title="Editar prospecto"
                         className="cursor-pointer rounded-md border-none bg-transparent px-1 text-[13px] text-faint hover:text-orange">✏️</button>
+                      {!ld.socio_id && (
+                        <button onClick={() => setPerder(ld)} title="No interesado / no responde — marcar como perdido"
+                          className="cursor-pointer rounded-md border-none bg-transparent px-1 text-[13px] text-faint hover:text-red">✕</button>
+                      )}
                     </div>
                     {ld.nota && <div className="mt-2.5 text-[11.5px] font-semibold leading-[1.45] text-muted">{ld.nota}</div>}
                     <div className="mt-2.5 flex items-center justify-between gap-1.5">
@@ -637,6 +716,8 @@ export default function CRM() {
       )}
 
       {/* El panel "Seguimientos de hoy" vivía aquí duplicando la Agenda — fusionado arriba. */}
+
+      <PerdidosPanel perdidos={(leads.data || []).filter((l) => l.etapa === 'perdido')} sedeId={sedeId} />
 
       <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />
     </div>
