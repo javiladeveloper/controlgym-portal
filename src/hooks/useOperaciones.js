@@ -122,25 +122,25 @@ export function useMantenimientos(sedeId) {
   })
 }
 
-export function useFinanzas(sedeId) {
+export function useFinanzas(sedeId, desde, hasta) {
   return useQuery({
-    queryKey: ['finanzas', sedeId],
-    enabled: !!sedeId,
+    queryKey: ['finanzas', sedeId, desde, hasta],
+    enabled: !!sedeId && !!desde && !!hasta,
     queryFn: async () => {
-      // Traemos TODOS los movimientos del mes en curso (no un limit arbitrario):
-      // los KPIs de la página —ingresos/gastos/utilidad y el efectivo del día—
-      // se calculan sobre este conjunto, así que truncarlo daría totales falsos.
-      const hoy = new Date()
-      const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-      const y = desde.getFullYear(), mth = String(desde.getMonth() + 1).padStart(2, '0')
-      const desdeStr = `${y}-${mth}-01`
+      // Movimientos del RANGO elegido (filtro de fechas de la página). Se trae
+      // el rango completo (no un limit arbitrario): los KPIs se calculan sobre
+      // este conjunto y truncarlo daría totales falsos. 'fecha' es timestamptz:
+      // el tope es exclusivo (hasta + 1 día) para incluir todo el último día.
+      const hastaMasUno = (() => { const d = new Date(hasta + 'T00:00:00'); d.setDate(d.getDate() + 1)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })()
       const { data, error } = await supabase
         .from('movimiento_financiero')
         .select('id, tipo, categoria, descripcion, monto, fecha, metodo_pago, ref_tipo, ref_id')
         .eq('sede_id', sedeId)
-        .gte('fecha', desdeStr)
+        .gte('fecha', desde)
+        .lt('fecha', hastaMasUno)
         .order('fecha', { ascending: false })
-        .limit(2000)
+        .limit(5000)
       if (error) throw error
       return data
     },

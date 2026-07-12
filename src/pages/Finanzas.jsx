@@ -12,6 +12,7 @@ import { useRegistrarGastoCaja, useHistorialCaja } from '../hooks/useCaja.js'
 import { money, mismoMesAnio, mismoDia, fechaLocal } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { metodoPagoLabel } from '../lib/pagos.js'
+import RangoFechas, { rangoPreset, etiquetaPreset } from '../components/reportes/RangoFechas.jsx'
 
 const METODOS_GASTO = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -86,7 +87,7 @@ function ModalGastoCaja({ sedeId, onClose }) {
 
 // ── Caja del día: abrir con fondo inicial, cerrar contando el efectivo ──────
 // esperado = fondo inicial + ingresos en efectivo − gastos en efectivo (hoy)
-function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
+function CajaDelDia({ sedeId, empresaId, usuarioId, moneda, esAdmin }) {
   const qc = useQueryClient()
   // 'hoy' vive en estado y se re-evalúa cada minuto: si el panel queda abierto y
   // cruza la medianoche, la queryKey pasa al nuevo día en vez de quedar clavada
@@ -138,16 +139,32 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
   })
 
   const cajaVieja = caja.data && caja.data.estado === 'abierta' && caja.data.fecha !== hoy
-  // Los números se calculan sobre el DÍA DE LA CAJA: si quedó abierta de ayer,
-  // su cuadre usa los movimientos de ESE día, no los de hoy.
+
+  // Movimientos del DÍA DE LA CAJA, con consulta propia: el filtro de fechas
+  // de la página no debe mover el cuadre de la caja (si filtras "mes pasado",
+  // la caja de hoy seguiría cuadrando con SU día).
+  const fechaCajaStr = caja.data?.fecha || hoy
+  const movsCaja = useQuery({
+    queryKey: ['caja-movs', sedeId, fechaCajaStr],
+    enabled: !!sedeId && !!caja.data,
+    queryFn: async () => {
+      const d = new Date(fechaCajaStr + 'T00:00:00'); d.setDate(d.getDate() + 1)
+      const tope = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const { data, error } = await supabase.from('movimiento_financiero')
+        .select('tipo, monto, metodo_pago')
+        .eq('sede_id', sedeId).gte('fecha', fechaCajaStr).lt('fecha', tope)
+      if (error) throw error
+      return data
+    },
+  })
+  const movs = movsCaja.data || []
   const fechaCaja = caja.data ? fechaLocal(caja.data.fecha) : new Date()
-  const esHoy = (m) => mismoDia(m.fecha, fechaCaja)
-  const efectivoHoy = movs.filter((m) => esHoy(m) && (m.metodo_pago === 'efectivo' || !m.metodo_pago))
+  const efectivoHoy = movs.filter((m) => m.metodo_pago === 'efectivo' || !m.metodo_pago)
     .reduce((n, m) => n + (m.tipo === 'ingreso' ? 1 : -1) * Number(m.monto || 0), 0)
   // Desglose de HOY por método: el arqueo solo mide efectivo, pero para
   // cuadrar el día completo recepción compara Yape/tarjeta/etc. contra el
   // celular o el POS. Neto = ingresos - gastos de cada método.
-  const porMetodo = movs.filter(esHoy).reduce((acc, m) => {
+  const porMetodo = movs.reduce((acc, m) => {
     const k = m.metodo_pago || 'efectivo'
     acc[k] = (acc[k] || 0) + (m.tipo === 'ingreso' ? 1 : -1) * Number(m.monto || 0)
     return acc
@@ -451,7 +468,11 @@ export default function Finanzas() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa, rol, usuario } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
-  const { data, isLoading, error, refetch } = useFinanzas(sedeId)
+  // Filtro de fechas de la página (pedido del owner: día/semana/mes + rango
+  // inicio-fin). La Caja del día NO depende de esto — cuadra con su propio día.
+  const [rango, setRango] = useState(() => rangoPreset('mes'))
+  const etiqueta = etiquetaPreset(rango.preset)
+  const { data, isLoading, error, refetch } = useFinanzas(sedeId, rango.desde, rango.hasta)
   const [anulando, setAnulando] = useState(null)
   const [busyAnular, setBusyAnular] = useState(false)
   const [fTipo, setFTipo] = useState('todos')     // todos | ingreso | gasto
@@ -472,15 +493,14 @@ export default function Finanzas() {
   // con ref_tipo='anulacion'). Se marcan visualmente en la lista para que el
   // original y su ANULACIÓN se lean como un par neutralizado, no como dos cargos.
   const anulados = new Set(movs.filter((m) => m.ref_tipo === 'anulacion').map((m) => m.ref_id))
-  // Mismo MES Y AÑO (no solo el mes, que mezclaría julio 2025 con julio 2026).
-  const esteMes = (m) => mismoMesAnio(m.fecha)
-  const ingresos = movs.filter((m) => m.tipo === 'ingreso' && esteMes(m)).reduce((n, m) => n + Number(m.monto || 0), 0)
-  const gastos = movs.filter((m) => m.tipo === 'gasto' && esteMes(m)).reduce((n, m) => n + Number(m.monto || 0), 0)
+  // La consulta ya trae exactamente el período elegido: se suma todo.
+  const ingresos = movs.filter((m) => m.tipo === 'ingreso').reduce((n, m) => n + Number(m.monto || 0), 0)
+  const gastos = movs.filter((m) => m.tipo === 'gasto').reduce((n, m) => n + Number(m.monto || 0), 0)
   const utilidad = ingresos - gastos
 
-  // Desglose del mes por categoría (en qué entró y salió la plata)
+  // Desglose del período por categoría (en qué entró y salió la plata)
   const porCategoria = {}
-  for (const m of movs.filter(esteMes)) {
+  for (const m of movs) {
     const c = m.categoria || 'otro'
     porCategoria[c] = porCategoria[c] || { ingreso: 0, gasto: 0 }
     porCategoria[c][m.tipo] += Number(m.monto || 0)
@@ -506,8 +526,7 @@ export default function Finanzas() {
     const ws = XLSX.utils.json_to_sheet(filas)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Movimientos')
-    const nombreMes = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
-    XLSX.writeFile(wb, `Finanzas ${sedeNombre || ''} - ${nombreMes}.xlsx`)
+    XLSX.writeFile(wb, `Finanzas ${sedeNombre || ''} ${rango.desde} a ${rango.hasta}.xlsx`)
   }
 
   return (
@@ -523,15 +542,19 @@ export default function Finanzas() {
         </button>
       </div>
 
-      {/* Caja del día: la rutina de recepción para cuadrar el efectivo */}
+      {/* Caja del día: la rutina de recepción para cuadrar el efectivo
+          (independiente del filtro de fechas — cuadra con su propio día) */}
       <CajaDelDia sedeId={sedeId} empresaId={empresa?.id} usuarioId={usuario?.id}
-        movs={movs} moneda={moneda} esAdmin={rol === 'admin'} />
+        moneda={moneda} esAdmin={rol === 'admin'} />
+
+      {/* Filtro del período: aplica a KPIs, desglose y la lista de movimientos */}
+      <div className="mt-5"><RangoFechas value={rango} onChange={setRango} defaultPreset="mes" /></div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
-        <StatCard label="Ingresos del mes" value={money(ingresos, moneda)} delta="membresías, ventas, servicios" deltaColor={T.success} />
-        <StatCard label="Gastos del mes" value={money(gastos, moneda)} delta="planilla, compras, servicios" />
+        <StatCard label={`Ingresos ${etiqueta}`} value={money(ingresos, moneda)} delta="membresías, ventas, servicios" deltaColor={T.success} />
+        <StatCard label={`Gastos ${etiqueta}`} value={money(gastos, moneda)} delta="planilla, compras, servicios" />
         <div className="rounded-card border border-line bg-white p-[17px]">
-          <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">Utilidad del mes</div>
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">Utilidad {etiqueta}</div>
           <div className="mt-1.5 text-[26px] font-extrabold" style={{ color: utilidad >= 0 ? T.success : T.danger }}>{money(utilidad, moneda)}</div>
           <div className="mt-0.5 text-[12px] font-semibold text-muted">{ingresos ? `margen ${Math.round((utilidad / ingresos) * 100)}%` : '—'}</div>
         </div>
@@ -542,7 +565,7 @@ export default function Finanzas() {
       {error && <ErrorState error={error} onRetry={refetch} />}
       {!isLoading && movs.length === 0 && <EmptyState message="Sin movimientos financieros en esta sede." />}
 
-      {/* Desglose del mes: en qué entró y salió la plata */}
+      {/* Desglose del período: en qué entró y salió la plata */}
       {desglose.length > 0 && (
         <Card className="mt-[15px] p-[19px]">
           <div className="flex flex-wrap items-center justify-between gap-2">

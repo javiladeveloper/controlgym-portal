@@ -19,14 +19,24 @@ export function rangoPreset(key) {
   else if (key === '7') desde.setDate(hoy.getDate() - 6)
   else if (key === '30') desde.setDate(hoy.getDate() - 29)
   else if (key === '90') desde.setDate(hoy.getDate() - 89)
+  else if (key === 'mes_pasado') {
+    const d1 = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)
+    const d2 = new Date(hoy.getFullYear(), hoy.getMonth(), 0)
+    return { desde: isoLocal(d1), hasta: isoLocal(d2), preset: key }
+  }
   // 'hoy' → desde = hoy
-  return { desde: isoLocal(desde), hasta: isoLocal(hoy) }
+  return { desde: isoLocal(desde), hasta: isoLocal(hoy), preset: key }
 }
 
 const PRESETS = [
-  ['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes'],
+  ['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes'], ['mes_pasado', 'Mes pasado'],
   ['7', '7 días'], ['30', '30 días'], ['90', '90 días'], ['custom', 'Personalizado'],
 ]
+
+// Etiqueta legible del período para títulos/KPIs ("Ingresos de hoy", "…del mes").
+export function etiquetaPreset(preset) {
+  return { hoy: 'de hoy', semana: 'de la semana', mes: 'del mes', mes_pasado: 'del mes pasado' }[preset] || 'del período'
+}
 
 export default function RangoFechas({ value, onChange, defaultPreset = '30' }) {
   const [activo, setActivo] = useState(defaultPreset)
@@ -38,7 +48,7 @@ export default function RangoFechas({ value, onChange, defaultPreset = '30' }) {
     if (key === 'custom') {
       const base = value || rangoPreset('30')
       setD1(base.desde); setD2(base.hasta)
-      onChange({ desde: base.desde, hasta: base.hasta })
+      onChange({ desde: base.desde, hasta: base.hasta, preset: 'custom' })
     } else {
       onChange(rangoPreset(key))
     }
@@ -46,7 +56,7 @@ export default function RangoFechas({ value, onChange, defaultPreset = '30' }) {
 
   function custom(desde, hasta) {
     setD1(desde); setD2(hasta)
-    if (desde && hasta && desde <= hasta) onChange({ desde, hasta })
+    if (desde && hasta && desde <= hasta) onChange({ desde, hasta, preset: 'custom' })
   }
 
   return (

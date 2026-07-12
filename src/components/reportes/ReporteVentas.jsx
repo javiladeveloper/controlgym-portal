@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Card } from '../ui.jsx'
+import RangoFechas, { rangoPreset } from './RangoFechas.jsx'
 import { usePanel } from '../../store.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { descargarCSV } from '../../lib/csv.js'
@@ -24,7 +26,8 @@ export default function ReporteVentas() {
   const { empresa } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
 
-  const q = useVentasSerie(sedeId) // últimos 30 días por defecto
+  const [rango, setRango] = useState(() => rangoPreset('30'))
+  const q = useVentasSerie(sedeId, rango.desde, rango.hasta)
   const kpis = useSociosKpis(sedeId)
 
   const rows = q.data || []
@@ -63,11 +66,13 @@ export default function ReporteVentas() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[15px] font-extrabold">💰 Ventas</div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">Ingresos registrados en {sedeNombre} — últimos 30 días.</div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">Ingresos registrados en {sedeNombre} — {rango.desde} → {rango.hasta}.</div>
         </div>
         <button onClick={exportar} disabled={!rows.length}
           className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-4 py-2 text-[12px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-40">⬇ Exportar</button>
       </div>
+
+      <div className="mt-4"><RangoFechas value={rango} onChange={setRango} defaultPreset="30" /></div>
 
       {cargando && <div className="py-10 text-center text-[12.5px] font-semibold text-muted">Cargando…</div>}
 

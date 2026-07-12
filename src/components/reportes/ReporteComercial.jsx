@@ -5,7 +5,7 @@ import { descargarCSV } from '../../lib/csv.js'
 import { iniciales, money } from '../../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../../theme/tokens.js'
 import { StatCard } from './charts.jsx'
-import { isoLocal } from './RangoFechas.jsx'
+import RangoFechas, { rangoPreset } from './RangoFechas.jsx'
 import { useReporteComercial } from '../../hooks/useReportes.js'
 
 function rpcFaltante(error) {
@@ -15,29 +15,6 @@ function rpcFaltante(error) {
 }
 
 const MEDALLA = ['🥇', '🥈', '🥉']
-
-// Períodos del selector: cada uno calcula {desde, hasta} en cliente.
-function rangoComercial(key) {
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-  if (key === 'mes_pasado') {
-    const desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)
-    const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0)
-    return { desde: isoLocal(desde), hasta: isoLocal(hasta) }
-  }
-  if (key === '30') {
-    const desde = new Date(hoy); desde.setDate(hoy.getDate() - 29)
-    return { desde: isoLocal(desde), hasta: isoLocal(hoy) }
-  }
-  // 'mes' (Este mes) — también el default de la RPC
-  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-  return { desde: isoLocal(desde), hasta: isoLocal(hoy) }
-}
-
-const PERIODOS = [
-  ['mes', 'Este mes'],
-  ['mes_pasado', 'Mes pasado'],
-  ['30', 'Últimos 30 días'],
-]
 
 function conversionBadge(conversion) {
   if (conversion === null || conversion === undefined) return { bg: T.surface, color: T.muted, label: '—' }
@@ -51,8 +28,7 @@ export default function ReporteComercial() {
   const { empresa } = useAuth()
   const moneda = empresa?.moneda || 'PEN'
 
-  const [periodo, setPeriodo] = useState('mes')
-  const rango = rangoComercial(periodo)
+  const [rango, setRango] = useState(() => rangoPreset('mes'))
 
   const q = useReporteComercial(rango.desde, rango.hasta)
 
@@ -93,14 +69,7 @@ export default function ReporteComercial() {
           className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-4 py-2 text-[12px] font-extrabold text-orange transition-colors hover:bg-orange-50 disabled:opacity-40">⬇ Exportar</button>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {PERIODOS.map(([k, l]) => (
-          <button key={k} onClick={() => setPeriodo(k)}
-            className={`cursor-pointer rounded-full border px-3 py-1.5 text-[12px] font-extrabold transition-colors ${periodo === k ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}>
-            {l}
-          </button>
-        ))}
-      </div>
+      <div className="mt-4"><RangoFechas value={rango} onChange={setRango} defaultPreset="mes" /></div>
 
       {cargando && <div className="py-10 text-center text-[12.5px] font-semibold text-muted">Cargando…</div>}
 
