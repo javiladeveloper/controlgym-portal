@@ -64,17 +64,25 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const guardarMeta = useGuardarMetaVendedor()
   const [meta, setMeta] = useState('')
   const [metaLeads, setMetaLeads] = useState('')
+  const [metaMes, setMetaMes] = useState('')
+  const [metaLeadsMes, setMetaLeadsMes] = useState('')
   useEffect(() => {
     if (metaActual.data != null) {
       setMeta(metaActual.data.monto > 0 ? String(metaActual.data.monto) : '')
       setMetaLeads(metaActual.data.leads > 0 ? String(metaActual.data.leads) : '')
+      setMetaMes(metaActual.data.montoMes > 0 ? String(metaActual.data.montoMes) : '')
+      setMetaLeadsMes(metaActual.data.leadsMes > 0 ? String(metaActual.data.leadsMes) : '')
     }
   }, [metaActual.data])
   const puedeVender = f.rol === 'admin' || f.rol === 'recepcion' || f.rol === 'comunicador'
 
   async function guardarMetaDiaria() {
     try {
-      await guardarMeta.mutateAsync({ usuarioId: colaborador.id, montoDiario: meta === '' ? 0 : Number(meta), leadsDiarios: metaLeads === '' ? 0 : Number(metaLeads) })
+      await guardarMeta.mutateAsync({
+        usuarioId: colaborador.id,
+        montoDiario: meta === '' ? 0 : Number(meta), leadsDiarios: metaLeads === '' ? 0 : Number(metaLeads),
+        montoMensual: metaMes === '' ? 0 : Number(metaMes), leadsMensuales: metaLeadsMes === '' ? 0 : Number(metaLeadsMes),
+      })
       toast.ok('Meta diaria actualizada')
     } catch (err) {
       toast.error('No se pudo guardar la meta: ' + err.message)
@@ -154,20 +162,32 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
         {puedeVender && (
           <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
             <div className="mb-2.5 text-[12px] font-extrabold text-muted">🎯 Metas diarias <span className="font-semibold">(vacío o 0 = sin meta)</span></div>
-            <div className="flex flex-wrap items-end gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[10.5px] font-extrabold uppercase text-faint">Venta (S/)</span>
+                <span className="text-[10.5px] font-extrabold uppercase text-faint">Venta / día (S/)</span>
                 <input type="number" step="0.01" min="0" value={meta} onChange={(e) => setMeta(e.target.value)}
                   className={inputCls} placeholder="200" disabled={metaActual.isLoading} />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10.5px] font-extrabold uppercase text-faint">Leads (captación)</span>
+                <span className="text-[10.5px] font-extrabold uppercase text-faint">Venta / mes (S/)</span>
+                <input type="number" step="0.01" min="0" value={metaMes} onChange={(e) => setMetaMes(e.target.value)}
+                  className={inputCls} placeholder="4000" disabled={metaActual.isLoading} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10.5px] font-extrabold uppercase text-faint">Leads / día</span>
                 <input type="number" step="1" min="0" value={metaLeads} onChange={(e) => setMetaLeads(e.target.value)}
                   className={inputCls} placeholder="5" disabled={metaActual.isLoading} />
               </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10.5px] font-extrabold uppercase text-faint">Leads / mes</span>
+                <input type="number" step="1" min="0" value={metaLeadsMes} onChange={(e) => setMetaLeadsMes(e.target.value)}
+                  className={inputCls} placeholder="100" disabled={metaActual.isLoading} />
+              </label>
+            </div>
+            <div className="mt-2 flex justify-end">
               <button type="button" onClick={guardarMetaDiaria} disabled={guardarMeta.isPending}
                 className="flex-shrink-0 cursor-pointer rounded-[10px] border-none bg-navy px-4 py-2.5 text-[12.5px] font-extrabold text-white hover:opacity-90 disabled:opacity-50">
-                {guardarMeta.isPending ? 'Guardando…' : 'Guardar meta'}
+                {guardarMeta.isPending ? 'Guardando…' : 'Guardar metas'}
               </button>
             </div>
           </div>

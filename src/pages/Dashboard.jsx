@@ -419,31 +419,53 @@ export default function Dashboard() {
 // pinta (directiva: solo lo accionable de HOY). Admin ve a todo el equipo;
 // recepción solo su propia fila (no es su lugar ver la meta de otros).
 function MetasHoy({ usuario, rol, moneda }) {
-  const q = useReporteComercial() // sin params = mes actual; por_dia_hoy siempre es de HOY
-  // Una persona aparece si tiene CUALQUIER meta configurada: de leads (captación,
-  // el trabajo del comunicador/marketing) o de venta en soles (recepción).
-  const filas = (q.data?.por_dia_hoy || []).filter((v) => Number(v.meta_diaria) > 0 || Number(v.meta_leads) > 0)
+  const q = useReporteComercial() // sin params = mes actual; por_dia_hoy es de HOY
+  // Filtro Hoy | Mes (pedido del owner: la cuota real del equipo es mensual,
+  // pero el pulso del día también importa).
+  const [vista, setVista] = useState('hoy')
+
+  // HOY viene de por_dia_hoy; MES de vendedores (periodo = mes actual).
+  const filasHoy = (q.data?.por_dia_hoy || []).filter((v) => Number(v.meta_diaria) > 0 || Number(v.meta_leads) > 0)
+  const filasMes = (q.data?.vendedores || []).filter((v) => Number(v.meta_mensual) > 0 || Number(v.meta_leads_mes) > 0)
+  const filas = vista === 'hoy' ? filasHoy : filasMes
   const propias = rol === 'admin' ? filas : filas.filter((v) => v.usuario_id === usuario?.id)
-  if (q.isLoading || q.error || propias.length === 0) return null
+  // La tarjeta existe si hay CUALQUIER meta (de hoy o del mes) configurada.
+  if (q.isLoading || q.error || (filasHoy.length === 0 && filasMes.length === 0)) return null
 
   return (
     <Card className="mt-[15px] p-[19px]">
-      <div className="text-[14.5px] font-extrabold">🎯 Metas de hoy</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[14.5px] font-extrabold">🎯 Metas del equipo</div>
+        <div className="flex gap-1">
+          {[['hoy', 'Hoy'], ['mes', 'Este mes']].map(([k, l]) => (
+            <button key={k} onClick={() => setVista(k)}
+              className={`cursor-pointer rounded-full border-none px-2.5 py-1 text-[11px] font-extrabold transition-colors ${vista === k ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-ink'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+      {propias.length === 0 && (
+        <div className="mt-2.5 text-[12.5px] font-semibold text-muted">
+          Sin metas {vista === 'hoy' ? 'diarias' : 'mensuales'} configuradas — se definen en Personal.
+        </div>
+      )}
       <div className="mt-2.5 flex flex-col gap-3">
         {propias.map((v) => {
           const barras = []
-          if (Number(v.meta_leads) > 0) {
-            barras.push({ etiqueta: `${v.leads_hoy || 0} de ${v.meta_leads} leads`, hoy: Number(v.leads_hoy || 0), meta: Number(v.meta_leads) })
-          }
-          if (Number(v.meta_diaria) > 0) {
-            barras.push({ etiqueta: `${money(v.hoy || 0, moneda)} de ${money(v.meta_diaria, moneda)}`, hoy: Number(v.hoy || 0), meta: Number(v.meta_diaria) })
+          if (vista === 'hoy') {
+            if (Number(v.meta_leads) > 0) barras.push({ etiqueta: `${v.leads_hoy || 0} de ${v.meta_leads} leads`, logrado: Number(v.leads_hoy || 0), meta: Number(v.meta_leads) })
+            if (Number(v.meta_diaria) > 0) barras.push({ etiqueta: `${money(v.hoy || 0, moneda)} de ${money(v.meta_diaria, moneda)}`, logrado: Number(v.hoy || 0), meta: Number(v.meta_diaria) })
+          } else {
+            if (Number(v.meta_leads_mes) > 0) barras.push({ etiqueta: `${v.leads_periodo || 0} de ${v.meta_leads_mes} leads`, logrado: Number(v.leads_periodo || 0), meta: Number(v.meta_leads_mes) })
+            if (Number(v.meta_mensual) > 0) barras.push({ etiqueta: `${money(v.ventas_total || 0, moneda)} de ${money(v.meta_mensual, moneda)}`, logrado: Number(v.ventas_total || 0), meta: Number(v.meta_mensual) })
           }
           return (
             <div key={v.usuario_id}>
               <div className="text-[12.5px] font-extrabold text-ink">{v.nombre}</div>
               {barras.map((b, i) => {
-                const pct = Math.min(100, (b.hoy / b.meta) * 100)
-                const cumplida = b.hoy >= b.meta
+                const pct = Math.min(100, (b.logrado / b.meta) * 100)
+                const cumplida = b.logrado >= b.meta
                 return (
                   <div key={i} className="mt-1">
                     <div className="flex items-center justify-between gap-2">
