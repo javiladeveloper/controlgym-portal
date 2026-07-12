@@ -33,7 +33,7 @@ export const MODULES = [
   { slug: 'kardex',      label: 'Kardex',           grupo: 'operacion', roles: ['admin', 'recepcion'] },
   { slug: 'maquinas',    label: 'Máquinas',         grupo: 'operacion', roles: ['admin', 'mantenimiento'] },
 
-  { slug: 'promociones', label: 'Promociones',      grupo: 'negocio',   roles: ['admin', 'recepcion'] },
+  { slug: 'promociones', label: 'Promociones',      grupo: 'negocio',   roles: ['admin', 'recepcion', 'comunicador'] }, // comunicador: consulta (qué ofrecer)
   { slug: 'finanzas',    label: 'Finanzas',         grupo: 'negocio',   roles: ['admin'] },
   { slug: 'sponsors',    label: 'Sponsors',         grupo: 'negocio',   roles: ['admin'] },
   { slug: 'reportes',    label: 'Reportes',         grupo: 'negocio',   roles: ['admin'] },

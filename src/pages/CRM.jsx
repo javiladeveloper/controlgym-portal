@@ -14,8 +14,10 @@ import {
   useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL,
   useCrearTarea, useAgendaComercial, useExSocios, TAREA_TIPOS, TAREA_TIPO_LABEL, TAREA_TIPO_ICONO,
 } from '../hooks/useCRM.js'
-import { iniciales } from '../lib/uiHelpers.js'
+import { iniciales, money } from '../lib/uiHelpers.js'
 import { waLink, msgLead } from '../lib/whatsapp.js'
+import { usePlanes } from '../hooks/useMembresias.js'
+import { usePromociones } from '../hooks/useOperaciones.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
@@ -209,6 +211,66 @@ function AgendaComercial() {
           )}
         </div>
       )}
+    </Card>
+  )
+}
+
+// Tarifario rápido para el equipo comercial: planes con precio y promociones
+// activas, para saber QUÉ OFRECER a un prospecto sin salir del CRM (pedido del
+// owner: "los comunicadores deben poder ver las promociones y costos").
+// Mismo patrón que la agenda: colapsado por defecto y las queries montan
+// recién al expandir (el subcomponente es quien usa los hooks).
+function QueOfrecerContenido({ moneda }) {
+  const planes = usePlanes()
+  const promos = usePromociones()
+  const activas = (promos.data || []).filter((p) => p.estado === 'activa')
+  const cargando = planes.isLoading || promos.isLoading
+  const error = planes.error || promos.error
+  return (
+    <div className="border-t border-line2 px-5 py-4">
+      {cargando && <LoadingState variant="table" rows={2} />}
+      {error && <ErrorState error={error} onRetry={() => { planes.refetch(); promos.refetch() }} />}
+      {!cargando && !error && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Planes y precios</div>
+            {(planes.data || []).map((pl) => (
+              <div key={pl.id} className="flex items-center justify-between border-b border-line2 py-2 last:border-none">
+                <span className="text-[13px] font-bold">
+                  {pl.nombre}
+                  {pl.badge && <span className="ml-1.5 rounded-full bg-orange-50 px-2 py-0.5 text-[10.5px] font-extrabold text-orange">{pl.badge}</span>}
+                </span>
+                <span className="text-[13px] font-extrabold tabular-nums">{money(pl.precio, moneda)}<span className="text-[11px] font-semibold text-faint">/{pl.unidad}</span></span>
+              </div>
+            ))}
+            {(planes.data || []).length === 0 && <div className="text-[12.5px] font-semibold text-faint">Sin planes configurados.</div>}
+          </div>
+          <div>
+            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Promociones activas</div>
+            {activas.map((pr) => (
+              <div key={pr.id} className="border-b border-line2 py-2 last:border-none">
+                <div className="text-[13px] font-bold">🎁 {pr.nombre}</div>
+                {pr.descripcion && <div className="mt-0.5 text-[12px] font-semibold leading-[1.45] text-muted">{pr.descripcion}</div>}
+              </div>
+            ))}
+            {activas.length === 0 && <div className="text-[12.5px] font-semibold text-faint">Sin promociones activas ahora.</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function QueOfrecer({ moneda }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-4 overflow-hidden">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
+        <span className="text-[14.5px] font-extrabold">💰 Qué ofrecer <span className="ml-1 text-[11.5px] font-semibold text-muted">— planes con precio y promociones activas, para cotizar al toque</span></span>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver precios ▼'}</span>
+      </button>
+      {abierto && <QueOfrecerContenido moneda={moneda} />}
     </Card>
   )
 }
@@ -452,6 +514,7 @@ export default function CRM() {
       </div>
 
       <AgendaComercial />
+      <QueOfrecer moneda={empresa?.moneda} />
 
       {leads.isLoading && <LoadingState variant="cards" rows={4} />}
       {leads.error && <ErrorState error={leads.error} onRetry={leads.refetch} />}

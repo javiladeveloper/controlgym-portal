@@ -18,8 +18,11 @@ export function CrudCardGrid({
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">{title}</h1>
           {subtitle && <p className="mt-0.5 text-[13px] font-semibold text-muted">{subtitle}</p>}
         </div>
-        <button onClick={onNuevo}
-          className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">{nuevoLabel}</button>
+        {/* Sin onNuevo la página está en modo consulta (p. ej. comunicador) */}
+        {onNuevo && (
+          <button onClick={onNuevo}
+            className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">{nuevoLabel}</button>
+        )}
       </div>
 
       {children /* modales de la página */}

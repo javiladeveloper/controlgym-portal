@@ -130,7 +130,10 @@ const ESTADO = {
 }
 
 export default function Promociones() {
-  const { empresa } = useAuth()
+  const { empresa, rol } = useAuth()
+  // El comunicador entra a CONSULTAR (qué ofrecer a un prospecto);
+  // crear/pausar/editar campañas sigue siendo de admin/recepción.
+  const soloConsulta = rol === 'comunicador'
   const qc = useQueryClient()
   const [nuevaOpen, setNuevaOpen] = useState(false)
   const [editar, setEditar] = useState(null) // campaña en edición
@@ -153,7 +156,7 @@ export default function Promociones() {
       title="Promociones"
       subtitle={`Campañas para captar y retener socios · ${empresa?.nombre || ''}`}
       nuevoLabel="Nueva campaña"
-      onNuevo={() => setNuevaOpen(true)}
+      onNuevo={soloConsulta ? null : () => setNuevaOpen(true)}
       isLoading={isLoading} error={error} onRetry={refetch}
       emptyMessage="Sin campañas registradas."
       items={data}
@@ -161,8 +164,8 @@ export default function Promociones() {
         const est = ESTADO[pr.estado] || ESTADO.activa
         return (
           <Card key={pr.id}
-            onClick={(e) => { if (e.target.closest('button,a')) return; setEditar(pr) }}
-            className="cursor-pointer p-[19px] transition hover:border-orange">
+            onClick={(e) => { if (soloConsulta || e.target.closest('button,a')) return; setEditar(pr) }}
+            className={soloConsulta ? 'p-[19px]' : 'cursor-pointer p-[19px] transition hover:border-orange'}>
             <div className="flex items-center justify-between gap-2.5">
               <span className="rounded-full px-[11px] py-[5px] text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
               <span className="text-[11.5px] font-bold text-faint">{pr.canal}</span>
@@ -174,14 +177,14 @@ export default function Promociones() {
                 {pr.fecha_inicio ? new Date(pr.fecha_inicio).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : 'Vigente'}
                 {pr.canjes ? <span className="ml-2 font-extrabold text-orange">{pr.canjes} canjes</span> : null}
               </div>
-              <AccionesCard
+              {!soloConsulta && <AccionesCard
                 puedePausar={pr.estado === 'activa'}
                 puedeActivar={pr.estado !== 'activa' && pr.estado !== 'finalizada'}
                 onPausar={() => cambiarEstado(pr, 'pausada')}
                 onActivar={() => cambiarEstado(pr, 'activa')}
                 onEditar={() => setEditar(pr)}
                 onEliminar={() => eliminar(pr)}
-              />
+              />}
             </div>
           </Card>
         )
