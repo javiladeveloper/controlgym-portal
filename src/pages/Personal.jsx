@@ -172,6 +172,37 @@ function VacacionesModal({ staff, empresaId, onClose }) {
     },
   })
 
+  // Asistencia del mes: para pintar ✓ asistió / ✗ faltó según su horario semanal
+  const asistencia = useQuery({
+    queryKey: ['asistencia-mes', empresaId, iniMes],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('asistencia_staff')
+        .select('usuario_id, fecha, entrada_at, salida_at')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', iniMes).lte('fecha', finMes)
+      if (error) throw error
+      return new Map((data || []).map((a) => [a.usuario_id + '|' + a.fecha, a]))
+    },
+  })
+  // Horario semanal (turno_staff): qué días LE TOCA venir a cada uno
+  const horarios = useQuery({
+    queryKey: ['turnos-staff-empresa', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('turno_staff')
+        .select('usuario_id, dia_semana')
+        .eq('empresa_id', empresaId)
+      if (error) throw error
+      const map = new Map()
+      for (const t of data || []) {
+        if (!map.has(t.usuario_id)) map.set(t.usuario_id, new Set())
+        map.get(t.usuario_id).add(t.dia_semana)
+      }
+      return map
+    },
+  })
+
   // Filtros del cuadro (pedido: "filtro para saber de cada colaborador" y por tipo)
   const [filtroUsuario, setFiltroUsuario] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
@@ -298,6 +329,8 @@ function VacacionesModal({ staff, empresaId, onClose }) {
           {Object.entries(TIPO_PERMISO).map(([k, v]) => (
             <span key={k} className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: COLOR_PERMISO[k] }} />{v.replace(/^\S+ /, '')}</span>
           ))}
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: '#1D9E75' }} />Asistió</span>
+          <span className="flex items-center gap-1"><span className="font-extrabold" style={{ color: '#E24B4A' }}>✕</span>Faltó (según horario)</span>
         </div>
       </div>
 
@@ -321,10 +354,21 @@ function VacacionesModal({ staff, empresaId, onClose }) {
               {Array.from({ length: nDias }, (_, i) => {
                 const dia = `${y}-${pad(m + 1)}-${pad(i + 1)}`
                 const pe = permisoEnDiaF(st.id, dia)
+                // Asistencia vs horario: solo días pasados (hoy aún puede venir);
+                // el permiso manda — de vacaciones no se marca falta.
+                const asis = asistencia.data?.get(st.id + '|' + dia)
+                const isoDia = (() => { const g = new Date(y, m, i + 1).getDay(); return g === 0 ? 7 : g })()
+                const leTocaba = horarios.data?.get(st.id)?.has(isoDia)
+                const falto = !pe && !asis && leTocaba && dia < hoyStr
+                const titulo = pe ? `${st.nombre} · ${TIPO_PERMISO[pe.tipo]} (${pe.desde} → ${pe.hasta})`
+                  : asis ? `${st.nombre} · asistió${asis.entrada_at ? ' ' + new Date(asis.entrada_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : ''}`
+                  : falto ? `${st.nombre} · le tocaba y no marcó asistencia` : ''
                 return (
-                  <div key={i} className={`h-5 flex-1 ${dia === hoyStr ? 'bg-orange-50' : ''}`}
-                    title={pe ? `${st.nombre} · ${TIPO_PERMISO[pe.tipo]} (${pe.desde} → ${pe.hasta})` : ''}>
-                    {pe && <div className="h-full w-full" style={{ background: COLOR_PERMISO[pe.tipo] || '#999', opacity: 0.9 }} />}
+                  <div key={i} className={`flex h-5 flex-1 items-center justify-center ${dia === hoyStr ? 'bg-orange-50' : ''}`} title={titulo}>
+                    {pe ? <div className="h-full w-full" style={{ background: COLOR_PERMISO[pe.tipo] || '#999', opacity: 0.9 }} />
+                      : asis ? <span className="h-2 w-2 rounded-full" style={{ background: '#1D9E75' }} />
+                      : falto ? <span className="text-[9px] font-extrabold" style={{ color: '#E24B4A' }}>✕</span>
+                      : null}
                   </div>
                 )
               })}
