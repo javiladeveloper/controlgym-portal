@@ -183,7 +183,7 @@ function AgendaComercial() {
       <button type="button" onClick={() => setAbierto((v) => !v)}
         className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
         <div className="flex items-center gap-2">
-          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento</span>
+          <span className="text-[14.5px] font-extrabold">📅 Agenda de seguimiento <span className="ml-1 text-[11.5px] font-semibold text-muted">— tus tareas con leads: vencidas, de hoy y próximas</span></span>
           {nVencidas > 0 && (
             <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: T.dangerBg, color: T.danger }}>
               {nVencidas} vencida{nVencidas > 1 ? 's' : ''}
@@ -256,38 +256,57 @@ function FilaExSocio({ ex, sedeId, empresaId, gymNombre }) {
 function ReactivacionExSocios({ sedeId, empresaId }) {
   const { empresa } = useAuth()
   const [abierto, setAbierto] = useState(false)
-  const [meses, setMeses] = useState(6)
-  const exSocios = useExSocios(meses, abierto)
+  // Rangos EXCLUYENTES (feedback del owner: los chips acumulativos mostraban
+  // "los mismos" — 6 meses incluia a los de 3). Se trae 12 meses una sola vez
+  // y se filtra por rango de dias en el cliente.
+  const RANGOS = [
+    { key: '0-1', label: 'Este mes', desde: 0, hasta: 30 },
+    { key: '1-3', label: '1-3 meses', desde: 31, hasta: 90 },
+    { key: '3-6', label: '3-6 meses', desde: 91, hasta: 180 },
+    { key: '6-12', label: '6-12 meses', desde: 181, hasta: 365 },
+    { key: 'todos', label: 'Todos', desde: 0, hasta: 99999 },
+  ]
+  const [rango, setRango] = useState(RANGOS[0])
+  const exSocios = useExSocios(12, abierto)
+  const filtrados = (exSocios.data || []).filter((ex) => {
+    const d = Number(ex.vencio_hace_dias ?? 0)
+    return d >= rango.desde && d <= rango.hasta
+  })
   return (
     <Card className="mt-[15px] max-w-[860px] overflow-hidden">
       <button type="button" onClick={() => setAbierto((v) => !v)}
         className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
         <div>
           <div className="text-[14.5px] font-extrabold">↩️ Reactivación (ex-socios)</div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">Socios que no renovaron y podrían volver</div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">Dejaron de renovar — escríbeles o conviértelos en lead para captarlos de nuevo</div>
         </div>
         <span className="flex-shrink-0 text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver ex-socios ▼'}</span>
       </button>
       {abierto && (
         <div className="border-t border-line2">
-          <div className="flex items-center gap-2 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3">
             <span className="text-[11.5px] font-bold text-muted">Vencidos hace:</span>
-            {[3, 6, 12].map((m) => (
-              <button key={m} onClick={() => setMeses(m)}
+            {RANGOS.map((r) => (
+              <button key={r.key} onClick={() => setRango(r)}
                 className="cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition-colors"
-                style={meses === m
+                style={rango.key === r.key
                   ? { background: T.chipNavy, color: T.navy, borderColor: T.chipNavy }
                   : { background: 'transparent', color: '#9AA3B5', borderColor: T.line }}>
-                {m} meses
+                {r.label}
               </button>
             ))}
+            {/* Teaser de Leadia: sugerencias de a quien reactivar y con que oferta */}
+            <button disabled title="Próximamente (Leadia): analizará tus campañas pasadas — quiénes se inscribieron con cada promoción y ya no están — y te sugerirá ofertas personalizadas o grupales para traerlos de vuelta"
+              className="ml-auto cursor-not-allowed rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-extrabold text-faint">
+              ✨ Sugerencia IA · en construcción
+            </button>
           </div>
           {exSocios.isLoading && <LoadingState variant="table" rows={3} />}
           {exSocios.isError && <ErrorState error={exSocios.error} onRetry={exSocios.refetch} />}
-          {!exSocios.isLoading && !exSocios.isError && (exSocios.data || []).length === 0 && (
-            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin ex-socios en ese rango.</div>
+          {!exSocios.isLoading && !exSocios.isError && filtrados.length === 0 && (
+            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Sin ex-socios vencidos en ese rango. Prueba otro filtro.</div>
           )}
-          {!exSocios.isLoading && !exSocios.isError && (exSocios.data || []).map((ex) => (
+          {!exSocios.isLoading && !exSocios.isError && filtrados.map((ex) => (
             <FilaExSocio key={ex.socio_id} ex={ex} sedeId={sedeId} empresaId={empresaId} gymNombre={empresa?.nombre} />
           ))}
         </div>
@@ -429,7 +448,7 @@ export default function CRM() {
         <StatCard label="Leads totales" value={leads.data?.length ?? 0} delta="en el embudo" />
         <StatCard label="Inscritos" value={inscritos} delta="convertidos" deltaColor={T.success} />
         <StatCard label="En proceso" value={(leads.data?.length ?? 0) - inscritos} delta="en seguimiento" />
-        <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas pendientes" variant="accent" />
+        <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas con leads para hoy — el detalle está en la Agenda" variant="accent" />
       </div>
 
       <AgendaComercial />

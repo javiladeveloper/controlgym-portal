@@ -111,6 +111,13 @@ perfil en recomendación explicada + redacta el mensaje de la promo + responde
 preguntas del admin en lenguaje natural. NO ML entrenado (gyms chicos no tienen
 datos para eso; reglas + LLM funcionan desde el día 1 y escalan con historial).
 
+**Caso de uso concreto pedido por el cliente (2026-07-11):** análisis de CAMPAÑAS —
+quiénes se inscribieron con cada campaña/promoción pasada, detectar cuáles ya no
+están activos, y sugerir cómo llegarles con ofertas especiales personalizadas o
+GRUPALES (ej. "los 12 del reto de enero que no volvieron → oferta de grupo").
+Ya hay un teaser en el CRM: botón "✨ Sugerencia IA · en construcción" en la card
+de Reactivación. Los datos base ya existen: membresia.promocion_id + historial.
+
 **Negocio:** esto se empaqueta como **Leadia para gimnasios** — el owner ya definió
 que Leadia es paquete aparte que suma al costo (no feature del Pro). Nueva línea de
 ingreso: "análisis inteligente de promociones y precios = Leadia, +S/XX/mes".
