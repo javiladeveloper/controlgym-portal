@@ -62,11 +62,11 @@ export function useMetaVendedor(usuarioId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meta_vendedor')
-        .select('monto_diario')
+        .select('monto_diario, leads_diarios')
         .eq('usuario_id', usuarioId)
         .maybeSingle()
       if (error) throw error
-      return Number(data?.monto_diario || 0)
+      return { monto: Number(data?.monto_diario || 0), leads: Number(data?.leads_diarios || 0) }
     },
     retry: false,
   })
@@ -77,9 +77,11 @@ export function useMetaVendedor(usuarioId) {
 export function useGuardarMetaVendedor() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ usuarioId, montoDiario }) => {
+    mutationFn: async ({ usuarioId, montoDiario, leadsDiarios }) => {
       const { error } = await supabase.rpc('guardar_meta_vendedor', {
-        p_usuario_id: usuarioId, p_monto_diario: montoDiario,
+        p_usuario_id: usuarioId,
+        p_monto_diario: montoDiario,
+        p_leads_diarios: leadsDiarios ?? null,
       })
       if (error) throw error
     },

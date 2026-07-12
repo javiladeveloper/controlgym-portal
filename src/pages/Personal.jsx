@@ -15,8 +15,8 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { METODOS_PAGO } from '../lib/pagos.js'
 
 const ROLES = [
-  ['admin', 'Administrador'], ['recepcion', 'Recepción'], ['entrenador', 'Entrenador'],
-  ['nutricionista', 'Nutricionista'], ['mantenimiento', 'Mantenimiento'],
+  ['admin', 'Administrador'], ['recepcion', 'Recepción'], ['comunicador', 'Comunicador (atención al cliente)'],
+  ['entrenador', 'Entrenador'], ['nutricionista', 'Nutricionista'], ['mantenimiento', 'Mantenimiento'],
 ]
 const BANCOS = ['BCP', 'Interbank', 'BBVA', 'Scotiabank', 'BanBif', 'Banco de la Nación', 'Caja Arequipa', 'Caja Huancayo', 'Otro']
 
@@ -63,14 +63,18 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const metaActual = useMetaVendedor(colaborador.id)
   const guardarMeta = useGuardarMetaVendedor()
   const [meta, setMeta] = useState('')
+  const [metaLeads, setMetaLeads] = useState('')
   useEffect(() => {
-    if (metaActual.data != null) setMeta(metaActual.data > 0 ? String(metaActual.data) : '')
+    if (metaActual.data != null) {
+      setMeta(metaActual.data.monto > 0 ? String(metaActual.data.monto) : '')
+      setMetaLeads(metaActual.data.leads > 0 ? String(metaActual.data.leads) : '')
+    }
   }, [metaActual.data])
-  const puedeVender = f.rol === 'admin' || f.rol === 'recepcion'
+  const puedeVender = f.rol === 'admin' || f.rol === 'recepcion' || f.rol === 'comunicador'
 
   async function guardarMetaDiaria() {
     try {
-      await guardarMeta.mutateAsync({ usuarioId: colaborador.id, montoDiario: meta === '' ? 0 : Number(meta) })
+      await guardarMeta.mutateAsync({ usuarioId: colaborador.id, montoDiario: meta === '' ? 0 : Number(meta), leadsDiarios: metaLeads === '' ? 0 : Number(metaLeads) })
       toast.ok('Meta diaria actualizada')
     } catch (err) {
       toast.error('No se pudo guardar la meta: ' + err.message)
@@ -149,10 +153,18 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
             porque usa la RPC guardar_meta_vendedor, no el update de arriba. */}
         {puedeVender && (
           <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
-            <div className="mb-2.5 text-[12px] font-extrabold text-muted">🎯 Meta diaria de venta (S/) <span className="font-semibold">(vacío o 0 = sin meta)</span></div>
-            <div className="flex items-end gap-2">
-              <input type="number" step="0.01" min="0" value={meta} onChange={(e) => setMeta(e.target.value)}
-                className={inputCls} placeholder="200" disabled={metaActual.isLoading} />
+            <div className="mb-2.5 text-[12px] font-extrabold text-muted">🎯 Metas diarias <span className="font-semibold">(vacío o 0 = sin meta)</span></div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10.5px] font-extrabold uppercase text-faint">Venta (S/)</span>
+                <input type="number" step="0.01" min="0" value={meta} onChange={(e) => setMeta(e.target.value)}
+                  className={inputCls} placeholder="200" disabled={metaActual.isLoading} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10.5px] font-extrabold uppercase text-faint">Leads (captación)</span>
+                <input type="number" step="1" min="0" value={metaLeads} onChange={(e) => setMetaLeads(e.target.value)}
+                  className={inputCls} placeholder="5" disabled={metaActual.isLoading} />
+              </label>
               <button type="button" onClick={guardarMetaDiaria} disabled={guardarMeta.isPending}
                 className="flex-shrink-0 cursor-pointer rounded-[10px] border-none bg-navy px-4 py-2.5 text-[12.5px] font-extrabold text-white hover:opacity-90 disabled:opacity-50">
                 {guardarMeta.isPending ? 'Guardando…' : 'Guardar meta'}

@@ -23,7 +23,7 @@ export const MODULES = [
   { slug: 'dashboard',   label: 'Dashboard',        grupo: 'general',   roles: null },
 
   { slug: 'clientes',    label: 'Clientes',         grupo: 'socios',    roles: null },
-  { slug: 'crm',         label: 'CRM',              grupo: 'socios',    roles: ['admin', 'recepcion'] },
+  { slug: 'crm',         label: 'CRM',              grupo: 'socios',    roles: ['admin', 'recepcion', 'comunicador'] },
   { slug: 'membresias',  label: 'Membresías',       grupo: 'socios',    roles: ['admin', 'recepcion'] },
   { slug: 'rutinas',     label: 'Rutinas y dietas', grupo: 'socios',    roles: ['admin', 'entrenador', 'nutricionista'] },
 

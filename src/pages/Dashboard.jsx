@@ -248,8 +248,11 @@ export default function Dashboard() {
           {/* Un solo slot de aforo: con aforo_max configurado se muestra la tarjeta
               en vivo (regla 2h + barra); sin configurar, el conteo simple del día.
               (Antes había DOS tarjetas para lo mismo — duplicado detectado en QA.) */}
+          {/* Cada KPI navega a su detalle (pedido del owner: "clic en por vencer
+              → quiénes son"). cursor-pointer + hover para que se note. */}
           {aforoBar ? (
-            <div className="rounded-card border border-line bg-white p-[17px]">
+            <div onClick={() => navigate('/reportes?tab=asistencia')} title="Ver asistencias en Reportes"
+              className="cursor-pointer rounded-card border border-line bg-white p-[17px] transition-colors hover:border-orange">
               <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">🏟️ Aforo ahora</div>
               <div className="mt-1.5 text-[27px] font-extrabold tabular-nums text-ink">
                 {aforo.data.dentro}<span className="text-[15px] font-bold text-faint">/{aforo.data.aforo_max}</span>
@@ -259,15 +262,24 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
-              delta={aforoDelta} />
+            <div onClick={() => navigate('/reportes?tab=asistencia')} title="Ver asistencias en Reportes" className="cursor-pointer transition-opacity hover:opacity-80">
+              <StatCard label="En la sede ahora" value={kpis.data.en_sede_hoy ?? 0}
+                delta={aforoDelta} />
+            </div>
           )}
-          <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta="con membresía vigente" />
-          {veIngresos && <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta="membresías + ventas" />}
-          <div className="rounded-card border border-orange-100 bg-orange-50 p-[17px]">
+          <div onClick={() => navigate('/clientes')} title="Ver clientes" className="cursor-pointer transition-opacity hover:opacity-80">
+            <StatCard label="Socios activos" value={kpis.data.socios_activos ?? 0} delta="con membresía vigente" />
+          </div>
+          {veIngresos && (
+            <div onClick={() => navigate('/reportes?tab=ventas')} title="Ver reporte de ventas" className="cursor-pointer transition-opacity hover:opacity-80">
+              <StatCard label="Ingresos del mes" value={money(kpis.data.ingresos_mes, moneda)} delta="membresías + ventas" />
+            </div>
+          )}
+          <div onClick={() => navigate('/membresias')} title="Ver quiénes están por vencer"
+            className="cursor-pointer rounded-card border border-orange-100 bg-orange-50 p-[17px] transition-colors hover:border-orange">
             <div className="text-[11px] font-extrabold uppercase tracking-[0.6px] text-orange">Por vencer (7 días)</div>
             <div className="mt-1.5 text-[27px] font-extrabold text-orange">{kpis.data.por_vencer_7d ?? 0}</div>
-            <div className="mt-0.5 text-[12px] font-bold text-muted">membresías</div>
+            <div className="mt-0.5 text-[12px] font-bold text-muted">membresías → ver quiénes</div>
           </div>
         </div>
       )}
@@ -405,30 +417,43 @@ export default function Dashboard() {
 // recepción solo su propia fila (no es su lugar ver la meta de otros).
 function MetasHoy({ usuario, rol, moneda }) {
   const q = useReporteComercial() // sin params = mes actual; por_dia_hoy siempre es de HOY
-  const filas = (q.data?.por_dia_hoy || []).filter((v) => Number(v.meta_diaria) > 0)
+  // Una persona aparece si tiene CUALQUIER meta configurada: de leads (captación,
+  // el trabajo del comunicador/marketing) o de venta en soles (recepción).
+  const filas = (q.data?.por_dia_hoy || []).filter((v) => Number(v.meta_diaria) > 0 || Number(v.meta_leads) > 0)
   const propias = rol === 'admin' ? filas : filas.filter((v) => v.usuario_id === usuario?.id)
   if (q.isLoading || q.error || propias.length === 0) return null
 
   return (
     <Card className="mt-[15px] p-[19px]">
       <div className="text-[14.5px] font-extrabold">🎯 Metas de hoy</div>
-      <div className="mt-2.5 flex flex-col gap-2.5">
+      <div className="mt-2.5 flex flex-col gap-3">
         {propias.map((v) => {
-          const hoy = Number(v.hoy || 0)
-          const meta = Number(v.meta_diaria || 0)
-          const pct = meta > 0 ? Math.min(100, (hoy / meta) * 100) : 0
-          const cumplida = hoy >= meta
+          const barras = []
+          if (Number(v.meta_leads) > 0) {
+            barras.push({ etiqueta: `${v.leads_hoy || 0} de ${v.meta_leads} leads`, hoy: Number(v.leads_hoy || 0), meta: Number(v.meta_leads) })
+          }
+          if (Number(v.meta_diaria) > 0) {
+            barras.push({ etiqueta: `${money(v.hoy || 0, moneda)} de ${money(v.meta_diaria, moneda)}`, hoy: Number(v.hoy || 0), meta: Number(v.meta_diaria) })
+          }
           return (
             <div key={v.usuario_id}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[12.5px] font-extrabold text-ink">{v.nombre}</span>
-                <span className={`flex-shrink-0 text-[11.5px] font-extrabold ${cumplida ? 'text-green-600' : 'text-orange'}`}>
-                  {money(hoy, moneda)} de {money(meta, moneda)}
-                </span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-line2">
-                <div className={`h-full rounded-full ${cumplida ? 'bg-green' : 'bg-orange'}`} style={{ width: `${pct}%` }} />
-              </div>
+              <div className="text-[12.5px] font-extrabold text-ink">{v.nombre}</div>
+              {barras.map((b, i) => {
+                const pct = Math.min(100, (b.hoy / b.meta) * 100)
+                const cumplida = b.hoy >= b.meta
+                return (
+                  <div key={i} className="mt-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line2">
+                        <div className={`h-full rounded-full ${cumplida ? 'bg-green' : 'bg-orange'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className={`flex-shrink-0 text-[11.5px] font-extrabold ${cumplida ? 'text-green-600' : 'text-orange'}`}>
+                        {b.etiqueta}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )
         })}
