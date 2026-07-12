@@ -420,7 +420,7 @@ export default function Ventas() {
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
         {/* ── Columna izquierda: cobro ───────────────────────────────── */}
         <Card className="p-5">
-          {/* Toggle Producto | Membresía */}
+          {/* Toggle Producto | Renovación de membresía (el POS cobra, no gestiona) */}
           <div className="flex gap-2">
             <button type="button" onClick={() => cambiarModo('producto')}
               className={`flex-1 cursor-pointer rounded-[10px] border-none py-2.5 text-[13px] font-extrabold transition-colors ${modo === 'producto' ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-ink'}`}>
@@ -428,7 +428,7 @@ export default function Ventas() {
             </button>
             <button type="button" onClick={() => cambiarModo('membresia')}
               className={`flex-1 cursor-pointer rounded-[10px] border-none py-2.5 text-[13px] font-extrabold transition-colors ${modo === 'membresia' ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-ink'}`}>
-              Membresía
+              Renovación de membresía
             </button>
           </div>
 
