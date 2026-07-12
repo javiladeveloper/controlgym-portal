@@ -43,6 +43,103 @@ const mesLabel = () => new Date().toLocaleDateString('es-PE', { month: 'long', y
 
 // Editar el vínculo laboral del colaborador: rol, forma de pago y banco.
 // (El nombre y teléfono los edita cada quien en su perfil.)
+const DIA_CORTO = { 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom' }
+
+// Horario semanal del colaborador (turno_staff): por día + rango + sede.
+// Soporta medio tiempo (solo algunos días). El trainer lo VE en su app vía
+// mis_turnos() — PEDIDO 30. Distinto del "turno para avisos" (usuario_empresa),
+// que decide a quién le llegan primero las alertas.
+function HorarioSemanalEditor({ usuarioId, empresaId }) {
+  const qc = useQueryClient()
+  const { sedes } = useAuth()
+  const turnos = useQuery({
+    queryKey: ['turnos-staff', usuarioId],
+    enabled: !!usuarioId && !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('turno_staff')
+        .select('id, dia_semana, hora_inicio, hora_fin, sede_id')
+        .eq('empresa_id', empresaId).eq('usuario_id', usuarioId)
+        .order('dia_semana').order('hora_inicio')
+      if (error) throw error
+      return data
+    },
+  })
+  const [nuevo, setNuevo] = useState({ dia: '1', inicio: '', fin: '', sede: '' })
+  const [busy, setBusy] = useState(false)
+  const nombreSede = (id) => (sedes || []).find((s) => s.id === id)?.nombre
+
+  async function agregar() {
+    if (!nuevo.inicio || !nuevo.fin) { toast.error('Completa hora de entrada y salida.'); return }
+    if (nuevo.fin <= nuevo.inicio) { toast.error('La salida debe ser después de la entrada.'); return }
+    setBusy(true)
+    try {
+      const { error } = await supabase.from('turno_staff').insert({
+        empresa_id: empresaId, usuario_id: usuarioId, dia_semana: Number(nuevo.dia),
+        hora_inicio: nuevo.inicio, hora_fin: nuevo.fin, sede_id: nuevo.sede || null,
+      })
+      if (error) throw error
+      setNuevo((s) => ({ ...s, inicio: '', fin: '' }))
+      qc.invalidateQueries({ queryKey: ['turnos-staff', usuarioId] })
+    } catch (err) {
+      toast.error('No se pudo agregar el turno: ' + err.message)
+    } finally { setBusy(false) }
+  }
+
+  async function quitar(id) {
+    try {
+      const { error } = await supabase.from('turno_staff').delete().eq('id', id)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['turnos-staff', usuarioId] })
+    } catch (err) {
+      toast.error('No se pudo quitar el turno: ' + err.message)
+    }
+  }
+
+  return (
+    <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+      <div className="mb-2.5 text-[12px] font-extrabold text-muted">
+        📅 Horario semanal <span className="font-semibold">(el colaborador lo ve en su app · medio tiempo = solo sus días)</span>
+      </div>
+      {turnos.isLoading && <div className="py-1 text-[12px] font-semibold text-faint">Cargando…</div>}
+      {(turnos.data || []).map((t) => (
+        <div key={t.id} className="mb-1.5 flex items-center justify-between rounded-[8px] bg-white px-3 py-2">
+          <span className="text-[12.5px] font-bold">
+            {DIA_CORTO[t.dia_semana]} {t.hora_inicio.slice(0, 5)}–{t.hora_fin.slice(0, 5)}
+            {t.sede_id && nombreSede(t.sede_id) && <span className="font-semibold text-faint"> · {nombreSede(t.sede_id)}</span>}
+          </span>
+          <button type="button" onClick={() => quitar(t.id)} aria-label="Quitar turno"
+            className="cursor-pointer rounded-[6px] border-none bg-transparent px-1.5 py-0.5 text-[12px] font-extrabold text-faint hover:text-red">✕</button>
+        </div>
+      ))}
+      {!turnos.isLoading && (turnos.data || []).length === 0 && (
+        <div className="mb-1.5 text-[12px] font-semibold text-faint">Sin horario definido aún — agrega su primer turno:</div>
+      )}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <select value={nuevo.dia} onChange={(e) => setNuevo((s) => ({ ...s, dia: e.target.value }))}
+          className="cursor-pointer rounded-[8px] border border-line bg-white px-2 py-2 text-[12.5px] font-bold outline-none focus:border-orange">
+          {[1, 2, 3, 4, 5, 6, 7].map((d) => <option key={d} value={d}>{DIA_CORTO[d]}</option>)}
+        </select>
+        <input type="time" value={nuevo.inicio} onChange={(e) => setNuevo((s) => ({ ...s, inicio: e.target.value }))}
+          className="rounded-[8px] border border-line bg-white px-2 py-[7px] text-[12.5px] font-bold outline-none focus:border-orange" />
+        <span className="text-[12px] font-bold text-faint">a</span>
+        <input type="time" value={nuevo.fin} onChange={(e) => setNuevo((s) => ({ ...s, fin: e.target.value }))}
+          className="rounded-[8px] border border-line bg-white px-2 py-[7px] text-[12.5px] font-bold outline-none focus:border-orange" />
+        {(sedes || []).length > 1 && (
+          <select value={nuevo.sede} onChange={(e) => setNuevo((s) => ({ ...s, sede: e.target.value }))}
+            className="cursor-pointer rounded-[8px] border border-line bg-white px-2 py-2 text-[12.5px] font-bold outline-none focus:border-orange">
+            <option value="">Cualquier sede</option>
+            {(sedes || []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        )}
+        <button type="button" onClick={agregar} disabled={busy}
+          className="cursor-pointer rounded-[8px] border-none bg-navy px-3 py-2 text-[12px] font-extrabold text-white hover:opacity-90 disabled:opacity-50">
+          {busy ? '…' : '+ Agregar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const qc = useQueryClient()
   const [f, setF] = useState({
@@ -145,7 +242,7 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
         {/* Turno: los avisos (nuevo socio, subir carga) llegan primero al que
             está de turno; si nadie lo está, a todos los activos */}
         <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
-          <div className="mb-2.5 text-[12px] font-extrabold text-muted">🕐 Turno de trabajo <span className="font-semibold">(vacío = sin turno fijo: recibe avisos a toda hora)</span></div>
+          <div className="mb-2.5 text-[12px] font-extrabold text-muted">🔔 Turno para avisos <span className="font-semibold">(en qué horario le llegan las alertas primero · vacío = a toda hora)</span></div>
           <div className="grid grid-cols-2 gap-3">
             <Campo label="Entra">
               <input type="time" value={f.turno_inicio} onChange={set('turno_inicio')} className={inputCls} />
@@ -155,6 +252,9 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
             </Campo>
           </div>
         </div>
+
+        {/* Horario semanal (turno_staff): lo que el colaborador VE en su app */}
+        <HorarioSemanalEditor usuarioId={colaborador.id} empresaId={empresaId} />
 
         {/* Meta diaria de venta: solo aplica a quien vende (admin/recepción).
             Guarda con su propio botón — no forma parte de "Guardar cambios"

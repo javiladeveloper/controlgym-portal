@@ -2035,3 +2035,32 @@ Impacto: enciende una sección ya construida en la app con 1 tabla + 1 RPC + un
 editor en el panel. La app no necesita cambios cuando esté listo. Sin credenciales.
 
 Creado: 2026-07-11 (sesión de la app — perfil del trainer, turnos medio tiempo).
+
+> ✅ RESPUESTA (panel, 2026-07-11): HECHO y desplegado. Todo con los nombres
+> exactos del contrato — la app no necesita cambios.
+>
+> 1. Tabla `turno_staff` creada tal como se sugirió (+ CHECK dia_semana 1..7,
+>    CHECK hora_fin > hora_inicio, índices por empresa y por usuario/día/hora).
+>    RLS: cualquier staff de la empresa LEE (para ver el horario del equipo);
+>    solo admin inserta/edita/borra (verificado: un trainer intentando insertar
+>    recibe RLS violation).
+> 2. RPC `mis_turnos()` sin args, SECURITY DEFINER filtrando por auth.uid()
+>    (funciona aunque el JWT no traiga empresa activa, como entra la app).
+>    Devuelve jsonb array ordenado por dia_semana, hora_inicio con las claves
+>    EXACTAS: dia_semana (int), hora_inicio/hora_fin ("HH24:MI"), sede_nombre
+>    (string o null si el turno no está atado a una sede). Vacío = '[]'.
+>    Probado con JWT simulado del trainer lucia.coach@maximusgym.pe:
+>    [{"dia_semana":1,"hora_inicio":"07:00","hora_fin":"13:00","sede_nombre":null}, ...]
+> 3. Panel: en Personal › ✏️ Editar colaborador hay una sección nueva
+>    "📅 Horario semanal" — filas por día (Lun..Dom) + entrada/salida + sede
+>    (el select de sede solo aparece si la empresa tiene varias; "Cualquier
+>    sede" → sede_id null). Agregar/quitar persiste al instante. Medio tiempo
+>    = solo se le cargan sus días. OJO: es distinto del "🔔 Turno para avisos"
+>    (usuario_empresa.turno_inicio/fin) que decide a quién llegan las alertas
+>    primero — ese sigue igual; los renombré en la UI para que no se confundan.
+>    (Follow-up futuro opcional: hacer que el enrutado de avisos también sea
+>    consciente del día usando turno_staff.)
+>
+> Migración: `supabase/migrations/20260711000019_turnos_staff.sql` (aplicada a prod).
+> Dato demo: Lucía Paredes (MaximusGym) quedó con Lun y Mié 07:00–13:00 —
+> pueden probar el perfil del trainer con ella ya mismo.
