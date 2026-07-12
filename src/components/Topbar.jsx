@@ -1,11 +1,101 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BellIcon } from './icons.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { Avatar } from './ui.jsx'
+import { iniciales } from '../lib/uiHelpers.js'
+import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const NIVEL_DOT = { danger: '#E24B4A', warning: '#FF6B35', success: '#1D9E75', info: '#141B2E' }
+
+// Búsqueda global de socios (nombre, N.º o DNI, en TODA la empresa — no solo la
+// sede activa) desde cualquier página. Clic → ficha del socio (/clientes?socio=id).
+// Antes era un input decorativo del prototipo: no buscaba nada.
+function BuscadorGlobalSocios({ placeholder }) {
+  const navigate = useNavigate()
+  const { empresa } = useAuth()
+  const [q, setQ] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const [abierto, setAbierto] = useState(false)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 250)
+    return () => clearTimeout(t)
+  }, [q])
+
+  // Cerrar el dropdown al hacer clic fuera
+  useEffect(() => {
+    function fuera(e) { if (boxRef.current && !boxRef.current.contains(e.target)) setAbierto(false) }
+    document.addEventListener('mousedown', fuera)
+    return () => document.removeEventListener('mousedown', fuera)
+  }, [])
+
+  const resultados = useQuery({
+    queryKey: ['buscador-global', empresa?.id, debounced],
+    enabled: !!empresa?.id && debounced.length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('socio')
+        .select('id, nombre, codigo, documento, estado, foto_url, foto_estado')
+        .eq('empresa_id', empresa.id)
+        .is('deleted_at', null)
+        .or(`nombre.ilike.%${debounced}%,codigo.ilike.%${debounced}%,documento.ilike.%${debounced}%`)
+        .order('nombre')
+        .limit(8)
+      if (error) throw error
+      return data
+    },
+  })
+
+  function abrirFicha(s) {
+    setQ(''); setAbierto(false)
+    navigate(`/clientes?socio=${s.id}`)
+  }
+
+  const lista = resultados.data || []
+
+  return (
+    <div ref={boxRef} className="relative hidden sm:block">
+      <input
+        value={q}
+        onChange={(e) => { setQ(e.target.value); setAbierto(true) }}
+        onFocus={() => q.trim().length >= 2 && setAbierto(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && lista.length > 0) abrirFicha(lista[0]); if (e.key === 'Escape') setAbierto(false) }}
+        placeholder={placeholder}
+        className="w-[250px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
+      />
+      {abierto && debounced.length >= 2 && (
+        <div className="absolute right-0 top-12 z-[80] w-[320px] animate-fadeSlide overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_18px_44px_rgba(20,27,46,0.16)]">
+          {resultados.isLoading && (
+            <div className="px-4 py-4 text-center text-[12.5px] font-semibold text-muted">Buscando…</div>
+          )}
+          {!resultados.isLoading && lista.length === 0 && (
+            <div className="px-4 py-4 text-center text-[12.5px] font-semibold text-muted">Sin resultados para "{debounced}".</div>
+          )}
+          {lista.map((s) => (
+            <button key={s.id} onClick={() => abrirFicha(s)}
+              className="flex w-full cursor-pointer items-center gap-2.5 border-b border-line2 bg-white px-4 py-2.5 text-left hover:bg-[#FAFBFC]">
+              {s.foto_url && s.foto_estado === 'aprobada'
+                ? <img src={s.foto_url} alt="" className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
+                : <Avatar ini={iniciales(s.nombre)} bg={T.chipNavy} color={T.navy} size={32} fontSize={11} />}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-extrabold">{s.nombre}</div>
+                <div className="text-[11px] font-semibold text-muted">
+                  N.º {s.codigo}{s.documento ? ` · DNI ${s.documento}` : ''}
+                </div>
+              </div>
+              {s.estado !== 'activo' && <span className="flex-shrink-0 text-[10.5px] font-bold text-faint">{s.estado}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function useNotificaciones(sedeId) {
   return useQuery({
@@ -39,10 +129,7 @@ export default function Topbar({ title, subtitle, searchPlaceholder = 'Buscar so
         {subtitle && <p className="mt-0.5 text-[13px] font-semibold text-muted">{subtitle}</p>}
       </div>
 
-      <input
-        placeholder={searchPlaceholder}
-        className="w-[250px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
-      />
+      <BuscadorGlobalSocios placeholder={searchPlaceholder} />
 
       <div className="relative">
         <button
