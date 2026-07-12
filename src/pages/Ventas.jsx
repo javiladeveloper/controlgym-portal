@@ -2,14 +2,15 @@ import { useState, useMemo, useEffect } from 'react'
 import { Card, PrimaryButton, Badge } from '../components/ui.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
 import { inputCls } from '../components/Modal.jsx'
+import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { useProductos } from '../hooks/useOperaciones.js'
+import { useProductos, usePromociones } from '../hooks/useOperaciones.js'
 import { useMembresias } from '../hooks/useMembresias.js'
 import { useClientes } from '../hooks/useClientes.js'
 import { useVenderCarrito, useCobrarMembresiaPos, useCrearPagoMostrador } from '../hooks/useVentas.js'
 import CobroQrModal from '../components/CobroQrModal.jsx'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { money } from '../lib/uiHelpers.js'
 import { toast } from '../lib/toast.js'
 import { METODOS_PAGO } from '../lib/pagos.js'
@@ -147,6 +148,43 @@ function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, mo
   const membresias = useMembresias(sedeId)
   const [busca, setBusca] = useState('')
 
+  // ¿La promo con la que ENTRÓ sigue dando beneficio al renovar? (2×1 de por
+  // vida, descuento por N meses, etc.) El motor decide según las reglas del
+  // negocio; aquí solo proponemos el precio y explicamos por qué.
+  const beneficio = useQuery({
+    queryKey: ['promo-beneficio', socioSel?.id],
+    enabled: !!socioSel?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('promo_beneficio_renovacion', { p_membresia_id: socioSel.id })
+      if (error) throw error
+      return data
+    },
+  })
+  // Si el beneficio de origen ya no corre, se puede renovar con OTRA promo
+  // vigente (individual: descuentos / precio especial).
+  const promos = usePromociones()
+  const promosRenovacion = (promos.data || []).filter((pr) =>
+    pr.estado === 'activa' && ['descuento_pct', 'descuento_monto', 'precio_especial'].includes(pr.tipo))
+  const [promoAlt, setPromoAlt] = useState('')
+
+  // Prefill del monto cuando el beneficio aplica (solo si el usuario no lo tocó)
+  useEffect(() => {
+    const b = beneficio.data
+    if (b?.aplica && b.precio_sugerido != null) onMonto(String(b.precio_sugerido))
+  }, [beneficio.data]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function aplicarPromoAlt(id) {
+    setPromoAlt(id)
+    const pr = promosRenovacion.find((x) => x.id === id)
+    const base = Number(socioSel?.plan?.precio || 0)
+    if (!pr) { onMonto(String(base)); return }
+    let precio = base
+    if (pr.tipo === 'descuento_pct') precio = Math.round(base * (1 - Number(pr.valor || 0) / 100) * 100) / 100
+    else if (pr.tipo === 'descuento_monto') precio = Math.max(0, base - Number(pr.valor || 0))
+    else if (pr.tipo === 'precio_especial') precio = Number(pr.valor || base)
+    onMonto(String(precio))
+  }
+
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
     const lista = membresias.data || []
@@ -177,6 +215,35 @@ function BuscadorMembresia({ sedeId, socioSel, onSeleccionar, monto, onMonto, mo
             Cambiar
           </button>
         </div>
+        {beneficio.data?.aplica && (
+          <div className="mt-3 rounded-[10px] border border-green-200 bg-green-50 px-3.5 py-2.5">
+            <div className="text-[12.5px] font-extrabold text-green-700">
+              🎁 {beneficio.data.promo} sigue vigente ({beneficio.data.vigencia === 'permanente' ? 'de por vida mientras paguen' : 'dentro de la ventana'}) — cobra {money(beneficio.data.precio_sugerido, moneda)}
+            </div>
+            {beneficio.data.nota && <div className="mt-0.5 text-[11.5px] font-semibold text-green-700/80">{beneficio.data.nota}</div>}
+            {(beneficio.data.grupo || []).length > 0 && (
+              <div className="mt-0.5 text-[11.5px] font-semibold text-green-700/80">
+                Grupo: {(beneficio.data.grupo || []).map((g) => g.nombre).join(', ')} — renuévalos también (monto 0).
+              </div>
+            )}
+          </div>
+        )}
+        {beneficio.data && !beneficio.data.aplica && ['beneficio_vencido', 'beneficio_roto'].includes(beneficio.data.motivo) && (
+          <div className="mt-3 rounded-[10px] bg-amber-50 px-3.5 py-2 text-[11.5px] font-bold text-amber-800">
+            {beneficio.data.motivo === 'beneficio_roto'
+              ? `La promo "${beneficio.data.promo}" se perdió (dejaron de pagar juntos) — renueva a precio normal o con una promo vigente.`
+              : `El beneficio de "${beneficio.data.promo}" ya venció — renueva a precio normal o con una promo vigente.`}
+          </div>
+        )}
+        {!beneficio.data?.aplica && promosRenovacion.length > 0 && (
+          <label className="mt-3 block">
+            <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Aplicar promo vigente (opcional)</span>
+            <select value={promoAlt} onChange={(e) => aplicarPromoAlt(e.target.value)} className={inputCls + ' cursor-pointer'}>
+              <option value="">Sin promoción — precio normal</option>
+              {promosRenovacion.map((pr) => <option key={pr.id} value={pr.id}>{pr.nombre}</option>)}
+            </select>
+          </label>
+        )}
         <label className="mt-3 block">
           <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Monto a cobrar ({moneda})</span>
           <input type="number" min="0" step="0.01" value={monto} onChange={(e) => onMonto(e.target.value)} className={inputCls} />

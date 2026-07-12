@@ -21,6 +21,8 @@ function CampanaModal({ empresaId, promocion, onClose }) {
     grupo_pagan: promocion?.grupo_pagan != null ? String(promocion.grupo_pagan) : '2',
     fecha_inicio: promocion?.fecha_inicio || '', fecha_fin: promocion?.fecha_fin || '',
     estado: promocion?.estado || 'activa',
+    vigencia_beneficio: promocion?.vigencia_beneficio || 'primera',
+    vigencia_meses: promocion?.vigencia_meses != null ? String(promocion.vigencia_meses) : '12',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -41,6 +43,8 @@ function CampanaModal({ empresaId, promocion, onClose }) {
       grupo_personas: f.tipo === 'grupal' ? Number(f.grupo_personas) || 3 : null,
       grupo_pagan: f.tipo === 'grupal' ? Number(f.grupo_pagan) || 2 : null,
       fecha_inicio: f.fecha_inicio || null, fecha_fin: f.fecha_fin || null,
+      vigencia_beneficio: f.vigencia_beneficio,
+      vigencia_meses: f.vigencia_beneficio === 'meses' ? Number(f.vigencia_meses) || 12 : null,
     }
     if (f.tipo === 'grupal' && valores.grupo_pagan >= valores.grupo_personas) {
       setBusy(false); setError('En una promo grupal deben pagar MENOS personas de las que vienen (ej. vienen 3, pagan 2).'); return
@@ -106,6 +110,22 @@ function CampanaModal({ empresaId, promocion, onClose }) {
             </p>
           </>
         )}
+        {/* ¿El beneficio se repite al RENOVAR? (reglas acordadas: "de por vida
+            mientras paguen" se rompe si el grupo no renueva junto; "por N
+            meses" cuenta desde la inscripción) */}
+        <Campo label="Duración del beneficio" hint={f.vigencia_beneficio === 'primera' ? 'Solo al inscribirse; las renovaciones van a precio normal.' : f.vigencia_beneficio === 'permanente' ? 'Se respeta en cada renovación MIENTRAS paguen sin cortarse (grupos: todos juntos). Si se corta, se pierde para siempre.' : 'Las renovaciones dentro de la ventana mantienen el beneficio; después, precio normal.'}>
+          <div className="flex gap-2">
+            <select value={f.vigencia_beneficio} onChange={set('vigencia_beneficio')} className={inputCls + ' cursor-pointer'}>
+              <option value="primera">Solo la primera vez</option>
+              <option value="permanente">De por vida (mientras paguen)</option>
+              <option value="meses">Por meses desde la inscripción</option>
+            </select>
+            {f.vigencia_beneficio === 'meses' && (
+              <input type="number" min="1" max="60" value={f.vigencia_meses} onChange={set('vigencia_meses')}
+                className={inputCls + ' w-24'} placeholder="12" />
+            )}
+          </div>
+        </Campo>
         <div className="grid grid-cols-3 gap-3">
           <Campo label="Inicio"><input type="date" value={f.fecha_inicio} onChange={set('fecha_inicio')} className={inputCls} /></Campo>
           <Campo label="Fin"><input type="date" value={f.fecha_fin} onChange={set('fecha_fin')} className={inputCls} /></Campo>
