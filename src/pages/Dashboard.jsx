@@ -41,6 +41,7 @@ function CheckinModal({ sedeId, onClose }) {
       setQr('')
       qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
       qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
+      qc.invalidateQueries({ queryKey: ['aforo-actual', sedeId] })
     } catch (e) {
       setResultado({ resultado: 'error', motivo: e?.message || 'Error de red', socio: 'Carnet QR' })
     } finally {
@@ -69,6 +70,9 @@ function CheckinModal({ sedeId, onClose }) {
       qc.invalidateQueries({ queryKey: ['checkins', sedeId] })
       qc.invalidateQueries({ queryKey: ['dashboard-kpis', sedeId] })
       qc.invalidateQueries({ queryKey: ['asistencia-hora', sedeId] })
+      // El aforo en vivo también cambia con cada entrada/salida registrada:
+      // sin esto la tarjeta quedaba vieja hasta 30 s ("marqué y sigue en 0").
+      qc.invalidateQueries({ queryKey: ['aforo-actual', sedeId] })
     } catch (e) {
       setResultado({ resultado: 'error', motivo: e?.message || 'Error de red', socio: socio.nombre })
     } finally {
