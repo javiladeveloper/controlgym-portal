@@ -10,7 +10,7 @@ import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePersonal } from '../hooks/useOperaciones.js'
 import { useMetaVendedor, useGuardarMetaVendedor } from '../hooks/useReportes.js'
-import { iniciales, money } from '../lib/uiHelpers.js'
+import { iniciales, money, fechaLocal } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 import { METODOS_PAGO } from '../lib/pagos.js'
 
@@ -140,6 +140,94 @@ function HorarioSemanalEditor({ usuarioId, empresaId }) {
   )
 }
 
+const TIPO_PERMISO = { vacaciones: '🏖️ Vacaciones', permiso: '📋 Permiso', descanso_medico: '🤒 Descanso médico' }
+
+// Permisos y vacaciones del colaborador. Mientras el rango está vigente, el
+// sistema lo excluye de la cascada de avisos (staff_disponible): a alguien de
+// vacaciones no le timbra "nuevo socio" ni "ayuda en sala".
+function PermisosEditor({ usuarioId, empresaId }) {
+  const qc = useQueryClient()
+  const permisos = useQuery({
+    queryKey: ['permisos-staff', usuarioId],
+    enabled: !!usuarioId && !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('permiso_staff')
+        .select('id, tipo, desde, hasta')
+        .eq('empresa_id', empresaId).eq('usuario_id', usuarioId)
+        .gte('hasta', new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)) // vigentes, futuros y el último mes
+        .order('desde', { ascending: false })
+      if (error) throw error
+      return data
+    },
+  })
+  const [nuevo, setNuevo] = useState({ tipo: 'vacaciones', desde: '', hasta: '' })
+  const [busy, setBusy] = useState(false)
+
+  async function agregar() {
+    if (!nuevo.desde || !nuevo.hasta) { toast.error('Completa desde y hasta.'); return }
+    if (nuevo.hasta < nuevo.desde) { toast.error('"Hasta" no puede ser antes de "desde".'); return }
+    setBusy(true)
+    try {
+      const { error } = await supabase.from('permiso_staff').insert({
+        empresa_id: empresaId, usuario_id: usuarioId, tipo: nuevo.tipo, desde: nuevo.desde, hasta: nuevo.hasta,
+      })
+      if (error) throw error
+      setNuevo((s) => ({ ...s, desde: '', hasta: '' }))
+      qc.invalidateQueries({ queryKey: ['permisos-staff', usuarioId] })
+      qc.invalidateQueries({ queryKey: ['permisos-hoy'] })
+    } catch (err) {
+      toast.error('No se pudo registrar: ' + err.message)
+    } finally { setBusy(false) }
+  }
+
+  async function quitar(id) {
+    try {
+      const { error } = await supabase.from('permiso_staff').delete().eq('id', id)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['permisos-staff', usuarioId] })
+      qc.invalidateQueries({ queryKey: ['permisos-hoy'] })
+    } catch (err) {
+      toast.error('No se pudo quitar: ' + err.message)
+    }
+  }
+
+  return (
+    <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+      <div className="mb-2.5 text-[12px] font-extrabold text-muted">
+        🏖️ Permisos y vacaciones <span className="font-semibold">(mientras dure, no recibe avisos del gym)</span>
+      </div>
+      {permisos.isLoading && <div className="py-1 text-[12px] font-semibold text-faint">Cargando…</div>}
+      {(permisos.data || []).map((pe) => (
+        <div key={pe.id} className="mb-1.5 flex items-center justify-between rounded-[8px] bg-white px-3 py-2">
+          <span className="text-[12.5px] font-bold">
+            {TIPO_PERMISO[pe.tipo] || pe.tipo} · {fechaLocal(pe.desde).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })} → {fechaLocal(pe.hasta).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+          </span>
+          <button type="button" onClick={() => quitar(pe.id)} aria-label="Quitar permiso"
+            className="cursor-pointer rounded-[6px] border-none bg-transparent px-1.5 py-0.5 text-[12px] font-extrabold text-faint hover:text-red">✕</button>
+        </div>
+      ))}
+      {!permisos.isLoading && (permisos.data || []).length === 0 && (
+        <div className="mb-1.5 text-[12px] font-semibold text-faint">Sin permisos registrados.</div>
+      )}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <select value={nuevo.tipo} onChange={(e) => setNuevo((s) => ({ ...s, tipo: e.target.value }))}
+          className="cursor-pointer rounded-[8px] border border-line bg-white px-2 py-2 text-[12.5px] font-bold outline-none focus:border-orange">
+          {Object.entries(TIPO_PERMISO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <input type="date" value={nuevo.desde} onChange={(e) => setNuevo((s) => ({ ...s, desde: e.target.value }))}
+          className="rounded-[8px] border border-line bg-white px-2 py-[7px] text-[12.5px] font-bold outline-none focus:border-orange" />
+        <span className="text-[12px] font-bold text-faint">a</span>
+        <input type="date" value={nuevo.hasta} onChange={(e) => setNuevo((s) => ({ ...s, hasta: e.target.value }))}
+          className="rounded-[8px] border border-line bg-white px-2 py-[7px] text-[12.5px] font-bold outline-none focus:border-orange" />
+        <button type="button" onClick={agregar} disabled={busy}
+          className="cursor-pointer rounded-[8px] border-none bg-navy px-3 py-2 text-[12px] font-extrabold text-white hover:opacity-90 disabled:opacity-50">
+          {busy ? '…' : '+ Registrar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const qc = useQueryClient()
   const [f, setF] = useState({
@@ -255,6 +343,9 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
 
         {/* Horario semanal (turno_staff): lo que el colaborador VE en su app */}
         <HorarioSemanalEditor usuarioId={colaborador.id} empresaId={empresaId} />
+
+        {/* Permisos y vacaciones: excluyen de avisos mientras estén vigentes */}
+        <PermisosEditor usuarioId={colaborador.id} empresaId={empresaId} />
 
         {/* Meta diaria de venta: solo aplica a quien vende (admin/recepción).
             Guarda con su propio botón — no forma parte de "Guardar cambios"
@@ -652,7 +743,7 @@ function InvitarModal({ sedeId, onClose }) {
         <Campo label="DNI del colaborador" hint="8 dígitos = DNI (autocompleta su nombre del padrón). Opcional; útil para la planilla.">
           <input value={f.documento} onChange={set('documento')} className={inputCls} maxLength={12} inputMode="numeric" placeholder="44247191" />
         </Campo>
-        {verif?.buscando && <p className="-mt-1.5 text-[11.5px] font-bold text-faint">Verificando DNI en el padrón…</p>}
+        {verif?.buscando && <p className="-mt-1.5 animate-pulse rounded-[8px] bg-amber-50 px-3 py-1.5 text-[11.5px] font-extrabold text-amber-800">🔍 Verificando el DNI en el padrón…</p>}
         {(() => {
           const t = textoVerificacion(verif)
           if (!t) return null
@@ -686,6 +777,19 @@ function InvitarModal({ sedeId, onClose }) {
 export default function Personal() {
   const { sedeId, sedeNombre } = usePanel()
   const { rol, empresa } = useAuth()
+  // Permisos vigentes HOY para pintar el badge en la lista (map usuario -> permiso)
+  const permisosHoy = useQuery({
+    queryKey: ['permisos-hoy', empresa?.id],
+    enabled: !!empresa?.id,
+    queryFn: async () => {
+      const hoy = new Date().toISOString().slice(0, 10)
+      const { data, error } = await supabase.from('permiso_staff')
+        .select('usuario_id, tipo, hasta')
+        .eq('empresa_id', empresa.id).lte('desde', hoy).gte('hasta', hoy)
+      if (error) throw error
+      return new Map((data || []).map((pe) => [pe.usuario_id, pe]))
+    },
+  })
   const qc = useQueryClient()
   const [invitarOpen, setInvitarOpen] = useState(false)
   const [pagarA, setPagarA] = useState(null) // colaborador al que se le paga el sueldo
@@ -787,7 +891,14 @@ export default function Personal() {
                 <div className="flex items-center gap-2.5">
                   <Avatar ini={st.avatar_iniciales || iniciales(st.nombre)} bg={T.chipNavy} color={T.navy} size={34} fontSize={12} />
                   <div className="min-w-0">
-                    <div className="truncate text-[13.5px] font-extrabold">{st.nombre}</div>
+                    <div className="truncate text-[13.5px] font-extrabold">
+                      {st.nombre}
+                      {(() => {
+                        const pe = permisosHoy.data?.get(st.id)
+                        if (!pe) return null
+                        return <span className="ml-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">{(TIPO_PERMISO[pe.tipo] || pe.tipo)} hasta {fechaLocal(pe.hasta).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                      })()}
+                    </div>
                     {(st.banco || st.cuenta_banco) && (
                       <button onClick={() => copiar(st.cci || st.cuenta_banco, st.cci ? 'CCI' : 'Cuenta')}
                         title={`Clic para copiar ${st.cci ? 'el CCI' : 'la cuenta'}`}

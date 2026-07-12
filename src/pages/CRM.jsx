@@ -103,7 +103,7 @@ function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
         <Campo label="DNI (para verificar identidad)">
           <input value={f.documento} onChange={set('documento')} className={inputCls} maxLength={8} inputMode="numeric" />
         </Campo>
-        {verif?.buscando && <p className="-mt-2 text-[11.5px] font-bold text-faint">Verificando contra el padrón…</p>}
+        {verif?.buscando && <p className="-mt-2 animate-pulse rounded-[8px] bg-amber-50 px-3 py-1.5 text-[11.5px] font-extrabold text-amber-800">🔍 Verificando el DNI en el padrón…</p>}
         {(() => {
           const t = textoVerificacion(verif)
           if (!t) return null

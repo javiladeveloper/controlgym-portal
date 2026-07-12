@@ -283,6 +283,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
             <input autoFocus value={f.documento} onChange={(e) => setF((s) => ({ ...s, documento: limpiarDocumento(e.target.value) }))} maxLength={12} inputMode="numeric"
               placeholder="44247191" className={inputCls + ' text-center text-[18px] font-extrabold tracking-[3px]'} />
           </Campo>
+          {verif?.buscando && (
+            <p className="animate-pulse rounded-[8px] bg-amber-50 px-3 py-1.5 text-[11.5px] font-extrabold text-amber-800">
+              🔍 Buscando el DNI en el padrón — el nombre se llenará solo…
+            </p>
+          )}
           {dupSocio && (
             <div className="rounded-[10px] border border-orange/40 bg-orange/5 p-3.5">
               <div className="text-[12.5px] font-extrabold">
