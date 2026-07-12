@@ -142,74 +142,124 @@ function HorarioSemanalEditor({ usuarioId, empresaId }) {
 
 const TIPO_PERMISO = { vacaciones: '🏖️ Vacaciones', permiso: '📋 Permiso', descanso_medico: '🤒 Descanso médico' }
 
-// Permisos y vacaciones del colaborador. Mientras el rango está vigente, el
-// sistema lo excluye de la cascada de avisos (staff_disponible): a alguien de
-// vacaciones no le timbra "nuevo socio" ni "ayuda en sala".
-function PermisosEditor({ usuarioId, empresaId }) {
+// Vacaciones y permisos de TODO el equipo en un calendario mensual por
+// colores (pedido del owner: "un cuadro completo de todos los colaboradores").
+// Aquí también se registran/quitan — ya no viven dentro de Editar colaborador.
+// Mientras un permiso está vigente, ese colaborador no recibe avisos del gym.
+const COLOR_PERMISO = { vacaciones: '#F59E0B', permiso: '#3B82F6', descanso_medico: '#E24B4A' }
+
+function VacacionesModal({ staff, empresaId, onClose }) {
   const qc = useQueryClient()
+  const [mes, setMes] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  const y = mes.getFullYear(); const m = mes.getMonth()
+  const nDias = new Date(y, m + 1, 0).getDate()
+  const pad = (n) => String(n).padStart(2, '0')
+  const iniMes = `${y}-${pad(m + 1)}-01`
+  const finMes = `${y}-${pad(m + 1)}-${pad(nDias)}`
+  const hoyStr = new Date().toISOString().slice(0, 10)
+
   const permisos = useQuery({
-    queryKey: ['permisos-staff', usuarioId],
-    enabled: !!usuarioId && !!empresaId,
+    queryKey: ['permisos-mes', empresaId, iniMes],
+    enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase.from('permiso_staff')
-        .select('id, tipo, desde, hasta')
-        .eq('empresa_id', empresaId).eq('usuario_id', usuarioId)
-        .gte('hasta', new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)) // vigentes, futuros y el último mes
-        .order('desde', { ascending: false })
+        .select('id, usuario_id, tipo, desde, hasta')
+        .eq('empresa_id', empresaId)
+        .lte('desde', finMes).gte('hasta', iniMes)
+        .order('desde')
       if (error) throw error
       return data
     },
   })
-  const [nuevo, setNuevo] = useState({ tipo: 'vacaciones', desde: '', hasta: '' })
-  const [busy, setBusy] = useState(false)
 
-  async function agregar() {
+  // Filtros del cuadro (pedido: "filtro para saber de cada colaborador" y por tipo)
+  const [filtroUsuario, setFiltroUsuario] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+
+  // Conteo anual: cuántos días de vacaciones/permisos ha usado cada uno este año
+  const anio = new Date().getFullYear()
+  const permisosAnio = useQuery({
+    queryKey: ['permisos-anio', empresaId, anio],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('permiso_staff')
+        .select('usuario_id, tipo, desde, hasta')
+        .eq('empresa_id', empresaId)
+        .lte('desde', anio + '-12-31').gte('hasta', anio + '-01-01')
+      if (error) throw error
+      return data
+    },
+  })
+  // días por colaborador y tipo, recortados al año en curso
+  const diasAnio = new Map()
+  for (const pe of permisosAnio.data || []) {
+    const d1 = pe.desde < anio + '-01-01' ? new Date(anio, 0, 1) : fechaLocal(pe.desde)
+    const d2 = pe.hasta > anio + '-12-31' ? new Date(anio, 11, 31) : fechaLocal(pe.hasta)
+    const dias = Math.round((d2 - d1) / 864e5) + 1
+    const cur = diasAnio.get(pe.usuario_id) || { vacaciones: 0, permiso: 0, descanso_medico: 0 }
+    cur[pe.tipo] = (cur[pe.tipo] || 0) + Math.max(0, dias)
+    diasAnio.set(pe.usuario_id, cur)
+  }
+
+  const [nuevo, setNuevo] = useState({ usuario: '', tipo: 'vacaciones', desde: '', hasta: '' })
+  const [busy, setBusy] = useState(false)
+  const invalidar = () => {
+    qc.invalidateQueries({ queryKey: ['permisos-mes'] })
+    qc.invalidateQueries({ queryKey: ['permisos-hoy'] })
+    qc.invalidateQueries({ queryKey: ['permisos-anio'] }) // el conteo anual también cambia
+  }
+
+  async function registrar() {
+    if (!nuevo.usuario) { toast.error('Elige al colaborador.'); return }
     if (!nuevo.desde || !nuevo.hasta) { toast.error('Completa desde y hasta.'); return }
     if (nuevo.hasta < nuevo.desde) { toast.error('"Hasta" no puede ser antes de "desde".'); return }
     setBusy(true)
     try {
       const { error } = await supabase.from('permiso_staff').insert({
-        empresa_id: empresaId, usuario_id: usuarioId, tipo: nuevo.tipo, desde: nuevo.desde, hasta: nuevo.hasta,
+        empresa_id: empresaId, usuario_id: nuevo.usuario, tipo: nuevo.tipo, desde: nuevo.desde, hasta: nuevo.hasta,
       })
       if (error) throw error
       setNuevo((s) => ({ ...s, desde: '', hasta: '' }))
-      qc.invalidateQueries({ queryKey: ['permisos-staff', usuarioId] })
-      qc.invalidateQueries({ queryKey: ['permisos-hoy'] })
+      invalidar()
+      toast.ok('Registrado — mientras dure, no recibirá avisos del gym')
     } catch (err) {
       toast.error('No se pudo registrar: ' + err.message)
     } finally { setBusy(false) }
   }
 
-  async function quitar(id) {
-    try {
-      const { error } = await supabase.from('permiso_staff').delete().eq('id', id)
-      if (error) throw error
-      qc.invalidateQueries({ queryKey: ['permisos-staff', usuarioId] })
-      qc.invalidateQueries({ queryKey: ['permisos-hoy'] })
-    } catch (err) {
-      toast.error('No se pudo quitar: ' + err.message)
-    }
+  async function quitar(pe) {
+    const { error } = await supabase.from('permiso_staff').delete().eq('id', pe.id)
+    if (error) { toast.error('No se pudo quitar: ' + error.message); return }
+    invalidar()
+  }
+
+  const porUsuario = new Map()
+  for (const pe of permisos.data || []) {
+    if (!porUsuario.has(pe.usuario_id)) porUsuario.set(pe.usuario_id, [])
+    porUsuario.get(pe.usuario_id).push(pe)
+  }
+  const permisoEnDia = (usuarioId, diaStr) =>
+    (porUsuario.get(usuarioId) || []).find((pe) => pe.desde <= diaStr && diaStr <= pe.hasta)
+
+  const nombreMes = mes.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+
+  const staffVisible = staff.filter((st) => !filtroUsuario || st.id === filtroUsuario)
+  const permisosVisibles = (permisos.data || []).filter((pe) =>
+    (!filtroUsuario || pe.usuario_id === filtroUsuario) && (!filtroTipo || pe.tipo === filtroTipo))
+  const permisoEnDiaF = (usuarioId, diaStr) => {
+    const pe = permisoEnDia(usuarioId, diaStr)
+    return pe && (!filtroTipo || pe.tipo === filtroTipo) ? pe : null
   }
 
   return (
-    <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
-      <div className="mb-2.5 text-[12px] font-extrabold text-muted">
-        🏖️ Permisos y vacaciones <span className="font-semibold">(mientras dure, no recibe avisos del gym)</span>
-      </div>
-      {permisos.isLoading && <div className="py-1 text-[12px] font-semibold text-faint">Cargando…</div>}
-      {(permisos.data || []).map((pe) => (
-        <div key={pe.id} className="mb-1.5 flex items-center justify-between rounded-[8px] bg-white px-3 py-2">
-          <span className="text-[12.5px] font-bold">
-            {TIPO_PERMISO[pe.tipo] || pe.tipo} · {fechaLocal(pe.desde).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })} → {fechaLocal(pe.hasta).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
-          </span>
-          <button type="button" onClick={() => quitar(pe.id)} aria-label="Quitar permiso"
-            className="cursor-pointer rounded-[6px] border-none bg-transparent px-1.5 py-0.5 text-[12px] font-extrabold text-faint hover:text-red">✕</button>
-        </div>
-      ))}
-      {!permisos.isLoading && (permisos.data || []).length === 0 && (
-        <div className="mb-1.5 text-[12px] font-semibold text-faint">Sin permisos registrados.</div>
-      )}
-      <div className="flex flex-wrap items-center gap-1.5">
+    <Modal title="🗓️ Vacaciones y permisos" subtitle="El cuadro del equipo — mientras dure el permiso, no recibe avisos del gym" onClose={onClose} width={780}>
+      {/* Registrar */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+        <select value={nuevo.usuario} onChange={(e) => setNuevo((s) => ({ ...s, usuario: e.target.value }))}
+          className="min-w-[150px] cursor-pointer rounded-[8px] border border-line bg-white px-2 py-2 text-[12.5px] font-bold outline-none focus:border-orange">
+          <option value="">Colaborador…</option>
+          {staff.map((st) => <option key={st.id} value={st.id}>{st.nombre}</option>)}
+        </select>
         <select value={nuevo.tipo} onChange={(e) => setNuevo((s) => ({ ...s, tipo: e.target.value }))}
           className="cursor-pointer rounded-[8px] border border-line bg-white px-2 py-2 text-[12.5px] font-bold outline-none focus:border-orange">
           {Object.entries(TIPO_PERMISO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -219,12 +269,114 @@ function PermisosEditor({ usuarioId, empresaId }) {
         <span className="text-[12px] font-bold text-faint">a</span>
         <input type="date" value={nuevo.hasta} onChange={(e) => setNuevo((s) => ({ ...s, hasta: e.target.value }))}
           className="rounded-[8px] border border-line bg-white px-2 py-[7px] text-[12.5px] font-bold outline-none focus:border-orange" />
-        <button type="button" onClick={agregar} disabled={busy}
-          className="cursor-pointer rounded-[8px] border-none bg-navy px-3 py-2 text-[12px] font-extrabold text-white hover:opacity-90 disabled:opacity-50">
+        <button type="button" onClick={registrar} disabled={busy}
+          className="cursor-pointer rounded-[8px] border-none bg-orange px-3.5 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
           {busy ? '…' : '+ Registrar'}
         </button>
       </div>
-    </div>
+
+      {/* Navegación de mes + leyenda */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setMes(new Date(y, m - 1, 1))} className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[13px] font-extrabold text-muted hover:border-orange">‹</button>
+          <span className="min-w-[150px] text-center text-[13.5px] font-extrabold capitalize">{nombreMes}</span>
+          <button onClick={() => setMes(new Date(y, m + 1, 1))} className="cursor-pointer rounded-[8px] border border-line bg-white px-2.5 py-1 text-[13px] font-extrabold text-muted hover:border-orange">›</button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <select value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)}
+            className="cursor-pointer rounded-[8px] border border-line bg-white px-2 py-1.5 text-[11.5px] font-bold outline-none focus:border-orange">
+            <option value="">Todos los colaboradores</option>
+            {staff.map((st) => <option key={st.id} value={st.id}>{st.nombre}</option>)}
+          </select>
+          <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}
+            className="cursor-pointer rounded-[8px] border border-line bg-white px-2 py-1.5 text-[11.5px] font-bold outline-none focus:border-orange">
+            <option value="">Todos los tipos</option>
+            {Object.entries(TIPO_PERMISO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] font-bold text-muted">
+          {Object.entries(TIPO_PERMISO).map(([k, v]) => (
+            <span key={k} className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: COLOR_PERMISO[k] }} />{v.replace(/^\S+ /, '')}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Cuadro: filas = colaboradores, columnas = días del mes */}
+      <div className="mt-2 overflow-x-auto">
+        <div className="min-w-[620px]">
+          <div className="flex items-center">
+            <div className="w-[130px] flex-shrink-0" />
+            {Array.from({ length: nDias }, (_, i) => {
+              const dia = `${y}-${pad(m + 1)}-${pad(i + 1)}`
+              return (
+                <div key={i} className={`flex-1 pb-1 text-center text-[9.5px] font-extrabold ${dia === hoyStr ? 'text-orange' : 'text-faint'}`}>
+                  {i + 1}
+                </div>
+              )
+            })}
+          </div>
+          {staffVisible.map((st) => (
+            <div key={st.id} className="flex items-center border-t border-line2">
+              <div className="w-[130px] flex-shrink-0 truncate py-1.5 pr-2 text-[11.5px] font-bold">{st.nombre}</div>
+              {Array.from({ length: nDias }, (_, i) => {
+                const dia = `${y}-${pad(m + 1)}-${pad(i + 1)}`
+                const pe = permisoEnDiaF(st.id, dia)
+                return (
+                  <div key={i} className={`h-5 flex-1 ${dia === hoyStr ? 'bg-orange-50' : ''}`}
+                    title={pe ? `${st.nombre} · ${TIPO_PERMISO[pe.tipo]} (${pe.desde} → ${pe.hasta})` : ''}>
+                    {pe && <div className="h-full w-full" style={{ background: COLOR_PERMISO[pe.tipo] || '#999', opacity: 0.9 }} />}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Detalle del mes con quitar */}
+      {permisos.isLoading && <div className="mt-3"><LoadingState variant="table" rows={2} /></div>}
+      {permisosVisibles.length > 0 && (
+        <div className="mt-3 border-t border-line2 pt-2">
+          {permisosVisibles.map((pe) => {
+            const st = staff.find((x) => x.id === pe.usuario_id)
+            return (
+              <div key={pe.id} className="flex items-center justify-between py-1.5 text-[12.5px]">
+                <span className="font-bold">
+                  <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: COLOR_PERMISO[pe.tipo] }} />
+                  {st?.nombre || '—'} · {TIPO_PERMISO[pe.tipo]} · {fechaLocal(pe.desde).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })} → {fechaLocal(pe.hasta).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                </span>
+                <button onClick={() => quitar(pe)} aria-label="Quitar"
+                  className="cursor-pointer rounded-[6px] border-none bg-transparent px-1.5 text-[12px] font-extrabold text-faint hover:text-red">✕</button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {!permisos.isLoading && permisosVisibles.length === 0 && (
+        <div className="mt-3 text-[12.5px] font-semibold text-faint">Nadie tiene permisos ni vacaciones este mes.</div>
+      )}
+
+      {/* Conteo del año: cuántos días ha usado cada colaborador */}
+      <div className="mt-4 rounded-[10px] bg-surface p-3">
+        <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Días usados en {anio}</div>
+        {staffVisible.filter((st) => diasAnio.has(st.id)).map((st) => {
+          const c = diasAnio.get(st.id)
+          return (
+            <div key={st.id} className="flex items-center justify-between py-1 text-[12.5px]">
+              <span className="font-bold">{st.nombre}</span>
+              <span className="font-semibold text-muted">
+                {c.vacaciones > 0 && <span className="mr-3">🏖️ {c.vacaciones} día{c.vacaciones !== 1 ? 's' : ''}</span>}
+                {c.permiso > 0 && <span className="mr-3">📋 {c.permiso} día{c.permiso !== 1 ? 's' : ''}</span>}
+                {c.descanso_medico > 0 && <span>🤒 {c.descanso_medico} día{c.descanso_medico !== 1 ? 's' : ''}</span>}
+              </span>
+            </div>
+          )
+        })}
+        {staffVisible.filter((st) => diasAnio.has(st.id)).length === 0 && (
+          <div className="text-[12px] font-semibold text-faint">Nadie ha usado días este año.</div>
+        )}
+      </div>
+    </Modal>
   )
 }
 
@@ -259,7 +411,9 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
       setMetaLeadsMes(metaActual.data.leadsMes > 0 ? String(metaActual.data.leadsMes) : '')
     }
   }, [metaActual.data])
-  const puedeVender = f.rol === 'admin' || f.rol === 'recepcion' || f.rol === 'comunicador'
+  // Metas SOLO para comunicadores (decisión del owner): los admin/recepción
+  // no son fuerza de venta — sus metas ensuciaban el dashboard del equipo.
+  const puedeVender = f.rol === 'comunicador'
 
   async function guardarMetaDiaria() {
     try {
@@ -343,9 +497,6 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
 
         {/* Horario semanal (turno_staff): lo que el colaborador VE en su app */}
         <HorarioSemanalEditor usuarioId={colaborador.id} empresaId={empresaId} />
-
-        {/* Permisos y vacaciones: excluyen de avisos mientras estén vigentes */}
-        <PermisosEditor usuarioId={colaborador.id} empresaId={empresaId} />
 
         {/* Meta diaria de venta: solo aplica a quien vende (admin/recepción).
             Guarda con su propio botón — no forma parte de "Guardar cambios"
@@ -795,6 +946,7 @@ export default function Personal() {
   const [pagarA, setPagarA] = useState(null) // colaborador al que se le paga el sueldo
   const [editarCol, setEditarCol] = useState(null) // colaborador en edición
   const [planillaOpen, setPlanillaOpen] = useState(false)
+  const [vacacionesOpen, setVacacionesOpen] = useState(false)
   const { data, isLoading, error, refetch } = usePersonal(sedeId)
   const invitaciones = useInvitaciones()
   const pagosMes = usePagosPlanilla()
@@ -857,6 +1009,10 @@ export default function Personal() {
                 💵 Pagar planilla del mes ({pendientesPlanilla.length})
               </button>
             )}
+            <button onClick={() => setVacacionesOpen(true)}
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-[16px] py-[11px] text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
+              🗓️ Vacaciones y permisos
+            </button>
             <button onClick={() => setInvitarOpen(true)}
               className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Agregar colaborador</button>
           </div>
@@ -864,6 +1020,7 @@ export default function Personal() {
       </div>
 
       {invitarOpen && <InvitarModal sedeId={sedeId} onClose={() => setInvitarOpen(false)} />}
+      {vacacionesOpen && <VacacionesModal staff={data || []} empresaId={empresa?.id} onClose={() => setVacacionesOpen(false)} />}
       {pagarA && <PagarSueldoModal colaborador={pagarA} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPagarA(null)} />}
       {planillaOpen && <PagarPlanillaModal pendientes={pendientesPlanilla} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setPlanillaOpen(false)} />}
       {editarCol && <EditarColaboradorModal colaborador={editarCol} sedeId={sedeId} empresaId={empresa?.id} onClose={() => setEditarCol(null)} />}
