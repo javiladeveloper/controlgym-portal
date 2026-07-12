@@ -11,6 +11,7 @@ import { useFinanzas } from '../hooks/useOperaciones.js'
 import { useRegistrarGastoCaja, useHistorialCaja } from '../hooks/useCaja.js'
 import { money, mismoMesAnio, mismoDia, fechaLocal } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import { metodoPagoLabel } from '../lib/pagos.js'
 
 const METODOS_GASTO = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -123,16 +124,35 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
     queryKey: ['caja', sedeId, hoy],
     enabled: !!sedeId,
     queryFn: async () => {
+      // La caja ABIERTA manda aunque sea de un día anterior (quedó sin cerrar:
+      // antes era invisible porque solo se consultaba fecha=hoy — "caja
+      // zombie" que además absorbía los gastos nuevos). Si no hay abierta,
+      // se muestra la de hoy (cerrada o inexistente).
       const { data, error } = await supabase.from('caja')
-        .select('*').eq('sede_id', sedeId).eq('fecha', hoy).maybeSingle()
+        .select('*').eq('sede_id', sedeId)
+        .or(`estado.eq.abierta,fecha.eq.${hoy}`)
+        .order('fecha', { ascending: false })
       if (error) throw error
-      return data
+      return (data || []).find((x) => x.estado === 'abierta') || (data || []).find((x) => x.fecha === hoy) || null
     },
   })
 
-  const esHoy = (m) => mismoDia(m.fecha, new Date())
+  const cajaVieja = caja.data && caja.data.estado === 'abierta' && caja.data.fecha !== hoy
+  // Los números se calculan sobre el DÍA DE LA CAJA: si quedó abierta de ayer,
+  // su cuadre usa los movimientos de ESE día, no los de hoy.
+  const fechaCaja = caja.data ? fechaLocal(caja.data.fecha) : new Date()
+  const esHoy = (m) => mismoDia(m.fecha, fechaCaja)
   const efectivoHoy = movs.filter((m) => esHoy(m) && (m.metodo_pago === 'efectivo' || !m.metodo_pago))
     .reduce((n, m) => n + (m.tipo === 'ingreso' ? 1 : -1) * Number(m.monto || 0), 0)
+  // Desglose de HOY por método: el arqueo solo mide efectivo, pero para
+  // cuadrar el día completo recepción compara Yape/tarjeta/etc. contra el
+  // celular o el POS. Neto = ingresos - gastos de cada método.
+  const porMetodo = movs.filter(esHoy).reduce((acc, m) => {
+    const k = m.metodo_pago || 'efectivo'
+    acc[k] = (acc[k] || 0) + (m.tipo === 'ingreso' ? 1 : -1) * Number(m.monto || 0)
+    return acc
+  }, {})
+  const metodosNoEfectivo = Object.entries(porMetodo).filter(([k, v]) => k !== 'efectivo' && Math.abs(v) >= 0.01)
   const c = caja.data
   // Caja abierta: el esperado se calcula en vivo (saldo_inicial + efectivo del
   // día). Caja cerrada: se usa el valor CONGELADO al cierre (efectivo_esperado),
@@ -224,9 +244,15 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
           <div className="text-[14.5px] font-extrabold">
             🧰 Caja del día {c?.estado === 'cerrada' ? '· cerrada ✓' : c ? '· abierta' : ''}
           </div>
-          <div className="mt-0.5 text-[12px] font-semibold text-muted">
-            {new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} · solo efectivo (Yape/tarjeta cuadran solos)
-          </div>
+          {cajaVieja ? (
+            <div className="mt-0.5 text-[12px] font-extrabold text-amber-700">
+              ⚠️ Esta caja es del {fechaCaja.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} y quedó abierta — ciérrala (cuenta el efectivo de ese día) para poder abrir la de hoy.
+            </div>
+          ) : (
+            <div className="mt-0.5 text-[12px] font-semibold text-muted">
+              {new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} · solo efectivo (Yape/tarjeta cuadran solos)
+            </div>
+          )}
         </div>
 
         {!c && (
@@ -242,6 +268,17 @@ function CajaDelDia({ sedeId, empresaId, usuarioId, movs, moneda, esAdmin }) {
         )}
       </div>
 
+      {c && metodosNoEfectivo.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line2 pt-3">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">Hoy por método</span>
+          {metodosNoEfectivo.map(([k, v]) => (
+            <span key={k} className="rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-extrabold">
+              {metodoPagoLabel(k)}: {money(v, moneda)}
+            </span>
+          ))}
+          <span className="text-[10.5px] font-semibold text-faint">— cuádralos contra el celular/POS; el arqueo de billetes solo mide efectivo</span>
+        </div>
+      )}
       {c && (
         <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line2 pt-3">
           <div><span className="text-[11px] font-extrabold uppercase text-muted">Fondo inicial</span>
@@ -329,40 +366,62 @@ function TablaHistorialCaja({ sedeId, moneda }) {
               <div>Fecha</div><div className="text-right">Fondo</div><div className="text-right">Esperado</div>
               <div className="text-right">Contado</div><div className="text-right">Diferencia</div><div>Abrió / cerró</div>
             </div>
-            {historial.data.map((h) => {
-              // Cierres previos a la columna efectivo_esperado no tienen contra
-              // qué cuadrar: se muestra '—' sin badge (un esperado=0 inventaría
-              // un "sobraron" falso por todo el contado).
-              const sinEsperado = h.efectivo_esperado == null
-              const esperado = Number(h.efectivo_esperado ?? 0)
-              const contado = Number(h.saldo_final ?? 0)
-              const dif = contado - esperado
-              const cuadro = Math.abs(dif) < 0.01
-              return (
-                <div key={h.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] items-center gap-3 border-b border-line2 py-2.5">
-                  <div className="text-[12.5px] font-bold">
-                    {fechaLocal(h.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
-                  </div>
-                  <div className="text-right text-[12.5px] font-extrabold">{money(h.saldo_inicial, moneda)}</div>
-                  <div className="text-right text-[12.5px] font-extrabold">{sinEsperado ? '—' : money(esperado, moneda)}</div>
-                  <div className="text-right text-[12.5px] font-extrabold">{money(contado, moneda)}</div>
-                  <div className="text-right">
-                    {sinEsperado ? <span className="text-[11px] font-bold text-faint">—</span> : (
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cuadro ? 'bg-green-50 text-green-600' : 'bg-red/10 text-red'}`}>
-                        {cuadro ? 'cuadró ✓' : (dif > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(dif), moneda)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11.5px] font-semibold text-muted">
-                    {h.abierta?.nombre || '—'} / {h.cerrada?.nombre || '—'}
-                  </div>
-                </div>
-              )
-            })}
+            {historial.data.map((h) => <FilaHistorialCaja key={h.id} h={h} moneda={moneda} />)}
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+// Fila de un cierre. Si guardó arqueo, clic la expande y muestra el conteo por
+// denominación (pendiente conocido: el detalle se guardaba pero no se veía).
+function FilaHistorialCaja({ h, moneda }) {
+  const [verArqueo, setVerArqueo] = useState(false)
+  // Cierres previos a la columna efectivo_esperado no tienen contra
+  // qué cuadrar: se muestra '—' sin badge (un esperado=0 inventaría
+  // un "sobraron" falso por todo el contado).
+  const sinEsperado = h.efectivo_esperado == null
+  const esperado = Number(h.efectivo_esperado ?? 0)
+  const contado = Number(h.saldo_final ?? 0)
+  const dif = contado - esperado
+  const cuadro = Math.abs(dif) < 0.01
+  const arq = h.arqueo_detalle
+  return (
+    <>
+      <div onClick={() => arq && setVerArqueo((v) => !v)}
+        className={`grid grid-cols-[1fr_1fr_1fr_1fr_1.3fr_1.3fr] items-center gap-3 border-b border-line2 py-2.5 ${arq ? 'cursor-pointer hover:bg-[#FAFBFC]' : ''}`}
+        title={arq ? 'Clic para ver el conteo de billetes del cierre' : undefined}>
+        <div className="text-[12.5px] font-bold">
+          {fechaLocal(h.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })}
+          {arq && <span className="ml-1.5 text-[10.5px] font-extrabold text-faint">🧮{verArqueo ? ' ▴' : ' ▾'}</span>}
+        </div>
+        <div className="text-right text-[12.5px] font-extrabold">{money(h.saldo_inicial, moneda)}</div>
+        <div className="text-right text-[12.5px] font-extrabold">{sinEsperado ? '—' : money(esperado, moneda)}</div>
+        <div className="text-right text-[12.5px] font-extrabold">{money(contado, moneda)}</div>
+        <div className="text-right">
+          {sinEsperado ? <span className="text-[11px] font-bold text-faint">—</span> : (
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cuadro ? 'bg-green-50 text-green-600' : 'bg-red/10 text-red'}`}>
+              {cuadro ? 'cuadró ✓' : (dif > 0 ? 'sobraron ' : 'faltaron ') + money(Math.abs(dif), moneda)}
+            </span>
+          )}
+        </div>
+        <div className="text-[11.5px] font-semibold text-muted">
+          {h.abierta?.nombre || '—'} / {h.cerrada?.nombre || '—'}
+        </div>
+      </div>
+      {verArqueo && arq && (
+        <div className="border-b border-line2 bg-[#FAFBFC] px-2 py-2 text-[12px] font-bold">
+          <span className="mr-2 text-[10.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Arqueo</span>
+          {DENOMINACIONES.filter((d) => Number(arq[d.key]) > 0).map((d) => (
+            <span key={d.key} className="mr-2.5 whitespace-nowrap">{arq[d.key]}× {d.label}</span>
+          ))}
+          <span className="text-muted">
+            = {money(DENOMINACIONES.reduce((n, d) => n + (Number(arq[d.key]) || 0) * d.valor, 0), moneda)} contados
+          </span>
+        </div>
+      )}
+    </>
   )
 }
 
