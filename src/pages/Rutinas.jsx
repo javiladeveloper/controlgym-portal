@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Card, Badge } from '../components/ui.jsx'
 import { TargetIcon, CheckIcon } from '../components/icons.jsx'
@@ -320,12 +320,18 @@ function RutinasImpl() {
   const { sedeId } = usePanel()
   const socios = useSociosSelect(sedeId)
   const [socioId, setSocioId] = useState(location.state?.socioId ?? null)
+  // Si el socio llegó por navegación desde la ficha (botón "Generar rutina y
+  // dieta"), el efecto de abajo NO debe reencauzar la primera vez: la lista
+  // sede-scoped puede tardar en cargar o el socio puede ser de otra sede, y
+  // pisarlo dejaría la ficha en blanco justo cuando el usuario vino a verla.
+  const vinoDeNavegacion = useRef(!!location.state?.socioId)
 
   // Al cargar socios, seleccionar el primero si no hay uno. Y si el socio
   // seleccionado ya no existe en la sede actual (cambio de sede), reencauzar
   // al primero en vez de quedar con la ficha en blanco apuntando a un id ausente.
   useEffect(() => {
     if (!socios.data?.length) return
+    if (vinoDeNavegacion.current) { vinoDeNavegacion.current = false; return }
     const existe = socioId && socios.data.some((s) => s.id === socioId)
     if (!existe) setSocioId(socios.data[0].id)
   }, [socios.data, socioId])
@@ -334,7 +340,14 @@ function RutinasImpl() {
   // Cada especialista lo suyo: el nutricionista no toca la rutina;
   // entrenador y admin ven ambas (gyms sin nutricionista)
   const veRutina = rol !== 'nutricionista'
+  // Si el socio vino por navegación y aún no está en la lista sede-scoped
+  // (otra sede, o la lista no cargó todavía), usamos un socio "de vista"
+  // mínimo con lo que trajo la navegación: el nombre se ve y las queries de
+  // rutina/dieta son socio-scoped (no dependen de la sede), así que funcionan igual.
   const socio = socios.data?.find((s) => s.id === socioId)
+    || (socioId && socioId === location.state?.socioId
+      ? { id: socioId, nombre: location.state?.socio || 'Socio', codigo: null, talla_m: null, peso_kg: null, objetivo: null }
+      : undefined)
   const dieta = useDietaSocio(socioId)
   const enviar = useEnviarPlan(socioId)
   const rutina = useRutinaSocio(socioId)

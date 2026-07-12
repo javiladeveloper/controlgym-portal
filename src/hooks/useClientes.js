@@ -110,6 +110,24 @@ export function useHistorialPagos(socioId) {
   })
 }
 
+// Medidas corporales del socio (peso/talla/grasa a lo largo del tiempo), para
+// el gráfico de progreso. Se registran desde la app o al inscribir/renovar.
+export function useMedidasSocio(socioId) {
+  return useQuery({
+    queryKey: ['medidas-socio', socioId],
+    enabled: !!socioId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('socio_medida')
+        .select('fecha, peso_kg, talla_m, grasa_pct')
+        .eq('socio_id', socioId)
+        .order('fecha')
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
 export function useAutorizarMenor(socioId) {
   const qc = useQueryClient()
   return useMutation({

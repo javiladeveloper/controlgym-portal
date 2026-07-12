@@ -7,7 +7,7 @@ import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
-import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos } from '../hooks/useClientes.js'
+import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { toast } from '../lib/toast.js'
 import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta, money } from '../lib/uiHelpers.js'
@@ -113,6 +113,7 @@ function Ficha({ socioId, onBack, onVerSocio }) {
       )}
 
       <div className="mt-[18px] grid grid-cols-1 gap-[15px] lg:grid-cols-2">
+        <div className="flex flex-col gap-[15px]">
         <Card className="p-[19px]">
           <div className="mb-3 text-[14px] font-extrabold">Datos del socio</div>
           <div className="grid grid-cols-2 gap-[13px] sm:grid-cols-2">
@@ -154,6 +155,9 @@ function Ficha({ socioId, onBack, onVerSocio }) {
             )}
           </div>
         </Card>
+
+        <MembresiaActual ficha={ficha} moneda={moneda} />
+        </div>
 
         <Card className="p-[19px]">
           <div className="text-[14px] font-extrabold">Constancia (últimas 8 semanas)</div>
@@ -202,8 +206,116 @@ function Ficha({ socioId, onBack, onVerSocio }) {
         </Card>
       </div>
 
+      {(ficha.membresia?.length || 0) > 1 && <MembresiasAnteriores membresias={ficha.membresia.slice(1)} moneda={moneda} />}
       <HistorialPagos socioId={socioId} moneda={moneda} />
+      <Progreso socioId={socioId} talla={ficha.talla_m} />
     </div>
+  )
+}
+
+// Días restantes de la membresía (o hace cuántos venció). null si no hay fecha.
+function diasRestantes(fechaFin) {
+  const fin = fechaLocal(fechaFin)
+  if (!fin) return null
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  return Math.round((fin - hoy) / 86400000)
+}
+
+// Card "Membresía actual": la más reciente (ficha.membresia[0]), con estado
+// vivo, vigencia, días restantes y saldo pendiente si lo hay.
+function MembresiaActual({ ficha, moneda }) {
+  const mem = ficha.membresia?.[0]
+  if (!mem) {
+    return (
+      <Card className="p-[19px]">
+        <div className="mb-3 text-[14px] font-extrabold">Membresía actual</div>
+        <EmptyState message="Sin membresía — inscríbelo desde Membresías" />
+      </Card>
+    )
+  }
+  const st = estadoBadge(estadoMembresiaVivo(mem) || mem.estado)
+  const dias = diasRestantes(mem.fecha_fin)
+  const totalDebido = Number(mem.precio_pagado || 0) + Number(mem.matricula_pagada || 0)
+  const pagado = Number(mem.monto_pagado || 0)
+  const saldo = Math.max(0, totalDebido - pagado)
+  return (
+    <Card className="p-[19px]">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="text-[14px] font-extrabold">Membresía actual</div>
+        <Badge bg={st.bg} color={st.color}>{st.label}</Badge>
+      </div>
+      <div className="grid grid-cols-2 gap-[13px]">
+        <div className="col-span-2">
+          <FieldLabel>Plan</FieldLabel>
+          <div className="mt-[3px] text-[14.5px] font-extrabold">{mem.plan?.nombre || '—'}</div>
+        </div>
+        <div className="col-span-2">
+          <FieldLabel>Vigencia</FieldLabel>
+          <div className="mt-[3px] text-[13.5px] font-extrabold">
+            {fechaLocal(mem.fecha_inicio) ? fechaCorta(mem.fecha_inicio) : '—'} → {fechaLocal(mem.fecha_fin) ? fechaCorta(mem.fecha_fin) : '—'}
+          </div>
+          {dias !== null && (
+            <div className={`mt-0.5 text-[12px] font-bold ${dias < 0 ? 'text-red' : dias <= 7 ? 'text-amber-600' : 'text-muted'}`}>
+              {dias < 0 ? `Venció hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}` : dias === 0 ? 'Vence hoy' : `${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}`}
+            </div>
+          )}
+        </div>
+        <div className="col-span-2">
+          <FieldLabel>Pagado</FieldLabel>
+          <div className="mt-[3px] text-[14.5px] font-extrabold">
+            {money(pagado, moneda)} <span className="text-[12px] font-bold text-muted">de {money(totalDebido, moneda)}</span>
+          </div>
+          {saldo > 0 && (
+            <div className="mt-1 inline-block rounded-[7px] bg-amber-50 px-2 py-[3px] text-[11.5px] font-extrabold text-amber-700">
+              Saldo pendiente: {money(saldo, moneda)}
+            </div>
+          )}
+        </div>
+        {mem.promocion && (
+          <div className="col-span-2">
+            <FieldLabel>Promo</FieldLabel>
+            <div className="mt-[3px] text-[13px] font-extrabold">🎁 {mem.promocion.nombre}</div>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+// Card colapsable con las membresías anteriores (todas menos la vigente).
+// Mismo patrón que HistorialPagos: colapsada por defecto.
+function MembresiasAnteriores({ membresias, moneda }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-[15px] p-[19px]">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent p-0 text-left">
+        <div className="text-[14.5px] font-extrabold">📋 Membresías anteriores</div>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : `Ver ${membresias.length} anterior${membresias.length === 1 ? '' : 'es'} ▼`}</span>
+      </button>
+      {abierto && (
+        <div className="mt-3.5 border-t border-line2 pt-3.5">
+          <div className="overflow-x-auto">
+            <div className="min-w-[560px]">
+              <div className="grid grid-cols-[1.6fr_1.4fr_1fr_1fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+                <div>Plan</div><div>Vigencia</div><div>Estado</div><div className="text-right">Pagado</div>
+              </div>
+              {membresias.map((m) => {
+                const st = estadoBadge(m.estado)
+                return (
+                  <div key={m.id} className="grid grid-cols-[1.6fr_1.4fr_1fr_1fr] items-center gap-3 border-b border-line2 py-2.5">
+                    <div className="truncate text-[12.5px] font-bold">{m.plan?.nombre || '—'}</div>
+                    <div className="text-[12px] font-semibold text-muted">{fechaCorta(m.fecha_inicio)} → {fechaCorta(m.fecha_fin)}</div>
+                    <div><Badge bg={st.bg} color={st.color} className="!text-[10.5px]">{st.label}</Badge></div>
+                    <div className="text-right text-[12.5px] font-extrabold">{money(m.monto_pagado, moneda)}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -407,6 +519,93 @@ function HistorialPagos({ socioId, moneda }) {
         <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver pagos ▼'}</span>
       </button>
       {abierto && <TablaHistorialPagos socioId={socioId} moneda={moneda} />}
+    </Card>
+  )
+}
+
+// Contenido del progreso (peso/IMC en el tiempo). Sub-componente aparte para
+// que useMedidasSocio solo se monte al expandir la card, igual que el patrón
+// de historial de pagos.
+function TablaProgreso({ socioId, talla }) {
+  const medidas = useMedidasSocio(socioId)
+  const regs = medidas.data || []
+  if (medidas.isLoading) return <div className="mt-3.5 border-t border-line2 pt-3.5"><LoadingState variant="table" rows={2} /></div>
+  if (medidas.isError) return <div className="mt-3.5 border-t border-line2 pt-3.5"><ErrorState error={medidas.error} onRetry={medidas.refetch} /></div>
+  if (regs.length === 0) {
+    return (
+      <div className="mt-3.5 border-t border-line2 pt-3.5">
+        <EmptyState message="Aún no hay medidas registradas — se registran desde la app o al inscribir" />
+      </div>
+    )
+  }
+  const primero = regs[0]
+  const ultimo = regs[regs.length - 1]
+  const deltaPeso = ultimo.peso_kg != null && primero.peso_kg != null ? Number(ultimo.peso_kg) - Number(primero.peso_kg) : null
+  const pesos = regs.map((r) => Number(r.peso_kg) || 0)
+  const maxPeso = Math.max(1, ...pesos)
+  const minPeso = Math.min(...pesos.filter((p) => p > 0))
+
+  return (
+    <div className="mt-3.5 border-t border-line2 pt-3.5">
+      {deltaPeso !== null && (
+        <div className="mb-3.5 text-[13px] font-extrabold">
+          Peso: {primero.peso_kg} → {ultimo.peso_kg} kg{' '}
+          <span className={deltaPeso === 0 ? 'text-muted' : deltaPeso < 0 ? 'text-green-600' : 'text-amber-600'}>
+            ({deltaPeso > 0 ? '+' : ''}{deltaPeso.toFixed(1)} kg)
+          </span>
+        </div>
+      )}
+
+      {/* Mini barras de peso por registro, mismo patrón visual que la
+          constancia (divs con altura relativa al máximo). */}
+      <div className="mb-4 flex h-[64px] items-stretch gap-1.5">
+        {regs.map((r, i) => {
+          const p = Number(r.peso_kg) || 0
+          const rango = Math.max(1, maxPeso - minPeso)
+          const alto = p > 0 ? 25 + Math.round(((p - minPeso) / rango) * 75) : 2
+          return (
+            <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1" title={`${p || '—'} kg`}>
+              <div className="w-full rounded-t-[4px]" style={{ height: `${alto}%`, minHeight: 2, background: i === regs.length - 1 ? '#FF6B35' : '#1D9E75' }} />
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="overflow-x-auto">
+        <div className="min-w-[480px]">
+          <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-3 border-b border-line2 pb-2 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
+            <div>Fecha</div><div>Peso</div><div>Talla</div><div>IMC</div>
+          </div>
+          {[...regs].reverse().map((r, i) => {
+            const t = r.talla_m || talla
+            const imc = imcDe(t, r.peso_kg)
+            return (
+              <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr] items-center gap-3 border-b border-line2 py-2.5">
+                <div className="text-[12.5px] font-bold">{fechaCorta(r.fecha)}</div>
+                <div className="text-[12.5px] font-semibold">{r.peso_kg ? `${r.peso_kg} kg` : '—'}</div>
+                <div className="text-[12.5px] font-semibold">{t ? `${t} m` : '—'}</div>
+                <div className="text-[12.5px] font-extrabold">{imc ? `${imc.valor} · ${imc.cat}` : '—'}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Card colapsable de progreso corporal. Colapsada por defecto; el hook de
+// medidas solo se monta al expandir (mismo patrón que Historial de pagos).
+function Progreso({ socioId, talla }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <Card className="mt-[15px] p-[19px]">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent p-0 text-left">
+        <div className="text-[14.5px] font-extrabold">📈 Progreso</div>
+        <span className="text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver progreso ▼'}</span>
+      </button>
+      {abierto && <TablaProgreso socioId={socioId} talla={talla} />}
     </Card>
   )
 }
