@@ -516,9 +516,12 @@ export default function CRM() {
           <p className="mt-0.5 text-[13px] font-semibold text-muted">Embudo de captación y seguimiento · {sedeNombre}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setCampanaOpen(true)} title="Mensajes por segmento: vencidos, por vencer, de baja…"
-            className="cursor-pointer rounded-[10px] border border-green-300 bg-green-50 px-[16px] py-[11px] text-[13px] font-extrabold text-green-700 transition-colors hover:bg-green-100">
-            📣 Campaña WhatsApp
+          {/* En pausa mientras el owner define el canal con su cliente:
+              correo masivo (gratis) vs WhatsApp API (Marketing ~S/0.25/msj).
+              El modal CampanaWhatsAppModal queda intacto para reactivarlo. */}
+          <button disabled title="Próximamente: campañas por segmento (vencidos, por vencer, ex-socios) por correo de golpe y WhatsApp"
+            className="cursor-not-allowed rounded-[10px] border border-dashed border-line bg-transparent px-[16px] py-[11px] text-[13px] font-extrabold text-faint">
+            📣 Campañas · en construcción
           </button>
           <button onClick={() => setNuevoOpen(true)}
             className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo prospecto</button>
