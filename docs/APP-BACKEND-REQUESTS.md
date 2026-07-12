@@ -1982,3 +1982,56 @@ Migración: `supabase/migrations/20260711000011_ola3_quickwins.sql`.
 
 Creado: 2026-07-11 (sesión del panel — Ola 3 quick-wins: mantenimiento
 preventivo + alerta de aforo + esta RPC).
+
+
+================================================================================
+PEDIDO 30 -- Turnos/horarios del personal (para mostrarlos en el perfil del trainer)
+================================================================================
+
+CONTEXTO: en la app, el perfil del trainer no puede mostrar sus horarios porque
+NO existe ninguna tabla de turnos del staff (verificado: no hay turno/horario/
+jornada/schedule). El owner quiere que el trainer vea su horario en su perfil, y
+que se soporte "medio tiempo" (no todos son tiempo completo). Definir el turno es
+gestión del gym → se hace en el PANEL; la app solo lo MUESTRA.
+
+La app YA está construida para consumir esto (patrón defensivo, como la galería):
+apenas el panel exponga la RPC de abajo con estos nombres exactos, el perfil del
+trainer muestra sus turnos sin tocar la app. Si la RPC no existe todavía, la app
+simplemente no muestra la sección (no rompe).
+
+LO QUE TOCA HACER EN EL PANEL/BACKEND:
+
+1. Tabla de turnos del staff. Sugerencia mínima:
+   create table public.turno_staff (
+     id uuid primary key default gen_random_uuid(),
+     empresa_id uuid not null references empresa(id),
+     usuario_id uuid not null references usuario(id),   -- el trabajador
+     sede_id uuid references sede(id),                  -- opcional (multi-sede)
+     dia_semana int not null,                           -- 1=lunes .. 7=domingo (ISO)
+     hora_inicio time not null,
+     hora_fin time not null,
+     created_at timestamptz not null default now()
+   );
+   -- "medio tiempo" se representa naturalmente: un trainer con turnos solo
+   --  algunos días, o con hora_inicio/hora_fin acotadas. No hace falta un flag.
+
+2. Panel: pantalla para que el gym defina los turnos de cada empleado (por día +
+   rango horario + sede). Editable. Es gestión del personal, va en el panel.
+
+3. RPC que la app llama para el perfil del trainer (nombre EXACTO):
+   `mis_turnos()` (sin args, usa auth.uid) → jsonb array de los turnos del
+   usuario en sesión, ordenado por dia_semana, hora_inicio. Cada item con estos
+   nombres EXACTOS (la app ya deserializa por ellos):
+     { "dia_semana": 1, "hora_inicio": "07:00", "hora_fin": "13:00",
+       "sede_nombre": "Sede Principal" }   // sede_nombre puede ser null
+   Público para el propio usuario (SECURITY DEFINER filtrando por auth.uid()).
+
+COMPORTAMIENTO ESPERADO EN LA APP (ya implementado):
+- Si `mis_turnos()` devuelve turnos → el perfil del trainer muestra una tarjeta
+  "Mi horario" con los días y rangos (ej. "Lun 07:00–13:00 · Sede Principal").
+- Si la RPC no existe aún o devuelve vacío → la sección no aparece (defensivo).
+
+Impacto: enciende una sección ya construida en la app con 1 tabla + 1 RPC + un
+editor en el panel. La app no necesita cambios cuando esté listo. Sin credenciales.
+
+Creado: 2026-07-11 (sesión de la app — perfil del trainer, turnos medio tiempo).
