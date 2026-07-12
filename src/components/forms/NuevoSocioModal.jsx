@@ -7,7 +7,7 @@ import { usePromociones } from '../../hooks/useOperaciones.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { money } from '../../lib/uiHelpers.js'
 import { waLink, msgRecibo } from '../../lib/whatsapp.js'
-import { verificarDni, textoVerificacion } from '../../lib/dni.js'
+import { verificarDni, textoVerificacion, limpiarDocumento } from '../../lib/dni.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
 import { useObjetivos } from '../../hooks/usePlantillas.js'
 import { toast } from '../../lib/toast.js'
@@ -187,6 +187,8 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       p_monto_inicial: enPartes && puedePartes ? inicial : null,
       p_precio_acordado: usaAcordado ? acordadoNum : null,
       p_objetivo_id: f.objetivo_id || null,
+      p_peso_kg: f.peso_kg ? Number(f.peso_kg) : null,
+      p_talla_m: f.talla_m ? Number(f.talla_m) : null,
     })
     setBusy(false)
     if (error) { setError(mensajeError(error)); return }
@@ -203,25 +205,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         verificarDni({ dni: dniLimpio, nombre: f.nombre, alimentar: true, extra })
       }
     }
-    // inscribir_socio no recibe peso/talla como parámetros, así que si el form
-    // los capturó, los guardamos aparte y RECIÉN entonces pedimos la asignación
-    // automática del plan (rutina+dieta según objetivo+IMC) — con el peso/talla
-    // ya persistidos, para que asignar_plan_automatico no falle por sin_peso_talla.
-    let planResultado = data.plan || null
-    const pesoNum = f.peso_kg ? Number(f.peso_kg) : null
-    const tallaNum = f.talla_m ? Number(f.talla_m) : null
-    if (data.socio_id && f.objetivo_id && pesoNum > 0 && tallaNum > 0) {
-      const { error: errUpd } = await supabase.from('socio')
-        .update({ peso_kg: pesoNum, talla_m: tallaNum }).eq('id', data.socio_id)
-      if (!errUpd) {
-        const { data: planData, error: errPlan } = await supabase.rpc('asignar_plan_automatico', { p_socio_id: data.socio_id })
-        if (!errPlan) planResultado = planData
-      }
-    } else if (data.socio_id && (pesoNum > 0 || tallaNum > 0)) {
-      // Aunque no haya objetivo (o el plan no se haya podido asignar), igual
-      // guardamos el peso/talla capturados: no se pierden datos del socio.
-      await supabase.from('socio').update({ peso_kg: pesoNum || null, talla_m: tallaNum || null }).eq('id', data.socio_id)
-    }
+    // Peso/talla viajan como parámetros de inscribir_socio (se guardan en el
+    // MISMO insert del socio) y el RPC ya asigna el plan adentro. Antes se
+    // guardaban con un update posterior desde el navegador que podía no
+    // afectar filas (RLS) sin avisar — así se perdieron datos en producción.
+    const planResultado = data.plan || null
     setPlanAuto(planResultado)
     if (planResultado?.asignado) {
       toast.ok(`Plan asignado: ${planResultado.objetivo} · ${planResultado.rutina_dias} días + dieta ${planResultado.dieta_kcal_dia} kcal (IMC ${planResultado.imc}, ${planResultado.categoria})`)
@@ -292,7 +280,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       <Modal title={leadId ? 'Convertir en socio' : 'Nuevo socio'} subtitle="Paso 1 · Documento de identidad" onClose={onClose} width={400}>
         <div className="flex flex-col gap-3.5">
           <Campo label="Documento (DNI / CE) *" hint="Con 8 dígitos (DNI) buscamos a la persona en el padrón; extranjeros: carné o pasaporte y Continuar.">
-            <input autoFocus value={f.documento} onChange={set('documento')} maxLength={12} inputMode="numeric"
+            <input autoFocus value={f.documento} onChange={(e) => setF((s) => ({ ...s, documento: limpiarDocumento(e.target.value) }))} maxLength={12} inputMode="numeric"
               placeholder="44247191" className={inputCls + ' text-center text-[18px] font-extrabold tracking-[3px]'} />
           </Campo>
           {dupSocio && (
@@ -448,7 +436,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
                     </Campo>
                     <div className="mt-2.5 grid grid-cols-2 gap-3">
                       <Campo label="Teléfono"><input value={invitados[i]?.telefono || ''} onChange={setInv(i, 'telefono')} className={inputCls} /></Campo>
-                      <Campo label="Documento (DNI)"><input value={invitados[i]?.documento || ''} onChange={setInv(i, 'documento')} className={inputCls} /></Campo>
+                      <Campo label="Documento (DNI)"><input value={invitados[i]?.documento || ''} onChange={(e) => setInv(i, 'documento')({ target: { value: limpiarDocumento(e.target.value) } })} className={inputCls} /></Campo>
                     </div>
                   </div>
                 ))}

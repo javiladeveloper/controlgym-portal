@@ -22,6 +22,14 @@ export async function verificarDni({ dni, nombre = '', alimentar = false, extra 
   }
 }
 
+// Documento del socio mientras se escribe: DNI = solo dígitos, capado a 8
+// (no deja escribir el 9.º). Si trae letras (CE / pasaporte de extranjero),
+// se permite alfanumérico hasta 12. Sin símbolos ni espacios en ningún caso.
+export function limpiarDocumento(v) {
+  const s = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return /^\d*$/.test(s) ? s.slice(0, 8) : s.slice(0, 12)
+}
+
 // Badge de resultado listo para pintar
 export function textoVerificacion(v) {
   if (!v || v.encontrado === null) return null

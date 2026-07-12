@@ -53,8 +53,14 @@ export default function ObjetivoChips({ value = '', onChange, placeholder = 'Esc
         {chips.map((c) => (
           <span key={c} className="inline-flex items-center gap-1 rounded-full bg-orange-50 py-1 pl-3 pr-1.5 text-[12px] font-extrabold text-orange">
             {c}
-            <button type="button" onClick={() => quitar(c)} aria-label={`Quitar ${c}`}
-              className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] hover:bg-orange-100">✕</button>
+            {/* ✕ como <span>, NO <button>: este widget vive dentro del <label>
+                de Campo, y el clic en cualquier parte del label se reenvía al
+                PRIMER control asociable de adentro. Si la ✕ fuera <button>,
+                cualquier clic en el campo borraba el primer chip sin querer. */}
+            <span role="button" tabIndex={0} aria-label={`Quitar ${c}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); quitar(c) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); quitar(c) } }}
+              className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full text-[10px] hover:bg-orange-100">✕</span>
           </span>
         ))}
         <input

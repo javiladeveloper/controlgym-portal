@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import Modal, { Campo, BotonesModal, inputCls } from '../Modal.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
 import { toast } from '../../lib/toast.js'
+import { limpiarDocumento } from '../../lib/dni.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
 
 // Editar datos del socio + acciones de ciclo de vida:
@@ -96,7 +97,7 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
         </Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} /></Campo>
-          <Campo label="DNI / CE"><input value={f.documento} onChange={set('documento')} className={inputCls} /></Campo>
+          <Campo label="DNI / CE"><input value={f.documento} onChange={(e) => setF((s) => ({ ...s, documento: limpiarDocumento(e.target.value) }))} maxLength={12} className={inputCls} /></Campo>
         </div>
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <div className="grid grid-cols-3 gap-3">
