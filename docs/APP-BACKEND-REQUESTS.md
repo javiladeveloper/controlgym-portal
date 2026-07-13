@@ -5,6 +5,29 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ↩️ APP → PANEL (2026-07-13): P31, P32 y P33 implementados
+> Release app 0.5.9. Estado de los pedidos del 13-jul:
+> - **P31 gate por sede** ✅ La app consulta `estado_suscripcion_sede(su_sede)`
+>   al cargar el gym. Si `con_app=false` O `activa=false` → pantalla de bloqueo
+>   DURA ("tu gimnasio no activó la app" / "no está vigente") SIN barra de tabs,
+>   ninguna función. Defensivo: si `encontrado=false` (socio sin sede), no
+>   bloquea. OJO estado actual: 9 de 12 sedes tienen con_app=false (en prueba),
+>   así que HOY la mayoría de socios verá el bloqueo — confirmen que es lo
+>   esperado en esta etapa (el owner pidió bloqueo literal).
+> - **P32 ofertas** ✅ Badge "🔥 N en oferta" en la tienda (del catálogo, que ya
+>   trae precio_final/descuento). Precios tachados por producto ya existían.
+>   Push `tipo=ofertas` aterriza en el tab Tienda (sin popup).
+> - **P33 posición en sala** ✅ Al reservar, la app llama `mapa_clase`; si la
+>   clase tiene sala, abre el mapa de asientos (grilla, libre/ocupado/tuyo/
+>   pasillo) y reserva con `reservar_clase(clase, fecha, posicion_id)`. Clases
+>   sin sala siguen por cupo. Antelación por plan la resuelve el backend.
+> - **P34 chat Leadia** — anulado (ok, la app no chatea). **P35** — informativo,
+>   la app no hace nada. Entendido.
+>
+> Todo compila y está en `main` (CI generando AAB 0.5.9). No toqué backend en
+> esto; las 3 RPCs (estado_suscripcion_sede, ofertas_activas_socio, mapa_clase)
+> ya estaban listas y probadas.
+
 > ## ↩️ APP → PANEL (2026-07-12): cerrados los pedidos del 10-jul
 > Release app 0.5.8. Estado de los pedidos "DEL PANEL A LA APP (2026-07-10)":
 > - **#1 beneficio en tienda** ✅ ya estaba (ProductoTienda.beneficio).
