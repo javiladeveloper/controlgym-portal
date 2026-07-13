@@ -17,6 +17,7 @@ export default async function handler(req, res) {
   if (action === 'estado') return estado(req, res)
   if (action === 'chat') return chat(req, res)
   if (action === 'leads-frios') return leadsFrios(req, res)
+  if (action === 'sync') return sync(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -198,6 +199,74 @@ async function chat(req, res) {
     return res.status(200).json(out)  // {respuesta, nivelInteres, accion, escalar, resumen, leadId}
   } catch (e) {
     return res.status(400).json({ error: 'No se pudo contactar a la IA: ' + e.message })
+  }
+}
+
+// ── Sync PULL: trae de Leadia los calientes+tibios de la sede y los ingresa al
+// CRM (idempotente por leadia_lead_id). El modelo es pull — Leadia no empuja;
+// FitCore consulta al abrir el CRM. Solo admin de la sede.
+async function sync(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+  const sedeId = (req.body?.sedeId || req.query?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  const { rows } = await pool.query('select public.leadia_credenciales($1) as c', [sedeId])
+  const cred = rows[0].c
+  if (!cred?.encontrado) return res.status(200).json({ activo: false, creados: 0, actualizados: 0 })
+
+  // secreto compartido para llamar al conector leadia_ingresar_lead
+  const { rows: sk } = await pool.query(
+    `select valor from privado.secreto where clave = 'leadia_ingest_key'`)
+  const ingestKey = sk[0]?.valor
+  if (!ingestKey) return res.status(500).json({ error: 'Falta leadia_ingest_key en la plataforma' })
+
+  const { base } = await configLeadia(pool)
+
+  // Trae TODOS los items de un nivel paginando por cursor (Leadia filtra un solo
+  // nivel por request; tope de páginas por si acaso, para no colgar el request).
+  async function traerNivel(nivel) {
+    const items = []
+    let cursor = null
+    for (let pag = 0; pag < 20; pag++) {
+      const url = new URL(`${base}/leads`)
+      url.searchParams.set('nivel', nivel)
+      url.searchParams.set('limit', '100')
+      if (cursor) url.searchParams.set('cursor', cursor)
+      const r = await fetch(url, { headers: { authorization: `Bearer ${cred.api_key}` } })
+      if (!r.ok) break
+      const out = await r.json()
+      items.push(...(out.items || []))
+      cursor = out.siguienteCursor
+      if (!cursor) break
+    }
+    return items
+  }
+
+  try {
+    const [calientes, tibios] = await Promise.all([traerNivel('caliente'), traerNivel('tibio')])
+    const todos = [...calientes, ...tibios]
+
+    let creados = 0, actualizados = 0
+    for (const it of todos) {
+      // WhatsApp: el contactoExterno suele ser el número; IG/FB no es teléfono.
+      const canal = (it.canalOrigen || 'whatsapp').toString().toLowerCase()
+      const telefono = canal === 'whatsapp' ? (it.contactoExterno || null) : null
+      const { rows: rr } = await pool.query(
+        `select public.leadia_ingresar_lead($1,$2,$3,$4,$5,$6,$7,$8,$9) as r`,
+        [ingestKey, info.empresa_id, it.nombre || '', telefono, canal,
+         it.resumenIA || null, sedeId, it.nivelInteres || 'caliente', it.id])
+      const r = rr[0].r
+      if (r?.ok) { r.duplicado ? actualizados++ : creados++ }
+    }
+    return res.status(200).json({ activo: true, creados, actualizados, total: todos.length })
+  } catch (e) {
+    return res.status(400).json({ error: 'No se pudo sincronizar con Leadia: ' + e.message })
   }
 }
 

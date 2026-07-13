@@ -724,13 +724,61 @@ function NuevaTareaForm({ sedeId, empresaId, leads, onDone }) {
   )
 }
 
+// Trae de Leadia (pull) los calientes+tibios de la sede y los mete al CRM. Se
+// dispara solo al abrir el CRM (1 vez por sede/carga) y con el botón manual.
+// Silencioso si la sede no tiene la IA activa o si el usuario no es admin.
+async function sincronizarLeadia(sedeId) {
+  const { data } = await supabase.auth.getSession()
+  const res = await fetch('/api/leadia?action=sync', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${data?.session?.access_token || ''}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ sedeId }),
+  })
+  const out = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(out.error || 'No se pudo sincronizar')
+  return out // { activo, creados, actualizados }
+}
+
 export default function CRM() {
   const { sedeId, sedeNombre } = usePanel()
-  const { empresa } = useAuth()
+  const { empresa, rol } = useAuth()
   const qc = useQueryClient()
+  const esAdmin = rol === 'admin'
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [campanaOpen, setCampanaOpen] = useState(false)
   const [sobreCol, setSobreCol] = useState(null) // columna resaltada durante el drag
+  const [sincronizando, setSincronizando] = useState(false)
+  const [syncAuto, setSyncAuto] = useState({}) // sedes ya sincronizadas esta carga
+
+  // Sync manual: trae leads nuevos de Leadia y refresca el embudo.
+  async function correrSync({ silencioso } = {}) {
+    if (!sedeId || sincronizando) return
+    setSincronizando(true)
+    try {
+      const out = await sincronizarLeadia(sedeId)
+      if (out.activo) {
+        qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+        const nuevos = out.creados || 0
+        if (!silencioso) {
+          toast.ok(nuevos > 0 ? `${nuevos} prospecto${nuevos > 1 ? 's' : ''} nuevo${nuevos > 1 ? 's' : ''} de la IA` : 'Todo al día — sin prospectos nuevos')
+        } else if (nuevos > 0) {
+          toast.ok(`${nuevos} prospecto${nuevos > 1 ? 's' : ''} nuevo${nuevos > 1 ? 's' : ''} de la IA 🤖`)
+        }
+      } else if (!silencioso) {
+        toast.info('Esta sede no tiene la IA de Leadia activa.')
+      }
+    } catch (e) {
+      if (!silencioso) toast.error(e.message)
+    } finally { setSincronizando(false) }
+  }
+
+  // Auto-sync al abrir el CRM: solo admin, 1 vez por sede en esta carga.
+  useEffect(() => {
+    if (!esAdmin || !sedeId || syncAuto[sedeId]) return
+    setSyncAuto((s) => ({ ...s, [sedeId]: true }))
+    correrSync({ silencioso: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esAdmin, sedeId])
 
   // Drag & drop: soltar la tarjeta en una columna la mueve a ESA etapa
   // (en cualquier dirección, no solo avanzar) con actualización optimista.
@@ -784,6 +832,13 @@ export default function CRM() {
             className="cursor-not-allowed rounded-[10px] border border-dashed border-line bg-transparent px-[16px] py-[11px] text-[13px] font-extrabold text-faint">
             📣 Campañas · en construcción
           </button>
+          {esAdmin && (
+            <button onClick={() => correrSync()} disabled={sincronizando}
+              title="Traer de la IA de Leadia los prospectos calientes y tibios nuevos"
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-[16px] py-[11px] text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange disabled:opacity-50">
+              {sincronizando ? 'Sincronizando…' : '🤖 Sincronizar IA'}
+            </button>
+          )}
           <button onClick={() => setNuevoOpen(true)}
             className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nuevo prospecto</button>
         </div>
