@@ -13,8 +13,15 @@ const UNIDADES = [['dia', 'Por día'], ['mes', 'Mensual'], ['trimestre', 'Trimes
 const VACIO = {
   nombre: '', precio: '', unidad: 'mes', descripcion: '', badge: '',
   cobra_matricula: false, precio_matricula: '', dias_congelamiento_anio: 0,
-  multisede: false, es_familiar: false, incluye_clases: true, incluye_rutina: true, activo: true,
+  multisede: false, acceso_sedes: 'propia', acceso_sedes_n: '', es_familiar: false, incluye_clases: true, incluye_rutina: true, activo: true,
 }
+
+const ACCESO_SEDES = [
+  ['propia', 'Solo su sede'],
+  ['todas', 'Todas las sedes'],
+  ['n', 'Hasta N sedes'],
+  ['lista', 'Sedes específicas'],
+]
 
 export default function PlanesModal({ onClose }) {
   const qc = useQueryClient()
@@ -25,6 +32,13 @@ export default function PlanesModal({ onClose }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmarDel, setConfirmarDel] = useState(null)
+  const [sedes, setSedes] = useState([])
+  const [sedesPlan, setSedesPlan] = useState([]) // sede_ids permitidas (modo 'lista')
+
+  if (sedes.length === 0 && empresa?.id) {
+    supabase.from('sede').select('id, nombre').eq('empresa_id', empresa.id).is('deleted_at', null).eq('activa', true)
+      .order('created_at').then(({ data }) => { if (data?.length) setSedes(data) })
+  }
 
   async function cargar() {
     const { data, error } = await supabase.from('plan').select('*').is('deleted_at', null).order('orden').order('precio')
@@ -40,6 +54,17 @@ export default function PlanesModal({ onClose }) {
 
   const set = (k) => (e) => setEdit((s) => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
+  // Al abrir un plan existente en modo 'lista', traer sus sedes permitidas.
+  function abrirEdicion(plan) {
+    setSedesPlan([])
+    if (plan?.id && plan.acceso_sedes === 'lista') {
+      supabase.from('plan_sede_acceso').select('sede_id').eq('plan_id', plan.id)
+        .then(({ data }) => setSedesPlan((data || []).map((r) => r.sede_id)))
+    }
+    setEdit(plan)
+  }
+  const toggleSedeLista = (id) => setSedesPlan((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+
   async function guardar(e) {
     e?.preventDefault()
     setBusy(true); setError('')
@@ -52,19 +77,32 @@ export default function PlanesModal({ onClose }) {
       cobra_matricula: !!edit.cobra_matricula,
       precio_matricula: edit.cobra_matricula ? Number(edit.precio_matricula || 0) : 0,
       dias_congelamiento_anio: Number(edit.dias_congelamiento_anio || 0),
-      multisede: !!edit.multisede,
+      multisede: edit.acceso_sedes === 'todas',   // compat: el booleano viejo sigue reflejando "todas"
+      acceso_sedes: edit.acceso_sedes || 'propia',
+      acceso_sedes_n: edit.acceso_sedes === 'n' ? Math.max(1, Number(edit.acceso_sedes_n) || 1) : null,
       es_familiar: !!edit.es_familiar,
       incluye_clases: !!edit.incluye_clases,
       incluye_rutina: !!edit.incluye_rutina,
       activo: !!edit.activo,
     }
-    const q = edit.id
-      ? supabase.from('plan').update(payload).eq('id', edit.id)
-      : supabase.from('plan').insert({ ...payload, empresa_id: empresa.id })
-    const { error } = await q
+    let planId = edit.id
+    let error
+    if (edit.id) {
+      ({ error } = await supabase.from('plan').update(payload).eq('id', edit.id))
+    } else {
+      const r = await supabase.from('plan').insert({ ...payload, empresa_id: empresa.id }).select('id').single()
+      error = r.error; planId = r.data?.id
+    }
+    if (!error && planId) {
+      // Sincronizar sedes permitidas: solo relevante en modo 'lista'.
+      await supabase.from('plan_sede_acceso').delete().eq('plan_id', planId)
+      if (edit.acceso_sedes === 'lista' && sedesPlan.length) {
+        await supabase.from('plan_sede_acceso').insert(sedesPlan.map((sid) => ({ plan_id: planId, sede_id: sid })))
+      }
+    }
     setBusy(false)
     if (error) { setError(error.message); return }
-    setEdit(null); invalidar()
+    setEdit(null); setSedesPlan([]); invalidar()
   }
 
   async function eliminar(plan) {
@@ -93,7 +131,7 @@ export default function PlanesModal({ onClose }) {
                     {money(p.precio, moneda)}/{p.unidad}
                     {p.cobra_matricula ? ` · matrícula ${money(p.precio_matricula, moneda)}` : ' · sin matrícula'}
                     {p.dias_congelamiento_anio > 0 ? ` · ❄️ congela ${p.dias_congelamiento_anio} días/año` : ' · no congela'}
-                    {p.es_familiar ? ' · familiar' : ''}{p.multisede ? ' · multisede' : ''}
+                    {p.es_familiar ? ' · familiar' : ''}{p.acceso_sedes === 'todas' ? ' · todas las sedes' : p.acceso_sedes === 'lista' ? ' · sedes selectas' : p.acceso_sedes === 'n' ? ` · ${p.acceso_sedes_n} sedes` : ''}
                   </div>
                 </div>
                 {confirmarDel === p.id ? (
@@ -166,8 +204,35 @@ export default function PlanesModal({ onClose }) {
             </div>
           </div>
 
+          {sedes.length > 1 && (
+            <div className="rounded-[10px] border border-line px-4 py-3">
+              <div className="text-[13px] font-extrabold">🏢 Acceso a sedes</div>
+              <p className="mt-0.5 text-[11.5px] font-semibold text-muted">A qué sedes puede entrar el socio con este plan (beneficio VIP, etc.).</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <select value={edit.acceso_sedes} onChange={set('acceso_sedes')} className={inputCls + ' max-w-[200px] cursor-pointer'}>
+                  {ACCESO_SEDES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+                {edit.acceso_sedes === 'n' && (
+                  <input type="number" min="1" max={sedes.length} value={edit.acceso_sedes_n} onChange={set('acceso_sedes_n')}
+                    placeholder="3" className={inputCls + ' w-20'} />
+                )}
+              </div>
+              {edit.acceso_sedes === 'lista' && (
+                <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+                  {sedes.map((se) => (
+                    <label key={se.id} className="flex items-center gap-2">
+                      <input type="checkbox" checked={sedesPlan.includes(se.id)} onChange={() => toggleSedeLista(se.id)} className="h-4 w-4 accent-orange-600" />
+                      <span className="text-[12.5px] font-bold">{se.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {edit.acceso_sedes === 'n' && <p className="mt-1.5 text-[11px] font-semibold text-faint">Podrá entrar hasta a esa cantidad de sedes distintas (las primeras que use).</p>}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            {[['incluye_clases', 'Incluye clases grupales'], ['incluye_rutina', 'Incluye rutina personalizada'], ['multisede', 'Válido en todas las sedes'], ['es_familiar', 'Plan familiar'], ['activo', 'Plan activo (visible al inscribir)']].map(([k, l]) => (
+            {[['incluye_clases', 'Incluye clases grupales'], ['incluye_rutina', 'Incluye rutina personalizada'], ['es_familiar', 'Plan familiar'], ['activo', 'Plan activo (visible al inscribir)']].map(([k, l]) => (
               <label key={k} className="flex items-center gap-2">
                 <input type="checkbox" checked={!!edit[k]} onChange={set(k)} className="h-4 w-4 accent-orange-600" />
                 <span className="text-[12.5px] font-bold">{l}</span>
