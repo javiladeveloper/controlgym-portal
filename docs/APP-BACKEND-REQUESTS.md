@@ -2064,3 +2064,32 @@ Creado: 2026-07-11 (sesión de la app — perfil del trainer, turnos medio tiemp
 > Migración: `supabase/migrations/20260711000019_turnos_staff.sql` (aplicada a prod).
 > Dato demo: Lucía Paredes (MaximusGym) quedó con Lun y Mié 07:00–13:00 —
 > pueden probar el perfil del trainer con ella ya mismo.
+
+================================================================================
+PEDIDO 31 -- App del socio por SEDE (billing: cada sede paga el add-on de app)
+================================================================================
+
+CONTEXTO: el owner definió que la app del socio se paga POR SEDE (no por gym).
+Ya existe en el panel/BD la resolución de si una sede tiene el add-on de app
+activo. La app debe respetarlo: un socio de una sede SIN app pagada no debería
+poder usar las funciones de la app (o mostrar "tu gym no tiene la app activa").
+
+CONTRATO (BD lista):
+  RPC `estado_suscripcion_sede(p_sede_id uuid) -> jsonb`:
+    { "encontrado": true, "estado": "activa|prueba|vencida|cancelada",
+      "con_app": true/false, "activa": true/false, "origen": "sede|empresa" }
+  - `con_app` = la sede pagó el add-on de app.
+  - `activa` = la sede tiene suscripción vigente (prueba o activa).
+  - Si la sede no tiene fila propia, HEREDA la suscripción de la empresa
+    (compatibilidad — gyms de una sola sede siguen igual).
+
+LO QUE TOCA EN LA APP:
+  Al hacer bootstrap del socio, resolver su sede (socio.sede_id) y consultar
+  con_app/activa. Si con_app=false o activa=false → la app no habilita las
+  funciones premium de esa sede (checkin QR, rutina, reservas...). Definir con
+  el owner el mensaje exacto ("tu gimnasio aún no activó la app").
+
+Nota: el panel ya muestra "Cobro por sede" en Config › Mi plan (estado y monto
+por sede). El gate del lado app es lo único pendiente.
+
+Creado: 2026-07-13 (sesión del panel — billing por sede).

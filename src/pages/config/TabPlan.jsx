@@ -336,9 +336,68 @@ export default function TabPlan() {
         )}
       </Card>
 
+      {/* Cobro por sede: cada sede paga su propia membresía (aparece solo si el
+          gym tiene más de una sede). La suscripción de arriba es el fallback. */}
+      <SuscripcionPorSede />
+
       {/* Zona de peligro: eliminar el negocio (creado por error, cierre, etc.) */}
       <ZonaPeligro empresa={empresa} suscripcion={s} />
     </div>
+  )
+}
+
+const ESTADO_SEDE = {
+  activa: { bg: '#E7F6F0', color: '#1D9E75', label: 'Activa' },
+  prueba: { bg: '#FFF4EC', color: '#C2410C', label: 'En prueba' },
+  vencida: { bg: '#FDECEC', color: '#E24B4A', label: 'Vencida' },
+  cancelada: { bg: '#F1F2F4', color: '#5B6472', label: 'Cancelada' },
+}
+
+// Estado de cobro POR SEDE. Cada sede paga su membresía; el override de precio
+// (acuerdos con cadenas) lo fija la plataforma. El gym lo ve como resumen.
+function SuscripcionPorSede() {
+  const sedes = useQuery({
+    queryKey: ['suscripciones-mis-sedes'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('suscripciones_mis_sedes')
+      if (error) throw error
+      return data
+    },
+  })
+  const lista = sedes.data || []
+  if (sedes.isLoading || lista.length <= 1) return null // 1 sede: basta el bloque de arriba
+
+  const total = lista.filter((x) => ['activa', 'prueba'].includes(x.estado)).reduce((n, x) => n + Number(x.monto || 0), 0)
+  return (
+    <Card className="mt-4 p-[19px]">
+      <div className="text-[14.5px] font-extrabold">🏢 Cobro por sede</div>
+      <p className="mt-0.5 text-[12px] font-semibold text-muted">
+        Cada sede paga su propia membresía. {money(total)} al mes en total por las sedes activas.
+      </p>
+      <div className="mt-3 flex flex-col gap-2">
+        {lista.map((x) => {
+          const est = ESTADO_SEDE[x.estado] || ESTADO_SEDE.prueba
+          return (
+            <div key={x.sede_id} className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-line px-3.5 py-2.5">
+              <div className="min-w-0">
+                <div className="text-[13px] font-extrabold">{x.sede_nombre}</div>
+                <div className="text-[11.5px] font-semibold text-muted capitalize">
+                  {x.plan_slug}{x.con_app ? ' + App del socio' : ''}
+                  {x.monto_override && <span className="ml-1 text-orange">· precio pactado</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-[13px] font-extrabold tabular-nums">{money(Number(x.monto || 0))}<span className="text-[11px] font-semibold text-faint">/mes</span></span>
+                <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ background: est.bg, color: est.color }}>{est.label}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <p className="mt-2.5 text-[11px] font-semibold text-faint">
+        ¿Tienes varias sedes y quieres un precio especial? Escríbenos — los acuerdos para cadenas se configuran a mano.
+      </p>
+    </Card>
   )
 }
 
