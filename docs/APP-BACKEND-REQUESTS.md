@@ -2229,44 +2229,46 @@ matutino" — mapa_clase ya responde con sus 6 posiciones.
 Creado: 2026-07-13 (sesión del panel — reservas con posición en sala).
 
 ================================================================================
-PEDIDO 34 -- App consume el chat de Leadia (bot IA) por sede
+PEDIDO 34 -- [NO APLICA] App consume el chat de Leadia por sede
 ================================================================================
 
-CONTEXTO: FitCore ya vende el add-on de IA Leadia por sede (panel Config › IA
-Leadia): aprovisiona el tenant en Leadia, guarda su api_key CIFRADA por sede y
-crea el flujo (árbol). Falta que la APP MÓVIL, cuando un socio/interesado
-escribe por WhatsApp, mande el mensaje a Leadia y muestre la respuesta.
+>> ESTE PEDIDO QUEDA SIN EFECTO (13-jul-2026). El socio/interesado NO chatea con
+   Leadia dentro de la app de FitCore. El modelo real es OTRO (ver PEDIDO 35).
 
-CONTRATO DE LEADIA (verificado en su código, base https://api.leadai-pe.com):
-- POST /api/chat
-  Authorization: Bearer <api_key del tenant de la sede>
-  body: { sujeto:"socio_9021" (id estable del contacto), mensaje:"...",
-          nombre?:"María P.", origen?:"whatsapp" }
-  resp: { respuesta, nivelInteres:"frio|tibio|caliente",
-          accion:"seguir|reencauzar|handoff", escalar:bool, resumen, leadId }
-  Es SÍNCRONO (mandas el mensaje, recibes la respuesta de la IA).
+Modelo correcto: el GYM conecta sus redes (WhatsApp/Facebook/Instagram)
+directamente en Leadia; los mensajes llegan AHÍ y el bot los atiende y califica.
+La app móvil no reenvía mensajes ni muestra el chat. Por eso la acción proxy
+/api/leadia?action=chat NO se usa desde la app (sigue existiendo por si a futuro
+se quisiera un chat in-app, pero hoy nadie la llama).
 
-CÓMO OBTIENE LA APP LA api_key (está CIFRADA, la app NO la lee directo):
-La api_key vive cifrada en public.sede_leadia (RLS cerrado). La app NO puede
-leerla por PostgREST. Opciones para que la app llame a /api/chat:
-  (a) [recomendado] FitCore expone una serverless proxy (ej.
-      /api/leadia?action=chat) que recibe {sedeId, sujeto, mensaje} del socio,
-      lee la api_key descifrada (leadia_credenciales) y hace el POST a Leadia,
-      devolviendo la respuesta. Así la key NUNCA sale del backend. (Falta
-      construir esta acción — avisar al panel para agregarla.)
-  (b) la app llama directo a Leadia si tuviera la key, pero NO la tiene por
-      diseño de seguridad. Por eso se prefiere (a).
+================================================================================
+PEDIDO 35 -- Handoff de Leadia: los prospectos reales entran al CRM con su NIVEL
+================================================================================
 
-GATE (¿la sede tiene la IA activa?): usar estado_leadia_sede(sede) → {activo,
-tier, ...}. Si activo=false, no ofrecer el bot en esa sede.
+CONTEXTO / MODELO: el gym conecta sus redes en Leadia; el bot IA atiende y
+CALIFICA cada contacto en frío / tibio / caliente. Regla del negocio:
+  - CALIENTES y TIBIOS  → son prospectos REALES → entran al CRM de FitCore con
+    su etiqueta de nivel (para priorizar a quién llamar primero).
+  - FRÍOS               → el bot los IGNORA (no ensucian el embudo). El panel
+    puede LISTARLOS aparte ("fríos ignorados") por si el gym quiere rescatar a
+    alguno a mano.
 
-Los CALIENTES ya entran al CRM: el propio Leadia, al hacer handoff, empuja el
-lead vía leadia_ingresar_lead (PEDIDO Leadia previo). La app no hace nada extra
-para eso.
+LISTO del lado panel/backend (esta sesión):
+- BD: public.lead ganó la columna `nivel_leadia text` CHECK in
+  ('caliente','tibio','frio'). El conector `leadia_ingresar_lead(...)` ahora
+  acepta un parámetro nuevo `p_nivel text DEFAULT 'caliente'` y lo guarda en
+  nivel_leadia. (migración 20260712000020_handoff_nivel_leadia.sql)
+- Panel CRM: la tarjeta del prospecto muestra el badge de nivel (🔥 Caliente /
+  🌤 Tibio); card "🧊 Fríos ignorados por la IA" que consulta
+  /api/leadia?action=leads-frios&sedeId=... (GET a Leadia /leads?nivel=frio) y
+  deja "+ Rescatar" a lead.
 
-LISTO del lado panel: la acción proxy /api/leadia?action=chat YA existe.
-La app llama POST /api/leadia?action=chat con {sedeId, sujeto, mensaje, nombre?,
-origen?} + su JWT de socio; FitCore valida que sea socio de esa sede, lee la
-api_key descifrada y reenvía a Leadia, devolviendo la respuesta de la IA.
+QUÉ DEBE HACER LEADIA (backend del bot, repo ../leadia) al hacer handoff:
+  llamar a leadia_ingresar_lead pasando p_nivel = nivelInteres del contacto
+  ('caliente' o 'tibio'). Los fríos NO se ingresan (se consultan por
+  /leads?nivel=frio cuando el panel lo pide).
 
-Creado: 2026-07-13 (sesión del panel — add-on IA Leadia).
+QUÉ DEBE HACER LA APP: NADA respecto al chat (ver PEDIDO 34 anulado). El socio
+NO conversa con el bot en la app. Este pedido es informativo para el equipo.
+
+Creado: 2026-07-13 (sesión del panel — modelo real de handoff Leadia).

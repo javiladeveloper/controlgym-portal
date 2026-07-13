@@ -24,6 +24,14 @@ import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FUENTES = ['Recepción', 'Instagram', 'Facebook', 'TikTok', 'WhatsApp', 'Referido', 'Página web', 'Otro']
 
+// Nivel con el que la IA de Leadia calificó al prospecto antes de mandarlo al
+// CRM. Solo llegan calientes y tibios (los fríos el bot los ignora); el badge
+// deja ver de un vistazo a quién priorizar.
+const NIVEL_LEADIA = {
+  caliente: { label: '🔥 Caliente', bg: '#FEE2E2', color: '#B91C1C' },
+  tibio: { label: '🌤 Tibio', bg: '#FEF3C7', color: '#B45309' },
+}
+
 // Alta y edición de prospecto (mismo formulario). Editando además permite eliminar.
 function ProspectoModal({ sedeId, empresaId, lead = null, onClose }) {
   const qc = useQueryClient()
@@ -582,6 +590,85 @@ function ReactivacionExSocios({ sedeId, empresaId }) {
   )
 }
 
+// Fríos ignorados por la IA: los contactos que Leadia calificó como fríos y NO
+// mandó al CRM. El gym los revisa por si quiere rescatar alguno a mano (crear
+// lead). Solo admin (la serverless valida rol). Colapsada + fetch al expandir.
+function FriosIgnorados({ sedeId, empresaId }) {
+  const qc = useQueryClient()
+  const [abierto, setAbierto] = useState(false)
+  const frios = useQuery({
+    queryKey: ['leadia-frios', sedeId],
+    enabled: abierto && !!sedeId,
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession()
+      const res = await fetch(`/api/leadia?action=leads-frios&sedeId=${sedeId}`, {
+        headers: { authorization: `Bearer ${data?.session?.access_token || ''}` },
+      })
+      const out = await res.json()
+      if (!res.ok) throw new Error(out.error || 'No se pudo cargar')
+      return out // { activo, items }
+    },
+  })
+
+  async function rescatar(item) {
+    const { error } = await supabase.from('lead').insert({
+      empresa_id: empresaId, sede_id: sedeId, etapa: 'nuevo',
+      nombre: item.nombre || item.sujeto || 'Contacto', telefono: item.telefono || null,
+      fuente: 'WhatsApp', nota: `Rescatado de fríos (IA) · ${item.resumen || 'sin resumen'}`,
+    })
+    if (error) { toast.error('No se pudo crear el lead: ' + error.message); return }
+    qc.invalidateQueries({ queryKey: ['leads', sedeId] })
+    toast.ok('Lead creado — ya está en el embudo')
+  }
+
+  const data = frios.data
+  const items = data?.items || []
+  return (
+    <Card className="mt-4 max-w-[860px] overflow-hidden">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-5 py-4 text-left">
+        <div>
+          <div className="text-[14.5px] font-extrabold">🧊 Fríos ignorados por la IA</div>
+          <div className="mt-0.5 text-[12px] font-semibold text-muted">Contactos que el bot descartó por baja intención — no entraron al embudo. Revísalos por si quieres rescatar alguno.</div>
+        </div>
+        <span className="flex-shrink-0 text-[12px] font-extrabold text-muted">{abierto ? 'Ocultar ▲' : 'Ver descartados ▼'}</span>
+      </button>
+      {abierto && (
+        <div className="border-t border-line2">
+          {frios.isLoading && <LoadingState variant="table" rows={3} />}
+          {frios.isError && <ErrorState error={frios.error} onRetry={frios.refetch} />}
+          {!frios.isLoading && !frios.isError && data && !data.activo && (
+            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Esta sede no tiene la IA de Leadia activa. Actívala en Configuración › IA Leadia para que el bot califique tus contactos.</div>
+          )}
+          {!frios.isLoading && !frios.isError && data?.activo && items.length === 0 && (
+            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">El bot no ha descartado contactos por ahora. Cuando ignore alguno por frío, aparecerá aquí.</div>
+          )}
+          {!frios.isLoading && !frios.isError && data?.activo && items.map((it) => {
+            const wa = it.telefono && waLink(it.telefono, `Hola${it.nombre ? ' ' + it.nombre.split(' ')[0] : ''}! 👋 Te escribimos de ${'nuestro gimnasio'}. ¿Te gustaría conocer nuestros planes?`)
+            return (
+              <div key={it.id || it.sujeto} className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-extrabold">{it.nombre || it.sujeto || 'Contacto'}</div>
+                  {it.resumen && <div className="truncate text-[11px] font-semibold text-muted">{it.resumen}</div>}
+                </div>
+                {wa && (
+                  <a href={wa} target="_blank" rel="noreferrer" title="Escribirle por WhatsApp"
+                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
+                    style={{ background: '#25D366' }}><WhatsAppIcon size={14} /></a>
+                )}
+                <button onClick={() => rescatar(it)}
+                  className="flex-shrink-0 cursor-pointer rounded-lg border border-orange px-2.5 py-1.5 text-[10.5px] font-extrabold text-orange transition-colors hover:bg-orange-50">
+                  + Rescatar
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 // Form compacto para registrar un seguimiento (incluye 'llamada'). Vive plegado
 // bajo un botón "+ Tarea" para no ensuciar la card de Seguimientos por defecto.
 function NuevaTareaForm({ sedeId, empresaId, leads, onDone }) {
@@ -755,7 +842,15 @@ export default function CRM() {
                     <div className="flex items-center gap-2.5">
                       <Avatar ini={iniciales(ld.nombre)} bg={T.chipNavy} color={T.navy} size={30} fontSize={11} />
                       <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-extrabold leading-[1.25]">{ld.nombre}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-[13px] font-extrabold leading-[1.25]">{ld.nombre}</span>
+                          {NIVEL_LEADIA[ld.nivel_leadia] && (
+                            <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold leading-none" title="Calificado por la IA de Leadia"
+                              style={{ background: NIVEL_LEADIA[ld.nivel_leadia].bg, color: NIVEL_LEADIA[ld.nivel_leadia].color }}>
+                              {NIVEL_LEADIA[ld.nivel_leadia].label}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10.5px] font-bold text-muted">{ld.fuente}</div>
                       </div>
                       {/* waLink devuelve null si el teléfono no tiene dígitos
@@ -822,6 +917,8 @@ export default function CRM() {
       <PerdidosPanel perdidos={(leads.data || []).filter((l) => l.etapa === 'perdido')} sedeId={sedeId} />
 
       <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />
+
+      <FriosIgnorados sedeId={sedeId} empresaId={empresa?.id} />
     </div>
   )
 }

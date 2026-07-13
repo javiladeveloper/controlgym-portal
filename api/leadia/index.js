@@ -16,6 +16,7 @@ export default async function handler(req, res) {
   if (action === 'guardar-flujo') return guardarFlujo(req, res)
   if (action === 'estado') return estado(req, res)
   if (action === 'chat') return chat(req, res)
+  if (action === 'leads-frios') return leadsFrios(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -197,5 +198,35 @@ async function chat(req, res) {
     return res.status(200).json(out)  // {respuesta, nivelInteres, accion, escalar, resumen, leadId}
   } catch (e) {
     return res.status(400).json({ error: 'No se pudo contactar a la IA: ' + e.message })
+  }
+}
+
+// ── Leads fríos: los que el bot IGNORÓ (no entraron al CRM). El gym los ve para
+// saber a quién descartó Leadia y rescatar alguno si cree que vale. GET a Leadia
+// /leads?nivel=frio por sede, con la api_key descifrada. Solo admin.
+async function leadsFrios(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+  const sedeId = (req.query?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  const { rows } = await pool.query('select public.leadia_credenciales($1) as c', [sedeId])
+  const cred = rows[0].c
+  if (!cred?.encontrado) return res.status(200).json({ activo: false, items: [] })
+
+  const { base } = await configLeadia(pool)
+  try {
+    const r = await fetch(`${base}/leads?nivel=frio&limit=50`, {
+      headers: { authorization: `Bearer ${cred.api_key}` },
+    })
+    if (!r.ok) return res.status(200).json({ activo: true, items: [] })
+    const out = await r.json()
+    return res.status(200).json({ activo: true, items: out.items || [] })
+  } catch (e) {
+    return res.status(200).json({ activo: true, items: [], error: e.message })
   }
 }
