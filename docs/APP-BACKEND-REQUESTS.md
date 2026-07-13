@@ -2093,3 +2093,11 @@ Nota: el panel ya muestra "Cobro por sede" en Config › Mi plan (estado y monto
 por sede). El gate del lado app es lo único pendiente.
 
 Creado: 2026-07-13 (sesión del panel — billing por sede).
+
+--- PEDIDO 31 · REFUERZO (2026-07-13) -----------------------------------------
+El owner enfatizó: si la sede NO paga el add-on de app (con_app=false), el
+socio NO debe poder ENTRAR a la app aunque la descargue — no solo ocultar
+funciones, sino un gate DURO en el bootstrap del socio: si estado_suscripcion_
+sede(su_sede).con_app es false o activa es false → pantalla de bloqueo
+("tu gimnasio no tiene la app activa") y ninguna función disponible. Es el
+equivalente del BloqueoPlan del panel, pero del lado app y por sede.

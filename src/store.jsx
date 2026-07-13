@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from './context/AuthContext.jsx'
+import { supabase } from './lib/supabaseClient.js'
 
 const SedeContext = createContext(null)
 
@@ -30,12 +32,29 @@ export function SedeProvider({ children }) {
 
   const sede = useMemo(() => sedes?.find((s) => s.id === sedeId) ?? null, [sedes, sedeId])
 
+  // Módulos habilitados para la SEDE activa = categoría del gym ∩ plan de la
+  // sede (cada sede paga su plan). Si la query aún no resolvió, se usan los del
+  // bootstrap (empresa) como fallback para no parpadear el menú.
+  const { enabledModules: modulosEmpresa } = useAuth()
+  const modsSede = useQuery({
+    queryKey: ['modulos-sede', sedeId],
+    enabled: !!sedeId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('modulos_de_sede', { p_sede_id: sedeId })
+      if (error) throw error
+      return data
+    },
+  })
+  const enabledModules = modsSede.data ?? modulosEmpresa ?? []
+
   const value = {
     sedeId,
     sede,                       // objeto { id, nombre }
     sedeNombre: sede?.nombre ?? '',
     sedes: sedes ?? [],
     setSede,
+    enabledModules,             // módulos según el plan de la sede activa
   }
 
   return <SedeContext.Provider value={value}>{children}</SedeContext.Provider>

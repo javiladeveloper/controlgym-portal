@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { canAccessModule } from '../config/modules.js'
+import { usePanel } from '../store.jsx'
 import { FitCoreLogo } from './icons.jsx'
 
 function Splash() {
@@ -20,7 +21,8 @@ function Splash() {
 // valida que el módulo esté habilitado para la empresa/rol.
 // `allowNoEmpresa`: rutas accesibles sin empresa (ej. /registro).
 export default function ProtectedRoute({ children, moduleSlug, allowNoEmpresa = false }) {
-  const { session, loading, enabledModules, rol, empresa, esSuperadmin } = useAuth()
+  const { session, loading, rol, empresa, esSuperadmin } = useAuth()
+  const { enabledModules } = usePanel()
   const location = useLocation()
 
   if (loading) return <Splash />

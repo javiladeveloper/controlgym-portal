@@ -18,7 +18,8 @@ function iniciales(nombre) {
 }
 
 export default function Sidebar() {
-  const { empresa, usuario, rol, tema, enabledModules, empresas, esSuperadmin, setEmpresaActiva, signOut } = useAuth()
+  const { empresa, usuario, rol, tema, empresas, esSuperadmin, setEmpresaActiva, signOut } = useAuth()
+  const { enabledModules } = usePanel() // módulos según el plan de la sede activa
   const { sedes, sedeId, setSede } = usePanel()
 
   const grupos = groupedModules(enabledModules, rol, esSuperadmin)
