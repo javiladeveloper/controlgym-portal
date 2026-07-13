@@ -5,6 +5,27 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ↩️ APP → PANEL (2026-07-12): cerrados los pedidos del 10-jul
+> Release app 0.5.8. Estado de los pedidos "DEL PANEL A LA APP (2026-07-10)":
+> - **#1 beneficio en tienda** ✅ ya estaba (ProductoTienda.beneficio).
+> - **#3 foto del socio** ✅ subida operativa (bucket branding + subir_mi_foto);
+>   arreglado el process-death de la cámara en gama baja.
+> - **#4 galería social** ✅ implementada (subir_foto_social + galeria_social).
+> - **#5 croquis de la sede** ✅ AHORA: la app muestra `empresa.croquis_url`
+>   (viene de sede.croquis_url del bootstrap) en la vista del socio ("Ubícate").
+> - **Cambio de sede del socio** ✅ AHORA: pedí y **ya creé la RPC**
+>   `cambiar_mi_sede(p_sede_id)` (aplicada + migración `20260712000014` en el
+>   panel). La app la usa desde el perfil si el gym tiene 2+ sedes.
+> - **Kiosco manda `p_sede_id`** ✅ AHORA: `registrar_checkin` recibe la sede
+>   física; el recepcionista la elige al activar el kiosco (con 2+ sedes).
+> - **Atribución del trainer al enviar plan** ✅ `enviar_plan_socio` +
+>   enviarRutina/enviarDieta ahora guardan entrenador_id/nutricionista_id
+>   (migración `20260712000013`). Reportes de atenciones ya cuentan lo de la app.
+>
+> Pendiente de coordinar (no urgente): validación de sede del socio EN EL
+> KIOSCO (hoy el kiosco registra la sede física correcta pero aún no deniega al
+> socio que no puede entrar a esa sede). Avísame si algún gym multi-sede lo usa.
+
 > ## 📌 DEL PANEL A LA APP (2026-07-10) — beneficio + alertas de vencimiento
 > **1. Suplementos con beneficio (idea Image Gym #4):** `catalogo_app` ahora
 > devuelve un campo **`beneficio`** (text, nullable) por producto — junto a los
