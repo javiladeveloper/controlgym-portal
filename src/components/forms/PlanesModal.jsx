@@ -12,7 +12,7 @@ const UNIDADES = [['dia', 'Por día'], ['mes', 'Mensual'], ['trimestre', 'Trimes
 
 const VACIO = {
   nombre: '', precio: '', unidad: 'mes', descripcion: '', badge: '',
-  cobra_matricula: false, precio_matricula: '', dias_congelamiento_anio: 0,
+  cobra_matricula: false, precio_matricula: '', dias_congelamiento_anio: 0, antelacion_reserva_dias: 14,
   multisede: false, acceso_sedes: 'propia', acceso_sedes_n: '', es_familiar: false, incluye_clases: true, incluye_rutina: true, activo: true,
 }
 
@@ -77,6 +77,7 @@ export default function PlanesModal({ onClose }) {
       cobra_matricula: !!edit.cobra_matricula,
       precio_matricula: edit.cobra_matricula ? Number(edit.precio_matricula || 0) : 0,
       dias_congelamiento_anio: Number(edit.dias_congelamiento_anio || 0),
+      antelacion_reserva_dias: Number(edit.antelacion_reserva_dias ?? 14),
       multisede: edit.acceso_sedes === 'todas',   // compat: el booleano viejo sigue reflejando "todas"
       acceso_sedes: edit.acceso_sedes || 'propia',
       acceso_sedes_n: edit.acceso_sedes === 'n' ? Math.max(1, Number(edit.acceso_sedes_n) || 1) : null,
@@ -201,6 +202,17 @@ export default function PlanesModal({ onClose }) {
             </p>
             <div className="mt-2.5 max-w-[200px]">
               <input type="number" min="0" max="365" value={edit.dias_congelamiento_anio} onChange={set('dias_congelamiento_anio')} className={inputCls} />
+            </div>
+          </div>
+
+          <div className="rounded-[10px] border border-line px-4 py-3">
+            <div className="text-[13px] font-extrabold">📅 Anticipación de reserva de clases</div>
+            <p className="mt-0.5 text-[11.5px] font-semibold text-muted">
+              Con cuántos días de anticipación puede reservar una clase un socio con este plan. Un plan VIP puede reservar antes que uno básico.
+            </p>
+            <div className="mt-2.5 flex items-center gap-2">
+              <input type="number" min="0" max="90" value={edit.antelacion_reserva_dias} onChange={set('antelacion_reserva_dias')} className={inputCls + ' max-w-[110px]'} />
+              <span className="text-[12px] font-bold text-muted">días antes</span>
             </div>
           </div>
 

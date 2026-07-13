@@ -2160,3 +2160,49 @@ No hay commit de la app para P31/P32 aun en el repo compartido.
 
 Ambos escenarios ya los soporta estado_suscripcion_sede; falta que la app los
 consuma como gate de entrada.
+
+================================================================================
+PEDIDO 33 -- Reservas de clases con POSICIÓN en sala (mapa) + antelación x plan
+================================================================================
+
+CONTEXTO: el gym ahora puede crear SALAS con grilla de posiciones (ej. Sala
+Spinning = 20 bicis) y asignarlas a una clase. Cuando una clase tiene sala, el
+socio debe ELEGIR SU LUGAR en un mapa, no solo tomar un cupo. Además, la
+antelación de reserva pasó de fija (14 días) a CONFIGURABLE por plan del socio.
+
+CAMBIOS DE CONTRATO (BD lista y probada):
+
+1) reservar_clase EXTENDIDA — firma nueva (compatible hacia atrás):
+     reservar_clase(p_clase_id uuid, p_fecha date, p_sala_posicion_id uuid default null)
+   - La llamada VIEJA de 2 args (clase, fecha) SIGUE FUNCIONANDO para clases
+     SIN sala (reserva por cupo, como hoy).
+   - Si la clase TIENE sala: p_sala_posicion_id es OBLIGATORIO. Sin él →
+     error "Elige tu lugar en la sala para reservar esta clase". Con posición
+     ocupada → "Ese lugar ya está reservado — elige otro" (control de carrera
+     server-side con lock, dos socios no pueden tomar el mismo asiento).
+   - Devuelve {reserva_id, sala_posicion_id, cupos_restantes}.
+   - La antelación permitida ahora sale de plan.antelacion_reserva_dias (no 14
+     fijo). Error: "Tu plan permite reservar hasta con N días de anticipación".
+
+2) mapa_clase(p_clase_id uuid, p_fecha date) -> jsonb (NUEVO):
+   Para pintar el mapa. Devuelve:
+     - clase SIN sala: { tiene_sala:false, cupo_max, ocupados }
+     - clase CON sala: { tiene_sala:true, sala:{id,nombre,filas,columnas},
+         posiciones:[ {id, fila, columna, etiqueta, activa, ocupada, es_mia,
+         socio_nombre} ] }
+   'activa'=false → pasillo/hueco (no reservable). 'ocupada'=true → tomada.
+   'es_mia'=true → la reservó el socio que consulta. 'socio_nombre' solo se
+   incluye para STAFF (null para el socio, privacidad). Grant a authenticated.
+
+LO QUE TOCA EN LA APP:
+- Pantalla de la clase: si mapa_clase.tiene_sala, pintar la grilla
+  (filas×columnas) con las posiciones; libres tocables, ocupadas no, pasillos
+  (activa=false) como huecos. Al tocar una libre → reservar_clase(clase, fecha,
+  posicion_id). Si NO tiene sala, flujo actual (botón reservar por cupo).
+- El socio ve su propia reserva marcada (es_mia) para poder cancelarla
+  (cancelar_reserva sigue igual).
+
+Demo en MaximusGym: "Sala Spinning" (2×3) asignada a la clase "Spinning
+matutino" — mapa_clase ya responde con sus 6 posiciones.
+
+Creado: 2026-07-13 (sesión del panel — reservas con posición en sala).

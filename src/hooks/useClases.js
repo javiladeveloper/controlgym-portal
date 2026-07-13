@@ -9,7 +9,7 @@ export function useClases(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clase')
-        .select('id, nombre, dia_semana, hora, cupo_max, activa, duracion_min, tipo_clase_id, instructor_id, instructor_nombre, instructor:usuario(nombre), tipo:tipo_clase(nombre, color)')
+        .select('id, nombre, dia_semana, hora, cupo_max, activa, duracion_min, tipo_clase_id, sala_id, instructor_id, instructor_nombre, instructor:usuario(nombre), tipo:tipo_clase(nombre, color)')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('dia_semana').order('hora')
@@ -63,5 +63,22 @@ export function useToggleAcceso() {
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['plan-acceso'] }),
+  })
+}
+
+// Salas con su grilla de posiciones (para reservas con lugar asignado).
+export function useSalas(sedeId) {
+  return useQuery({
+    queryKey: ['salas', sedeId],
+    enabled: !!sedeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sala')
+        .select('id, nombre, filas, columnas, sede_id, posiciones:sala_posicion(id, fila, columna, etiqueta, activa)')
+        .eq('sede_id', sedeId)
+        .order('created_at')
+      if (error) throw error
+      return data
+    },
   })
 }

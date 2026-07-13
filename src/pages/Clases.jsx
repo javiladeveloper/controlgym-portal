@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient.js'
 import { usePanel } from '../store.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useQuery } from '@tanstack/react-query'
-import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso } from '../hooks/useClases.js'
+import { useClases, useToggleClase, usePlanAcceso, useToggleAcceso, useSalas } from '../hooks/useClases.js'
 
 // Fecha de HOY en horario local (Lima UTC-5) como 'YYYY-MM-DD'. toISOString()
 // usaría UTC y de tarde/noche adelantaría al día siguiente, excluyendo las
@@ -51,10 +51,11 @@ function useReservasPorClase(sedeId) {
 }
 import { usePersonal } from '../hooks/useOperaciones.js'
 import { claseDot, DAY_NAMES } from '../lib/uiHelpers.js'
+import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 // Alta y edición de clase (mismo formulario). Editando además permite eliminarla.
-function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
+function ClaseModal({ sedeId, empresaId, tipos, salas, clase = null, onClose }) {
   const qc = useQueryClient()
   const editando = !!clase
   const personal = usePersonal(sedeId) // staff que puede dictar la clase
@@ -66,6 +67,7 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
     hora: clase?.hora?.slice(0, 5) || '19:00',
     duracion: clase?.duracion_min || 60,
     cupo: clase?.cupo_max || 20,
+    sala_id: clase?.sala_id || '',
     // Instructor: id de staff, '__externo__' (contratado solo para la clase) o '' (sin asignar)
     instructor: clase?.instructor_id || (clase?.instructor_nombre ? '__externo__' : ''),
     instructor_externo: clase?.instructor_nombre || '',
@@ -100,11 +102,12 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
       const dur = Number(f.duracion)
       const cupo = Number(f.cupo)
       if (!Number.isFinite(dur) || dur <= 0) throw new Error('La duración debe ser mayor que 0.')
-      if (!Number.isFinite(cupo) || cupo <= 0) throw new Error('El cupo máximo debe ser mayor que 0.')
+      if (!f.sala_id && (!Number.isFinite(cupo) || cupo <= 0)) throw new Error('El cupo máximo debe ser mayor que 0.')
       const payload = {
         tipo_clase_id: tipoId === '__nuevo__' ? null : tipoId,
         nombre: f.nombre.trim(), dia_semana: Number(f.dia), hora: f.hora,
         duracion_min: dur, cupo_max: cupo,
+        sala_id: f.sala_id || null,
         // Staff del panel o externo por nombre (nunca ambos)
         instructor_id: f.instructor && f.instructor !== '__externo__' ? f.instructor : null,
         instructor_nombre: f.instructor === '__externo__' ? (f.instructor_externo.trim() || null) : null,
@@ -176,6 +179,14 @@ function ClaseModal({ sedeId, empresaId, tipos, clase = null, onClose }) {
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Duración (min)"><input type="number" min="1" value={f.duracion} onChange={set('duracion')} className={inputCls} /></Campo>
           <Campo label="Cupo máximo"><input type="number" min="1" value={f.cupo} onChange={set('cupo')} className={inputCls} /></Campo>
+        </div>
+        <Campo label="Sala (opcional)" hint={f.sala_id ? 'Con sala, el socio elige su lugar y el cupo lo define la sala.' : 'Sin sala: se reserva por cupo. Elige una sala para reservas con lugar asignado.'}>
+          <select value={f.sala_id} onChange={set('sala_id')} className={inputCls + ' cursor-pointer'}>
+            <option value="">Sin sala (solo cupo)</option>
+            {(salas || []).map((sa) => <option key={sa.id} value={sa.id}>{sa.nombre} ({(sa.posiciones || []).filter((p) => p.activa).length} lugares)</option>)}
+          </select>
+        </Campo>
+        <div className="hidden">
         </div>
         <Campo label="Instructor" hint="Puede ser de tu equipo, o alguien contratado solo para dictar esta clase.">
           <select value={f.instructor} onChange={set('instructor')} className={inputCls + ' cursor-pointer'}>
@@ -307,6 +318,204 @@ function ServiciosModal({ empresaId, sedeId, tipos, onClose }) {
   )
 }
 
+// ── Salas con posiciones (para reservas con lugar asignado) ──
+// El gym crea una sala como grilla filas×columnas; cada celda es una posición
+// reservable. Clic en una celda la activa/desactiva (pasillo). Se puede
+// renombrar. Patrón de grilla tomado del arqueo de caja (Finanzas.jsx).
+function SalasModal({ sedeId, empresaId, onClose }) {
+  const qc = useQueryClient()
+  const salas = useSalas(sedeId)
+  const [editando, setEditando] = useState(null) // sala en edición o 'nueva'
+  const [f, setF] = useState({ nombre: '', filas: 4, columnas: 5 })
+  const [celdas, setCeldas] = useState({}) // "fila-col" -> { activa, etiqueta }
+  const [busy, setBusy] = useState(false)
+
+  function abrirNueva() {
+    setEditando('nueva'); setF({ nombre: '', filas: 4, columnas: 5 }); setCeldas({})
+  }
+  function abrirEditar(sala) {
+    setEditando(sala)
+    setF({ nombre: sala.nombre, filas: sala.filas, columnas: sala.columnas })
+    const m = {}
+    for (const p of sala.posiciones || []) m[`${p.fila}-${p.columna}`] = { id: p.id, activa: p.activa, etiqueta: p.etiqueta }
+    setCeldas(m)
+  }
+  const celda = (fila, col) => celdas[`${fila}-${col}`] ?? { activa: true, etiqueta: null }
+  function toggleCelda(fila, col) {
+    const k = `${fila}-${col}`; const c = celda(fila, col)
+    setCeldas((s) => ({ ...s, [k]: { ...c, activa: !c.activa } }))
+  }
+  function renombrar(fila, col, etiqueta) {
+    const k = `${fila}-${col}`; const c = celda(fila, col)
+    setCeldas((s) => ({ ...s, [k]: { ...c, etiqueta } }))
+  }
+
+  async function guardar() {
+    if (!f.nombre.trim()) { toast.error('Ponle un nombre a la sala.'); return }
+    setBusy(true)
+    try {
+      let salaId = editando !== 'nueva' ? editando.id : null
+      if (salaId) {
+        const { error } = await supabase.from('sala').update({ nombre: f.nombre.trim(), filas: Number(f.filas), columnas: Number(f.columnas) }).eq('id', salaId)
+        if (error) throw error
+        await supabase.from('sala_posicion').delete().eq('sala_id', salaId) // se regeneran
+      } else {
+        const { data, error } = await supabase.from('sala').insert({
+          empresa_id: empresaId, sede_id: sedeId, nombre: f.nombre.trim(), filas: Number(f.filas), columnas: Number(f.columnas),
+        }).select('id').single()
+        if (error) throw error
+        salaId = data.id
+      }
+      // (re)generar las posiciones según la grilla actual
+      const filas = []
+      for (let r = 1; r <= Number(f.filas); r++) {
+        for (let c = 1; c <= Number(f.columnas); c++) {
+          const cel = celda(r, c)
+          filas.push({ sala_id: salaId, empresa_id: empresaId, fila: r, columna: c,
+            etiqueta: cel.etiqueta || null, activa: cel.activa !== false })
+        }
+      }
+      const { error: errPos } = await supabase.from('sala_posicion').insert(filas)
+      if (errPos) throw errPos
+      qc.invalidateQueries({ queryKey: ['salas', sedeId] })
+      toast.ok(editando === 'nueva' ? 'Sala creada' : 'Sala actualizada')
+      setEditando(null)
+    } catch (e) {
+      toast.error('No se pudo guardar: ' + e.message)
+    } finally { setBusy(false) }
+  }
+
+  async function eliminar(sala) {
+    if (!window.confirm(`¿Eliminar la sala "${sala.nombre}"? Las clases que la usen quedarán sin mapa.`)) return
+    // desvincular clases que la usan, luego borrar (cascade a posiciones)
+    await supabase.from('clase').update({ sala_id: null }).eq('sala_id', sala.id)
+    const { error } = await supabase.from('sala').delete().eq('id', sala.id)
+    if (error) { toast.error('No se pudo eliminar: ' + error.message); return }
+    qc.invalidateQueries({ queryKey: ['salas', sedeId] })
+    toast.ok('Sala eliminada')
+  }
+
+  if (editando) {
+    const nCol = Math.min(Number(f.columnas) || 1, 40)
+    return (
+      <Modal title={editando === 'nueva' ? 'Nueva sala' : 'Editar sala'} subtitle="Marca los lugares reservables · toca una celda para volverla pasillo" onClose={() => setEditando(null)} width={560}>
+        <div className="flex flex-col gap-3.5">
+          <Campo label="Nombre de la sala"><input value={f.nombre} onChange={(e) => setF((s) => ({ ...s, nombre: e.target.value }))} className={inputCls} placeholder="Sala Spinning" /></Campo>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Filas"><input type="number" min="1" max="40" value={f.filas} onChange={(e) => setF((s) => ({ ...s, filas: e.target.value }))} className={inputCls} /></Campo>
+            <Campo label="Columnas"><input type="number" min="1" max="40" value={f.columnas} onChange={(e) => setF((s) => ({ ...s, columnas: e.target.value }))} className={inputCls} /></Campo>
+          </div>
+          <div>
+            <div className="mb-1.5 text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Mapa de la sala</div>
+            <div className="overflow-x-auto rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+              <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `repeat(${nCol}, minmax(0, 1fr))` }}>
+                {Array.from({ length: Number(f.filas) || 0 }, (_, ri) =>
+                  Array.from({ length: nCol }, (_, ci) => {
+                    const r = ri + 1, c = ci + 1
+                    const cel = celda(r, c)
+                    const n = (r - 1) * nCol + c
+                    return (
+                      <button key={`${r}-${c}`} type="button" onClick={() => toggleCelda(r, c)}
+                        onDoubleClick={() => { const t = window.prompt('Nombre del lugar (ej. Bici 7):', cel.etiqueta || `${n}`); if (t !== null) renombrar(r, c, t.trim() || null) }}
+                        title={cel.activa !== false ? 'Clic: volver pasillo · doble clic: renombrar' : 'Clic: activar como lugar'}
+                        className={`flex h-9 w-9 items-center justify-center rounded-[7px] border text-[10px] font-extrabold transition-colors ${cel.activa !== false ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-faint'}`}>
+                        {cel.activa !== false ? (cel.etiqueta || n) : '·'}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+            <div className="mt-1.5 text-[11px] font-semibold text-faint">
+              Naranja = lugar reservable · gris = pasillo. Doble clic para renombrar (ej. "Bici 7"). Lugares activos: {Object.values(celdas).filter((c) => c.activa !== false).length || (Number(f.filas) * nCol)}.
+            </div>
+          </div>
+          <BotonesModal onCancel={() => setEditando(null)} busy={busy} submitLabel="Guardar sala" onSubmit={guardar} />
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal title="Salas" subtitle="Grillas de posiciones para reservas con lugar asignado (spinning, reformer…)" onClose={onClose} width={480}>
+      <div className="flex flex-col gap-2">
+        {salas.isLoading && <div className="py-3 text-[12.5px] font-semibold text-faint">Cargando…</div>}
+        {(salas.data || []).map((sala) => (
+          <div key={sala.id} className="flex items-center justify-between rounded-[10px] border border-line px-3.5 py-2.5">
+            <div>
+              <div className="text-[13px] font-extrabold">{sala.nombre}</div>
+              <div className="text-[11.5px] font-semibold text-muted">{sala.filas}×{sala.columnas} · {(sala.posiciones || []).filter((p) => p.activa).length} lugares</div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => abrirEditar(sala)} className="cursor-pointer rounded-md border-none bg-transparent px-1.5 text-[13px] text-faint hover:text-orange">✏️</button>
+              <button onClick={() => eliminar(sala)} className="cursor-pointer rounded-md border-none bg-transparent px-1.5 text-[13px] text-faint hover:text-red">🗑</button>
+            </div>
+          </div>
+        ))}
+        {!salas.isLoading && (salas.data || []).length === 0 && (
+          <div className="rounded-[10px] border border-dashed border-line px-4 py-5 text-center text-[12.5px] font-semibold text-muted">Sin salas aún. Crea una para reservas con lugar.</div>
+        )}
+      </div>
+      <button onClick={abrirNueva} className="mt-3 w-full cursor-pointer rounded-[10px] border-none bg-orange py-2.5 text-[13px] font-extrabold text-white hover:bg-orange-600">+ Nueva sala</button>
+    </Modal>
+  )
+}
+
+// Mapa de reservas de una clase para una fecha: recepción ve qué lugares están
+// tomados y por quién. Llama al RPC mapa_clase.
+function MapaClaseModal({ clase, onClose }) {
+  const hoy = hoyLocal()
+  // próxima ocurrencia de esta clase (su día de la semana) desde hoy
+  const proxima = (() => {
+    const base = new Date(hoy + 'T00:00:00')
+    const delta = ((clase.dia_semana - (((base.getDay() + 6) % 7) + 1)) + 7) % 7
+    const d = new Date(base); d.setDate(base.getDate() + delta)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })()
+  const [fecha, setFecha] = useState(proxima)
+  const mapa = useQuery({
+    queryKey: ['mapa-clase', clase.id, fecha],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('mapa_clase', { p_clase_id: clase.id, p_fecha: fecha })
+      if (error) throw error
+      return data
+    },
+  })
+  const d = mapa.data
+  return (
+    <Modal title={clase.nombre} subtitle="Reservas por lugar" onClose={onClose} width={560}>
+      <label className="mb-3 block">
+        <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Fecha</span>
+        <input type="date" value={fecha} min={hoy} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
+      </label>
+      {mapa.isLoading && <div className="py-6 text-center text-[12.5px] font-semibold text-faint">Cargando…</div>}
+      {d && !d.tiene_sala && (
+        <div className="rounded-[10px] border border-line bg-[#FAFBFC] px-4 py-4 text-[13px] font-bold">
+          Esta clase no usa mapa de sala. Reservas: <b>{d.ocupados}</b>{d.cupo_max ? ` de ${d.cupo_max} cupos` : ''}.
+        </div>
+      )}
+      {d && d.tiene_sala && (
+        <div className="overflow-x-auto rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+          <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `repeat(${d.sala.columnas}, minmax(0, 1fr))` }}>
+            {(d.posiciones || []).map((p) => (
+              <div key={p.id}
+                title={!p.activa ? 'pasillo' : p.ocupada ? (p.socio_nombre || 'reservado') : 'libre'}
+                className={`flex h-9 w-9 items-center justify-center rounded-[7px] border text-[9px] font-extrabold ${!p.activa ? 'border-line bg-white text-faint' : p.ocupada ? 'border-red bg-red/10 text-red' : 'border-green bg-green-50 text-green-600'}`}>
+                {!p.activa ? '·' : (p.etiqueta || `${p.fila}·${p.columna}`)}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-3 text-[11px] font-bold text-muted">
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-green bg-green-50" />Libre</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-red bg-red/10" />Reservado</span>
+            <span>{(d.posiciones || []).filter((p) => p.ocupada).length} de {(d.posiciones || []).filter((p) => p.activa).length} lugares tomados</span>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export default function Clases() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa, rol } = useAuth()
@@ -317,10 +526,13 @@ export default function Clases() {
   const [nuevaOpen, setNuevaOpen] = useState(false)
   const [editarClase, setEditarClase] = useState(null)
   const [serviciosOpen, setServiciosOpen] = useState(false)
+  const [salasOpen, setSalasOpen] = useState(false)
+  const [mapaClase, setMapaClase] = useState(null)
   const clases = useClases(sedeId)
   const reservas = useReservasPorClase(sedeId)
   const toggle = useToggleClase(sedeId)
   const acceso = usePlanAcceso()
+  const salas = useSalas(sedeId)
   const toggleAcceso = useToggleAcceso()
 
   // Agrupar clases por día. El domingo (7) también cuenta: el selector deja
@@ -347,6 +559,8 @@ export default function Clases() {
           <div className="flex items-center gap-2.5">
             <button onClick={() => setServiciosOpen(true)}
               className="cursor-pointer rounded-[10px] border border-orange bg-white px-[16px] py-[10px] text-[13px] font-extrabold text-orange transition-colors hover:bg-orange-50">Servicios</button>
+            <button onClick={() => setSalasOpen(true)}
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-[16px] py-[10px] text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">🗺️ Salas</button>
             <button onClick={() => setNuevaOpen(true)}
               className="cursor-pointer rounded-[10px] border-none bg-orange px-[18px] py-[11px] text-[13px] font-extrabold text-white transition-colors hover:bg-orange-600">Nueva clase</button>
           </div>
@@ -384,13 +598,19 @@ export default function Clases() {
       )}
 
       {nuevaOpen && (
-        <ClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} onClose={() => setNuevaOpen(false)} />
+        <ClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} salas={salas.data || []} onClose={() => setNuevaOpen(false)} />
       )}
       {editarClase && (
-        <ClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} clase={editarClase} onClose={() => setEditarClase(null)} />
+        <ClaseModal sedeId={sedeId} empresaId={empresa?.id} tipos={acceso.data?.tipos || []} salas={salas.data || []} clase={editarClase} onClose={() => setEditarClase(null)} />
       )}
       {serviciosOpen && (
         <ServiciosModal empresaId={empresa?.id} sedeId={sedeId} tipos={acceso.data?.tipos || []} onClose={() => setServiciosOpen(false)} />
+      )}
+      {salasOpen && (
+        <SalasModal sedeId={sedeId} empresaId={empresa?.id} onClose={() => setSalasOpen(false)} />
+      )}
+      {mapaClase && (
+        <MapaClaseModal clase={mapaClase} onClose={() => setMapaClase(null)} />
       )}
 
       {clases.isLoading && <LoadingState variant="cards" rows={4} />}
@@ -428,11 +648,14 @@ export default function Clases() {
                         {paused ? 'Pausada' : 'Activa'}
                       </span>
                     </div>
-                    {/* Demanda real: reservas hechas desde la app del socio */}
-                    {reservas.data?.[cs.id]?.total > 0 && (
-                      <div className="mt-1.5 rounded-[7px] bg-orange-50 px-2 py-1 text-[10px] font-extrabold text-orange">
-                        📅 {reservas.data[cs.id].total} reserva{reservas.data[cs.id].total === 1 ? '' : 's'} · próx. {new Date(reservas.data[cs.id].proxima + 'T12:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
-                      </div>
+                    {/* Demanda real + mapa de sala (clic abre el mapa de reservas) */}
+                    {(reservas.data?.[cs.id]?.total > 0 || cs.sala_id) && (
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setMapaClase(cs) }}
+                        className="mt-1.5 w-full cursor-pointer rounded-[7px] border-none bg-orange-50 px-2 py-1 text-left text-[10px] font-extrabold text-orange hover:bg-orange-100">
+                        {reservas.data?.[cs.id]?.total > 0
+                          ? `📅 ${reservas.data[cs.id].total} reserva${reservas.data[cs.id].total === 1 ? '' : 's'} · próx. ${new Date(reservas.data[cs.id].proxima + 'T12:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}`
+                          : '🗺️ Ver mapa de la sala'}
+                      </button>
                     )}
                   </div>
                 )
