@@ -7,11 +7,13 @@ import TabCobros from './config/TabCobros.jsx'
 import TabFacturacion from './config/TabFacturacion.jsx'
 import TabAccesoCamaras from './config/TabAccesoCamaras.jsx'
 import TabNegocioSedes from './config/TabNegocioSedes.jsx'
+import TabLeadia from './config/TabLeadia.jsx'
 
 const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
   { key: 'cobros', label: 'Cobros 💰', Comp: TabCobros },
   { key: 'facturacion', label: 'Facturación 🧾', Comp: TabFacturacion },
+  { key: 'leadia', label: 'IA Leadia 🤖', Comp: TabLeadia },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'pagina', label: 'Página web', Comp: TabWeb },
   { key: 'acceso', label: 'Acceso y cámaras', Comp: TabAccesoCamaras },

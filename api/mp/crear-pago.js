@@ -8,7 +8,7 @@
 // Body (1 producto): { empresa_id, tipo:'producto', ref_id, socio_id?, sede_id?, nuevo? }
 // Body (carrito):    { empresa_id, tipo:'producto', items:[{producto_id, cantidad}],
 //                      socio_id?, sede_id?, nuevo? }
-import { env, db } from '../_lib/db.js'
+import { env, db, usuarioDesdeJwt } from '../_lib/db.js'
 
 const COMISION = 0.05 // 5% FitCore
 
@@ -22,7 +22,30 @@ function precioEfectivo(precio, tipo, valor) {
   return p
 }
 
+// oauth-start consolidado aquí (?action=oauth-start) para respetar el límite de
+// 12 funciones serverless de Vercel Hobby. Devuelve la URL de autorización de MP.
+async function oauthStart(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user?.id) return res.status(401).json({ error: 'No autenticado' })
+  const { rows } = await db().query(
+    `select ue.empresa_id from public.usuario_empresa ue
+       join public.rol r on r.id = ue.rol_id
+      where ue.usuario_id = $1 and ue.activo and r.codigo = 'admin'
+      order by ue.es_default desc, ue.created_at asc limit 1`, [user.id])
+  const empresaId = rows[0]?.empresa_id
+  if (!empresaId) return res.status(403).json({ error: 'Solo el administrador puede conectar los cobros' })
+  const authUrl = new URL('https://auth.mercadopago.com/authorization')
+  authUrl.searchParams.set('client_id', env('MP_CLIENT_ID'))
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('platform_id', 'mp')
+  authUrl.searchParams.set('redirect_uri', env('MP_REDIRECT_URI'))
+  authUrl.searchParams.set('state', empresaId)
+  res.setHeader('Cache-Control', 'no-store')
+  return res.status(200).json({ url: authUrl.toString() })
+}
+
 export default async function handler(req, res) {
+  if ((req.query?.action || '') === 'oauth-start') return oauthStart(req, res)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
   const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal } = req.body || {}
   const canalPago = ['app', 'mostrador'].includes(canal) ? canal : 'app'

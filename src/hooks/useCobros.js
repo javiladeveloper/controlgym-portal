@@ -18,7 +18,7 @@ export function useEstadoCobros(empresaId) {
 // (con el JWT del admin) y redirige el navegador a MercadoPago.
 export async function conectarCobros() {
   const { data: sess } = await supabase.auth.getSession()
-  const res = await fetch('/api/mp/oauth-start', {
+  const res = await fetch('/api/mp/crear-pago?action=oauth-start', {
     cache: 'no-store', // nunca reutilizar una URL de autorización cacheada
     headers: { authorization: `Bearer ${sess?.session?.access_token || ''}` },
   })
