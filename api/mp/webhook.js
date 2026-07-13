@@ -69,8 +69,10 @@ export default async function handler(req, res) {
 
     if (aprobado) {
       if (pago.tipo === 'membresia' && pago.socio_id) {
-        // Socio existente → renovar/activar su membresía (paga completo).
-        await db().query(`select public.renew_membership($1, 'mercadopago')`, [pago.ref_id])
+        // Socio existente → renovar/activar su membresía (paga completo). Si su
+        // promo de origen da beneficio GRUPAL vigente (2×1 "de por vida", etc.),
+        // el mismo pago renueva también a sus compañeros con monto 0.
+        await db().query(`select public.renovar_membresia_grupo_webhook($1, 'mercadopago')`, [pago.ref_id])
       } else if (pago.tipo === 'producto') {
         // Compra desde la app (1 producto o carrito) → registra la venta de cada
         // ítem y descuenta su stock al pagar (reserva). La orden queda
