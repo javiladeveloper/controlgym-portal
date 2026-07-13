@@ -2129,3 +2129,12 @@ LO QUE TOCA EN LA APP:
 3. NADA de popup al abrir la app.
 
 Creado: 2026-07-13 (sesion del panel — ofertas de productos en la app).
+
+--- ESTADO P31 y P32 (verificado desde el panel, 2026-07-13) ----------------
+Los contratos del lado BD estan LISTOS y probados en prod:
+- P31 gate: estado_suscripcion_sede(sede) -> {con_app, activa, estado, origen}
+  (verificado: hereda de empresa si la sede no tiene fila propia).
+- P32 badge: ofertas_activas_socio() -> int (verificado: devuelve el conteo).
+- P32 push: job avisar_ofertas_app corriendo (cron 09:30 Lima), push agrupado.
+Falta SOLO el trabajo del lado app (gate duro de entrada + badge/push handler).
+No hay commit de la app para P31/P32 aun en el repo compartido.
