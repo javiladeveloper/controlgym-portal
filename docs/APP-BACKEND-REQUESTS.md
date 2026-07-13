@@ -2138,3 +2138,25 @@ Los contratos del lado BD estan LISTOS y probados en prod:
 - P32 push: job avisar_ofertas_app corriendo (cron 09:30 Lima), push agrupado.
 Falta SOLO el trabajo del lado app (gate duro de entrada + badge/push handler).
 No hay commit de la app para P31/P32 aun en el repo compartido.
+
+--- HERRAMIENTAS PARA VALIDAR P31/P32 (dejadas por el panel, 2026-07-13) ------
+
+1) Script de verificación de contratos (corre en rollback, no ensucia):
+     psql "$DATABASE_URL" -f scripts/verificar-contratos-app.sql
+   Imprime OK/FALLA de: P31 gate (estado_suscripcion_sede), P32 badge
+   (ofertas_activas_socio), P32 catálogo (catalogo_app con descuentos).
+   Estado actual: los 3 dan OK.
+
+2) Para probar el GATE DURO del P31 (socio de una sede que NO pagó la app),
+   crear una sede con con_app=false y mover un socio con app a esa sede:
+     -- (como service_role / SQL admin)
+     insert into suscripcion_sede (empresa_id, sede_id, plan_slug, con_app, estado)
+       values ('<empresa>','<sede>','estudio', false, 'activa');
+     -- estado_suscripcion_sede('<sede>') debe devolver con_app=false
+     -- => la app debe MOSTRAR EL BLOQUEO ("tu gym no activó la app") y
+     --    no dejar entrar al socio de esa sede.
+   Y el caso 'activa'=false (sede vencida): estado='vencida' → la app bloquea
+   igual (no pagó / se cortó).
+
+Ambos escenarios ya los soporta estado_suscripcion_sede; falta que la app los
+consuma como gate de entrada.
