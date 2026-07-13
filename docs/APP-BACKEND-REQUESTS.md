@@ -2101,3 +2101,31 @@ funciones, sino un gate DURO en el bootstrap del socio: si estado_suscripcion_
 sede(su_sede).con_app es false o activa es false → pantalla de bloqueo
 ("tu gimnasio no tiene la app activa") y ninguna función disponible. Es el
 equivalente del BloqueoPlan del panel, pero del lado app y por sede.
+
+================================================================================
+PEDIDO 32 -- Aviso de ofertas en la tienda de la app (agrupado, no 20 popups)
+================================================================================
+
+CONTEXTO: cuando la empresa pone un producto en oferta (descuento en Kardex),
+el socio debe enterarse. Decision de UX (recomendada y aprobada): NOTIFICACION
+PUSH agrupada — UN solo push por socio ("N productos en oferta"), NO un popup
+al abrir la app ni un push por producto. Ademas un badge discreto en la tienda.
+
+YA HECHO EN EL PANEL/BD:
+- Trigger + job `avisar_ofertas_app` (cron diario 09:30 Lima): junta las
+  ofertas NUEVAS por empresa y encola UN push por socio con app via la cola
+  push_cola existente. data del push: { "tipo": "ofertas", "n": <cantidad> }.
+  Idempotente (no re-anuncia lo ya avisado).
+- RPC `ofertas_activas_socio() -> int`: cuantos productos en oferta ve el
+  socio en SU tienda ahora (para el badge). Sin args, usa auth.uid().
+
+LO QUE TOCA EN LA APP:
+1. Push handler: al recibir push con data.tipo == 'ofertas', al tocarlo abrir
+   la pantalla de TIENDA (no un popup). El texto ya viene armado.
+2. Badge en la tienda: llamar `ofertas_activas_socio()` y mostrar un contador
+   discreto ("N en oferta") o resaltar los productos con descuento. El catalogo
+   (`catalogo_app`) ya devuelve descuento_tipo/valor y el precio con descuento
+   calculado — solo hay que pintar el precio tachado + el nuevo.
+3. NADA de popup al abrir la app.
+
+Creado: 2026-07-13 (sesion del panel — ofertas de productos en la app).
