@@ -64,7 +64,9 @@ async function aprovisionar(req, res) {
   }
 
   // plan de Leadia según el tier del add-on
-  const planLeadia = { basica: 'basico', pro: 'pro', full: 'full' }[tier]
+  // Mapeo tier de FitCore → plan de Leadia (confirmado por LeadAI 13-jul):
+  // Básica→light, Pro→pro, Full→business. Ojo: NO es 1:1 con el nombre del tier.
+  const planLeadia = { basica: 'light', pro: 'pro', full: 'business' }[tier]
   try {
     // 1) crear el tenant en Leadia (nombre = empresa · sede)
     const rT = await fetch(`${base}/tenants`, {
