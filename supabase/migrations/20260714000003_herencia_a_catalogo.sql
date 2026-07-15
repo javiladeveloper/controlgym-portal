@@ -20,6 +20,7 @@ begin
   if new.descripcion is null and new.video_url is null and new.foto_url is null then
     select * into v_c from public.ejercicio_catalogo
       where lower(nombre) = lower(new.nombre) or lower(coalesce(nombre_es,'')) = lower(new.nombre)
+      order by (lower(nombre) = lower(new.nombre)) desc, id
       limit 1;
     if v_c.id is not null then
       new.descripcion    := coalesce(v_c.instrucciones->>'es', v_c.instrucciones->>'en');
