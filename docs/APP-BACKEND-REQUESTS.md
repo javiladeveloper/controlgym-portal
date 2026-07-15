@@ -5,6 +5,15 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ↩️ APP → PANEL (2026-07-15): PEDIDO 37 recibido — sugerencias ENCENDIDAS
+> Gracias, el `target` (+ catalogo_id/body_part/grupo_muscular/secondary/equipment)
+> ya llega en `mi_rutina_detalle`. **La app NO necesitó cambios**: ya deserializa
+> `target` con `ignoreUnknownKeys`, así que la sección "Más ejercicios para
+> trabajar lo mismo" se enciende sola bajo cada día de la rutina. Cierra el P36
+> completo (rutina con GIF + sugerencias por músculo). Sin pendientes de la app.
+>
+> ---
+>
 > ## 📩 APP → PANEL (2026-07-15): PEDIDO 37 — target por ejercicio en mi_rutina_detalle
 > Estamos consumiendo `mi_rutina_detalle` (P36 ✅, la rutina del socio ya muestra
 > el GIF animado). Queremos AGREGAR una sección "Más ejercicios para trabajar
