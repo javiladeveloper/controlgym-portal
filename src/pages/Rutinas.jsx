@@ -18,6 +18,7 @@ import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
 import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
+import BuscadorEjercicios from '../components/forms/BuscadorEjercicios.jsx'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
 const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
@@ -438,6 +439,7 @@ function RutinasImpl() {
   const suplementosStock = (productos.data || []).filter((p) => p.categoria === 'Suplementos' && p.stock > 0)
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
   const [bancoOpen, setBancoOpen] = useState(false) // gestión del banco de ejercicios (media)
+  const [catalogoOpen, setCatalogoOpen] = useState(false) // "Agregar del catálogo" al día activo
   const [tab, setTab] = useState('socios') // 'socios' | 'plantillas'
   const [plantillaOpen, setPlantillaOpen] = useState(false) // modal "Usar plantilla"
 
@@ -519,6 +521,15 @@ function RutinasImpl() {
 
       {bancoOpen && <BancoEjerciciosModal onClose={() => setBancoOpen(false)} />}
       {plantillaOpen && socio && <AsignarPlantillaModal socio={socio} onClose={() => setPlantillaOpen(false)} />}
+      {catalogoOpen && diaSel && (
+        <Modal title="Catálogo de ejercicios" subtitle="Elige uno para agregarlo al día seleccionado" width={720} onClose={() => setCatalogoOpen(false)}>
+          <BuscadorEjercicios onElegir={(ej) => {
+            agregarEj(ej.nombre)
+            toast.ok(`${ej.nombre} agregado`)
+            setCatalogoOpen(false)
+          }} />
+        </Modal>
+      )}
 
       {tab === 'plantillas' && <PlantillasPanel empresaId={empresa?.id} />}
 
@@ -652,6 +663,10 @@ function RutinasImpl() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10.5px] font-bold text-faint">serie · reps · carga · descanso — se guarda al salir del campo</span>
+                    <button onClick={() => setCatalogoOpen(true)}
+                      className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50">
+                      📚 Agregar del catálogo
+                    </button>
                     <button onClick={() => { if (window.confirm(`¿Quitar el ${DIA_NOMBRE[diaActivo.dia_semana]} y sus ${ejsDelDia.length} ejercicios de la rutina?`)) { eliminarDia.mutate(diaSel); setDiaSel(null); setEnviado(false) } }}
                       className="cursor-pointer rounded-[7px] border border-line bg-white px-2 py-1 text-[10.5px] font-extrabold text-muted hover:border-red hover:text-red">
                       🗑 Quitar día
