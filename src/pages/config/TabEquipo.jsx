@@ -30,7 +30,7 @@ export default function TabEquipo() {
     const activo = marcados.has(equipment)
     try {
       if (activo) {
-        await supabase.from('sede_equipo').delete().eq('sede_id', sedeId).eq('equipment', equipment)
+        await supabase.from('sede_equipo').delete().eq('empresa_id', empresa.id).eq('sede_id', sedeId).eq('equipment', equipment)
       } else {
         await supabase.from('sede_equipo').upsert({ sede_id: sedeId, empresa_id: empresa.id, equipment, disponible: true })
       }
@@ -43,17 +43,20 @@ export default function TabEquipo() {
       <Card className="p-[19px]">
         <div className="text-[15px] font-extrabold">🏋️ Equipo de {sedeNombre}</div>
         <p className="mt-1 text-[13px] font-semibold text-muted">Marca el equipo que tiene esta sede. El catálogo de ejercicios y el generador de rutinas se limitarán a lo que puedes hacer aquí (los de peso corporal siempre están disponibles).</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {EQUIPOS.map((eq) => {
-            const on = marcados.has(eq)
-            return (
-              <button key={eq} onClick={() => toggle(eq)} disabled={guardando === eq}
-                className={`cursor-pointer rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-extrabold transition-colors disabled:opacity-50 ${on ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}>
-                {on ? '✓ ' : ''}{eq}
-              </button>
-            )
-          })}
-        </div>
+        {disp.isLoading && <p className="mt-3 text-[13px] font-semibold text-faint">Cargando equipo…</p>}
+        {!disp.isLoading && (
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {EQUIPOS.map((eq) => {
+              const on = marcados.has(eq)
+              return (
+                <button key={eq} onClick={() => toggle(eq)} disabled={guardando === eq}
+                  className={`cursor-pointer rounded-[10px] border px-3 py-2 text-left text-[12.5px] font-extrabold transition-colors disabled:opacity-50 ${on ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`}>
+                  {on ? '✓ ' : ''}{eq}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </Card>
     </div>
   )
