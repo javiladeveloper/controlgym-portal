@@ -2,23 +2,36 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
 import { comprimirImagen } from '../lib/imagen.js'
 
-// Catálogo de ejercicios del gym CON su media de ejecución (descripción,
-// video embebible, foto). El socio lo ve en la app al abrir un ejercicio de
-// su rutina (rutina_ejercicio.ejercicio_id → ejercicio).
-export function useCatalogoEjercicios(empresaId) {
+// Banco de ejercicios: el CATÁLOGO global (1369 con GIF) fusionado con la
+// personalización del gym. Cada ejercicio trae su GIF genérico animado; si el
+// gym ya le puso su propio video/foto/descripción, se muestra esa versión.
+// El socio lo ve en la app al abrir un ejercicio de su rutina.
+export function useBancoEjercicios(empresaId, texto) {
   return useQuery({
-    queryKey: ['catalogo-ejercicios', empresaId],
+    queryKey: ['banco-ejercicios', empresaId, texto || ''],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ejercicio')
-        .select('id, nombre, grupo_muscular, descripcion, video_url, foto_url')
-        .eq('empresa_id', empresaId)
-        .order('nombre')
+      const { data, error } = await supabase.rpc('banco_ejercicios_gym', {
+        p_empresa_id: empresaId, p_texto: texto || null, p_offset: 0, p_limit: 60,
+      })
       if (error) throw error
-      return data
+      return data || []
     },
   })
+}
+
+// Materializa un ejercicio del catálogo en la tabla `ejercicio` del gym (por
+// nombre, idempotente) para poder personalizarlo. Devuelve el id resultante.
+// El trigger de herencia copia el GIF/descripción del catálogo la 1ª vez.
+export async function materializarDesdeCatalogo(empresaId, { nombre, grupo_muscular }) {
+  const { data: existe } = await supabase.from('ejercicio')
+    .select('id').eq('empresa_id', empresaId).ilike('nombre', nombre).limit(1).maybeSingle()
+  if (existe) return existe.id
+  const { data, error } = await supabase.from('ejercicio')
+    .insert({ empresa_id: empresaId, nombre, grupo_muscular: grupo_muscular || null })
+    .select('id').single()
+  if (error) throw error
+  return data.id
 }
 
 export function useGuardarMediaEjercicio(empresaId) {
