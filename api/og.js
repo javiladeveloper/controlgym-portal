@@ -27,13 +27,30 @@ function html({ titulo, descripcion, imagen, url }) {
 
 // Última versión disponible de la app (para el aviso "nueva versión" que muestra
 // la app). Se sirve DESDE og.js — vía rewrite en vercel.json — para no crear una
-// función serverless nueva (el plan Hobby topa en 12). El valor lo pone el CI de
-// la app en la env var APP_ANDROID_LATEST de Vercel al subir un AAB.
-function responderVersion(res) {
+// función serverless nueva (el plan Hobby topa en 12).
+//
+// El valor vive en la tabla `app_version` de Supabase (dinámico, sin redeploy):
+// el CI de la app lo actualiza por SQL al subir un AAB. Antes vivía en la env var
+// APP_ANDROID_LATEST de Vercel, pero esa solo se refresca al REDESPLEGAR el panel,
+// así que el popup quedaba congelado. Si la tabla no existe todavía, cae a la env
+// var como respaldo (no rompe).
+async function responderVersion(res) {
   res.setHeader('content-type', 'application/json; charset=utf-8')
-  res.setHeader('cache-control', 'public, s-maxage=300, stale-while-revalidate=600')
-  const android = parseInt(process.env.APP_ANDROID_LATEST || '0', 10) || 0
-  const ios = parseInt(process.env.APP_IOS_LATEST || '0', 10) || 0
+  // Cache corto: la app consulta al abrir; 60s basta y no martillea la BD.
+  res.setHeader('cache-control', 'public, s-maxage=60, stale-while-revalidate=300')
+  let android = parseInt(env('APP_ANDROID_LATEST') || '0', 10) || 0
+  let ios = parseInt(env('APP_IOS_LATEST') || '0', 10) || 0
+  try {
+    const r = await db().query(
+      "select plataforma, version_code from app_version where plataforma in ('android','ios')",
+    )
+    for (const fila of r.rows) {
+      if (fila.plataforma === 'android') android = parseInt(fila.version_code, 10) || android
+      if (fila.plataforma === 'ios') ios = parseInt(fila.version_code, 10) || ios
+    }
+  } catch {
+    // Tabla aún no creada o BD inaccesible: usamos los valores de env var.
+  }
   return res.status(200).json({
     android: { latest: android, url: 'https://play.google.com/store/apps/details?id=pe.fitcore.app' },
     ios: { latest: ios, url: 'https://apps.apple.com/app/fitcore' },
@@ -44,7 +61,7 @@ export default async function handler(req, res) {
   // Ruta de versión de la app (enrutada aquí por vercel.json para ahorrar función).
   const ruta = String(req.url || '').split('?')[0]
   if (ruta === '/api/app/version' || ruta.endsWith('/app/version')) {
-    return responderVersion(res)
+    return responderVersion(res)  // async; el handler ya es async
   }
 
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase()
