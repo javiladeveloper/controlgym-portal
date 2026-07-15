@@ -2317,15 +2317,29 @@ paso a paso multi-idioma (9 idiomas). Consúmelo desde la app así:
 
 USOS en la app:
 - Biblioteca navegable de ejercicios (con GIF y filtros por zona/equipo/músculo).
-- Mostrar el GIF + pasos en español de cada ejercicio dentro de la rutina
-  asignada al socio. Un ejercicio de rutina (rutina_ejercicio) casa por NOMBRE
-  con el catálogo si se requiere su GIF (el ejercicio del gym heredó su media del
-  catálogo automáticamente vía trigger).
+- La RUTINA del socio con su media ya resuelta (ver RPC abajo).
 
-Ambas RPCs tienen grant a authenticated (cualquier socio logueado las usa).
+*** RUTINA DEL SOCIO CON GIF — RPC LISTA (lo más importante para la app) ***
+- supabase.rpc('mi_rutina_detalle', { p_rutina_id })
+  Toma el rutina_id que ya viene en get_mi_app_bootstrap ('rutina_id') y devuelve
+  la rutina COMPLETA con la media resuelta por ejercicio. Una sola llamada:
+  {
+    rutina_id, nombre, objetivo, notas,
+    dias: [{ id, dia_semana, foco, ejercicios: [
+      { id, nombre, series, reps, descanso, carga, orden, notas,
+        video_url,   // video real (TikTok/YouTube) del gym o del catálogo — o null
+        gif_url,     // GIF real (.gif de Storage) — o null. NUNCA es un video.
+        foto_url,    // respaldo
+        descripcion  // en español (del gym si personalizó, si no del catálogo)
+      } ] }]
+  }
+  video_url y gif_url están SEPARADOS por tipo: muestra el video embebido si hay
+  video_url; si no, el GIF animado si hay gif_url; si no, la foto. Seguridad: solo
+  devuelve la rutina si es del socio logueado (auth.uid) y está enviada.
 
-NOTA: los medios (gif_url/foto_url) se pueblan cuando el owner corra la subida a
-Storage (requiere service_role key). Hasta entonces vienen null y la app debe
-tolerarlo (mostrar la miniatura/nombre sin romper).
+Todas las RPCs tienen grant a authenticated (cualquier socio logueado las usa).
+Los medios (gif_url/foto_url del catálogo) YA están en Storage (bucket público
+'ejercicios') — URLs directas, verificadas HTTP 200.
 
 Creado: 2026-07-14 (catálogo de ejercicios — panel + backend).
+Ampliado: 2026-07-14 (mi_rutina_detalle + medios subidos a Storage).
