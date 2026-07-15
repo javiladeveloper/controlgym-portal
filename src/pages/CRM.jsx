@@ -21,6 +21,7 @@ import { usePlanes } from '../hooks/useMembresias.js'
 import { usePromociones } from '../hooks/useOperaciones.js'
 import { toast } from '../lib/toast.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import { LEADIA_VISIBLE } from '../lib/features.js'
 
 const FUENTES = ['Recepción', 'Instagram', 'Facebook', 'TikTok', 'WhatsApp', 'Referido', 'Página web', 'Otro']
 
@@ -570,11 +571,13 @@ function ReactivacionExSocios({ sedeId, empresaId }) {
                 {r.label}
               </button>
             ))}
-            {/* Teaser de Leadia: sugerencias de a quien reactivar y con que oferta */}
-            <button disabled title="Próximamente (Leadia): analizará tus campañas pasadas — quiénes se inscribieron con cada promoción y ya no están — y te sugerirá ofertas personalizadas o grupales para traerlos de vuelta"
-              className="ml-auto cursor-not-allowed rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-extrabold text-faint">
-              ✨ Sugerencia IA · en construcción
-            </button>
+            {/* Teaser de Leadia: oculto hasta que la IA esté disponible */}
+            {LEADIA_VISIBLE && (
+              <button disabled title="Próximamente (Leadia): analizará tus campañas pasadas — quiénes se inscribieron con cada promoción y ya no están — y te sugerirá ofertas personalizadas o grupales para traerlos de vuelta"
+                className="ml-auto cursor-not-allowed rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-extrabold text-faint">
+                ✨ Sugerencia IA · en construcción
+              </button>
+            )}
           </div>
           {exSocios.isLoading && <LoadingState variant="table" rows={3} />}
           {exSocios.isError && <ErrorState error={exSocios.error} onRetry={exSocios.refetch} />}
@@ -773,8 +776,9 @@ export default function CRM() {
   }
 
   // Auto-sync al abrir el CRM: solo admin, 1 vez por sede en esta carga.
+  // Oculto mientras Leadia no esté disponible (conexión Meta/WhatsApp pendiente).
   useEffect(() => {
-    if (!esAdmin || !sedeId || syncAuto[sedeId]) return
+    if (!LEADIA_VISIBLE || !esAdmin || !sedeId || syncAuto[sedeId]) return
     setSyncAuto((s) => ({ ...s, [sedeId]: true }))
     correrSync({ silencioso: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -832,7 +836,7 @@ export default function CRM() {
             className="cursor-not-allowed rounded-[10px] border border-dashed border-line bg-transparent px-[16px] py-[11px] text-[13px] font-extrabold text-faint">
             📣 Campañas · en construcción
           </button>
-          {esAdmin && (
+          {LEADIA_VISIBLE && esAdmin && (
             <button onClick={() => correrSync()} disabled={sincronizando}
               title="Traer de la IA de Leadia los prospectos calientes y tibios nuevos"
               className="cursor-pointer rounded-[10px] border border-line bg-white px-[16px] py-[11px] text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange disabled:opacity-50">
@@ -973,7 +977,7 @@ export default function CRM() {
 
       <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />
 
-      <FriosIgnorados sedeId={sedeId} empresaId={empresa?.id} />
+      {LEADIA_VISIBLE && <FriosIgnorados sedeId={sedeId} empresaId={empresa?.id} />}
     </div>
   )
 }

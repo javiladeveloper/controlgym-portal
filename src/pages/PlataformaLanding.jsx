@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FitCoreLogo, WhatsAppIcon } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
+import { LEADIA_VISIBLE } from '../lib/features.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
 // Tokens: bg #141B2E · surface #1F293D · primary #FF6B35 · muted #8E9AA8 · radius 8px
@@ -819,7 +820,9 @@ export default function PlataformaLanding() {
         </div>
       </section>
 
-      {/* Asistente de IA que responde tus redes — Próximamente (motor Leadia) */}
+      {/* Asistente de IA que responde tus redes — oculto hasta resolver la
+          conexión con Meta/WhatsApp (features.js LEADIA_VISIBLE) */}
+      {LEADIA_VISIBLE && (
       <section id="asistente-ia" className="lp-rev relative overflow-hidden py-16">
         <div className="pointer-events-none absolute -left-32 top-8 h-[400px] w-[400px] rounded-full opacity-[0.10] blur-3xl" style={{ background: C.primary }} />
         <div className="relative mx-auto max-w-[1100px] px-6">
@@ -856,6 +859,7 @@ export default function PlataformaLanding() {
           </p>
         </div>
       </section>
+      )}
 
       {/* Pasos */}
       <section className="lp-rev py-16" style={{ background: C.surface }}>

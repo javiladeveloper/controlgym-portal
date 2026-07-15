@@ -9,12 +9,14 @@ import TabAccesoCamaras from './config/TabAccesoCamaras.jsx'
 import TabNegocioSedes from './config/TabNegocioSedes.jsx'
 import TabLeadia from './config/TabLeadia.jsx'
 import TabEquipo from './config/TabEquipo.jsx'
+import { LEADIA_VISIBLE } from '../lib/features.js'
 
 const TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
   { key: 'cobros', label: 'Cobros 💰', Comp: TabCobros },
   { key: 'facturacion', label: 'Facturación 🧾', Comp: TabFacturacion },
-  { key: 'leadia', label: 'IA Leadia 🤖', Comp: TabLeadia },
+  // IA Leadia oculta hasta resolver la conexión con Meta/WhatsApp (features.js)
+  ...(LEADIA_VISIBLE ? [{ key: 'leadia', label: 'IA Leadia 🤖', Comp: TabLeadia }] : []),
   { key: 'equipo', label: 'Equipo 🏋️', Comp: TabEquipo },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'pagina', label: 'Página web', Comp: TabWeb },
