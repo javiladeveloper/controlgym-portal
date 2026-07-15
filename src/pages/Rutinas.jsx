@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, Badge } from '../components/ui.jsx'
 import { TargetIcon, CheckIcon } from '../components/icons.jsx'
 import { LoadingState, ErrorState, EmptyState } from '../components/states.jsx'
@@ -18,7 +19,9 @@ import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
 import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
+import BuscadorEjercicios from '../components/forms/BuscadorEjercicios.jsx'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import { supabase } from '../lib/supabaseClient.js'
 
 const FOCOS = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio', 'Descanso']
 const DIA_NOMBRE = { 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo' }
@@ -382,6 +385,61 @@ function AsignarPlantillaModal({ socio, onClose }) {
   )
 }
 
+// Genera (o regenera) la plantilla "oficial" de rutina para un objetivo del
+// catálogo, vía RPC. Idempotente por objetivo: si ya existía, la reemplaza.
+// No toca dieta ni socios — solo crea la base que luego se ajusta a mano.
+function GenerarPlantillaModal({ onClose }) {
+  const { empresa } = useAuth()
+  const { sedeId } = usePanel()
+  const qc = useQueryClient()
+  const objetivos = useObjetivos()
+  const [codigo, setCodigo] = useState('')
+  const [dias, setDias] = useState(3)
+  const [busy, setBusy] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    const { data, error } = await supabase.rpc('generar_plantilla_rutina', {
+      p_empresa_id: empresa.id,
+      p_sede_id: sedeId,
+      p_objetivo_codigo: codigo,
+      p_dias: Number(dias),
+    })
+    setBusy(false)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    qc.invalidateQueries({ queryKey: ['plantillas-rutina', empresa.id] })
+    toast.ok('Plantilla generada — revísala y ajústala')
+    onClose()
+  }
+
+  return (
+    <Modal title="✨ Generar plantilla" subtitle="Crea automáticamente la rutina oficial de un objetivo, lista para ajustar." onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-3.5">
+        <Campo label="Objetivo *">
+          <select required value={codigo} onChange={(e) => setCodigo(e.target.value)} className={inputCls + ' cursor-pointer'}>
+            <option value="">Elige un objetivo…</option>
+            {(objetivos.data || []).map((o) => <option key={o.id} value={o.codigo}>{o.nombre}</option>)}
+          </select>
+        </Campo>
+        <Campo label="Días por semana *">
+          <select required value={dias} onChange={(e) => setDias(Number(e.target.value))} className={inputCls + ' cursor-pointer'}>
+            {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} días</option>)}
+          </select>
+        </Campo>
+        <p className="-mt-1 text-[11.5px] font-semibold text-faint">
+          Si ese objetivo ya tenía una plantilla, se reemplaza por esta versión. No afecta a los socios que ya la tienen asignada.
+        </p>
+        <BotonesModal onCancel={onClose} busy={busy} submitLabel="Generar" />
+      </form>
+    </Modal>
+  )
+}
+
 function RutinasImpl() {
   const location = useLocation()
   const { sedeId } = usePanel()
@@ -438,8 +496,10 @@ function RutinasImpl() {
   const suplementosStock = (productos.data || []).filter((p) => p.categoria === 'Suplementos' && p.stock > 0)
   const [diaSel, setDiaSel] = useState(null) // día cuya lista de ejercicios se edita
   const [bancoOpen, setBancoOpen] = useState(false) // gestión del banco de ejercicios (media)
+  const [catalogoOpen, setCatalogoOpen] = useState(false) // "Agregar del catálogo" al día activo
   const [tab, setTab] = useState('socios') // 'socios' | 'plantillas'
   const [plantillaOpen, setPlantillaOpen] = useState(false) // modal "Usar plantilla"
+  const [generarOpen, setGenerarOpen] = useState(false) // modal "Generar plantilla"
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
   const diasIds = (rutina.data?.dias || []).map((d) => d.id)
@@ -514,11 +574,27 @@ function RutinasImpl() {
               🎬 Banco de ejercicios
             </button>
           )}
+          {veRutina && (
+            <button onClick={() => setGenerarOpen(true)}
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange">
+              ✨ Generar plantilla
+            </button>
+          )}
         </div>
       </div>
 
       {bancoOpen && <BancoEjerciciosModal onClose={() => setBancoOpen(false)} />}
+      {generarOpen && <GenerarPlantillaModal onClose={() => setGenerarOpen(false)} />}
       {plantillaOpen && socio && <AsignarPlantillaModal socio={socio} onClose={() => setPlantillaOpen(false)} />}
+      {catalogoOpen && diaSel && (
+        <Modal title="Catálogo de ejercicios" subtitle="Elige uno para agregarlo al día seleccionado" width={720} onClose={() => setCatalogoOpen(false)}>
+          <BuscadorEjercicios onElegir={(ej) => {
+            agregarEj(ej.nombre)
+            toast.ok(`${ej.nombre} agregado`)
+            setCatalogoOpen(false)
+          }} />
+        </Modal>
+      )}
 
       {tab === 'plantillas' && <PlantillasPanel empresaId={empresa?.id} />}
 
@@ -652,6 +728,10 @@ function RutinasImpl() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10.5px] font-bold text-faint">serie · reps · carga · descanso — se guarda al salir del campo</span>
+                    <button onClick={() => setCatalogoOpen(true)}
+                      className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50">
+                      📚 Agregar del catálogo
+                    </button>
                     <button onClick={() => { if (window.confirm(`¿Quitar el ${DIA_NOMBRE[diaActivo.dia_semana]} y sus ${ejsDelDia.length} ejercicios de la rutina?`)) { eliminarDia.mutate(diaSel); setDiaSel(null); setEnviado(false) } }}
                       className="cursor-pointer rounded-[7px] border border-line bg-white px-2 py-1 text-[10.5px] font-extrabold text-muted hover:border-red hover:text-red">
                       🗑 Quitar día

@@ -2295,3 +2295,37 @@ QUÉ DEBE HACER LA APP: NADA respecto al chat (ver PEDIDO 34 anulado). El socio
 NO conversa con el bot en la app. Este pedido es informativo para el equipo.
 
 Creado: 2026-07-13 (sesión del panel — modelo real de handoff Leadia).
+
+================================================================================
+PEDIDO 36 -- Biblioteca de ejercicios (catálogo con GIF) en la app del socio
+================================================================================
+
+FitCore tiene un catálogo GLOBAL de 1,324 ejercicios (tabla ejercicio_catalogo)
+con GIF animado, imagen, nombre en español, músculos y equipo, e instrucciones
+paso a paso multi-idioma (9 idiomas). Consúmelo desde la app así:
+
+- Búsqueda:  supabase.rpc('buscar_ejercicios_catalogo', {
+    p_texto, p_body_part, p_equipment, p_target, p_offset, p_limit })
+    → [{ id, ext_id, nombre (ES), nombre_en, body_part, grupo_muscular, target,
+         equipment, gif_url, foto_url }]  (paginado por offset, límite máx 60)
+  Hay una sobrecarga con p_sede_id (7º arg) que filtra a los ejercicios que la
+  sede puede hacer (equipo disponible + peso corporal siempre).
+- Detalle:   supabase.rpc('ejercicio_catalogo_detalle', { p_id, p_idioma:'es' })
+    → { ..., instruccion, pasos:[...] }  (pasos en el idioma pedido; cae a es/en)
+- gif_url / foto_url son URLs públicas de Supabase Storage (bucket 'ejercicios')
+  — se muestran directo con <img>.
+
+USOS en la app:
+- Biblioteca navegable de ejercicios (con GIF y filtros por zona/equipo/músculo).
+- Mostrar el GIF + pasos en español de cada ejercicio dentro de la rutina
+  asignada al socio. Un ejercicio de rutina (rutina_ejercicio) casa por NOMBRE
+  con el catálogo si se requiere su GIF (el ejercicio del gym heredó su media del
+  catálogo automáticamente vía trigger).
+
+Ambas RPCs tienen grant a authenticated (cualquier socio logueado las usa).
+
+NOTA: los medios (gif_url/foto_url) se pueblan cuando el owner corra la subida a
+Storage (requiere service_role key). Hasta entonces vienen null y la app debe
+tolerarlo (mostrar la miniatura/nombre sin romper).
+
+Creado: 2026-07-14 (catálogo de ejercicios — panel + backend).
