@@ -412,7 +412,7 @@ function GenerarPlantillaModal({ onClose }) {
       toast.error(error.message)
       return
     }
-    qc.invalidateQueries({ queryKey: ['plantillas-rutina'] })
+    qc.invalidateQueries({ queryKey: ['plantillas-rutina', empresa.id] })
     toast.ok('Plantilla generada — revísala y ajústala')
     onClose()
   }
@@ -427,7 +427,7 @@ function GenerarPlantillaModal({ onClose }) {
           </select>
         </Campo>
         <Campo label="Días por semana *">
-          <select required value={dias} onChange={(e) => setDias(e.target.value)} className={inputCls + ' cursor-pointer'}>
+          <select required value={dias} onChange={(e) => setDias(Number(e.target.value))} className={inputCls + ' cursor-pointer'}>
             {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} días</option>)}
           </select>
         </Campo>
