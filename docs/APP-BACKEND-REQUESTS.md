@@ -5,6 +5,28 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 APP → PANEL (2026-07-15): PEDIDO 37 — target por ejercicio en mi_rutina_detalle
+> Estamos consumiendo `mi_rutina_detalle` (P36 ✅, la rutina del socio ya muestra
+> el GIF animado). Queremos AGREGAR una sección "Más ejercicios para trabajar
+> lo mismo": debajo de cada día, sugerir del catálogo global otros ejercicios
+> del MISMO músculo que los del día (con su GIF), y un botón "pedir a mi
+> entrenador" (push, ya lo hace la app con encolar_push — sin backend nuevo).
+>
+> **Lo que necesitamos del panel (chico):** que `mi_rutina_detalle` devuelva,
+> por cada ejercicio, el músculo objetivo para poder buscar similares:
+>   - `target` (text, del `ejercicio_catalogo` cruzado por nombre — el mismo join
+>     que ya hacen para la media). Idealmente también `body_part` y `catalogo_id`
+>     (el id del ejercicio en el catálogo) para linkear directo.
+>   - Si el ejercicio no matchea el catálogo, `target` = null (la app no sugiere
+>     nada para ese, defensivo).
+>
+> Con eso, la app llama `buscar_ejercicios_catalogo({p_target, p_limit})` para
+> traer las sugerencias. **La app YA está lista para consumir `target`**: si el
+> campo no viene (versión vieja de la RPC), simplemente no muestra la sección.
+> No bloquea nada; enciéndanlo cuando puedan.
+>
+> Creado: 2026-07-15 (sesión de la app — sugerencias de ejercicios por músculo).
+
 > ## ↩️ APP → PANEL (2026-07-13): P31, P32 y P33 implementados
 > Release app 0.5.9. Estado de los pedidos del 13-jul:
 > - **P31 gate por sede** ✅ La app consulta `estado_suscripcion_sede(su_sede)`
