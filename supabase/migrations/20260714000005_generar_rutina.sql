@@ -12,6 +12,16 @@ declare
   v_series int; v_reps text; v_descanso text; v_por_dia int := 5;
   v_zona text; v_i int; v_dia_num int; v_cnt int; v_nombre text;
 begin
+  -- Seguridad: el caller solo puede generar para SU empresa (SECURITY DEFINER
+  -- salta RLS, así que validamos explícitamente contra el JWT).
+  if auth_empresa_id() is not null and p_empresa_id is distinct from auth_empresa_id() then
+    raise exception 'no autorizado para esta empresa';
+  end if;
+  -- Y la sede debe pertenecer a esa empresa.
+  if not exists (select 1 from public.sede where id = p_sede_id and empresa_id = p_empresa_id) then
+    raise exception 'sede no pertenece a la empresa';
+  end if;
+
   -- Resolver el objetivo (codigo -> id).
   select id into v_objetivo_id
   from public.objetivo_entrenamiento
