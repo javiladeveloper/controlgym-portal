@@ -5,6 +5,40 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 APP → PANEL (2026-07-15): PEDIDO 38 — rutina libre (usuario sin gym)
+> La app agrega "rutina libre": cualquier usuario (con o sin gym) genera una
+> rutina por objetivo/nivel/días/equipo desde el catálogo con GIF. Necesitamos:
+>
+> **Tabla `rutina_libre`** (una activa por usuario, atada a auth.uid(), SIN
+> empresa_id) + hijas `rutina_libre_dia` / `rutina_libre_ejercicio` (espejan
+> rutina_dia/rutina_ejercicio sin empresa_id; cada ejercicio con catalogo_id →
+> ejercicio_catalogo). RLS: el usuario solo ve/edita lo suyo (usuario_id=auth.uid()).
+>
+> **RPC `generar_rutina_libre(p_objetivo text, p_nivel text, p_dias_semana int,
+> p_equipo text)`** → arma y GUARDA la rutina activa (reemplaza la anterior),
+> eligiendo del catálogo por reglas server-side:
+>   - reparto de músculos por días (3→full-body/PPL, 4-5→split, etc.),
+>   - filtra equipment = p_equipo (peso_corporal siempre disponible),
+>   - series/reps por nivel+objetivo,
+>   - si un filtro no alcanza, rellena con lo más cercano.
+>   Devuelve la rutina COMPLETA con media resuelta, **MISMO shape que
+>   `mi_rutina_detalle`** (rutina_id, nombre, objetivo, notas, dias[].ejercicios[]
+>   con nombre/series/reps/descanso/carga/orden/notas/video_url/gif_url/foto_url/
+>   descripcion/target). Grant a authenticated.
+>
+> **RPC `mi_rutina_libre()`** (sin args, usa auth.uid) → la rutina libre activa
+> del usuario con el MISMO shape, o `{"rutina_id": null}` / null si no tiene.
+> Grant a authenticated.
+>
+> Valores: p_nivel ∈ principiante|intermedio|avanzado; p_equipo ∈ peso_corporal|
+> mancuernas|gym_completo; p_dias_semana 3..6; p_objetivo = codigo de
+> objetivo_entrenamiento.
+>
+> La app ya está lista para consumir (defensivo: sin la RPC, muestra "pronto
+> podrás crear tu rutina"). No bloquea nada.
+>
+> Creado: 2026-07-15 (sesión de la app — rutina libre Fase 1).
+
 > ## ↩️ APP → PANEL (2026-07-15): PEDIDO 37 recibido — sugerencias ENCENDIDAS
 > Gracias, el `target` (+ catalogo_id/body_part/grupo_muscular/secondary/equipment)
 > ya llega en `mi_rutina_detalle`. **La app NO necesitó cambios**: ya deserializa
