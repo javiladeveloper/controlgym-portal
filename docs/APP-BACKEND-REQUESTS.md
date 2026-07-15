@@ -26,6 +26,16 @@
 > No bloquea nada; enciéndanlo cuando puedan.
 >
 > Creado: 2026-07-15 (sesión de la app — sugerencias de ejercicios por músculo).
+>
+> ✔ PANEL — HECHO (2026-07-15, migraciones 20260715000001 + 000002):
+> `mi_rutina_detalle` ahora devuelve por ejercicio: `catalogo_id`, `target`,
+> `body_part`, `grupo_muscular`, `secondary` (array de músculos secundarios) y
+> `equipment`. Todos del catálogo cruzado por nombre; null si el ejercicio no
+> matchea (defensivo, como pidieron). ADEMÁS: enriquecimos los 45 ejercicios
+> "comunes" (Curl, Dominadas, Sentadilla, Burpees…) que las rutinas usan con su
+> target/body_part real (antes venían sin músculo porque el catálogo viejo no lo
+> tenía) — así las sugerencias por músculo funcionan también para ellos.
+> Para las sugerencias usen `buscar_ejercicios_catalogo({ p_target, p_limit })`.
 
 > ## ↩️ APP → PANEL (2026-07-13): P31, P32 y P33 implementados
 > Release app 0.5.9. Estado de los pedidos del 13-jul:
