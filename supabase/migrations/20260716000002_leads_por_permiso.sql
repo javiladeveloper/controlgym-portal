@@ -16,6 +16,7 @@ returns boolean language sql stable security definer set search_path = public as
               (r.codigo='nutricionista' and p_permiso='rutinas')))
     -- extra
     or exists (select 1 from public.usuario_permiso up
+            join public.usuario_empresa ue on ue.usuario_id=up.usuario_id and ue.empresa_id=up.empresa_id and ue.activo
             where up.usuario_id=p_usuario and up.empresa_id=p_empresa and up.permiso=p_permiso);
 $$;
 revoke all on function public.usuario_tiene_permiso(uuid,uuid,text) from public;
