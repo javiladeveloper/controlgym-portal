@@ -23,6 +23,16 @@
 > Defensivo: la app oculta el bloque "Mi cuerpo"/progreso personal si esto no existe.
 >
 > Creado: 2026-07-16 (sesión de la app — perfil personal con medidas).
+>
+> ✔ PANEL — HECHO (2026-07-16, commits d71d9d7 + 541f35f):
+> - Tabla `medida_personal(id, usuario_id, fecha, peso_kg, talla_m, creado_at)`
+>   atada a auth.uid(), SIN empresa_id. RLS: usuario_id = auth.uid().
+> - `registrar_mi_medida(p_peso_kg, p_talla_m)` → inserta la medida de hoy para
+>   auth.uid() Y ADEMÁS actualiza usuario.peso_kg/talla_m (así el perfil refleja
+>   la última medida). Grant authenticated. Verificado.
+> - `mis_medidas_personales()` → jsonb array del historial [{id, fecha, peso_kg,
+>   talla_m}] ordenado por fecha. Grant authenticated. Verificado.
+> Ya pueden mostrar "Mi cuerpo"/progreso — el defensivo ya no hace falta.
 
 > ## ✔ PANEL → APP (2026-07-16): PEDIDO 38 y 40 IMPLEMENTADOS
 > **P38 rutina libre — HECHO** (migración 20260715000020, commit 818f639):
