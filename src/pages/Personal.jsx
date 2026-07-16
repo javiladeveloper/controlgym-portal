@@ -424,6 +424,42 @@ function VacacionesModal({ staff, empresaId, onClose }) {
   )
 }
 
+// Permisos extra: el rol da un piso; el admin puede sumar capacidades.
+function PermisosEmpleado({ usuarioId }) {
+  const qc = useQueryClient()
+  const LABELS = { leads: 'Atender leads (CRM)', caja: 'Cobrar / caja', reportes: 'Ver reportes', rutinas: 'Rutinas y socios' }
+  const q = useQuery({
+    queryKey: ['permisos-usuario', usuarioId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('permisos_de_usuario', { p_usuario_id: usuarioId })
+      if (error) throw error
+      return data || []
+    },
+  })
+  async function toggle(permiso, activar) {
+    try {
+      await supabase.rpc('set_permiso_usuario', { p_usuario_id: usuarioId, p_permiso: permiso, p_activo: activar })
+      qc.invalidateQueries({ queryKey: ['permisos-usuario', usuarioId] })
+    } catch (e) { toast.error(e.message) }
+  }
+  return (
+    <div className="rounded-[10px] border border-line bg-[#FAFBFC] p-3">
+      <div className="mb-2 text-[13px] font-extrabold">Permisos</div>
+      <p className="mb-2 text-[12px] font-semibold text-muted">Su rol ya trae algunos permisos. Puedes sumarle otros.</p>
+      <div className="flex flex-col gap-1.5">
+        {(q.data || []).map((p) => (
+          <label key={p.permiso} className={`flex items-center gap-2 text-[12.5px] font-bold ${p.por_rol ? 'text-muted' : ''}`}>
+            <input type="checkbox" checked={p.por_rol || p.extra} disabled={p.por_rol}
+              onChange={(e) => toggle(p.permiso, e.target.checked)} className="accent-[#FF6B35]" />
+            {LABELS[p.permiso]}
+            {p.por_rol && <span className="text-[10.5px] font-extrabold text-faint">(por su rol)</span>}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const qc = useQueryClient()
   const [f, setF] = useState({
@@ -541,6 +577,9 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
 
         {/* Horario semanal (turno_staff): lo que el colaborador VE en su app */}
         <HorarioSemanalEditor usuarioId={colaborador.id} empresaId={empresaId} />
+
+        {/* Permisos extra: el rol da un piso, el admin puede sumar capacidades */}
+        <PermisosEmpleado usuarioId={colaborador.id} />
 
         {/* Meta diaria de venta: solo aplica a quien vende (admin/recepción).
             Guarda con su propio botón — no forma parte de "Guardar cambios"
