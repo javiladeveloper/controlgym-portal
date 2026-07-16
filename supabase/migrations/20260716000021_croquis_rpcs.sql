@@ -21,16 +21,19 @@ grant execute on function public.maquinas_del_piso(uuid) to authenticated, servi
 
 -- Ubicar (o mover) una máquina en un piso. Clampa x/y a 0-100. Solo staff con
 -- acceso a esa máquina (la RLS de maquina aplica en el update). security invoker.
+-- Valida en defensa en profundidad que el piso (si no es null) sea de la misma sede.
 create or replace function public.ubicar_maquina(p_maquina_id uuid, p_piso_id uuid, p_pos_x numeric, p_pos_y numeric)
 returns jsonb language plpgsql security invoker set search_path = public as $$
 begin
-  update public.maquina
+  update public.maquina m
      set piso_id = p_piso_id,
          pos_x = greatest(0, least(100, p_pos_x)),
          pos_y = greatest(0, least(100, p_pos_y)),
          updated_at = now()
-   where id = p_maquina_id;   -- RLS de maquina restringe a las del staff
-  if not found then raise exception 'máquina no encontrada o sin acceso'; end if;
+   where m.id = p_maquina_id   -- RLS de maquina restringe a las del staff
+     and (p_piso_id is null or exists (
+       select 1 from public.sede_piso sp where sp.id = p_piso_id and sp.sede_id = m.sede_id));
+  if not found then raise exception 'máquina no encontrada, sin acceso, o el piso no es de esa sede'; end if;
   return jsonb_build_object('ok', true);
 end $$;
 grant execute on function public.ubicar_maquina(uuid,uuid,numeric,numeric) to authenticated, service_role;
