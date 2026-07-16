@@ -43,14 +43,12 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
     e?.preventDefault()
     setBusy(true); setError('')
 
-    // f.talla_m / f.peso_kg están en la unidad de display del gym. El heurístico
-    // de "escribieron centímetros" (190 -> 1.90) solo tiene sentido cuando la
-    // unidad es metros: en pies, 5.7 es un valor normal, no un typo de cm.
+    // f.talla_m / f.peso_kg están en la unidad de display del gym (cm o ft para
+    // talla). Convertimos a métrico (BD) ANTES de validar, así el rango de
+    // sanidad (0.5–2.6 m, 10–400 kg) siempre se aplica sobre el valor real en
+    // kg/m, sea cual sea la unidad tipeada. (Ya no hace falta el viejo heurístico
+    // "escribieron cm" porque en métrico el input YA es cm y displayAM lo pasa a m.)
     let talla = f.talla_m === '' ? null : Number(f.talla_m)
-    if ((unidadTalla ?? 'm') === 'm' && talla !== null && talla > 3) talla = Math.round(talla) / 100
-    // Convertimos a métrico (BD) ANTES de validar, así el rango de sanidad
-    // (0.5–2.6 m, 10–400 kg) siempre se aplica sobre el valor real en kg/m,
-    // sea cual sea la unidad en la que el usuario tipeó.
     talla = displayAM(talla, unidadTalla)
     if (talla !== null && (talla < 0.5 || talla > 2.6)) {
       setBusy(false)
@@ -124,9 +122,8 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <div className="grid grid-cols-3 gap-3">
           <Campo label="Nacimiento"><input type="date" max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
-          <Campo label={`Talla (${labelTalla(unidadTalla)})`}
-            hint={(unidadTalla ?? 'm') === 'm' && Number(f.talla_m) > 3 ? `Se guardará como ${(Math.round(Number(f.talla_m)) / 100).toFixed(2)} m` : undefined}>
-            <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder={unidadTalla === 'ft' ? '5.7' : '1.70'} />
+          <Campo label={`Talla (${labelTalla(unidadTalla)})`}>
+            <input type="number" step={unidadTalla === 'ft' ? '0.1' : '1'} min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder={unidadTalla === 'ft' ? '5.7' : '170'} />
           </Campo>
           <Campo label={`Peso (${labelPeso(unidadPeso)})`}>
             <input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder={unidadPeso === 'lb' ? '154' : '70'} />

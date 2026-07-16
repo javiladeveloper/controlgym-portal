@@ -413,7 +413,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
               <input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder={empresa?.unidad_peso === 'lb' ? '154' : '70'} />
             </Campo>
             <Campo label={`Talla (${labelTalla(empresa?.unidad_talla)})`}>
-              <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder={empresa?.unidad_talla === 'ft' ? '5.7' : '1.70'} />
+              <input type="number" step={empresa?.unidad_talla === 'ft' ? '0.1' : '1'} min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder={empresa?.unidad_talla === 'ft' ? '5.7' : '170'} />
             </Campo>
           </div>
         )}

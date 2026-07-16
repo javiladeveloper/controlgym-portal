@@ -30,9 +30,10 @@ describe('peso: kg <-> lb', () => {
   })
 })
 
-describe('talla: m <-> ft', () => {
-  it('mADisplay con unidad m devuelve el valor tal cual', () => {
-    expect(mADisplay(1.75, 'm')).toBe(1.75)
+describe('talla: cm (métrico) <-> ft', () => {
+  it('mADisplay con unidad m muestra CENTÍMETROS (1.75m -> 175)', () => {
+    expect(mADisplay(1.75, 'm')).toBe(175)
+    expect(mADisplay(1.70, 'm')).toBe(170)
   })
 
   it('mADisplay con unidad ft convierte 1.75m a ~5.7 ft', () => {
@@ -46,8 +47,13 @@ describe('talla: m <-> ft', () => {
     expect(mVuelta).toBeCloseTo(mOriginal, 1)
   })
 
-  it('displayAM con unidad m devuelve el valor tal cual', () => {
-    expect(displayAM(1.6, 'm')).toBe(1.6)
+  it('displayAM con unidad m convierte cm a metros (170 -> 1.70)', () => {
+    expect(displayAM(170, 'm')).toBeCloseTo(1.70, 2)
+    expect(displayAM(160, 'm')).toBeCloseTo(1.60, 2)
+  })
+
+  it('ida y vuelta cm: 168 -> metros -> 168', () => {
+    expect(mADisplay(displayAM(168, 'm'), 'm')).toBe(168)
   })
 
   it('null/vacío -> null', () => {
@@ -66,8 +72,8 @@ describe('labels', () => {
   })
 
   it('labelTalla', () => {
-    expect(labelTalla('m')).toBe('m')
+    expect(labelTalla('m')).toBe('cm') // métrico se muestra en centímetros
     expect(labelTalla('ft')).toBe('ft')
-    expect(labelTalla(undefined)).toBe('m') // default sensato
+    expect(labelTalla(undefined)).toBe('cm') // default sensato (métrico = cm)
   })
 })
