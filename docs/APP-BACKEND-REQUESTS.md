@@ -5,6 +5,30 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-16): PEDIDO 42 — Mapa del gym por pisos + piso al pedir ayuda
+> El gym ahora estructura su croquis por PISOS con máquinas ubicadas (editor en el
+> panel: Configuración › Croquis 🗺️). Consúmelo desde la app:
+>
+> - Pisos de la sede:  supabase.rpc('pisos_de_sede', { p_sede_id })
+>     → [{ id, nombre, orden, plano_url }]  (ordenado por orden)
+> - Máquinas ubicadas en un piso:  supabase.rpc('maquinas_del_piso', { p_piso_id })
+>     → [{ id, nombre, zona, estado, pos_x, pos_y }]  (pos en % 0-100)
+>   plano_url es imagen pública (bucket branding). Pinta los pines con
+>   left:pos_x% top:pos_y% sobre la imagen.
+>
+> **SECCIÓN "MAPA DEL GYM"**: el socio elige piso (pisos_de_sede) → ve plano_url con
+> los pines de maquinas_del_piso → toca un pin para ver qué máquina es.
+>
+> **PEDIR AYUDA**: al crear una solicitud_ayuda, el socio puede elegir su piso →
+> guarda `solicitud_ayuda.piso_id` (uuid del piso). Si la sede NO tiene pisos/croquis,
+> usa el campo de texto `solicitud_ayuda.ubicacion_texto` (ya existe) como fallback.
+> Así el entrenador sabe en qué piso está el socio.
+>
+> Ambas RPCs tienen grant a authenticated (security invoker: la RLS acota a la
+> sede del socio). Defensivo: si pisos_de_sede viene vacío, no muestres el mapa.
+>
+> Creado: 2026-07-16 (croquis multi-piso — panel).
+
 > ## 📩 APP → PANEL (2026-07-16): PEDIDO 41 — medidas personales (peso/talla del usuario)
 > El socio registra su peso/talla desde su Perfil personal (transversal a gyms).
 > Necesitamos:
