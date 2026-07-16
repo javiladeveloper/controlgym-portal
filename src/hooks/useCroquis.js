@@ -54,14 +54,15 @@ export function useBorrarPiso(sedeId) {
   })
 }
 
-// Máquinas de la sede (con su casilla grid_fila/grid_columna y piso).
+// Catálogo de máquinas de la sede (nombre + unidades). Cada una puede colocarse
+// tantas veces como unidades tenga.
 export function useMaquinasSede(sedeId) {
   return useQuery({
     queryKey: ['maquinas-croquis', sedeId],
     enabled: !!sedeId,
     queryFn: async () => {
       const { data, error } = await supabase.from('maquina')
-        .select('id, nombre, zona, estado, unidades, piso_id, grid_fila, grid_columna')
+        .select('id, nombre, zona, estado, unidades')
         .eq('sede_id', sedeId).is('deleted_at', null).order('nombre')
       if (error) throw error
       return data || []
@@ -69,17 +70,57 @@ export function useMaquinasSede(sedeId) {
   })
 }
 
-// Coloca/mueve una máquina en una casilla del piso (o la quita: fila/columna null).
-export function useColocarMaquina(sedeId) {
+// Cuántas unidades de cada máquina ya están colocadas en el croquis (mapa
+// maquina_id → nº colocadas), para mostrar "quedan N por ubicar".
+export function useMaquinasColocadas(sedeId) {
+  return useQuery({
+    queryKey: ['maquinas-colocadas', sedeId],
+    enabled: !!sedeId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('maquinas_colocadas_sede', { p_sede_id: sedeId })
+      if (error) throw error
+      return data || {}
+    },
+  })
+}
+
+// Elementos colocados en un piso (máquinas por unidad + referencias).
+export function useElementosPiso(pisoId) {
+  return useQuery({
+    queryKey: ['elementos-piso', pisoId],
+    enabled: !!pisoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('elementos_del_piso', { p_piso_id: pisoId })
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
+// Colocar/quitar un elemento (máquina o referencia) en una casilla.
+export function useElementos(sedeId, pisoId) {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ maquinaId, pisoId, fila, columna }) => {
-      const { error } = await supabase.rpc('colocar_maquina_grilla', {
-        p_maquina_id: maquinaId, p_piso_id: pisoId, p_fila: fila, p_columna: columna })
+  const inval = () => {
+    qc.invalidateQueries({ queryKey: ['elementos-piso', pisoId] })
+    qc.invalidateQueries({ queryKey: ['maquinas-colocadas', sedeId] })
+  }
+  const colocar = useMutation({
+    mutationFn: async ({ fila, columna, tipo, maquinaId = null, etiqueta = null }) => {
+      const { error } = await supabase.rpc('colocar_elemento', {
+        p_piso_id: pisoId, p_fila: fila, p_columna: columna, p_tipo: tipo,
+        p_maquina_id: maquinaId, p_etiqueta: etiqueta })
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['maquinas-croquis', sedeId] }),
+    onSuccess: inval,
   })
+  const quitar = useMutation({
+    mutationFn: async ({ fila, columna }) => {
+      const { error } = await supabase.rpc('quitar_elemento', { p_piso_id: pisoId, p_fila: fila, p_columna: columna })
+      if (error) throw error
+    },
+    onSuccess: inval,
+  })
+  return { colocar, quitar }
 }
 
 // Casillas que SON piso de un piso (para dibujar su forma: U, hueco, etc.).
