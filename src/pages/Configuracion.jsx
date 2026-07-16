@@ -18,7 +18,7 @@ const TABS = [
   { key: 'facturacion', label: 'Facturación 🧾', Comp: TabFacturacion },
   // IA Leadia oculta hasta resolver la conexión con Meta/WhatsApp (features.js)
   ...(LEADIA_VISIBLE ? [{ key: 'leadia', label: 'IA Leadia 🤖', Comp: TabLeadia }] : []),
-  { key: 'equipo', label: 'Equipo 🏋️', Comp: TabEquipo },
+  { key: 'equipo', label: 'Equipamiento (rutinas) 🏋️', Comp: TabEquipo },
   { key: 'croquis', label: 'Croquis 🗺️', Comp: TabCroquis },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'pagina', label: 'Página web', Comp: TabWeb },

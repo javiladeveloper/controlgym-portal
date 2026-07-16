@@ -73,8 +73,8 @@ export default function TabEquipo() {
   return (
     <div className="max-w-[760px]">
       <Card className="p-[19px]">
-        <div className="text-[15px] font-extrabold">🏋️ Equipo de {sedeNombre}</div>
-        <p className="mt-1 text-[13px] font-semibold text-muted">Marca el equipo que tiene esta sede. El catálogo de ejercicios y el generador de rutinas se limitarán a lo que puedes hacer aquí (los de peso corporal siempre están disponibles).</p>
+        <div className="text-[15px] font-extrabold">🏋️ Equipamiento de {sedeNombre} <span className="text-[12px] font-bold text-muted">(para las rutinas)</span></div>
+        <p className="mt-1 text-[13px] font-semibold text-muted">Marca los TIPOS de equipo que tiene esta sede (mancuernas, poleas, barra…). El catálogo de ejercicios y el generador de rutinas se limitarán a lo que puedes hacer aquí. No es el inventario de máquinas — ese va en la sección Máquinas.</p>
         {disp.isLoading && <p className="mt-3 text-[13px] font-semibold text-faint">Cargando equipo…</p>}
         {!disp.isLoading && (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
