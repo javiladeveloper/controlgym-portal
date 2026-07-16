@@ -8,6 +8,7 @@ import { toast } from '../lib/toast.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
 import { useMaquinas, useMantenimientos } from '../hooks/useOperaciones.js'
+import { TIPOS_EQUIPO } from '../lib/tiposEquipo.js'
 import { maquinaEstado } from '../lib/uiHelpers.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
 
@@ -18,6 +19,7 @@ function MaquinaModal({ sedeId, empresaId, maquina = null, onClose }) {
   const [f, setF] = useState({
     nombre: maquina?.nombre || '', detalle: maquina?.detalle || '',
     zona: maquina?.zona || 'Cardio', unidades: maquina?.unidades || 1,
+    equipment: maquina?.equipment || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -30,6 +32,7 @@ function MaquinaModal({ sedeId, empresaId, maquina = null, onClose }) {
     const payload = {
       nombre: f.nombre.trim(), detalle: f.detalle || null,
       zona: f.zona, unidades: Number(f.unidades) || 1,
+      equipment: f.equipment || null,
     }
     const { error } = editando
       ? await supabase.from('maquina').update(payload).eq('id', maquina.id)
@@ -64,6 +67,14 @@ function MaquinaModal({ sedeId, empresaId, maquina = null, onClose }) {
           </Campo>
           <Campo label="Unidades"><input type="number" min="1" value={f.unidades} onChange={set('unidades')} className={inputCls} /></Campo>
         </div>
+        <Campo label="Tipo de equipo" hint="Con qué se entrena. De esto sale qué ejercicios puede hacer tu gym en las rutinas.">
+          <select value={f.equipment} onChange={set('equipment')} className={inputCls + ' cursor-pointer'}>
+            <option value="">Sin especificar</option>
+            {TIPOS_EQUIPO.filter((t) => t.codigo !== 'body weight').map((t) => (
+              <option key={t.codigo} value={t.codigo}>{t.emoji} {t.es}</option>
+            ))}
+          </select>
+        </Campo>
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         {editando && (
           confirmarDel ? (
