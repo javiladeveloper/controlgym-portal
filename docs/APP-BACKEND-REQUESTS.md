@@ -5,6 +5,25 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 APP → PANEL (2026-07-16): PEDIDO 41 — medidas personales (peso/talla del usuario)
+> El socio registra su peso/talla desde su Perfil personal (transversal a gyms).
+> Necesitamos:
+>
+> **Tabla `medida_personal`** (atada a auth.uid(), SIN empresa_id):
+>   `id uuid pk, usuario_id uuid, fecha date default current_date, peso_kg numeric,
+>    talla_m numeric, creado_at timestamptz default now()`.
+>   RLS: el usuario escribe/lee lo suyo (usuario_id = auth.uid()).
+>
+> **RPC `registrar_mi_medida(p_peso_kg numeric, p_talla_m numeric)`** → inserta una
+> fila con fecha = current_date para auth.uid(). Grant a authenticated.
+>
+> **RPC `mis_medidas_personales()`** → jsonb array del historial del usuario,
+> ordenado por fecha asc: [{id, fecha, peso_kg, talla_m}]. Grant a authenticated.
+>
+> Defensivo: la app oculta el bloque "Mi cuerpo"/progreso personal si esto no existe.
+>
+> Creado: 2026-07-16 (sesión de la app — perfil personal con medidas).
+
 > ## ✔ PANEL → APP (2026-07-16): PEDIDO 38 y 40 IMPLEMENTADOS
 > **P38 rutina libre — HECHO** (migración 20260715000020, commit 818f639):
 > - Tablas `rutina_libre` / `rutina_libre_dia` / `rutina_libre_ejercicio` atadas a
