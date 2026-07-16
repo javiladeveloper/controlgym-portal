@@ -148,6 +148,76 @@ function GymPageMockup() {
   )
 }
 
+// ── Mockup de la app del socio: rutina con ejercicio animado (guía visual) ──
+// El "GIF" es una figura que hace sentadilla en loop, dibujada en CSS puro
+// (coherente con los otros mockups en código; sin imágenes externas por el CSP).
+function EjercicioMockup() {
+  return (
+    <div className="w-full max-w-[300px] overflow-hidden"
+      style={{ background: C.surface, border: C.border, borderRadius: 26, boxShadow: '0 40px 100px rgba(0,0,0,0.5), 0 20px 60px rgba(255,107,53,0.12)' }}>
+      <style>{`
+        @keyframes sq-fig { 0%,100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(14px) scaleY(.82); } }
+        @keyframes sq-thigh { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-38deg); } }
+        @keyframes sq-shin { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(46deg); } }
+        .em-fig { animation: sq-fig 2.2s ease-in-out infinite; transform-origin: bottom center; }
+        .em-thigh { animation: sq-thigh 2.2s ease-in-out infinite; transform-origin: top center; }
+        .em-shin { animation: sq-shin 2.2s ease-in-out infinite; transform-origin: top center; }
+        @media (prefers-reduced-motion: reduce) { .em-fig,.em-thigh,.em-shin { animation: none; } }
+      `}</style>
+      {/* barra de estado del teléfono */}
+      <div className="flex items-center justify-between px-5 py-2.5 text-[9px] font-bold" style={{ color: C.muted }}>
+        <span>9:41</span><span className="flex gap-1 opacity-70">●●● ▮</span>
+      </div>
+      {/* "GIF" del ejercicio: silueta que hace sentadilla en loop (SVG animado) */}
+      <div className="relative mx-4 mt-1 flex h-[168px] items-end justify-center overflow-hidden rounded-2xl"
+        style={{ background: 'radial-gradient(circle at 50% 35%, rgba(255,107,53,0.16), rgba(0,0,0,0.28))' }}>
+        <span className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-white" style={{ background: C.primary }}>▶ Guía animada</span>
+        {/* piso */}
+        <div className="absolute bottom-5 h-px w-40" style={{ background: 'rgba(255,255,255,0.14)' }} />
+        {/* atleta: cuerpo que sube y baja (sentadilla) — figura sólida y legible */}
+        <svg width="120" height="150" viewBox="0 0 120 150" className="mb-4">
+          <g className="em-fig">
+            {/* barra sobre los hombros con discos */}
+            <rect x="30" y="34" width="60" height="5" rx="2.5" fill={C.primary} />
+            <rect x="26" y="28" width="7" height="17" rx="2" fill="#fff" opacity="0.65" />
+            <rect x="87" y="28" width="7" height="17" rx="2" fill="#fff" opacity="0.65" />
+            {/* cabeza */}
+            <circle cx="60" cy="24" r="8.5" fill="#fff" opacity="0.95" />
+            {/* torso */}
+            <rect x="54" y="33" width="12" height="30" rx="6" fill="#fff" opacity="0.92" />
+            {/* muslos (horizontales en el punto bajo) */}
+            <rect x="49" y="60" width="13" height="24" rx="6.5" fill="#fff" opacity="0.8" />
+            <rect x="58" y="60" width="13" height="24" rx="6.5" fill="#fff" opacity="0.8" />
+            {/* pantorrillas */}
+            <rect x="49" y="82" width="10" height="26" rx="5" fill="#fff" opacity="0.7" />
+            <rect x="61" y="82" width="10" height="26" rx="5" fill="#fff" opacity="0.7" />
+          </g>
+        </svg>
+      </div>
+      {/* datos del ejercicio */}
+      <div className="px-5 pb-5 pt-4">
+        <div className="text-[15px] font-extrabold text-white">Sentadilla con barra</div>
+        <div className="mt-0.5 flex flex-wrap gap-1.5">
+          <span className="rounded-full px-2 py-0.5 text-[9px] font-extrabold" style={{ background: 'rgba(255,107,53,0.18)', color: C.primary }}>Cuádriceps</span>
+          <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: C.muted }}>Glúteos</span>
+          <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: C.muted }}>Barra</span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {[['Series', '4'], ['Reps', '8-12'], ['Descanso', '90s']].map(([l, v]) => (
+            <div key={l} className="rounded-lg py-2 text-center" style={{ border: C.border }}>
+              <div className="text-[8px] font-extrabold uppercase tracking-wide" style={{ color: C.muted }}>{l}</div>
+              <div className="text-[13px] font-extrabold text-white">{v}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 rounded-lg px-3 py-2 text-[10px] font-semibold leading-snug" style={{ background: 'rgba(255,255,255,0.04)', color: C.muted }}>
+          Pies al ancho de hombros, espalda recta. Baja hasta que los muslos queden paralelos al piso.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const SEGMENTOS = ['🏋️ Gimnasios fitness', '🧘 Yoga y pilates', '💃 Academias de baile', '🥋 Artes marciales', '👦 Academias para niños', '🔥 Entrenamiento funcional']
 
 const ANTES_DESPUES = [
@@ -816,6 +886,44 @@ export default function PlataformaLanding() {
               style={{ border: `1px solid ${C.primary}`, color: C.primary }}>
               Ver una página real →
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Entrenamiento: catálogo de ejercicios + rutinas + app del socio */}
+      <section id="entrenamiento" className="lp-rev relative overflow-hidden py-16" style={{ background: C.surface }}>
+        <div className="pointer-events-none absolute -right-40 top-10 h-[440px] w-[440px] rounded-full opacity-[0.10] blur-3xl" style={{ background: C.primary }} />
+        <div className="relative mx-auto grid max-w-[1100px] items-center gap-12 px-6 md:grid-cols-[1.05fr_1fr]">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11.5px] font-extrabold uppercase tracking-[1.5px]" style={{ border: C.border, color: C.primary }}>
+              Entrenamiento incluido
+            </div>
+            <h2 className="text-[30px] font-extrabold leading-[1.15] tracking-[-0.8px]">
+              1,300+ ejercicios con video.<br />Rutinas que se arman solas.
+            </h2>
+            <p className="mt-4 max-w-[470px] text-[14.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+              Tu gimnasio no solo cobra y controla accesos: entrena a tu socio.
+              Una biblioteca de más de mil trescientos ejercicios con guía animada,
+              y un generador que arma la rutina por objetivo en un clic.
+            </p>
+            <p className="mt-3 max-w-[470px] rounded-lg px-4 py-3 text-[13px] font-semibold leading-relaxed" style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.25)' }}>
+              <b style={{ color: C.primary }}>El resto te vende un software de gestión.</b>{' '}
+              FitCore además le pone a tu socio un entrenador en el bolsillo — con
+              cada ejercicio en video, sus series y cómo hacerlo bien.
+            </p>
+            <ul className="mt-6 space-y-2.5 text-[13.5px] font-semibold" style={{ color: C.muted }}>
+              {[
+                ['🎬', <span key="a"><b className="text-white">1,300+ ejercicios</b> con video animado, músculos y equipo</span>],
+                ['⚡', <span key="b"><b className="text-white">Rutinas automáticas</b> por objetivo (masa, fuerza, bajar peso…)</span>],
+                ['📱', <span key="c">Tu socio ve su rutina en la app <b className="text-white">con la guía en video</b></span>],
+                ['🏋️', <span key="d">Filtra por el equipo que tiene tu sede — nada que no puedas hacer</span>],
+              ].map(([ic, txt]) => (
+                <li key={ic} className="flex items-start gap-3"><span className="text-[16px]">{ic}</span>{txt}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex justify-center md:justify-end">
+            <EjercicioMockup />
           </div>
         </div>
       </section>
