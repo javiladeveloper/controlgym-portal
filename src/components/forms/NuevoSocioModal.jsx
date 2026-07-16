@@ -148,6 +148,21 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const nInvitados = !esGrupo ? 0 : promo.tipo === '2x1' ? 1 : Math.max(1, (Number(promo.grupo_personas) || 3) - 1)
   const pagan = !esGrupo ? 1 : promo.tipo === '2x1' ? 1 : Math.min(Number(promo.grupo_pagan) || 2, nInvitados + 1)
 
+  // El DNI del invitado i choca con el del titular o con el de otro invitado.
+  // Cada persona del grupo tiene que ser distinta — sin esto se crearían socios
+  // duplicados o el backend lanzaría un error feo al insertar.
+  function dniDuplicado(i) {
+    const doc = (invitados[i]?.documento || '').replace(/\D/g, '')
+    if (doc.length < 6) return null
+    if (doc === (f.documento || '').replace(/\D/g, '')) return 'titular'
+    for (let j = 0; j < i; j++) {
+      if (doc === (invitados[j]?.documento || '').replace(/\D/g, '')) return `persona ${j + 2}`
+    }
+    return null
+  }
+  // ¿algún invitado repite DNI? bloquea el guardado.
+  const hayDniRepetido = Array.from({ length: nInvitados }).some((_, i) => dniDuplicado(i))
+
   // Cálculo del total con promoción (espejo de la lógica del RPC)
   let precio = plan ? Number(plan.precio) : 0
   let matricula = plan && plan.cobra_matricula ? Number(plan.precio_matricula || 0) : 0
@@ -178,6 +193,8 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
 
   async function guardar(e) {
     e?.preventDefault()
+    // Ninguna persona del grupo puede repetir el DNI de otra ni del titular.
+    if (hayDniRepetido) { setError('Hay un DNI repetido entre las personas del grupo. Corrígelo antes de guardar.'); return }
     setBusy(true); setError('')
     // Modo "socio existente": agrega membresía sin recrear al socio.
     if (modoExistente) {
@@ -483,9 +500,14 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
                         🔍 Buscando en el padrón…
                       </p>
                     )}
-                    {tInv && !verifInv[i]?.buscando && (
+                    {tInv && !verifInv[i]?.buscando && !dniDuplicado(i) && (
                       <p className={`mt-1.5 rounded-[8px] px-3 py-1.5 text-[11px] font-extrabold ${tInv.tipo === 'ok' ? 'bg-green-50 text-green-700' : tInv.tipo === 'alerta' ? 'bg-red-50 text-red' : 'bg-amber-50 text-amber-800'}`}>
                         {tInv.texto}
+                      </p>
+                    )}
+                    {dniDuplicado(i) && (
+                      <p className="mt-1.5 rounded-[8px] bg-red-50 px-3 py-1.5 text-[11px] font-extrabold text-red">
+                        ⚠️ Este DNI es el mismo que el de{dniDuplicado(i) === 'titular' ? ' el titular' : ` la ${dniDuplicado(i)}`}. Cada persona del grupo debe tener su propio documento.
                       </p>
                     )}
                     <div className="mt-2.5">
@@ -568,7 +590,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         )}
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
         <BotonesModal onCancel={onClose} busy={busy}
-          disabled={modoExistente ? !f.plan_id : (!f.nombre.trim() || !!dupSocio)}
+          disabled={modoExistente ? !f.plan_id : (!f.nombre.trim() || !!dupSocio || hayDniRepetido)}
           submitLabel={modoExistente
             ? (f.plan_id ? `Cobrar ${money(inicial, empresa?.moneda)} y activar` : 'Elige un plan')
             : (dupSocio ? 'Documento duplicado' : f.plan_id ? `Inscribir y cobrar ${money(inicial, empresa?.moneda)}` : 'Inscribir')} />
