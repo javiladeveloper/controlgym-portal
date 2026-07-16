@@ -30,6 +30,12 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
   const [confirmar, setConfirmar] = useState(null) // 'baja' | 'eliminar'
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
   const activo = socio.estado === 'activo'
+  // Modelo "usuario = fuente de verdad": si el socio tiene cuenta en la app,
+  // sus datos personales los edita él desde ahí; recepción los ve en solo
+  // lectura y no los reenvía en el update (para no pisar lo que el usuario
+  // ya haya cambiado).
+  const tieneCuenta = Boolean(socio?.usuario_id)
+  const hintCuenta = 'Estos datos son de la cuenta del socio; los edita él desde la app FitCore.'
 
   function invalidar() {
     qc.invalidateQueries({ queryKey: ['clientes'] })
@@ -65,16 +71,28 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
       return
     }
 
-    const { error } = await supabase.from('socio').update({
-      nombre: f.nombre.trim(),
-      telefono: f.telefono.trim() || null,
-      email: f.email.trim() || null,
-      documento: f.documento.trim() || null,
-      fecha_nacimiento: f.fecha_nacimiento || null,
-      talla_m: talla,
-      peso_kg: peso,
-      objetivo: f.objetivo || null,
-    }).eq('id', socio.id)
+    // Con cuenta: los campos personales son del usuario, no se reenvían al
+    // update (solo lo que siga siendo del gym). Sin cuenta: como antes.
+    const cambios = tieneCuenta
+      ? {}
+      : {
+        nombre: f.nombre.trim(),
+        telefono: f.telefono.trim() || null,
+        email: f.email.trim() || null,
+        documento: f.documento.trim() || null,
+        fecha_nacimiento: f.fecha_nacimiento || null,
+        talla_m: talla,
+        peso_kg: peso,
+        objetivo: f.objetivo || null,
+      }
+
+    if (Object.keys(cambios).length === 0) {
+      setBusy(false)
+      invalidar(); onSaved?.(); onClose()
+      return
+    }
+
+    const { error } = await supabase.from('socio').update(cambios).eq('id', socio.id)
     setBusy(false)
     if (error) { setError(error.message); return }
     invalidar(); onSaved?.(); onClose()
@@ -112,26 +130,38 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
   return (
     <Modal title={`Editar socio · ${socio.codigo || ''}`} subtitle={socio.nombre} onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col gap-3.5">
-        <Campo label="Nombre completo *">
-          <input required value={f.nombre} onChange={set('nombre')} className={inputCls} />
+        <Campo label="Nombre completo *" hint={tieneCuenta ? hintCuenta : undefined}>
+          <input required readOnly={tieneCuenta} disabled={tieneCuenta} value={f.nombre} onChange={set('nombre')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} />
         </Campo>
         <div className="grid grid-cols-2 gap-3">
-          <Campo label="Teléfono"><input value={f.telefono} onChange={set('telefono')} className={inputCls} /></Campo>
-          <Campo label="DNI / CE"><input value={f.documento} onChange={(e) => setF((s) => ({ ...s, documento: limpiarDocumento(e.target.value) }))} maxLength={12} className={inputCls} /></Campo>
+          <Campo label="Teléfono" hint={tieneCuenta ? hintCuenta : undefined}>
+            <input readOnly={tieneCuenta} disabled={tieneCuenta} value={f.telefono} onChange={set('telefono')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} />
+          </Campo>
+          <Campo label="DNI / CE" hint={tieneCuenta ? hintCuenta : undefined}>
+            <input readOnly={tieneCuenta} disabled={tieneCuenta} value={f.documento} onChange={(e) => setF((s) => ({ ...s, documento: limpiarDocumento(e.target.value) }))} maxLength={12} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} />
+          </Campo>
         </div>
         <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
         <div className="grid grid-cols-3 gap-3">
-          <Campo label="Nacimiento"><input type="date" max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls} /></Campo>
-          <Campo label={`Talla (${labelTalla(unidadTalla)})`}>
-            <input type="number" step={unidadTalla === 'ft' ? '0.1' : '1'} min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder={unidadTalla === 'ft' ? '5.7' : '170'} />
+          <Campo label="Nacimiento" hint={tieneCuenta ? hintCuenta : undefined}>
+            <input type="date" readOnly={tieneCuenta} disabled={tieneCuenta} max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} />
           </Campo>
-          <Campo label={`Peso (${labelPeso(unidadPeso)})`}>
-            <input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder={unidadPeso === 'lb' ? '154' : '70'} />
+          <Campo label={`Talla (${labelTalla(unidadTalla)})`} hint={tieneCuenta ? hintCuenta : undefined}>
+            <input type="number" readOnly={tieneCuenta} disabled={tieneCuenta} step={unidadTalla === 'ft' ? '0.1' : '1'} min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} placeholder={unidadTalla === 'ft' ? '5.7' : '170'} />
+          </Campo>
+          <Campo label={`Peso (${labelPeso(unidadPeso)})`} hint={tieneCuenta ? hintCuenta : undefined}>
+            <input type="number" readOnly={tieneCuenta} disabled={tieneCuenta} step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} placeholder={unidadPeso === 'lb' ? '154' : '70'} />
           </Campo>
         </div>
-        <Campo label="Objetivo (texto libre)" hint="Descriptivo: se ve en su ficha y en su app. Para generarle rutina + dieta de plantilla, usa «⚡ Usar plantilla» en Rutinas.">
-          <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
-        </Campo>
+        {tieneCuenta ? (
+          <Campo label="Objetivo (texto libre)" hint={hintCuenta}>
+            <div className={inputCls + ' cursor-not-allowed bg-surface text-muted'}>{f.objetivo || '—'}</div>
+          </Campo>
+        ) : (
+          <Campo label="Objetivo (texto libre)" hint="Descriptivo: se ve en su ficha y en su app. Para generarle rutina + dieta de plantilla, usa «⚡ Usar plantilla» en Rutinas.">
+            <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
+          </Campo>
+        )}
 
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
 
