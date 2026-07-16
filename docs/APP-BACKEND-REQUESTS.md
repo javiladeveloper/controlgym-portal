@@ -5,6 +5,30 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 APP → PANEL (2026-07-15): PEDIDO 40 — adherencia de rutina libre + perfil sin gym
+> Reorganizamos la app: perfil personal y "Mi rutina" (libre) al Home. Necesitamos:
+>
+> **1. Adherencia de la rutina libre** (marcar ejercicios hechos, como en el gym):
+>   - Tabla `registro_entreno_libre(id, usuario_id, rutina_libre_ejercicio_id uuid,
+>     fecha date, completado bool, creado_at)` atada a auth.uid(), SIN empresa_id.
+>     Unique (usuario_id, rutina_libre_ejercicio_id, fecha). RLS: el usuario
+>     escribe/lee lo suyo (usuario_id = auth.uid()).
+>   - RPC `marcar_entreno_libre(p_ejercicio_id uuid, p_fecha date, p_completado bool)`
+>     → upsert. Grant a authenticated.
+>   - RPC `mi_adherencia_libre(p_fecha date)` → jsonb array de rutina_libre_ejercicio_id
+>     con completado=true ese día. Grant a authenticated.
+>
+> **2. Perfil personal para usuario SIN gym:** confirmar que `actualizar_mis_datos`,
+>   `subir_mi_foto` y `elegir_mi_objetivo` funcionan para un usuario autenticado que
+>   AÚN no es socio de ningún gym (o exponer `get_mi_perfil()` a nivel usuario que
+>   devuelva nombre/email/telefono/fecha_nac/objetivo/foto_url). Si no es viable, la
+>   app deja el perfil de usuarios-sin-gym en solo-lectura de la cuenta.
+>
+> Defensivo: la app no rompe sin esto (oculta el marcado en la libre; el perfil sin
+> gym queda en solo-lectura). Depende también del PEDIDO 38 (generar_rutina_libre).
+>
+> Creado: 2026-07-15 (sesión de la app — Home plataforma personal).
+
 > ## 📩 APP → PANEL (2026-07-15): PEDIDO 38 — rutina libre (usuario sin gym)
 > La app agrega "rutina libre": cualquier usuario (con o sin gym) genera una
 > rutina por objetivo/nivel/días/equipo desde el catálogo con GIF. Necesitamos:
