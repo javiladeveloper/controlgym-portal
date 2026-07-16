@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { usePanel } from '../../store.jsx'
@@ -17,8 +17,12 @@ export default function TabCroquis() {
   const [pisoSel, setPisoSel] = useState(null)   // id del piso en edición
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [subiendo, setSubiendo] = useState(false)
+  const [arrastrando, setArrastrando] = useState(null)
   const planoRef = useRef(null)
   const fileRef = useRef(null)
+
+  // Reset piso cuando cambia la sede
+  useEffect(() => { setPisoSel(null) }, [sedeId])
 
   const lista = pisos.data || []
   const piso = lista.find((p) => p.id === pisoSel) || null
@@ -46,7 +50,7 @@ export default function TabCroquis() {
   async function soltar(e, maquinaId) {
     e.preventDefault()
     const rect = planoRef.current?.getBoundingClientRect()
-    if (!rect) return
+    if (!rect || !rect.width || !rect.height) return
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))
     try {
@@ -102,7 +106,7 @@ export default function TabCroquis() {
 
           {/* Plano con pines */}
           {piso.plano_url ? (
-            <div ref={planoRef} onDragOver={(e) => e.preventDefault()}
+            <div ref={planoRef} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (arrastrando) soltar(e, arrastrando); setArrastrando(null); }}
               className="relative mt-3 w-full overflow-hidden rounded-[12px] border border-line bg-[#0B0E14]">
               <img src={piso.plano_url} alt="" className="w-full select-none" draggable={false} />
               {maqsDelPiso.map((m) => (
@@ -125,7 +129,7 @@ export default function TabCroquis() {
               <div className="mb-2 text-[12px] font-extrabold text-muted">Arrastra una máquina sobre el plano:</div>
               <div className="flex flex-wrap gap-2">
                 {maqsSinUbicar.map((m) => (
-                  <div key={m.id} draggable onDragEnd={(e) => soltar(e, m.id)}
+                  <div key={m.id} draggable onDragStart={() => setArrastrando(m.id)} onDragEnd={(e) => soltar(e, m.id)}
                     className="cursor-grab rounded-full border border-line bg-white px-3 py-1.5 text-[12px] font-extrabold text-muted active:cursor-grabbing hover:border-orange">
                     {m.nombre}
                   </div>
