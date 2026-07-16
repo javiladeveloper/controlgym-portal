@@ -81,3 +81,42 @@ export function useColocarMaquina(sedeId) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['maquinas-croquis', sedeId] }),
   })
 }
+
+// Casillas que SON piso de un piso (para dibujar su forma: U, hueco, etc.).
+export function useCasillasPiso(pisoId) {
+  return useQuery({
+    queryKey: ['casillas-piso', pisoId],
+    enabled: !!pisoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('casillas_de_piso', { p_piso_id: pisoId })
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
+// Editar la forma del piso: marcar/desmarcar una casilla, o llenar/vaciar todo.
+export function useEditarFormaPiso(pisoId) {
+  const qc = useQueryClient()
+  const inval = () => {
+    qc.invalidateQueries({ queryKey: ['casillas-piso', pisoId] })
+    qc.invalidateQueries({ queryKey: ['maquinas-croquis'] }) // al quitar piso se despegan máquinas
+  }
+  const marcarCasilla = useMutation({
+    mutationFn: async ({ fila, columna, esPiso }) => {
+      const { error } = await supabase.rpc('set_casilla_piso', {
+        p_piso_id: pisoId, p_fila: fila, p_columna: columna, p_es_piso: esPiso })
+      if (error) throw error
+    },
+    onSuccess: inval,
+  })
+  const llenar = useMutation({
+    mutationFn: async () => { const { error } = await supabase.rpc('llenar_piso', { p_piso_id: pisoId }); if (error) throw error },
+    onSuccess: inval,
+  })
+  const vaciar = useMutation({
+    mutationFn: async () => { const { error } = await supabase.rpc('vaciar_piso', { p_piso_id: pisoId }); if (error) throw error },
+    onSuccess: inval,
+  })
+  return { marcarCasilla, llenar, vaciar }
+}

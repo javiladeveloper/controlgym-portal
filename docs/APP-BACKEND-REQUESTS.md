@@ -18,10 +18,15 @@
 >     → [{ id, nombre, zona, estado, unidades, grid_fila, grid_columna }]
 >   Cada máquina ocupa la casilla (grid_fila, grid_columna) — ambos 0-indexados
 >   dentro de la grilla del piso. `unidades` = cuántas hay (ej. "×6").
+> - FORMA del piso (qué casillas SON piso): supabase.rpc('casillas_de_piso', { p_piso_id })
+>     → [{ fila, columna }]  las casillas que son piso. Un piso puede ser una U,
+>   tener huecos, etc. Regla: si casillas_de_piso viene VACÍO, trata el piso como
+>   TODO piso (cuadrícula llena) — retrocompat.
 >
-> **SECCIÓN "MAPA DEL GYM"**: el socio elige piso (pisos_de_sede) → renderiza una
-> grilla filas×columnas → en cada casilla con máquina pinta su nombre (patrón mapa
-> de asientos que ya conoces de P33). Las casillas vacías se dejan en blanco.
+> **SECCIÓN "MAPA DEL GYM"**: el socio elige piso (pisos_de_sede) → renderiza la
+> grilla filas×columnas, pero SOLO pinta las casillas que están en casillas_de_piso
+> (las demás son vacío/hueco, se dejan transparentes) → en cada casilla-piso con
+> máquina pinta su nombre (patrón mapa de asientos de P33).
 >
 > **PEDIR AYUDA**: al crear una solicitud_ayuda, el socio elige su piso → guarda
 > `solicitud_ayuda.piso_id`. Si la sede NO tiene pisos/croquis, usa el campo de texto
