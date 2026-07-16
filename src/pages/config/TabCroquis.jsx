@@ -1,33 +1,38 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { usePanel } from '../../store.jsx'
 import { toast } from '../../lib/toast.js'
-import { subirImagen } from '../../hooks/useConfiguracion.js'
-import { usePisos, useGuardarPiso, useBorrarPiso, useMaquinasSede, useUbicarMaquina } from '../../hooks/useCroquis.js'
+import { usePisos, useGuardarPiso, useBorrarPiso, useSetGrilla, useMaquinasSede, useColocarMaquina } from '../../hooks/useCroquis.js'
 
+// Editor de croquis por CUADRÍCULA: el gym crea los pisos y, en cada uno, arma la
+// distribución colocando sus máquinas registradas en casillas de una grilla. No
+// hace falta subir ninguna imagen — el plano se dibuja con las propias máquinas.
 export default function TabCroquis() {
   const { empresa } = useAuth()
   const { sedeId, sedeNombre } = usePanel()
   const pisos = usePisos(sedeId)
   const guardarPiso = useGuardarPiso(sedeId)
   const borrarPiso = useBorrarPiso(sedeId)
+  const setGrilla = useSetGrilla(sedeId)
   const maquinas = useMaquinasSede(sedeId)
-  const ubicar = useUbicarMaquina(sedeId)
-  const [pisoSel, setPisoSel] = useState(null)   // id del piso en edición
+  const colocar = useColocarMaquina(sedeId)
+  const [pisoSel, setPisoSel] = useState(null)
   const [nuevoNombre, setNuevoNombre] = useState('')
-  const [subiendo, setSubiendo] = useState(false)
-  const [arrastrando, setArrastrando] = useState(null)
-  const planoRef = useRef(null)
-  const fileRef = useRef(null)
+  const [arrastrando, setArrastrando] = useState(null) // id de la máquina en drag
 
-  // Reset piso cuando cambia la sede
+  // Al cambiar de sede, olvidar el piso seleccionado (los ids son por sede).
   useEffect(() => { setPisoSel(null) }, [sedeId])
 
   const lista = pisos.data || []
   const piso = lista.find((p) => p.id === pisoSel) || null
-  const maqsDelPiso = (maquinas.data || []).filter((m) => m.piso_id === pisoSel && m.pos_x != null)
-  const maqsSinUbicar = (maquinas.data || []).filter((m) => m.piso_id !== pisoSel || m.pos_x == null)
+  const filas = piso?.filas || 8
+  const columnas = piso?.columnas || 8
+  const maqs = maquinas.data || []
+  // Máquina que ocupa una casilla concreta de este piso (o null).
+  const enCasilla = (f, c) => maqs.find((m) => m.piso_id === pisoSel && m.grid_fila === f && m.grid_columna === c) || null
+  // Máquinas sin colocar en este piso (para el panel lateral, arrastrables).
+  const sinColocar = maqs.filter((m) => m.piso_id !== pisoSel || m.grid_fila == null)
 
   async function agregarPiso() {
     if (!nuevoNombre.trim()) return
@@ -37,39 +42,34 @@ export default function TabCroquis() {
     } catch (e) { toast.error(e.message) }
   }
 
-  async function subirPlano(file) {
+  // Soltar la máquina arrastrada en la casilla (f,c). Una casilla = una máquina.
+  async function soltarEn(f, c) {
+    if (!arrastrando || !piso) return
+    const ocupada = enCasilla(f, c)
+    if (ocupada && ocupada.id !== arrastrando) { toast.error(`Esa casilla ya tiene ${ocupada.nombre}`); return }
+    try {
+      await colocar.mutateAsync({ maquinaId: arrastrando, pisoId: piso.id, fila: f, columna: c })
+    } catch (e) { toast.error(e.message) } finally { setArrastrando(null) }
+  }
+
+  async function quitar(maquinaId) {
+    try { await colocar.mutateAsync({ maquinaId, pisoId: piso.id, fila: null, columna: null }) }
+    catch (e) { toast.error(e.message) }
+  }
+
+  async function cambiarGrilla(df, dc) {
     if (!piso) return
-    setSubiendo(true)
-    try {
-      const url = await subirImagen(empresa.id, 'croquis', file)
-      await guardarPiso.mutateAsync({ id: piso.id, empresa_id: empresa.id, nombre: piso.nombre, orden: piso.orden, plano_url: url })
-    } catch (e) { toast.error('No se pudo subir: ' + e.message) } finally { setSubiendo(false) }
-  }
-
-  // Soltar una máquina sobre el plano → calcular x/y en % del contenedor.
-  async function soltar(e, maquinaId) {
-    e.preventDefault()
-    const rect = planoRef.current?.getBoundingClientRect()
-    if (!rect || !rect.width || !rect.height) return
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))
-    try {
-      await ubicar.mutateAsync({ maquinaId, pisoId: piso.id, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })
-    } catch (err) { toast.error(err.message) }
-  }
-
-  async function quitarUbicacion(maquinaId) {
-    try { await ubicar.mutateAsync({ maquinaId, pisoId: null, x: null, y: null }) }
-    catch (err) { toast.error(err.message) }
+    try { await setGrilla.mutateAsync({ pisoId: piso.id, filas: filas + df, columnas: columnas + dc }) }
+    catch (e) { toast.error(e.message) }
   }
 
   return (
-    <div className="max-w-[820px]">
+    <div className="max-w-[900px]">
       <Card className="p-[19px]">
         <div className="text-[15px] font-extrabold">🗺️ Croquis de {sedeNombre}</div>
         <p className="mt-1 text-[13px] font-semibold text-muted">
-          Crea los pisos de tu sede, sube el plano de cada uno y arrastra tus máquinas a su lugar.
-          El socio lo verá en la app para ubicarse.
+          Crea los pisos de tu sede y, en cada uno, arrastra tus máquinas a la casilla donde están.
+          Así armas el mapa del gym — sin subir ninguna imagen. El socio lo verá en la app para ubicarse.
         </p>
 
         {/* Pisos */}
@@ -77,11 +77,12 @@ export default function TabCroquis() {
           {lista.map((p) => (
             <button key={p.id} onClick={() => setPisoSel(p.id)}
               className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-[12.5px] font-extrabold transition-colors ${pisoSel === p.id ? 'border-orange bg-orange-50 text-orange' : 'border-line text-muted hover:border-orange'}`}>
-              {p.nombre}{!p.plano_url && ' · sin plano'}
+              {p.nombre}
             </button>
           ))}
           <div className="flex items-center gap-1.5">
             <input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Nuevo piso…"
+              onKeyDown={(e) => e.key === 'Enter' && agregarPiso()}
               className="w-[130px] rounded-[9px] border border-line px-2.5 py-1.5 text-[12.5px] font-semibold outline-none focus:border-orange" />
             <button onClick={agregarPiso} className="cursor-pointer rounded-[9px] border border-orange bg-transparent px-3 py-1.5 text-[12px] font-extrabold text-orange hover:bg-orange-50">+ Piso</button>
           </div>
@@ -92,52 +93,61 @@ export default function TabCroquis() {
         <Card className="mt-4 p-[19px]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-[14px] font-extrabold">{piso.nombre}</div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => fileRef.current?.click()} disabled={subiendo}
-                className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-1.5 text-[12px] font-extrabold text-muted hover:border-orange disabled:opacity-50">
-                {subiendo ? 'Subiendo…' : piso.plano_url ? 'Cambiar plano' : 'Subir plano'}
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) subirPlano(f); e.target.value = '' }} />
+            <div className="flex items-center gap-3">
+              {/* Ajuste del tamaño de la grilla */}
+              <div className="flex items-center gap-1.5 text-[12px] font-bold text-muted">
+                <span>Filas</span>
+                <button onClick={() => cambiarGrilla(-1, 0)} className="h-6 w-6 cursor-pointer rounded-md border border-line font-extrabold hover:border-orange">−</button>
+                <span className="w-5 text-center tabular-nums">{filas}</span>
+                <button onClick={() => cambiarGrilla(1, 0)} className="h-6 w-6 cursor-pointer rounded-md border border-line font-extrabold hover:border-orange">+</button>
+                <span className="ml-2">Columnas</span>
+                <button onClick={() => cambiarGrilla(0, -1)} className="h-6 w-6 cursor-pointer rounded-md border border-line font-extrabold hover:border-orange">−</button>
+                <span className="w-5 text-center tabular-nums">{columnas}</span>
+                <button onClick={() => cambiarGrilla(0, 1)} className="h-6 w-6 cursor-pointer rounded-md border border-line font-extrabold hover:border-orange">+</button>
+              </div>
               <button onClick={() => { if (confirm(`¿Borrar el piso "${piso.nombre}"?`)) { borrarPiso.mutate(piso.id); setPisoSel(null) } }}
                 className="cursor-pointer border-none bg-transparent p-0 text-[12px] font-extrabold text-red hover:underline">Borrar piso</button>
             </div>
           </div>
 
-          {/* Plano con pines */}
-          {piso.plano_url ? (
-            <div ref={planoRef} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (arrastrando) soltar(e, arrastrando); setArrastrando(null); }}
-              className="relative mt-3 w-full overflow-hidden rounded-[12px] border border-line bg-[#0B0E14]">
-              <img src={piso.plano_url} alt="" className="w-full select-none" draggable={false} />
-              {maqsDelPiso.map((m) => (
-                <button key={m.id} onClick={() => quitarUbicacion(m.id)} title={`${m.nombre} — clic para quitar`}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange px-2 py-1 text-[10px] font-extrabold text-white shadow-lg"
-                  style={{ left: `${m.pos_x}%`, top: `${m.pos_y}%` }}>
-                  📍 {m.nombre}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-[12px] border border-dashed border-line py-10 text-center text-[12.5px] font-semibold text-faint">
-              Sube el plano de este piso para empezar a ubicar máquinas.
-            </div>
-          )}
-
-          {/* Máquinas por ubicar (arrastrables) */}
-          {piso.plano_url && (
-            <div className="mt-4">
-              <div className="mb-2 text-[12px] font-extrabold text-muted">Arrastra una máquina sobre el plano:</div>
-              <div className="flex flex-wrap gap-2">
-                {maqsSinUbicar.map((m) => (
-                  <div key={m.id} draggable onDragStart={() => setArrastrando(m.id)} onDragEnd={(e) => soltar(e, m.id)}
-                    className="cursor-grab rounded-full border border-line bg-white px-3 py-1.5 text-[12px] font-extrabold text-muted active:cursor-grabbing hover:border-orange">
-                    {m.nombre}
+          {/* La cuadrícula: cada casilla acepta una máquina arrastrada */}
+          <div className="mt-4 inline-grid gap-1 overflow-x-auto rounded-[12px] border border-line bg-surface p-3"
+            style={{ gridTemplateColumns: `repeat(${columnas}, minmax(56px, 1fr))` }}>
+            {Array.from({ length: filas }).map((_, f) =>
+              Array.from({ length: columnas }).map((__, c) => {
+                const m = enCasilla(f, c)
+                return (
+                  <div key={`${f}-${c}`}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); soltarEn(f, c) }}
+                    className={`flex h-[56px] items-center justify-center rounded-[8px] border p-1 text-center text-[9.5px] font-extrabold leading-tight transition-colors ${m ? 'border-orange bg-orange-50 text-orange' : 'border-dashed border-line bg-white text-faint'}`}>
+                    {m ? (
+                      <button onClick={() => quitar(m.id)} title="Clic para quitar" className="cursor-pointer border-none bg-transparent p-0 leading-tight text-orange">
+                        {m.nombre}{m.unidades > 1 ? ` ×${m.unidades}` : ''}
+                      </button>
+                    ) : ''}
                   </div>
-                ))}
-                {maqsSinUbicar.length === 0 && <span className="text-[12px] font-semibold text-faint">Todas las máquinas están ubicadas en este piso.</span>}
-              </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Máquinas por colocar (arrastrables) */}
+          <div className="mt-4">
+            <div className="mb-2 text-[12px] font-extrabold text-muted">Arrastra una máquina a su casilla:</div>
+            <div className="flex flex-wrap gap-2">
+              {sinColocar.map((m) => (
+                <div key={m.id} draggable onDragStart={() => setArrastrando(m.id)} onDragEnd={() => setArrastrando(null)}
+                  className="cursor-grab rounded-full border border-line bg-white px-3 py-1.5 text-[12px] font-extrabold text-muted active:cursor-grabbing hover:border-orange">
+                  {m.nombre}{m.unidades > 1 ? ` ×${m.unidades}` : ''}
+                </div>
+              ))}
+              {sinColocar.length === 0 && maqs.length > 0 && <span className="text-[12px] font-semibold text-faint">Todas las máquinas están colocadas en este piso.</span>}
             </div>
-          )}
+            {maqs.length === 0 && (
+              <p className="mt-2 text-[12px] font-semibold text-faint">Aún no tienes máquinas registradas en esta sede. Agrégalas en la página de Máquinas para poder colocarlas.</p>
+            )}
+          </div>
         </Card>
       )}
     </div>
