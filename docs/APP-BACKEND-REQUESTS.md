@@ -5,29 +5,35 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
-> ## 📩 PANEL → APP (2026-07-16): PEDIDO 42 — Mapa del gym por pisos + piso al pedir ayuda
-> El gym ahora estructura su croquis por PISOS con máquinas ubicadas (editor en el
-> panel: Configuración › Croquis 🗺️). Consúmelo desde la app:
+> ## 📩 PANEL → APP (2026-07-16): PEDIDO 42 — Mapa del gym por pisos (CUADRÍCULA) + piso al pedir ayuda
+> El gym arma su croquis por PISOS con una CUADRÍCULA: cada piso es una grilla de
+> filas×columnas, y sus máquinas registradas se colocan en casillas (fila/columna).
+> NO hay imagen de plano — es una grilla de casillas (mismo concepto que el mapa de
+> asientos de las salas/P33). Editor en el panel: Configuración › Croquis 🗺️.
 >
 > - Pisos de la sede:  supabase.rpc('pisos_de_sede', { p_sede_id })
->     → [{ id, nombre, orden, plano_url }]  (ordenado por orden)
-> - Máquinas ubicadas en un piso:  supabase.rpc('maquinas_del_piso', { p_piso_id })
->     → [{ id, nombre, zona, estado, pos_x, pos_y }]  (pos en % 0-100)
->   plano_url es imagen pública (bucket branding). Pinta los pines con
->   left:pos_x% top:pos_y% sobre la imagen.
+>     → [{ id, nombre, orden, filas, columnas }]  (ordenado por orden)
+>   `filas`/`columnas` = dimensiones de la grilla de ese piso.
+> - Máquinas colocadas en un piso:  supabase.rpc('maquinas_del_piso', { p_piso_id })
+>     → [{ id, nombre, zona, estado, unidades, grid_fila, grid_columna }]
+>   Cada máquina ocupa la casilla (grid_fila, grid_columna) — ambos 0-indexados
+>   dentro de la grilla del piso. `unidades` = cuántas hay (ej. "×6").
 >
-> **SECCIÓN "MAPA DEL GYM"**: el socio elige piso (pisos_de_sede) → ve plano_url con
-> los pines de maquinas_del_piso → toca un pin para ver qué máquina es.
+> **SECCIÓN "MAPA DEL GYM"**: el socio elige piso (pisos_de_sede) → renderiza una
+> grilla filas×columnas → en cada casilla con máquina pinta su nombre (patrón mapa
+> de asientos que ya conoces de P33). Las casillas vacías se dejan en blanco.
 >
-> **PEDIR AYUDA**: al crear una solicitud_ayuda, el socio puede elegir su piso →
-> guarda `solicitud_ayuda.piso_id` (uuid del piso). Si la sede NO tiene pisos/croquis,
-> usa el campo de texto `solicitud_ayuda.ubicacion_texto` (ya existe) como fallback.
-> Así el entrenador sabe en qué piso está el socio.
+> **PEDIR AYUDA**: al crear una solicitud_ayuda, el socio elige su piso → guarda
+> `solicitud_ayuda.piso_id`. Si la sede NO tiene pisos/croquis, usa el campo de texto
+> `solicitud_ayuda.ubicacion_texto` (ya existe) como fallback. Así el entrenador
+> sabe en qué piso está.
 >
-> Ambas RPCs tienen grant a authenticated (security invoker: la RLS acota a la
-> sede del socio). Defensivo: si pisos_de_sede viene vacío, no muestres el mapa.
+> Ambas RPCs tienen grant a authenticated (security invoker: la RLS acota a la sede
+> del socio). Defensivo: si pisos_de_sede viene vacío, no muestres el mapa.
+> (Nota: el modelo viejo de imagen/plano_url/pos_x/pos_y se descartó a favor de la
+> cuadrícula — no lo uses.)
 >
-> Creado: 2026-07-16 (croquis multi-piso — panel).
+> Creado: 2026-07-16 (croquis por cuadrícula — panel).
 
 > ## 📩 APP → PANEL (2026-07-16): PEDIDO 41 — medidas personales (peso/talla del usuario)
 > El socio registra su peso/talla desde su Perfil personal (transversal a gyms).
