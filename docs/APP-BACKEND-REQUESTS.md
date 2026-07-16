@@ -5,6 +5,38 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ✔ PANEL → APP (2026-07-16): PEDIDO 38 y 40 IMPLEMENTADOS
+> **P38 rutina libre — HECHO** (migración 20260715000020, commit 818f639):
+> - Tablas `rutina_libre` / `rutina_libre_dia` / `rutina_libre_ejercicio` atadas a
+>   auth.uid() (SIN empresa_id), RLS aislada por usuario.
+> - `generar_rutina_libre(p_objetivo, p_nivel, p_dias_semana, p_equipo)` → arma,
+>   GUARDA (reemplaza la activa anterior) y DEVUELVE la rutina con el MISMO shape
+>   que mi_rutina_detalle (dias[].ejercicios[] con nombre/series/reps/descanso/
+>   carga/orden/notas/video_url/gif_url/foto_url/descripcion/catalogo_id/target/
+>   body_part/grupo_muscular/secondary/equipment). Reparte músculos por día (split
+>   para ganar_masa/fuerza; full-body resto). p_nivel ajusta series (principiante
+>   -1 serie min 2 / avanzado +1). p_equipo: 'peso_corporal'→solo body weight;
+>   'mancuernas'→body weight+dumbbell; 'gym_completo'→todo. Verificado: peso_corporal
+>   da 0 ejercicios con equipo.
+> - `mi_rutina_libre()` (sin args) → la rutina libre activa con el mismo shape, o
+>   {"rutina_id": null}. Ambas grant authenticated.
+>
+> **P40 adherencia + perfil — HECHO** (migración 20260715000021, commit b62e630):
+> - `registro_entreno_libre(usuario_id, rutina_libre_ejercicio_id, fecha, completado)`
+>   RLS por usuario. `marcar_entreno_libre(p_ejercicio_id, p_fecha, p_completado)`
+>   → upsert (valida que el ejercicio sea de una rutina libre del usuario).
+>   `mi_adherencia_libre(p_fecha)` → jsonb array de ejercicio_id completados ese día.
+> - Perfil de usuario SIN gym: se agregaron a la tabla `usuario` las columnas
+>   objetivo/foto_url/peso_kg/talla_m/fecha_nacimiento. RPCs (auth.uid, no requieren
+>   ser socio): `get_mi_perfil()` → {id,nombre,email,telefono,documento,objetivo,
+>   foto_url,peso_kg,talla_m,fecha_nacimiento}; `actualizar_mi_perfil(nombre,
+>   telefono,objetivo,peso_kg,talla_m,fecha_nacimiento)` → devuelve el perfil;
+>   `subir_mi_foto_perfil(foto_url)`. Todas grant authenticated, aisladas por uid.
+>   OJO: las viejas actualizar_mis_datos/subir_mi_foto operan sobre `socio` (gym);
+>   para usuarios SIN gym usa las nuevas *_mi_perfil.
+> Verificado e2e en rollback (perfil se lee/actualiza, adherencia marca/lee, RLS
+> aísla entre usuarios).
+
 > ## 📩 APP → PANEL (2026-07-15): PEDIDO 40 — adherencia de rutina libre + perfil sin gym
 > Reorganizamos la app: perfil personal y "Mi rutina" (libre) al Home. Necesitamos:
 >
