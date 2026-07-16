@@ -141,7 +141,7 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
             <input readOnly={tieneCuenta} disabled={tieneCuenta} value={f.documento} onChange={(e) => setF((s) => ({ ...s, documento: limpiarDocumento(e.target.value) }))} maxLength={12} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} />
           </Campo>
         </div>
-        <Campo label="Correo"><input type="email" value={f.email} onChange={set('email')} className={inputCls} /></Campo>
+        <Campo label="Correo" hint={tieneCuenta ? hintCuenta : undefined}><input type="email" readOnly={tieneCuenta} disabled={tieneCuenta} value={f.email} onChange={set('email')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} /></Campo>
         <div className="grid grid-cols-3 gap-3">
           <Campo label="Nacimiento" hint={tieneCuenta ? hintCuenta : undefined}>
             <input type="date" readOnly={tieneCuenta} disabled={tieneCuenta} max={new Date().toISOString().slice(0, 10)} value={f.fecha_nacimiento} onChange={set('fecha_nacimiento')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} />
