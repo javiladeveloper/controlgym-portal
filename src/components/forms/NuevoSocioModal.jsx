@@ -12,6 +12,7 @@ import ObjetivoChips from './ObjetivoChips.jsx'
 import { useObjetivos } from '../../hooks/usePlantillas.js'
 import { toast } from '../../lib/toast.js'
 import { METODOS_PAGO } from '../../lib/pagos.js'
+import { displayAKg, displayAM, labelPeso, labelTalla } from '../../lib/unidades.js'
 
 // Alta de socio (+ membresía y cobro con promoción y método de pago).
 // Si viene de un lead (leadId), lo convierte.
@@ -218,8 +219,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       p_monto_inicial: enPartes && puedePartes ? inicial : null,
       p_precio_acordado: usaAcordado ? acordadoNum : null,
       p_objetivo_id: f.objetivo_id || null,
-      p_peso_kg: f.peso_kg ? Number(f.peso_kg) : null,
-      p_talla_m: f.talla_m ? Number(f.talla_m) : null,
+      // f.peso_kg / f.talla_m están en la unidad de display del gym (kg/lb, m/ft):
+      // se convierten a métrico (kg/m) recién aquí, al armar el payload de la RPC.
+      // Si el gym usa kg/m (default), displayAKg/displayAM son identidad.
+      p_peso_kg: f.peso_kg ? displayAKg(f.peso_kg, empresa?.unidad_peso) : null,
+      p_talla_m: f.talla_m ? displayAM(f.talla_m, empresa?.unidad_talla) : null,
     })
     setBusy(false)
     if (error) { setError(mensajeError(error)); return }
@@ -405,11 +409,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         </Campo>
         {f.objetivo_id && (
           <div className="grid grid-cols-2 gap-3">
-            <Campo label="Peso (kg)">
-              <input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder="70" />
+            <Campo label={`Peso (${labelPeso(empresa?.unidad_peso)})`}>
+              <input type="number" step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls} placeholder={empresa?.unidad_peso === 'lb' ? '154' : '70'} />
             </Campo>
-            <Campo label="Talla (m)">
-              <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder="1.70" />
+            <Campo label={`Talla (${labelTalla(empresa?.unidad_talla)})`}>
+              <input type="number" step="0.01" min="0" value={f.talla_m} onChange={set('talla_m')} className={inputCls} placeholder={empresa?.unidad_talla === 'ft' ? '5.7' : '1.70'} />
             </Campo>
           </div>
         )}

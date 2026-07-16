@@ -9,6 +9,8 @@ import HorarioEditor, { resumenHorario } from '../../components/forms/HorarioEdi
 const MONEDAS = [['PEN', 'Sol peruano (S/)'], ['USD', 'Dólar ($)'], ['CLP', 'Peso chileno'], ['COP', 'Peso colombiano'], ['MXN', 'Peso mexicano'], ['EUR', 'Euro (€)']]
 const ZONAS = ['America/Lima', 'America/Bogota', 'America/Santiago', 'America/Mexico_City', 'America/Buenos_Aires', 'America/Guayaquil']
 const LOCALES = [['es-PE', 'Español (Perú)'], ['es-CL', 'Español (Chile)'], ['es-CO', 'Español (Colombia)'], ['es-MX', 'Español (México)'], ['es-AR', 'Español (Argentina)']]
+const UNIDADES_PESO = [['kg', 'Kilogramos (kg)'], ['lb', 'Libras (lb)']]
+const UNIDADES_TALLA = [['m', 'Metros (m)'], ['ft', 'Pies (ft)']]
 
 const REDES = [
   ['facebook', 'Facebook', 'https://facebook.com/tu-gym'],
@@ -34,7 +36,7 @@ function Select({ label, value, onChange, options }) {
 export default function TabNegocio() {
   const { form, set, setRed, dirty, ok, saving, onGuardar } = useEmpresaForm([
     'email_contacto', 'telefono_contacto', 'direccion', 'razon_social', 'ruc', 'horario_atencion', 'horario',
-    'moneda', 'zona_horaria', 'locale', 'redes',
+    'moneda', 'zona_horaria', 'locale', 'redes', 'unidad_peso', 'unidad_talla',
   ])
   if (!form) return <div className="text-[13px] text-muted">Cargando…</div>
   const redes = form.redes || {}
@@ -75,6 +77,8 @@ export default function TabNegocio() {
           <Select label="Moneda" value={form.moneda} onChange={(v) => set('moneda', v)} options={MONEDAS} />
           <Select label="Zona horaria" value={form.zona_horaria} onChange={(v) => set('zona_horaria', v)} options={ZONAS} />
           <Select label="Idioma / formato" value={form.locale} onChange={(v) => set('locale', v)} options={LOCALES} />
+          <Select label="Unidad de peso" value={form.unidad_peso} onChange={(v) => set('unidad_peso', v)} options={UNIDADES_PESO} />
+          <Select label="Unidad de talla" value={form.unidad_talla} onChange={(v) => set('unidad_talla', v)} options={UNIDADES_TALLA} />
         </div>
       </Card>
 
