@@ -51,6 +51,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     return () => clearTimeout(t)
   }, [f.documento])
   const [invitados, setInvitados] = useState([]) // acompañantes de promos 2x1/grupal
+  const [verifInv, setVerifInv] = useState({}) // verificación de DNI por invitado, indexada por i (mismo patrón que el titular)
   const [enPartes, setEnPartes] = useState(false) // paga una parte hoy, el resto después
   const [precioAcordado, setPrecioAcordado] = useState('') // monto pactado distinto al plan (pana/ex-socio)
   const [montoInicial, setMontoInicial] = useState('')
@@ -101,6 +102,33 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
     }, 500)
     return () => clearTimeout(t)
   }, [f.documento, f.nombre]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Verificación de DNI de los INVITADOS contra el padrón — mismo patrón que
+  // el titular (debounce + autocompletar nombre), pero por índice: cada
+  // acompañante tiene su propio estado en verifInv[i].
+  useEffect(() => {
+    const timers = invitados.map((inv, i) => {
+      const dni = (inv?.documento || '').replace(/\D/g, '')
+      if (dni.length !== 8) return null
+      const v = verifInv[i]
+      if (v?.encontrado && v._dni === dni && inv.nombre === v.nombre_oficial) return null
+      return setTimeout(async () => {
+        setVerifInv((s) => ({ ...s, [i]: { buscando: true } }))
+        const res = await verificarDni({ dni, nombre: inv.nombre })
+        if (res.encontrado && res.nombre_oficial) {
+          setInvitados((arr) => {
+            const copia = [...arr]
+            copia[i] = { ...(copia[i] || {}), nombre: res.nombre_oficial }
+            return copia
+          })
+          setVerifInv((s) => ({ ...s, [i]: { ...res, _dni: dni, coincide: true, similitud: 1 } }))
+        } else {
+          setVerifInv((s) => ({ ...s, [i]: { ...res, _dni: dni } }))
+        }
+      }, 500)
+    })
+    return () => timers.forEach((t) => t && clearTimeout(t))
+  }, [invitados]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Paso 1 → 2: en cuanto el padrón responde (encontrado o no), se abre el
   // resto del formulario con el nombre oficial ya puesto
@@ -181,8 +209,11 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       p_metodo_pago: f.metodo_pago,
       p_invitados: esGrupo
         ? invitados.slice(0, nInvitados)
-            .filter((i) => i?.nombre?.trim())
-            .map((i) => ({ nombre: i.nombre.trim(), telefono: i.telefono || null, documento: i.documento || null }))
+            .filter((i) => i?.nombre?.trim() && i?.documento?.trim())
+            .map((i) => ({
+              nombre: i.nombre.trim(), telefono: i.telefono || null, documento: i.documento || null,
+              email: i.email || null, objetivo_id: i.objetivo_id || null,
+            }))
         : null,
       p_monto_inicial: enPartes && puedePartes ? inicial : null,
       p_precio_acordado: usaAcordado ? acordadoNum : null,
@@ -434,17 +465,47 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
                     ? '2×1 — la segunda persona (entra gratis con el mismo plan)'
                     : `${nInvitados + 1}×${pagan} — las otras ${nInvitados} personas del grupo (mismo plan; pagan ${pagan} en total)`}
                 </div>
-                {Array.from({ length: nInvitados }).map((_, i) => (
+                {Array.from({ length: nInvitados }).map((_, i) => {
+                  const tInv = textoVerificacion(verifInv[i])
+                  return (
                   <div key={i} className={i > 0 ? 'mt-3 border-t border-orange/20 pt-3' : ''}>
-                    <Campo label={`Persona ${i + 2} — Nombre completo *`}>
-                      <input required value={invitados[i]?.nombre || ''} onChange={setInv(i, 'nombre')} className={inputCls} placeholder="Ana Torres" />
+                    <Campo label={`Persona ${i + 2} — Documento (DNI) *`} hint="Con 8 dígitos buscamos a la persona en el padrón y llenamos el nombre solo.">
+                      <input required value={invitados[i]?.documento || ''}
+                        onChange={(e) => setInv(i, 'documento')({ target: { value: limpiarDocumento(e.target.value) } })}
+                        className={inputCls + ' text-center font-extrabold tracking-[2px]'} inputMode="numeric" maxLength={12} placeholder="44247191" />
                     </Campo>
+                    {verifInv[i]?.buscando && (
+                      <p className="mt-1.5 animate-pulse rounded-[8px] bg-amber-50 px-3 py-1.5 text-[11px] font-extrabold text-amber-800">
+                        🔍 Buscando en el padrón…
+                      </p>
+                    )}
+                    {tInv && !verifInv[i]?.buscando && (
+                      <p className={`mt-1.5 rounded-[8px] px-3 py-1.5 text-[11px] font-extrabold ${tInv.tipo === 'ok' ? 'bg-green-50 text-green-700' : tInv.tipo === 'alerta' ? 'bg-red-50 text-red' : 'bg-amber-50 text-amber-800'}`}>
+                        {tInv.texto}
+                      </p>
+                    )}
+                    <div className="mt-2.5">
+                      <Campo label="Nombre completo *">
+                        <input required value={invitados[i]?.nombre || ''} onChange={setInv(i, 'nombre')} className={inputCls} placeholder="Ana Torres" />
+                      </Campo>
+                    </div>
                     <div className="mt-2.5 grid grid-cols-2 gap-3">
                       <Campo label="Teléfono"><input value={invitados[i]?.telefono || ''} onChange={setInv(i, 'telefono')} className={inputCls} /></Campo>
-                      <Campo label="Documento (DNI)"><input value={invitados[i]?.documento || ''} onChange={(e) => setInv(i, 'documento')({ target: { value: limpiarDocumento(e.target.value) } })} className={inputCls} /></Campo>
+                      <Campo label="Correo"><input type="email" value={invitados[i]?.email || ''} onChange={setInv(i, 'email')} className={inputCls} /></Campo>
+                    </div>
+                    <div className="mt-2.5">
+                      <Campo label="Objetivo (opcional)" hint="Para asignarle su rutina automáticamente">
+                        <select value={invitados[i]?.objetivo_id || ''} onChange={setInv(i, 'objetivo_id')} className={inputCls + ' cursor-pointer'}>
+                          <option value="">Sin objetivo</option>
+                          {(objetivos.data || []).map((o) => (
+                            <option key={o.id} value={o.id}>{o.nombre}</option>
+                          ))}
+                        </select>
+                      </Campo>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
             {/* Resumen del cobro */}
