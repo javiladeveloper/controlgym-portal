@@ -13,7 +13,7 @@ function normalizaSlug(s) {
     .replace(/-+/g, '-').replace(/^-|-$/g, '')
 }
 
-import { planesPorCategoria } from '../config/planesComerciales.js'
+import { planesPorCategoria, precioPlan, appIncluida, PLAN_MIEMBROS } from '../config/planesComerciales.js'
 
 export default function RegistroGym() {
   const navigate = useNavigate()
@@ -75,7 +75,12 @@ export default function RegistroGym() {
     setError('')
     try {
       sessionStorage.setItem('fc.registroPendiente', JSON.stringify({
-        nombre: nombre.trim(), slug, categoria, plan, conApp,
+        // La app se deriva del plan (los de gym la incluyen, 'miembros' nunca la
+        // tiene); el checkbox solo manda en los planes de segmento. elegir_plan
+        // aplica la misma regla en BD — esto solo evita guardar un flag que
+        // contradiga lo que vio el usuario.
+        nombre: nombre.trim(), slug, categoria, plan,
+        conApp: plan === 'miembros' ? false : appIncluida(plan) ? true : conApp,
       }))
       // Pre-registra el subdominio en Vercel YA: mientras responde el wizard
       // se emite el SSL y "Ver mi página" abre a la primera (fire-and-forget)
@@ -167,20 +172,42 @@ export default function RegistroGym() {
                   {p.popular && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-orange px-2 py-[1px] text-[8.5px] font-extrabold uppercase text-white">Popular</span>}
                   <input type="radio" name="plan" value={p.slug} checked={plan === p.slug} onChange={() => setPlan(p.slug)} className="sr-only" />
                   <span className="text-[12.5px] font-extrabold">{p.nombre}</span>
-                  <span className="text-[15px] font-extrabold text-orange">S/ {conApp ? p.conApp : p.base}<span className="text-[10px] font-bold text-muted">/mes</span></span>
+                  {p.slug === 'miembros' ? (
+                    <span className="text-[15px] font-extrabold text-green-600">
+                      GRATIS<span className="block text-[9px] font-bold text-muted">+ S/ {p.porSocio} por socio activo</span>
+                    </span>
+                  ) : (
+                    <span className="text-[15px] font-extrabold text-orange">S/ {precioPlan(p, conApp)}<span className="text-[10px] font-bold text-muted">/mes</span></span>
+                  )}
                   <span className="mt-0.5 text-[9.5px] font-semibold leading-tight text-muted">{p.para}</span>
                 </label>
               ))}
             </div>
-            <label className="mt-2.5 flex items-start gap-2">
-              <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />
-              <span className="text-[12.5px] font-bold">
-                📱 App para mis {categoria === 'personal_trainer' ? 'clientes' : categoria === 'ninos' ? 'apoderados' : 'socios'}{' '}
-                <b className="text-orange">+S/ {(planActual?.conApp ?? 0) - (planActual?.base ?? 0)}/mes</b>{' '}
-                <span className="font-semibold text-muted">— cubre a todos (disponible muy pronto; se cobra recién cuando la actives)</span>
-              </span>
-            </label>
-            {conApp && (
+            {plan === 'miembros' ? (
+              <div className="mt-2.5 rounded-[10px] border border-line bg-surface px-3.5 py-2.5">
+                <div className="text-[12.5px] font-bold">{PLAN_MIEMBROS.eslogan} — pagas solo si registras socios</div>
+                <div className="mt-0.5 text-[11.5px] font-semibold leading-snug text-muted">{PLAN_MIEMBROS.detalle}</div>
+                <div className="mt-1.5 text-[11px] font-semibold text-faint">📱 {PLAN_MIEMBROS.letraChica} Están en Estudio, Crecimiento y Pro.</div>
+              </div>
+            ) : appIncluida(plan) ? (
+              <div className="mt-2.5 flex items-start gap-2 rounded-[10px] border border-green-200 bg-green-50 px-3.5 py-2.5">
+                <span className="text-[13px]">📱</span>
+                <span className="text-[12.5px] font-bold text-green-800">
+                  App para tus socios INCLUIDA
+                  <span className="block font-semibold text-green-800/80">Sin costo extra — ya viene con tu plan.</span>
+                </span>
+              </div>
+            ) : (
+              <label className="mt-2.5 flex items-start gap-2">
+                <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />
+                <span className="text-[12.5px] font-bold">
+                  📱 App para mis {categoria === 'personal_trainer' ? 'clientes' : categoria === 'ninos' ? 'apoderados' : 'socios'}{' '}
+                  <b className="text-orange">+S/ {(planActual?.conApp ?? 0) - (planActual?.base ?? 0)}/mes</b>{' '}
+                  <span className="font-semibold text-muted">— cubre a todos (disponible muy pronto; se cobra recién cuando la actives)</span>
+                </span>
+              </label>
+            )}
+            {(conApp || appIncluida(plan)) && (
               <ul className="ml-6 mt-2 space-y-1 rounded-[10px] bg-surface px-3.5 py-2.5 text-[11.5px] font-semibold text-muted">
                 {(categoria === 'ninos' ? [
                   '👀 Los papás ven la asistencia de su hijo y las cámaras de la clase en vivo',

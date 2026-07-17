@@ -37,3 +37,6 @@ videos-demo/
 test-results/
 playwright-report/
 .playwright-mcp/
+
+# Dataset de ejercicios (dato de importación, no código — 16MB)
+scripts/datos-ejercicios/exercises.json

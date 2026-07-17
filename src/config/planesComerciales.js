@@ -5,11 +5,30 @@
 // tienen plan único pensado para lo que realmente usan.
 // Precio POR SEDE: cada sede paga su plan. Los planes se diferencian por
 // features (qué tan completo es el gym), no por número de sedes.
+//
+// Los planes de gym traen la app del socio INCLUIDA: precio único, sin la
+// dualidad sin-app/con-app que sí conservan los planes de segmento.
 export const PLANES_GYM = [
-  { slug: 'estudio', nombre: 'Estudio', base: 49, conApp: 79, para: 'Lo esencial · socios ilimitados por sede', limite: null },
-  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, conApp: 139, para: 'CRM, rutinas, kardex y finanzas', popular: true, limite: null },
-  { slug: 'pro', nombre: 'Pro', base: 179, conApp: 229, para: 'Torniquetes, huella, cámaras y multi-marca', limite: null },
+  { slug: 'estudio', nombre: 'Estudio', precio: 99, para: 'Lo esencial · socios ilimitados por sede', limite: null },
+  { slug: 'crecimiento', nombre: 'Crecimiento', precio: 169, para: 'CRM, rutinas, kardex y finanzas', popular: true, limite: null },
+  { slug: 'pro', nombre: 'Pro', precio: 279, para: 'Torniquetes, huella, cámaras y multi-marca', limite: null },
 ]
+
+// Plan de entrada sin cuota fija: se cobra S/1 por cada socio con membresía
+// vigente al cierre del mes. Si el gym no registra socios, no paga nada.
+// No incluye la app: en este plan el gym no aparece para sus socios.
+export const PLAN_MIEMBROS = {
+  slug: 'miembros',
+  nombre: 'Miembros',
+  precio: 0,
+  porSocio: 1,
+  eslogan: 'Usa el sistema GRATIS',
+  para: 'Paga S/1 por socio activo, solo a fin de mes',
+  detalle: 'Gestiona tu gym sin pagar nada por adelantado. A fin de mes pagas S/1 por cada socio con membresía vigente — si no registras socios, no pagas nada.',
+  notas: ['Sin cuota fija', 'Sin tarjeta', 'Sin compromiso'],
+  letraChica: 'Tus socios no se conectan a la app en este plan.',
+  limite: null,
+}
 
 export const PLANES_SEGMENTO = {
   clases: { slug: 'academia', nombre: 'Academia', base: 49, conApp: 69, para: 'Clases, alumnos, cobros y tu página web — sin módulos que no usas' },
@@ -17,13 +36,42 @@ export const PLANES_SEGMENTO = {
   personal_trainer: { slug: 'trainer', nombre: 'Trainer', base: 29, conApp: 49, para: 'Tus clientes, tus paquetes de sesiones y tu página personal' },
 }
 
-// Planes disponibles según la categoría del negocio
+// Planes disponibles según la categoría del negocio. Los gimnasios pueden
+// arrancar en Miembros (sin cuota) y subir a un plan fijo al crecer.
 export function planesPorCategoria(categoriaCodigo) {
   const seg = PLANES_SEGMENTO[categoriaCodigo]
-  return seg ? [seg] : PLANES_GYM
+  return seg ? [seg] : [PLAN_MIEMBROS, ...PLANES_GYM]
 }
 
 // Ficha de un plan comercial por su slug (para Mi plan)
 export function planPorSlug(slug) {
-  return [...PLANES_GYM, ...Object.values(PLANES_SEGMENTO)].find((p) => p.slug === slug) || null
+  return [PLAN_MIEMBROS, ...PLANES_GYM, ...Object.values(PLANES_SEGMENTO)].find((p) => p.slug === slug) || null
+}
+
+// ¿Este plan trae la app incluida y por tanto no se puede elegir aparte?
+// Los de gym sí; los de segmento la venden como extra.
+export function appIncluida(slug) {
+  return PLANES_GYM.some((p) => p.slug === slug)
+}
+
+// Precio mensual de un plan, único punto que sabe si `conApp` aplica.
+// Espejo de precio_plan(plan, con_app) en la BD.
+export function precioPlan(plan, conApp = false) {
+  if (!plan) return 0
+  if (plan.precio !== undefined) return plan.precio          // gym y miembros: precio único
+  return conApp ? plan.conApp : plan.base                     // segmento: dual
+}
+
+// Cuánto pagaría este mes un gym en el plan Miembros con N socios activos.
+export function costoMiembros(socios) {
+  return Math.max(0, Math.trunc(socios || 0)) * PLAN_MIEMBROS.porSocio
+}
+
+// Si con un plan fijo pagaría menos que por socio, cuál le conviene. Devuelve
+// null mientras Miembros siga siendo lo más barato — así el panel solo sugiere
+// migrar cuando de verdad ahorra, y el gym nunca siente que le cobramos de más.
+export function planQueConviene(socios) {
+  const costo = costoMiembros(socios)
+  const masBarato = PLANES_GYM.filter((p) => p.precio < costo).sort((a, b) => a.precio - b.precio)[0]
+  return masBarato ? { plan: masBarato, ahorro: costo - masBarato.precio } : null
 }
