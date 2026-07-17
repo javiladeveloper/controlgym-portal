@@ -135,9 +135,6 @@ function Ficha({ socioId, onBack, onVerSocio }) {
             <div className="col-span-2">
               <FieldLabel>Objetivo</FieldLabel>
               <div className="mt-[3px] text-[14.5px] font-extrabold text-orange">{ficha.objetivo?.nombre || '—'}</div>
-              {ficha.objetivo_nota && (
-                <div className="mt-0.5 text-[12px] font-semibold text-muted">{ficha.objetivo_nota}</div>
-              )}
             </div>
             {ficha.membresia?.[0]?.promocion && (
               <div className="col-span-2">

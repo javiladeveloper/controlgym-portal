@@ -4,7 +4,6 @@ import Modal, { Campo, BotonesModal, inputCls } from '../Modal.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
 import { toast } from '../../lib/toast.js'
 import { limpiarDocumento } from '../../lib/dni.js'
-import ObjetivoChips from './ObjetivoChips.jsx'
 import { useObjetivos } from '../../hooks/usePlantillas.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { kgADisplay, mADisplay, displayAKg, displayAM, labelPeso, labelTalla } from '../../lib/unidades.js'
@@ -26,7 +25,6 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
     talla_m: mADisplay(socio.talla_m, unidadTalla) ?? '',
     peso_kg: kgADisplay(socio.peso_kg, unidadPeso) ?? '',
     objetivo_id: socio.objetivo_id || '',
-    objetivo_nota: socio.objetivo_nota || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -77,9 +75,9 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
     // Con cuenta: los campos personales son del usuario, no se reenvían al
     // update (solo lo que siga siendo del gym). Sin cuenta: como antes.
     // El objetivo de CATÁLOGO sigue la misma regla (lo elige el socio en su
-    // app si ya tiene cuenta); la NOTA la sigue escribiendo el trainer siempre.
+    // app si ya tiene cuenta).
     const cambios = tieneCuenta
-      ? { objetivo_nota: f.objetivo_nota || null }
+      ? {}
       : {
         nombre: f.nombre.trim(),
         telefono: f.telefono.trim() || null,
@@ -89,7 +87,6 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
         talla_m: talla,
         peso_kg: peso,
         objetivo_id: f.objetivo_id || null,
-        objetivo_nota: f.objetivo_nota || null,
       }
 
     if (Object.keys(cambios).length === 0) {
@@ -177,10 +174,6 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
             </select>
           </Campo>
         )}
-        {/* Nota descriptiva: la escribe siempre el trainer, tenga o no cuenta el socio */}
-        <Campo label="Nota del objetivo (opcional)" hint="Descriptivo, no genera plan (ej. «Jiu-Jitsu · cinturón azul»). Se ve en su ficha y en su app.">
-          <ObjetivoChips value={f.objetivo_nota} onChange={(v) => setF((s) => ({ ...s, objetivo_nota: v }))} />
-        </Campo>
 
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
 
