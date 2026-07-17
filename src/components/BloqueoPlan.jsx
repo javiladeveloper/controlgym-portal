@@ -27,6 +27,26 @@ export default function BloqueoPlan({ children }) {
   })
 
   const bloqueado = ['vencida', 'cancelada'].includes(sus.data?.estado)
+
+  // Solo lectura por factura impaga: NO se bloquea el panel (el gym ve sus
+  // datos), pero sí se avisa en todas las pantallas. Sin esto el recepcionista
+  // aprieta "Cobrar" y le explota el error crudo del trigger sin saber por qué.
+  if (!bloqueado && sus.data?.solo_lectura) {
+    return (
+      <>
+        <div className="border-b border-red-200 bg-red-50 px-7 py-2.5">
+          <span className="text-[12.5px] font-bold text-red">
+            🔒 Modo solo lectura: no se puede cobrar, inscribir socios ni marcar asistencia.{' '}
+            {rol === 'admin'
+              ? <>Regulariza el pago en <Link to="/configuracion?tab=plan" className="underline">Configuración → Mi plan</Link>.</>
+              : 'Avísale al administrador del negocio para regularizar el pago.'}
+          </span>
+        </div>
+        {children}
+      </>
+    )
+  }
+
   if (!bloqueado || pathname.startsWith('/configuracion')) return children
 
   return (

@@ -22,11 +22,16 @@ export const PLAN_MIEMBROS = {
   nombre: 'Miembros',
   precio: 0,
   porSocio: 1,
-  eslogan: 'Usa el sistema GRATIS',
-  para: 'Paga S/1 por socio activo, solo a fin de mes',
+  // El gancho es "empiezas sin pagar", no "es gratis": esto es POSPAGO. Poner
+  // GRATIS en grande con el precio real en letra chica es justo lo que genera
+  // el reclamo (y lo que sanciona Indecopi). El precio va en el mismo tamaño.
+  eslogan: 'Empieza sin pagar nada',
+  para: 'Sin cuota fija · S/1 por socio activo al mes',
   detalle: 'Gestiona tu gym sin pagar nada por adelantado. A fin de mes pagas S/1 por cada socio con membresía vigente — si no registras socios, no pagas nada.',
-  notas: ['Sin cuota fija', 'Sin tarjeta', 'Sin compromiso'],
-  letraChica: 'Tus socios no se conectan a la app en este plan.',
+  // "Sin compromiso" sería falso: si no pagas la cuenta del mes, la sede queda
+  // en solo lectura. Se dice lo que sí es cierto.
+  notas: ['Sin cuota fija', 'Sin tarjeta', 'Cancela cuando quieras'],
+  letraChica: 'Tus socios no se conectan a la app en este plan: tu gym no aparece en ella.',
   limite: null,
 }
 
@@ -70,8 +75,14 @@ export function costoMiembros(socios) {
 // Si con un plan fijo pagaría menos que por socio, cuál le conviene. Devuelve
 // null mientras Miembros siga siendo lo más barato — así el panel solo sugiere
 // migrar cuando de verdad ahorra, y el gym nunca siente que le cobramos de más.
+//
+// Descarta los planes cuyo tope de socios no le alcance: recomendar un plan
+// más barato donde no le entran sus socios sería mandarlo a un muro.
 export function planQueConviene(socios) {
-  const costo = costoMiembros(socios)
-  const masBarato = PLANES_GYM.filter((p) => p.precio < costo).sort((a, b) => a.precio - b.precio)[0]
+  const n = Math.max(0, Math.trunc(socios || 0))
+  const costo = costoMiembros(n)
+  const masBarato = PLANES_GYM
+    .filter((p) => p.precio < costo && (p.limite == null || n <= p.limite))
+    .sort((a, b) => a.precio - b.precio)[0]
   return masBarato ? { plan: masBarato, ahorro: costo - masBarato.precio } : null
 }

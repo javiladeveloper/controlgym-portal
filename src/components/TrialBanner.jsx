@@ -47,18 +47,24 @@ export default function TrialBanner() {
     const vencida = deuda.some((f) => f.estado === 'vencida')
     const dias = Math.min(...deuda.map((f) => Number(f.dias_restantes ?? 0)))
 
-    const texto = vencida
-      ? `Tu sede está en modo solo lectura: debes S/ ${total} por ${socios} socios activos.`
-      : dias <= 0
-        ? `Debes S/ ${total} por ${socios} socios activos — hoy es el último día para pagar.`
-        : `Debes S/ ${total} por ${socios} socios activos — te ${dias === 1 ? 'queda 1 día' : `quedan ${dias} días`} para pagar.`
+    // Al staff no-admin no se le muestra el monto: no puede pagarlo y no es su
+    // información. Se le dice qué pasa y a quién avisar.
+    const texto = !esAdmin
+      ? vencida
+        ? 'Los cobros están pausados por un tema de facturación — avísale al administrador del negocio.'
+        : 'Hay una cuenta por pagar del negocio — avísale al administrador.'
+      : vencida
+        ? `Tu sede está en modo solo lectura: debes S/ ${total} por ${socios} socios activos.`
+        : dias <= 0
+          ? `Debes S/ ${total} por ${socios} socios activos — hoy es el último día para pagar.`
+          : `Debes S/ ${total} por ${socios} socios activos — te ${dias === 1 ? 'queda 1 día' : `quedan ${dias} días`} para pagar.`
 
     return (
       <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-7 py-2.5 ${
         vencida ? 'bg-red-50 border-red-200 text-red' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
         <span className="text-[12.5px] font-bold">{texto}</span>
         {esAdmin && (
-          <Link to="/configuracion" className="rounded-full bg-orange px-4 py-1.5 text-[12px] font-extrabold text-white hover:bg-orange-600">
+          <Link to="/configuracion?tab=plan" className="rounded-full bg-orange px-4 py-1.5 text-[12px] font-extrabold text-white hover:bg-orange-600">
             Pagar ahora →
           </Link>
         )}

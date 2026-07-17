@@ -35,12 +35,18 @@ async function cierreMes(req, res) {
   }
 
   const pool = db()
-  // Emite las del mes cerrado (por defecto el anterior al actual).
-  const { rows: em } = await pool.query('select public.emitir_facturas_periodo() as r')
-  // Vence las que pasaron su plazo → la sede queda en solo lectura.
+  // Emite TODO periodo cerrado que falte, no solo el mes anterior: Vercel
+  // documenta que la entrega del cron es best-effort y puede saltarse días. Si
+  // falla el cambio de mes, con "solo el mes anterior" ese periodo no se
+  // emitiría nunca. Idempotente por unique(sede_id, periodo).
+  const { rows: em } = await pool.query('select public.emitir_facturas_pendientes() as r')
+  // Marca los trials de sede vencidos (antes lo hacía estado_suscripcion_sede
+  // al vuelo, pero un SELECT no puede escribir: la policy de la app lo invoca).
+  const { rows: tr } = await pool.query('select public.vencer_trials_sede() as r')
+  // Vence las facturas que pasaron su plazo → la sede queda en solo lectura.
   const { rows: ve } = await pool.query('select public.vencer_facturas() as r')
 
-  return res.status(200).json({ ok: true, emision: em[0].r, vencimiento: ve[0].r })
+  return res.status(200).json({ ok: true, emision: em[0].r, trials: tr[0].r, vencimiento: ve[0].r })
 }
 
 // ── Probar conexión a NORAC del gym del usuario autenticado (admin) ──────────

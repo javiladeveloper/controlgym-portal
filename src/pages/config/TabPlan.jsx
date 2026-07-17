@@ -62,6 +62,18 @@ export default function TabPlan() {
     },
   })
 
+  // Lo que va acumulando este mes en el plan 'miembros'. Sin esto el gym no
+  // sabría cuánto va a pagar hasta que le llega la factura.
+  const consumo = useQuery({
+    queryKey: ['mi-consumo-actual', empresa?.id],
+    enabled: !!empresa?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('mi_consumo_actual')
+      if (error) throw error
+      return data || []
+    },
+  })
+
   const pagos = useQuery({
     queryKey: ['pagos-plataforma', empresa?.id],
     enabled: !!empresa?.id,
@@ -91,15 +103,40 @@ export default function TabPlan() {
   })()
 
   async function cambiarPlan(planSlug, conApp) {
-    if (activa) {
+    // Subir de 'miembros' a un plan fijo es self-service: es justo el gym que ya
+    // demostró que paga, y mandarlo a WhatsApp mata el embudo. El resto de
+    // cambios con pago activo sí se coordinan (hay una suscripción que tocar).
+    const subiendoDesdeMiembros = s?.plan_slug === 'miembros' && planSlug !== 'miembros'
+    if (activa && !subiendoDesdeMiembros) {
       setMsg({ tipo: 'error', texto: 'Tu pago automático ya está activo. Para cambiar de plan escríbenos por WhatsApp y lo hacemos al toque.' })
       return
+    }
+    // Bajar a 'miembros' le quita la app a sus socios y cambia cómo se le cobra:
+    // eso no puede pasar de un clic sin avisar.
+    if (planSlug === 'miembros' && s?.plan_slug !== 'miembros') {
+      const n = (consumo.data || []).reduce((a, x) => a + Number(x.socios || 0), 0)
+      const actual = planPorSlug(s?.plan_slug)
+      const estimado = n > 0 ? `Con tus socios de hoy pagarías ~S/ ${n}/mes` : 'Pagarías S/ 1 por cada socio activo'
+      const comparado = actual?.precio ? ` (hoy pagas S/ ${actual.precio}).` : '.'
+      if (!window.confirm(
+        `¿Pasar al plan Miembros?\n\n` +
+        `• Tus socios PERDERÁN el acceso a la app: tu gym deja de aparecer en ella.\n` +
+        `• Dejas de pagar una cuota fija y pasas a S/ 1 por socio activo, cobrado a fin de mes.\n` +
+        `• ${estimado}${comparado}\n\n` +
+        `Puedes volver a un plan fijo cuando quieras.`,
+      )) return
     }
     const { error } = await supabase.rpc('elegir_plan', { p_empresa_id: empresa.id, p_plan: planSlug, p_con_app: conApp })
     if (error) setMsg({ tipo: 'error', texto: error.message })
     else {
-      setMsg({ tipo: 'ok', texto: '✓ Plan actualizado. El nuevo monto aplica al activar tu pago automático.' })
+      setMsg({
+        tipo: 'ok',
+        texto: planSlug === 'miembros'
+          ? '✓ Estás en el plan Miembros. A fin de mes te llega la cuenta por tus socios activos.'
+          : '✓ Plan actualizado. El nuevo monto aplica al activar tu pago automático.',
+      })
       qc.invalidateQueries({ queryKey: ['mi-suscripcion'] })
+      qc.invalidateQueries({ queryKey: ['mi-consumo-actual'] })
     }
   }
 
@@ -286,6 +323,9 @@ export default function TabPlan() {
   if (sus.isError) return <p className="text-[13px] font-bold text-red">No se pudo cargar la suscripción: {sus.error.message}</p>
 
   const est = ESTADOS[s?.estado] || ESTADOS.prueba
+  // El plan por miembro no tiene cuota fija: ni trial que correr, ni suscripción
+  // recurrente que activar. Se paga factura por factura.
+  const esMiembros = s?.plan_slug === 'miembros'
 
   return (
     <div className="max-w-[720px]">
@@ -297,18 +337,25 @@ export default function TabPlan() {
         <FacturaPendiente key={f.id} factura={f} onPagar={() => pagarFactura(f)} busy={busy} />
       ))}
 
+      {/* Lo que va del mes en curso: el gym debe saber cuánto pagará ANTES del
+          corte, no enterarse cuando le llega la factura. */}
+      {esMiembros && (consumo.data || []).length > 0 && <ConsumoDelMes sedes={consumo.data} />}
+
       <Card className="p-[19px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-[14.5px] font-extrabold">Tu suscripción a FitCore</div>
             <p className="mt-0.5 text-[12px] font-semibold text-muted">
-              Plan <b className="text-ink capitalize">{s.plan_slug}</b>{s.con_app ? ' + App del socio' : ''} · {money(Number(s.monto))} al mes
+              Plan <b className="text-ink capitalize">{s.plan_slug}</b>
+              {esMiembros
+                ? ` · S/ ${PLAN_MIEMBROS.porSocio} por socio activo, a fin de mes`
+                : `${s.con_app ? ' + App del socio' : ''} · ${money(Number(s.monto))} al mes`}
             </p>
           </div>
           <span className={`rounded-full border px-3 py-1 text-[11.5px] font-extrabold ${est.cls}`}>{est.label}</span>
         </div>
 
-        {s.estado === 'prueba' && (
+        {!esMiembros && s.estado === 'prueba' && (
           <div className="mt-4 rounded-[10px] border border-blue-200 bg-blue-50 px-4 py-3 text-[13px] font-semibold text-blue-800">
             Te quedan <b>{diasTrial} {diasTrial === 1 ? 'día' : 'días'} de prueba gratis</b> (hasta el {fechaLocal(s.trial_hasta).toLocaleDateString('es-PE')}).
             {diasTrial > 5
@@ -333,8 +380,11 @@ export default function TabPlan() {
         )}
 
         {/* El pago se habilita recién al final del trial (últimos 5 días) o vencido.
-            Cancelada no muestra el CTA de activar (se reactiva por WhatsApp). */}
-        {!activa && s.estado !== 'cancelada' && (s.estado !== 'prueba' || diasTrial <= 5) && (
+            Cancelada no muestra el CTA de activar (se reactiva por WhatsApp).
+            Miembros nunca lo muestra: no hay cuota fija que suscribir — sin este
+            guard pintaría "Activar pago automático · S/ 0/mes" y abriría Culqi
+            con monto 0. */}
+        {!esMiembros && !activa && s.estado !== 'cancelada' && (s.estado !== 'prueba' || diasTrial <= 5) && (
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <PrimaryButton onClick={activarPago} disabled={busy}>
               {busy ? 'Abriendo pago seguro…' : `💳 Activar pago automático · ${money(Number(s.monto))}/mes`}
@@ -367,14 +417,15 @@ export default function TabPlan() {
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {opciones.map((p) => {
                   const seleccionado = s.plan_slug === p.slug
-                  const esMiembros = p.slug === 'miembros'
+                  const esMiembrosCard = p.slug === 'miembros'
                   return (
                     <button key={p.slug} onClick={() => cambiarPlan(p.slug, appIncluida(p.slug))}
                       className={`rounded-[10px] border p-3 text-center transition-colors ${seleccionado ? 'border-orange bg-orange-50' : 'border-line bg-white hover:border-orange'}`}>
                       <div className="text-[13px] font-extrabold">{p.nombre}</div>
-                      {esMiembros ? (
+                      {esMiembrosCard ? (
                         <div className="text-[15px] font-extrabold text-green-600">
-                          GRATIS<span className="block text-[9px] font-bold text-muted">+ S/ {p.porSocio} por socio</span>
+                          S/ {p.porSocio}<span className="text-[10px] font-bold text-muted">/socio</span>
+                          <span className="block text-[9.5px] font-bold text-muted">sin cuota fija</span>
                         </div>
                       ) : (
                         <div className="text-[15px] font-extrabold text-orange">S/ {precioPlan(p)}<span className="text-[10px] text-muted">/mes</span></div>
@@ -461,6 +512,45 @@ const ESTADO_SEDE = {
   prueba: { bg: '#FFF4EC', color: '#C2410C', label: 'En prueba' },
   vencida: { bg: '#FDECEC', color: '#E24B4A', label: 'Vencida' },
   cancelada: { bg: '#F1F2F4', color: '#5B6472', label: 'Cancelada' },
+}
+
+// Lo que va del mes en curso en el plan por miembro. Sin esto el gym vería
+// "S/ 0 al mes" todo el mes y la factura le caería de sorpresa el día 1.
+function ConsumoDelMes({ sedes }) {
+  const total = sedes.reduce((n, x) => n + Number(x.monto || 0), 0)
+  const socios = sedes.reduce((n, x) => n + Number(x.socios || 0), 0)
+  const cobro = sedes[0]?.se_cobra_el
+
+  return (
+    <Card className="mb-4 p-[19px]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[14.5px] font-extrabold">Lo que llevas este mes</div>
+          <p className="mt-0.5 text-[12.5px] font-semibold text-muted">
+            <b className="text-ink">{socios} socios activos</b> hoy × S/ {PLAN_MIEMBROS.porSocio}
+            {cobro && <> · se cobra el {fechaLocal(cobro).toLocaleDateString('es-PE')}</>}
+          </p>
+          <p className="mt-1 text-[11.5px] font-semibold text-faint">
+            Sube y baja con tus socios: el monto final es el de tus socios activos el último día del mes.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[26px] font-extrabold leading-none">{money(total)}</div>
+          <div className="text-[10.5px] font-bold text-faint">estimado del mes</div>
+        </div>
+      </div>
+      {sedes.length > 1 && (
+        <div className="mt-3 space-y-1 border-t border-line pt-2.5">
+          {sedes.map((x) => (
+            <div key={x.sede_id} className="flex items-center justify-between text-[12px] font-semibold">
+              <span className="text-muted">{x.sede_nombre} · {x.socios} socios</span>
+              <span className="tabular-nums">{money(Number(x.monto))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
 }
 
 // Factura del plan por miembro: lo que se debe por el mes cerrado, con su plazo

@@ -145,8 +145,20 @@ export default function RegistroGym() {
           </div>
 
           {/* El mes gratis es EL mensaje — y es 1 por persona (correo Google) */}
-          <div className={`mt-5 rounded-[10px] border px-4 py-3 ${empresas.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
-            {empresas.length > 0 ? (
+          {/* El mes gratis aplica a los planes con cuota. En Miembros no hay
+              cuota que perdonar: se factura por socios desde el primer mes, así
+              que prometerle "mes gratis" sería mentirle. */}
+          <div className={`mt-5 rounded-[10px] border px-4 py-3 ${
+            plan === 'miembros' ? 'border-line bg-surface'
+            : empresas.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+            {plan === 'miembros' ? (
+              <div className="text-[12.5px] font-bold">
+                En este plan no hay cuota mensual que pagar.
+                <span className="block text-[11.5px] font-semibold text-muted">
+                  A fin de mes te llega la cuenta por tus socios activos (S/ 1 cada uno). Si no registras socios, no pagas nada.
+                </span>
+              </div>
+            ) : empresas.length > 0 ? (
               <div className="text-[12.5px] font-bold text-amber-800">
                 ℹ️ Tu mes gratis ya lo usaste con tu primer negocio. Este nuevo espacio se activa
                 agregando tu tarjeta — y tu primer cobro igual sale recién en 1 mes.
@@ -173,8 +185,12 @@ export default function RegistroGym() {
                   <input type="radio" name="plan" value={p.slug} checked={plan === p.slug} onChange={() => setPlan(p.slug)} className="sr-only" />
                   <span className="text-[12.5px] font-extrabold">{p.nombre}</span>
                   {p.slug === 'miembros' ? (
+                    /* El precio real va del mismo tamaño que el gancho: "gratis"
+                       en grande con el cobro en 9px es exactamente el patrón que
+                       genera el reclamo al primer cobro. */
                     <span className="text-[15px] font-extrabold text-green-600">
-                      GRATIS<span className="block text-[9px] font-bold text-muted">+ S/ {p.porSocio} por socio activo</span>
+                      S/ {p.porSocio}<span className="text-[10px] font-bold text-muted">/socio</span>
+                      <span className="block text-[9.5px] font-bold text-muted">sin cuota fija</span>
                     </span>
                   ) : (
                     <span className="text-[15px] font-extrabold text-orange">S/ {precioPlan(p, conApp)}<span className="text-[10px] font-bold text-muted">/mes</span></span>

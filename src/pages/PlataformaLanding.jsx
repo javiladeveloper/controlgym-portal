@@ -234,7 +234,7 @@ const FAQS = [
   ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitCore registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
   ['¿Sirve si solo doy clases (yoga, baile, box, dojo)?', 'Sí, con plan propio: Academia a S/49/mes con un panel a tu medida — clases, alumnos, reservas y tu página web, sin módulos que no usas.'],
   ['Soy personal trainer, ¿me sirve?', 'Sí — es nuestro plan más accesible (S/29/mes): tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes. Y cuando salga la app, apareces en las búsquedas de tu zona sin costo extra.'],
-  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Es un adicional fijo por gimnasio (no por socio): tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. Cuesta desde S/ 30 extra al mes según tu plan, cubre a todos tus socios y está disponible muy pronto.'],
+  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. En los planes de gimnasio (Estudio, Crecimiento y Pro) va INCLUIDA, sin costo extra y para todos tus socios. En Trainer, Academia y Niños es un adicional fijo por negocio (no por socio). En el plan Miembros no está disponible. Se habilita muy pronto.'],
   ['¿Qué pasa cuando termina mi mes de prueba?', 'Eliges el plan que te acomode y sigues donde quedaste. Tus datos nunca se borran ni se bloquean de un día para otro.'],
   ['¿Puedo cambiar de plan o cancelar?', 'Cuando quieras, sin permanencia ni penalidades. Subes o bajas de plan según crece tu gimnasio.'],
 ]
@@ -1063,7 +1063,9 @@ export default function PlataformaLanding() {
                   <span key={n} className="text-[12px] font-bold" style={{ color: C.ink }}>✓ {n}</span>
                 ))}
               </div>
-              <p className="mt-3 text-[11.5px] font-semibold" style={{ color: C.muted, opacity: 0.75 }}>
+              {/* Perder la app es lo único que este plan te quita: no puede ir
+                  en gris claro sobre gris. Se lee o no es una advertencia. */}
+              <p className="mt-3 rounded-lg px-3 py-2 text-[12px] font-bold" style={{ border: C.border, color: C.ink }}>
                 📱 {PLAN_MIEMBROS.letraChica} Está incluida en Estudio, Crecimiento y Pro.
               </p>
             </div>
@@ -1076,7 +1078,7 @@ export default function PlataformaLanding() {
               <a href={`${APP_URL}/registro`}
                 className="mt-4 block rounded-lg px-7 py-3 text-center text-[14px] font-extrabold text-white transition-transform hover:scale-[1.02]"
                 style={{ background: C.primary }}>
-                Empezar gratis
+                Empezar sin cuota
               </a>
             </div>
           </div>
@@ -1134,7 +1136,8 @@ export default function PlataformaLanding() {
           ))}
         </div>
         <p className="mt-6 text-center text-[12px] font-semibold" style={{ color: C.muted }}>
-          Todos los planes incluyen 1 mes de prueba gratis, sin tarjeta. Cambia de plan cuando quieras.
+          Los planes fijos incluyen 1 mes de prueba gratis, sin tarjeta. En Miembros no hay cuota: pagas por tus
+          socios activos desde el primer mes. Cambia de plan cuando quieras.
         </p>
 
         {/* Calculadora: cuánto pagarías según plan y nº de sedes (o socios, en
@@ -1181,7 +1184,7 @@ export default function PlataformaLanding() {
 
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ['🗺️', 'Te encuentran a ti', 'Las personas buscarán gimnasios, academias y personal trainers cerca de ellas. Estar suscrito a FitCore te pone en el mapa — sin costo extra.'],
+              ['🗺️', 'Te encuentran a ti', 'Las personas buscarán gimnasios, academias y personal trainers cerca de ellas. Con la app activa en tu plan, apareces en el mapa.'],
               ['📲', 'Tu negocio en su bolsillo', 'Tus socios ven su rutina, su dieta, su membresía y reservan tus clases — con tu marca y tus colores.'],
               ['🎥', 'Papás tranquilos', 'En gyms para niños, el apoderado verá la asistencia de su hijo y las cámaras de la clase en vivo.'],
               ['🏋️', 'Modo entrenador', 'Tus trainers y nutricionistas asignan rutinas y dietas desde su celular, en el piso del gym.'],
@@ -1195,9 +1198,9 @@ export default function PlataformaLanding() {
           </div>
 
           <p className="mt-8 text-center text-[13px] font-semibold" style={{ color: C.muted }}>
-            Aparecer en la app está <b className="text-white">incluido con tu suscripción</b>. Las funciones para tus
-            clientes son un adicional <b style={{ color: C.primary }}>desde S/ 20/mes</b> — puedes reservarlo desde hoy
-            y se cobra recién cuando la app esté activa.
+            La app va <b className="text-white">incluida</b> en Estudio, Crecimiento y Pro — sin costo extra y para todos
+            tus socios. En Trainer, Academia y Niños es un adicional; en el plan Miembros no está disponible.
+            Se habilita muy pronto.
           </p>
         </div>
       </section>

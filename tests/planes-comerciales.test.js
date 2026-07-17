@@ -85,6 +85,15 @@ describe('sugerencia de migrar a plan fijo', () => {
     expect(r.ahorro).toBe(101)
   })
 
+  it('nunca sugiere un plan cuyo tope de socios no le alcance', () => {
+    // Recomendar un plan más barato donde no le entran sus socios sería
+    // mandarlo a un muro. Se comprueba contra el límite declarado del plan.
+    for (const n of [120, 200, 350]) {
+      const r = planQueConviene(n)
+      if (r && r.plan.limite != null) expect(n).toBeLessThanOrEqual(r.plan.limite)
+    }
+  })
+
   it('el embudo funciona: un gym grande paga más por socio que por plan fijo', () => {
     // 300 socios = S/300 > S/279 del Pro completo. Es intencional: el gym
     // grande migra solo.
@@ -116,9 +125,21 @@ describe('catálogo por categoría', () => {
   })
 
   it('el copy de Miembros no promete la app del socio', () => {
-    // "Usa el sistema GRATIS" — no "la aplicación": la app del socio no va en
-    // este plan y el gym no debe entender lo contrario.
+    // La app del socio NO va en este plan: el eslogan no puede insinuarla.
     expect(PLAN_MIEMBROS.eslogan).not.toMatch(/aplicaci[oó]n|app/i)
+    // Y la advertencia sí tiene que nombrarla, para que se entienda qué pierde.
     expect(PLAN_MIEMBROS.letraChica).toMatch(/app/i)
+  })
+
+  it('el copy de Miembros no vende como GRATIS lo que es pospago', () => {
+    // Esto es pospago, no gratis: "GRATIS" en el gancho + el cobro en letra
+    // chica es justo lo que genera el reclamo al primer cobro.
+    expect(PLAN_MIEMBROS.eslogan).not.toMatch(/gratis/i)
+    // El precio real debe estar en el texto que acompaña al gancho.
+    expect(PLAN_MIEMBROS.para).toMatch(/S\/\s*1/)
+  })
+
+  it('no promete "sin compromiso": si no pagas, la sede queda en solo lectura', () => {
+    expect(PLAN_MIEMBROS.notas.join(' ')).not.toMatch(/sin compromiso/i)
   })
 })
