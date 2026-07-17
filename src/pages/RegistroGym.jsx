@@ -185,9 +185,10 @@ export default function RegistroGym() {
                   <input type="radio" name="plan" value={p.slug} checked={plan === p.slug} onChange={() => setPlan(p.slug)} className="sr-only" />
                   <span className="text-[12.5px] font-extrabold">{p.nombre}</span>
                   {p.slug === 'miembros' ? (
-                    /* El precio real va del mismo tamaño que el gancho: "gratis"
-                       en grande con el cobro en 9px es exactamente el patrón que
-                       genera el reclamo al primer cobro. */
+                    /* En la LANDING el plan Miembros se vende solo como "gratis";
+                       aquí, ya dentro del registro, sí se muestran las condiciones
+                       (S/1 por socio) para que el gym las vea antes de crear su
+                       cuenta y no le lleguen de sorpresa a fin de mes. */
                     <span className="text-[15px] font-extrabold text-green-600">
                       S/ {p.porSocio}<span className="text-[10px] font-bold text-muted">/socio</span>
                       <span className="block text-[9.5px] font-bold text-muted">sin cuota fija</span>

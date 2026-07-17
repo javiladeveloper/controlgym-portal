@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FitCoreLogo, WhatsAppIcon } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 import { LEADIA_VISIBLE } from '../lib/features.js'
-import { PLANES_GYM, PLAN_MIEMBROS, planPorSlug, costoMiembros, planQueConviene } from '../config/planesComerciales.js'
+import { PLANES_GYM, planPorSlug } from '../config/planesComerciales.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
 // Tokens: bg #141B2E · surface #1F293D · primary #FF6B35 · muted #8E9AA8 · radius 8px
@@ -234,7 +234,7 @@ const FAQS = [
   ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitCore registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
   ['¿Sirve si solo doy clases (yoga, baile, box, dojo)?', 'Sí, con plan propio: Academia a S/49/mes con un panel a tu medida — clases, alumnos, reservas y tu página web, sin módulos que no usas.'],
   ['Soy personal trainer, ¿me sirve?', 'Sí — es nuestro plan más accesible (S/29/mes): tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes. Y cuando salga la app, apareces en las búsquedas de tu zona sin costo extra.'],
-  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. En los planes de gimnasio (Estudio, Crecimiento y Pro) va INCLUIDA, sin costo extra y para todos tus socios. En Trainer, Academia y Niños es un adicional fijo por negocio (no por socio). En el plan Miembros no está disponible. Se habilita muy pronto.'],
+  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. En los planes de gimnasio (Estudio, Crecimiento y Pro) va INCLUIDA, sin costo extra y para todos tus socios. En Trainer, Academia y Niños es un adicional fijo por negocio (no por socio). Se habilita muy pronto.'],
   ['¿Qué pasa cuando termina mi mes de prueba?', 'Eliges el plan que te acomode y sigues donde quedaste. Tus datos nunca se borran ni se bloquean de un día para otro.'],
   ['¿Puedo cambiar de plan o cancelar?', 'Cuando quieras, sin permanencia ni penalidades. Subes o bajas de plan según crece tu gimnasio.'],
 ]
@@ -324,13 +324,13 @@ const CONTENIDO_PLANES = {
   estudio: {
     foto: '/landing/paso2.jpg',
     para: 'Yoga, pilates, baile y gimnasios pequeños',
-    features: ['Socios, membresías y cobros', 'Clases y check-in', 'Página web con subdominio', 'Hasta 2 usuarios del panel', 'Reportes básicos'],
+    features: ['Socios, membresías y cobros', 'Clases y check-in con QR', 'Página web propia con tu marca', 'Hasta 2 usuarios del panel', 'Reportes básicos'],
     no: ['CRM y captación desde redes', 'Rutinas, kardex y finanzas'],
   },
   crecimiento: {
     foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
-    features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'CRM + captación con origen por red', 'Rutinas y dietas (asignación por IMC)', 'Kardex, tienda en la app y máquinas', 'Finanzas y reportes en Excel', 'Promociones aplicadas al cobro', 'Personalización total (8 diseños)'],
+    features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'Biblioteca de +1,300 ejercicios con video', 'Rutinas automáticas según el objetivo del socio', 'Dietas y kardex de progreso', 'CRM + captación con origen por red', 'Croquis del gym y control de máquinas', 'Finanzas, promociones al cobro y reportes en Excel', 'Personalización total (8 diseños)'],
     no: ['Control de acceso físico y cámaras', 'Reportes avanzados de asistencia'],
   },
   pro: {
@@ -636,33 +636,28 @@ function CarruselModulos() {
   )
 }
 
-// Calculadora de precio: como se cobra POR SEDE, el gym elige plan y cuántas
-// sedes tiene → total = precio del plan × nº de sedes. El plan Miembros entra
-// como una opción más: no tiene cuota, cobra por socio, así que su "total"
-// depende de los socios y no de las sedes.
+// Calculadora de precio de los planes fijos: se cobra POR SEDE, así que el gym
+// elige plan y cuántas sedes tiene → total = precio × nº de sedes. El plan
+// Miembros no entra aquí: en la landing se presenta solo como "empieza gratis"
+// (sus condiciones se muestran cuando el gym ya está adentro armando su gym).
 function CalculadoraPrecio() {
   const [slug, setSlug] = useState('crecimiento')
   const [sedes, setSedes] = useState(1)
-  const [socios, setSocios] = useState(60)
-  const esMiembros = slug === 'miembros'
   const plan = planPorSlug(slug)
-  const total = esMiembros ? costoMiembros(socios) : plan.precio * sedes
-  const conviene = esMiembros ? planQueConviene(socios) : null
+  const total = plan.precio * sedes
 
   return (
     <div className="mx-auto mt-10 max-w-[720px] rounded-xl p-6" style={{ background: C.surface, border: C.border }}>
       <div className="text-center text-[16px] font-extrabold">Calcula tu precio</div>
       <p className="mt-1 text-center text-[12.5px] font-semibold" style={{ color: C.muted }}>
-        {esMiembros
-          ? 'Sin cuota fija: pagas S/ 1 por cada socio activo, a fin de mes.'
-          : 'Cobramos por sede. Elige tu plan y cuántas sedes tienes. La app para tus socios va incluida.'}
+        Cobramos por sede. Elige tu plan y cuántas sedes tienes. La app para tus socios va incluida.
       </p>
 
       {/* Plan */}
       <div className="mt-5">
         <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Plan</div>
-        <div className="grid grid-cols-4 gap-2">
-          {[PLAN_MIEMBROS, ...PLANES_GYM].map((p) => (
+        <div className="grid grid-cols-3 gap-2">
+          {PLANES_GYM.map((p) => (
             <button key={p.slug} onClick={() => setSlug(p.slug)}
               className="rounded-lg px-3 py-2.5 text-[13px] font-extrabold transition-colors"
               style={p.slug === slug
@@ -674,45 +669,16 @@ function CalculadoraPrecio() {
         </div>
       </div>
 
-      {esMiembros ? (
-        /* Socios activos: lo único que mueve el precio del plan por miembro */
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Socios activos</span>
-            <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{socios} socios</span>
-          </div>
-          <input type="range" min="0" max="400" step="5" value={socios} onChange={(e) => setSocios(Number(e.target.value))}
-            className="w-full cursor-pointer" style={{ accentColor: C.primary }} />
-          <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>0</span><span>400</span></div>
+      {/* Sedes */}
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Número de sedes</span>
+          <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{sedes} {sedes === 1 ? 'sede' : 'sedes'}</span>
         </div>
-      ) : (
-        /* Sedes */
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Número de sedes</span>
-            <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{sedes} {sedes === 1 ? 'sede' : 'sedes'}</span>
-          </div>
-          <input type="range" min="1" max="10" value={sedes} onChange={(e) => setSedes(Number(e.target.value))}
-            className="w-full cursor-pointer accent-orange-500" style={{ accentColor: C.primary }} />
-          <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>1</span><span>10+</span></div>
-        </div>
-      )}
-
-      {/* Con el plan por miembro, decimos cuándo conviene migrar: es la verdad y
-          evita que el gym grande se sienta estafado al recibir su factura. */}
-      {conviene && (
-        <div className="mt-4 rounded-lg px-3.5 py-2.5 text-[12.5px] font-semibold" style={{ border: C.border, color: C.ink }}>
-          💡 Con <b>{conviene.plan.nombre}</b> pagarías <b>S/ {conviene.plan.precio}</b> al mes en vez de{' '}
-          <b>S/ {total}</b> — ahorras <b style={{ color: '#22c55e' }}>S/ {conviene.ahorro}</b> y tus socios tienen la app.
-        </div>
-      )}
-      {esMiembros && !conviene && (
-        <div className="mt-4 rounded-lg px-3.5 py-2.5 text-[12.5px] font-semibold" style={{ border: C.border, color: C.muted }}>
-          {socios === 0
-            ? '✓ Sin socios registrados no pagas nada.'
-            : '✓ A este tamaño, pagar por socio te sale más barato que cualquier plan fijo.'}
-        </div>
-      )}
+        <input type="range" min="1" max="10" value={sedes} onChange={(e) => setSedes(Number(e.target.value))}
+          className="w-full cursor-pointer accent-orange-500" style={{ accentColor: C.primary }} />
+        <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>1</span><span>10+</span></div>
+      </div>
 
       {/* Total */}
       <div className="mt-5 rounded-lg p-4 text-center" style={{ background: C.primary }}>
@@ -721,15 +687,11 @@ function CalculadoraPrecio() {
           S/ {total.toLocaleString('es-PE')}<span className="text-[14px] font-semibold text-white/80">/mes</span>
         </div>
         <div className="text-[12px] font-semibold text-white/90">
-          {esMiembros
-            ? `${plan.nombre} · S/ ${plan.porSocio} × ${socios} socios activos`
-            : `${plan.nombre} · S/ ${plan.precio}/sede × ${sedes} ${sedes === 1 ? 'sede' : 'sedes'}`}
+          {plan.nombre} · S/ {plan.precio}/sede × {sedes} {sedes === 1 ? 'sede' : 'sedes'}
         </div>
       </div>
       <p className="mt-3 text-center text-[11px] font-semibold" style={{ color: C.muted }}>
-        {esMiembros
-          ? 'Se cobra a fin de mes, según los socios que tengas activos ese día.'
-          : <>¿Más de 10 sedes o varias marcas? <a href={`${APP_URL}/registro`} className="font-extrabold" style={{ color: C.primary }}>Hablemos de un precio especial →</a></>}
+        ¿Más de 10 sedes o varias marcas? <a href={`${APP_URL}/registro`} className="font-extrabold" style={{ color: C.primary }}>Hablemos de un precio especial →</a>
       </p>
     </div>
   )
@@ -1043,49 +1005,42 @@ export default function PlataformaLanding() {
             es la oferta que hace que un gym chico se anime a probar. */}
         <div className="mx-auto mt-8 max-w-[1000px] overflow-hidden rounded-xl"
           style={{ background: C.surface, border: `2px solid ${C.primary}` }}>
-          <div className="flex flex-wrap items-center justify-between gap-5 p-7">
+          <div className="flex flex-wrap items-center justify-between gap-5 p-8">
             <div className="min-w-[280px] flex-1">
               <div className="flex items-center gap-2.5">
-                <span className="text-[15px] font-extrabold">{PLAN_MIEMBROS.nombre}</span>
                 <span className="rounded-full px-2.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide"
                   style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
-                  Empieza sin pagar
+                  Sin tarjeta · empieza hoy
                 </span>
               </div>
-              <div className="mt-2 text-[26px] font-extrabold tracking-[-1px]" style={{ color: '#22c55e' }}>
-                {PLAN_MIEMBROS.eslogan}
+              <div className="mt-3 text-[40px] font-extrabold leading-[1] tracking-[-1.5px]" style={{ color: '#22c55e' }}>
+                Empieza GRATIS
               </div>
-              <p className="mt-2 max-w-[520px] text-[13.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
-                {PLAN_MIEMBROS.detalle}
+              <p className="mt-3 max-w-[540px] text-[14px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+                Arma tu gimnasio completo — socios, cobros, clases, check-in y tu página web —
+                sin pagar nada por adelantado y sin tarjeta.
               </p>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                {PLAN_MIEMBROS.notas.map((n) => (
-                  <span key={n} className="text-[12px] font-bold" style={{ color: C.ink }}>✓ {n}</span>
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5">
+                {['Sin cuota fija', 'Sin tarjeta', 'Cancela cuando quieras'].map((n) => (
+                  <span key={n} className="text-[12.5px] font-bold" style={{ color: C.ink }}>✓ {n}</span>
                 ))}
               </div>
-              {/* Perder la app es lo único que este plan te quita: no puede ir
-                  en gris claro sobre gris. Se lee o no es una advertencia. */}
-              <p className="mt-3 rounded-lg px-3 py-2 text-[12px] font-bold" style={{ border: C.border, color: C.ink }}>
-                📱 {PLAN_MIEMBROS.letraChica} Está incluida en Estudio, Crecimiento y Pro.
-              </p>
             </div>
             <div className="text-center">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[44px] font-extrabold tracking-[-2px]">S/ {PLAN_MIEMBROS.porSocio}</span>
-                <span className="text-[14px] font-semibold" style={{ color: C.muted }}>/ socio</span>
-              </div>
-              <div className="text-[12px] font-extrabold" style={{ color: C.primary }}>al mes, solo los activos</div>
               <a href={`${APP_URL}/registro`}
-                className="mt-4 block rounded-lg px-7 py-3 text-center text-[14px] font-extrabold text-white transition-transform hover:scale-[1.02]"
+                className="block rounded-lg px-9 py-3.5 text-center text-[15px] font-extrabold text-white transition-transform hover:scale-[1.03]"
                 style={{ background: C.primary }}>
-                Empezar sin cuota
+                Crear mi gimnasio gratis
               </a>
+              <div className="mt-2 text-[11px] font-semibold" style={{ color: C.muted }}>
+                Listo en 1 minuto
+              </div>
             </div>
           </div>
         </div>
 
         <p className="mt-9 text-center text-[12px] font-extrabold uppercase tracking-[1px]" style={{ color: C.muted }}>
-          O elige un plan fijo — con la app para tus socios incluida
+          O elige un plan con más funciones — con la app para tus socios incluida
         </p>
 
         <div className="mx-auto mt-10 grid max-w-[1000px] grid-cols-1 gap-4 md:grid-cols-3">
