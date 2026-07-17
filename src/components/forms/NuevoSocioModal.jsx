@@ -24,7 +24,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
   const objetivos = useObjetivos()
   const [f, setF] = useState({
     nombre: prefill.nombre || '', telefono: prefill.telefono || '', email: prefill.email || '',
-    documento: prefill.documento || '', fecha_nacimiento: '', objetivo: '', objetivo_id: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
+    documento: prefill.documento || '', fecha_nacimiento: '', objetivo_nota: '', objetivo_id: '', plan_id: '', promocion_id: '', metodo_pago: 'efectivo',
     peso_kg: '', talla_m: '',
   })
   const [verif, setVerif] = useState(null) // resultado de la verificación de DNI (MAXFIND)
@@ -220,7 +220,7 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
       p_nombre: f.nombre, p_telefono: f.telefono || null, p_email: f.email || null,
       p_documento: f.documento || null,
       p_fecha_nacimiento: f.fecha_nacimiento || null,
-      p_objetivo: f.objetivo || null,
+      p_objetivo: f.objetivo_nota || null,
       p_plan_id: f.plan_id || null,
       p_lead_id: leadId,
       p_promocion_id: f.promocion_id || null,
@@ -437,8 +437,8 @@ export default function NuevoSocioModal({ sedeId, onClose, prefill = {}, leadId 
         {f.objetivo_id && (!f.peso_kg || !f.talla_m) && (
           <p className="-mt-1.5 text-[11px] font-semibold text-faint">Completa peso y talla para que el plan se asigne automáticamente ahora; si no, quedará pendiente.</p>
         )}
-        <Campo label="Otro objetivo (texto libre, opcional)" hint="Solo descriptivo: se ve en su ficha y en su app, no genera plan. El plan automático sale del objetivo de arriba.">
-          <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
+        <Campo label="Nota del objetivo (opcional)" hint="Solo descriptivo: se ve en su ficha y en su app, no genera plan. El plan automático sale del objetivo de arriba.">
+          <ObjetivoChips value={f.objetivo_nota} onChange={(v) => setF((s) => ({ ...s, objetivo_nota: v }))} />
         </Campo>
         </>
         )}

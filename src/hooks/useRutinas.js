@@ -9,7 +9,7 @@ export function useSociosSelect(sedeId) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('socio')
-        .select('id, nombre, codigo, talla_m, peso_kg, objetivo, objetivo_id')
+        .select('id, nombre, codigo, talla_m, peso_kg, objetivo_nota, objetivo_id')
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('nombre')

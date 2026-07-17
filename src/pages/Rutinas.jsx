@@ -472,7 +472,7 @@ function RutinasImpl() {
   // rutina/dieta son socio-scoped (no dependen de la sede), así que funcionan igual.
   const socio = socios.data?.find((s) => s.id === socioId)
     || (socioId && socioId === location.state?.socioId
-      ? { id: socioId, nombre: location.state?.socio || 'Socio', codigo: null, talla_m: null, peso_kg: null, objetivo: null }
+      ? { id: socioId, nombre: location.state?.socio || 'Socio', codigo: null, talla_m: null, peso_kg: null, objetivo_nota: null }
       : undefined)
   const dieta = useDietaSocio(socioId)
   const enviar = useEnviarPlan(socioId)
@@ -657,8 +657,8 @@ function RutinasImpl() {
                     </div>
                   )
                 })()}
-                {/* Texto libre del socio; si no tiene, el objetivo de catálogo (plan automático) */}
-                <Chip label="Objetivo:" value={socio.objetivo || objetivosCatalogo.find((o) => o.id === socio.objetivo_id)?.nombre || '—'} accent />
+                {/* Objetivo de catálogo (plan automático); si no tiene, la nota libre del socio */}
+                <Chip label="Objetivo:" value={objetivosCatalogo.find((o) => o.id === socio.objetivo_id)?.nombre || socio.objetivo_nota || '—'} accent />
               </div>
             </div>
           </Card>

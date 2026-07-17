@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient.js'
 import { toast } from '../../lib/toast.js'
 import { limpiarDocumento } from '../../lib/dni.js'
 import ObjetivoChips from './ObjetivoChips.jsx'
+import { useObjetivos } from '../../hooks/usePlantillas.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { kgADisplay, mADisplay, displayAKg, displayAM, labelPeso, labelTalla } from '../../lib/unidades.js'
 
@@ -14,6 +15,7 @@ import { kgADisplay, mADisplay, displayAKg, displayAM, labelPeso, labelTalla } f
 export default function EditarSocioModal({ socio, onClose, onSaved }) {
   const qc = useQueryClient()
   const { empresa } = useAuth()
+  const objetivos = useObjetivos()
   const unidadPeso = empresa?.unidad_peso
   const unidadTalla = empresa?.unidad_talla
   const [f, setF] = useState({
@@ -23,7 +25,8 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
     // convierten a la unidad de display del gym solo para mostrarlos en el input.
     talla_m: mADisplay(socio.talla_m, unidadTalla) ?? '',
     peso_kg: kgADisplay(socio.peso_kg, unidadPeso) ?? '',
-    objetivo: socio.objetivo || '',
+    objetivo_id: socio.objetivo_id || '',
+    objetivo_nota: socio.objetivo_nota || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -73,8 +76,10 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
 
     // Con cuenta: los campos personales son del usuario, no se reenvían al
     // update (solo lo que siga siendo del gym). Sin cuenta: como antes.
+    // El objetivo de CATÁLOGO sigue la misma regla (lo elige el socio en su
+    // app si ya tiene cuenta); la NOTA la sigue escribiendo el trainer siempre.
     const cambios = tieneCuenta
-      ? {}
+      ? { objetivo_nota: f.objetivo_nota || null }
       : {
         nombre: f.nombre.trim(),
         telefono: f.telefono.trim() || null,
@@ -83,7 +88,8 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
         fecha_nacimiento: f.fecha_nacimiento || null,
         talla_m: talla,
         peso_kg: peso,
-        objetivo: f.objetivo || null,
+        objetivo_id: f.objetivo_id || null,
+        objetivo_nota: f.objetivo_nota || null,
       }
 
     if (Object.keys(cambios).length === 0) {
@@ -153,15 +159,28 @@ export default function EditarSocioModal({ socio, onClose, onSaved }) {
             <input type="number" readOnly={tieneCuenta} disabled={tieneCuenta} step="0.1" min="0" value={f.peso_kg} onChange={set('peso_kg')} className={inputCls + (tieneCuenta ? ' cursor-not-allowed bg-surface text-muted' : '')} placeholder={unidadPeso === 'lb' ? '154' : '70'} />
           </Campo>
         </div>
+        {/* Objetivo de catálogo (genera plan automático): si el socio ya tiene
+            cuenta en la app, lo elige él desde ahí — aquí queda en solo lectura. */}
         {tieneCuenta ? (
-          <Campo label="Objetivo (texto libre)" hint={hintCuenta}>
-            <div className={inputCls + ' cursor-not-allowed bg-surface text-muted'}>{f.objetivo || '—'}</div>
+          <Campo label="Objetivo (con plan automático)" hint={hintCuenta}>
+            <div className={inputCls + ' cursor-not-allowed bg-surface text-muted'}>
+              {(objetivos.data || []).find((o) => o.id === f.objetivo_id)?.nombre || '—'}
+            </div>
           </Campo>
         ) : (
-          <Campo label="Objetivo (texto libre)" hint="Descriptivo: se ve en su ficha y en su app. Para generarle rutina + dieta de plantilla, usa «⚡ Usar plantilla» en Rutinas.">
-            <ObjetivoChips value={f.objetivo} onChange={(v) => setF((s) => ({ ...s, objetivo: v }))} />
+          <Campo label="Objetivo (con plan automático)" hint="Si eliges uno de estos, con el peso y talla se genera rutina + dieta según su IMC.">
+            <select value={f.objetivo_id} onChange={set('objetivo_id')} className={inputCls + ' cursor-pointer'}>
+              <option value="">Sin objetivo</option>
+              {(objetivos.data || []).map((o) => (
+                <option key={o.id} value={o.id}>{o.nombre}</option>
+              ))}
+            </select>
           </Campo>
         )}
+        {/* Nota descriptiva: la escribe siempre el trainer, tenga o no cuenta el socio */}
+        <Campo label="Nota del objetivo (opcional)" hint="Descriptivo, no genera plan (ej. «Jiu-Jitsu · cinturón azul»). Se ve en su ficha y en su app.">
+          <ObjetivoChips value={f.objetivo_nota} onChange={(v) => setF((s) => ({ ...s, objetivo_nota: v }))} />
+        </Campo>
 
         {error && <div className="rounded-[10px] bg-red-50 px-3.5 py-2.5 text-[13px] font-bold text-red">{error}</div>}
 
