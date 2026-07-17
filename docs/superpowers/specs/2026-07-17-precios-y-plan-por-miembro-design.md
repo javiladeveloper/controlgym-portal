@@ -230,6 +230,36 @@ tienes?" → "pagarías S/N/mes" → y si N supera un plan fijo, lo sugiere.
 - **Panel (Playwright)**: card de Miembros con su copy; barra de deuda; sugerencia
   de migración cuando el monto supera un plan fijo. `npm test` + `npm run build`.
 
+## Lo que cambió al construirlo
+
+Cosas que el diseño no previó y salieron al implementar y revisar:
+
+- **`revoke ... from public` no protege nada aquí.** El esquema tiene un
+  `alter default privileges ... grant execute on functions to authenticated`
+  (de `20260712000006_auditoria_seguridad`), así que toda función nueva nace
+  ejecutable por cualquier usuario con sesión, y `create or replace` lo reaplica.
+  Las RPC de billing hay que revocarlas **explícitamente a `authenticated`**.
+- **Un SELECT no puede escribir.** `estado_suscripcion_sede` marcaba el trial
+  vencido al vuelo; al invocarla desde una policy (por fila), Postgres aborta la
+  consulta. El efecto se movió a `vencer_trials_sede()`, que corre en el cron.
+- **`'vencida'` es un estado terminal**, no "debe ahora": al pagar la factura
+  pasa a `'pagada'`, pero una anulada o de otro plan queda `'vencida'` para
+  siempre. El bloqueo se decide por el **plan vigente de la sede**, no por el
+  estado de facturas históricas.
+- **El bloqueo va también en `movimiento_financiero`.** El diseño listaba
+  "registrar cobros" pero el dinero no pasa por `socio`/`membresia`/`checkin`:
+  entra por ahí. Sin ese trigger, el gym impago seguía facturando.
+- **El cierre emite todo periodo faltante**, no solo el mes anterior: Vercel
+  documenta que la entrega del cron es best-effort y puede saltarse ejecuciones,
+  así que "solo el mes anterior" perdía un mes entero si fallaba el cambio de mes.
+- **El plan gratis no puede tener trial.** `elegir_plan` dejaba la sede en
+  `prueba`; a los 30 días vencía y bloqueaba al gym por no pagar algo gratis.
+- **El copy dice "Empieza sin pagar nada", no "GRATIS".** Esto es pospago: poner
+  GRATIS en el gancho con el cobro en letra chica es lo que produce el reclamo al
+  primer cobro. Por lo mismo cayó "Sin compromiso" (si no pagas, te bloquean).
+- **`mi_consumo_actual()`** no estaba en el diseño y resultó imprescindible: sin
+  ella el panel mostraba "S/ 0 al mes" todo el mes y la factura caía de sorpresa.
+
 ## Fuera de alcance
 
 - **Tope de cobro / límite de socios** en el plan Miembros: descartado, el embudo
