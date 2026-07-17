@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
 import { money, fechaLocal } from '../../lib/uiHelpers.js'
 
-import { PLANES_GYM, PLAN_MIEMBROS, planPorSlug, precioPlan, appIncluida } from '../../config/planesComerciales.js'
+import { PLANES_GYM, PLAN_MIEMBROS, planPorSlug, precioPlan, appIncluida, planQueConviene } from '../../config/planesComerciales.js'
 
 // Mi plan: suscripción del negocio a FitCore.
 // Trial de 30 días sin tarjeta → activar pago automático con Culqi.
@@ -48,6 +48,17 @@ export default function TabPlan() {
       const { data, error } = await supabase.rpc('get_mi_suscripcion')
       if (error) throw error
       return data
+    },
+  })
+
+  // Facturas del plan 'miembros' sin pagar (vacío en los demás planes).
+  const facturas = useQuery({
+    queryKey: ['mis-facturas-pendientes', empresa?.id],
+    enabled: !!empresa?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('mis_facturas_pendientes')
+      if (error) throw error
+      return data || []
     },
   })
 
@@ -115,6 +126,74 @@ export default function TabPlan() {
       setMsg({ tipo: 'error', texto: e.message })
     } finally {
       setBusy(false); setFase(null)
+    }
+  }
+
+  // Pago de una factura del plan 'miembros': cargo único por lo consumido el
+  // mes cerrado. Al confirmarse, la sede sale de solo lectura sola.
+  async function pagarFactura(factura) {
+    setMsg(null)
+    if (!CULQI_PK) {
+      setMsg({ tipo: 'error', texto: 'Los pagos con tarjeta se habilitan muy pronto. Escríbenos por WhatsApp para regularizar.' })
+      return
+    }
+    setBusy(true)
+    setFase('abriendo')
+    try {
+      await cargarCulqi()
+      window.Culqi.publicKey = CULQI_PK
+      window.culqi = async function () {
+        if (window.Culqi.token) {
+          try { window.Culqi.close() } catch { /* el modal no siempre existe */ }
+          setFase('activando')
+          try {
+            const { data: sess } = await supabase.auth.getSession()
+            const res = await fetch('/api/culqi?action=pagar-factura', {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                authorization: `Bearer ${sess?.session?.access_token || ''}`,
+              },
+              body: JSON.stringify({
+                factura_id: factura.id,
+                token_id: window.Culqi.token.id,
+                email: usuario?.email,
+              }),
+            })
+            const out = await res.json()
+            if (!res.ok) throw new Error(out.error || 'No se pudo procesar el pago')
+            setMsg({ tipo: 'ok', texto: '✓ ¡Pago recibido! Tu sede vuelve a operar con normalidad.' })
+            qc.invalidateQueries({ queryKey: ['mis-facturas-pendientes'] })
+            qc.invalidateQueries({ queryKey: ['pagos-plataforma'] })
+            qc.invalidateQueries({ queryKey: ['suscripciones-sedes'] })
+          } catch (e) {
+            setMsg({ tipo: 'error', texto: e.message })
+          } finally {
+            setBusy(false)
+            setFase(null)
+          }
+        } else if (window.Culqi.error) {
+          setMsg({ tipo: 'error', texto: window.Culqi.error.user_message || 'Tarjeta rechazada' })
+          setBusy(false)
+          setFase(null)
+        }
+      }
+      window.Culqi.settings({
+        title: 'FitCore',
+        currency: 'PEN',
+        amount: Math.round(Number(factura.monto) * 100),
+      })
+      window.Culqi.options({
+        lang: 'auto',
+        installments: false,
+        paymentMethods: { tarjeta: true, yape: false, bancaMovil: false, agente: false, billetera: false, cuotealo: false },
+        style: { buttonBackground: '#FF6B35' },
+      })
+      window.Culqi.open()
+    } catch (e) {
+      setBusy(false)
+      setFase(null)
+      setMsg({ tipo: 'error', texto: e.message || 'No se pudo abrir el pago' })
     }
   }
 
@@ -212,6 +291,12 @@ export default function TabPlan() {
     <div className="max-w-[720px]">
       {fase === 'abriendo' && <LoadingOverlay texto="Abriendo pago seguro…" sub="Conectando con Culqi" />}
       {fase === 'activando' && <LoadingOverlay texto="Activando tu suscripción…" sub="Confirmando con tu tarjeta, no cierres la ventana" />}
+
+      {/* Deuda del plan por miembro: primero que nada, tiene fecha límite */}
+      {(facturas.data || []).map((f) => (
+        <FacturaPendiente key={f.id} factura={f} onPagar={() => pagarFactura(f)} busy={busy} />
+      ))}
+
       <Card className="p-[19px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -376,6 +461,53 @@ const ESTADO_SEDE = {
   prueba: { bg: '#FFF4EC', color: '#C2410C', label: 'En prueba' },
   vencida: { bg: '#FDECEC', color: '#E24B4A', label: 'Vencida' },
   cancelada: { bg: '#F1F2F4', color: '#5B6472', label: 'Cancelada' },
+}
+
+// Factura del plan por miembro: lo que se debe por el mes cerrado, con su plazo
+// y el botón de pago. Si un plan fijo le saldría más barato, se lo decimos — es
+// preferible que migre a que sienta que le cobramos de más.
+function FacturaPendiente({ factura, onPagar, busy }) {
+  const vencida = factura.estado === 'vencida'
+  const dias = Number(factura.dias_restantes ?? 0)
+  const mes = fechaLocal(factura.periodo).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+  const conviene = planQueConviene(Number(factura.socios || 0))
+
+  return (
+    <Card className={`mb-4 border-2 p-[19px] ${vencida ? 'border-red-300 bg-red-50/40' : 'border-amber-300 bg-amber-50/40'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[14.5px] font-extrabold">
+            {vencida ? '🔒 Tu sede está en modo solo lectura' : `Tu cuenta de ${mes}`}
+          </div>
+          <p className="mt-0.5 text-[12.5px] font-semibold text-muted">
+            <b className="text-ink">{factura.socios} socios activos</b> × S/ {PLAN_MIEMBROS.porSocio} ·{' '}
+            {factura.sede_nombre}
+          </p>
+          <p className={`mt-1.5 text-[12.5px] font-bold ${vencida ? 'text-red' : 'text-amber-800'}`}>
+            {vencida
+              ? 'Puedes ver tus datos, pero no cobrar, inscribir socios ni marcar asistencia hasta que pagues.'
+              : dias <= 0
+                ? 'Hoy es el último día para pagar.'
+                : `Te ${dias === 1 ? 'queda 1 día' : `quedan ${dias} días`} para pagar (vence el ${fechaLocal(factura.vence_el).toLocaleDateString('es-PE')}).`}
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[26px] font-extrabold leading-none text-orange">{money(Number(factura.monto))}</div>
+          <PrimaryButton onClick={onPagar} disabled={busy} className="mt-2">
+            {busy ? 'Abriendo…' : '💳 Pagar ahora'}
+          </PrimaryButton>
+        </div>
+      </div>
+
+      {conviene && (
+        <div className="mt-3 rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[12px] font-semibold">
+          💡 Con el plan <b>{conviene.plan.nombre}</b> pagarías <b>S/ {conviene.plan.precio}</b> al mes en vez de{' '}
+          <b>{money(Number(factura.monto))}</b> — ahorrarías <b className="text-green-700">S/ {conviene.ahorro}</b>, y
+          además tus socios tendrían la app.
+        </div>
+      )}
+    </Card>
+  )
 }
 
 // Estado de cobro POR SEDE. Cada sede paga su membresía; el override de precio
