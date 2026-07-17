@@ -6,6 +6,17 @@ import { db, usuarioDesdeJwt, env } from '../_lib/db.js'
 
 const CULQI = 'https://api.culqi.com/v2'
 
+// Planes de gimnasio: la app va INCLUIDA, precio único → la clave del plan en
+// CULQI_PLANES es el slug pelado (estudio/crecimiento/pro). Los de segmento
+// (trainer/academia/ninos) sí venden la app aparte → conservan el sufijo _app
+// cuando el gym la contrató. Un solo lugar que decide la clave, para que
+// suscribir y agregar-app no se contradigan.
+const PLANES_GYM_SLUGS = new Set(['estudio', 'crecimiento', 'pro', 'cadena'])
+function claveCulqi(planSlug, conApp) {
+  if (PLANES_GYM_SLUGS.has(planSlug)) return planSlug   // app incluida: sin sufijo
+  return conApp ? `${planSlug}_app` : planSlug
+}
+
 async function culqi(method, path, body) {
   const res = await fetch(`${CULQI}${path}`, {
     method,
@@ -117,7 +128,7 @@ async function suscribir(req, res) {
     if (sus.estado === 'activa') return res.status(409).json({ error: 'El pago automático ya está activo' })
 
     const planes = JSON.parse(env('CULQI_PLANES', '{}'))
-    const planKey = sus.con_app ? `${sus.plan_slug}_app` : sus.plan_slug
+    const planKey = claveCulqi(sus.plan_slug, sus.con_app)
     const planId = planes[planKey]
     if (!planId) return res.status(500).json({ error: `Plan Culqi no configurado: ${planKey}` })
 
@@ -196,8 +207,10 @@ async function agregarApp(req, res) {
     if (!sus.proveedor_card_id) return res.status(409).json({ error: 'No hay tarjeta guardada — escríbenos por WhatsApp' })
 
     const planes = JSON.parse(env('CULQI_PLANES', '{}'))
-    const planId = planes[`${sus.plan_slug}_app`]
-    if (!planId) return res.status(500).json({ error: `Plan Culqi no configurado: ${sus.plan_slug}_app` })
+    // agregar-app solo aplica a segmentos (los de gym traen la app incluida y no
+    // pasan por aquí). La clave lleva _app porque están sumando la app.
+    const planId = planes[claveCulqi(sus.plan_slug, true)]
+    if (!planId) return res.status(500).json({ error: `Plan Culqi no configurado: ${claveCulqi(sus.plan_slug, true)}` })
 
     // 1) Nueva suscripción al plan con app (misma tarjeta)
     const sub = await culqi('POST', '/recurrent/subscriptions/create', {
