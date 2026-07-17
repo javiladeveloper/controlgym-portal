@@ -9,16 +9,19 @@ import { db, env } from '../_lib/db.js'
 
 const CULQI = 'https://api.culqi.com/v2'
 
-// Precios de referencia EN EL SERVIDOR — nunca se confía en el monto que manda
-// el cliente. Espejo de config/planesComerciales.js (montos en soles).
-const PRECIOS = {
-  trainer: { base: 29, app: 49 },
-  estudio: { base: 49, app: 79 },
-  academia: { base: 49, app: 69 },
-  ninos: { base: 69, app: 109 },
-  crecimiento: { base: 99, app: 139 },
-  cadena: { base: 179, app: 229 },
+// El precio se lee de precio_plan() en la BD — nunca del cliente, y nunca de una
+// copia local: este endpoint COBRA de verdad, así que una tabla duplicada aquí
+// significa cobrar de menos (o de más) en cuanto cambien los precios. La BD es
+// la única fuente de verdad. Devuelve null si el plan no existe.
+async function precioDe(planSlug, conApp) {
+  const { rows } = await db().query('select public.precio_plan($1, $2) as p', [planSlug, !!conApp])
+  const p = rows[0]?.p
+  return p == null ? null : Number(p)
 }
+
+// El plan 'miembros' no se puede contratar por este checkout: no tiene cuota
+// fija que cobrar (se factura a mes vencido según los socios que registre).
+const PLANES_NO_CHECKOUT = new Set(['miembros'])
 
 async function culqi(path, body) {
   const res = await fetch(`${CULQI}${path}`, {
@@ -45,9 +48,12 @@ export default async function handler(req, res) {
   const { token_id, plan_slug, con_app, email, nombre, telefono, nombre_gym } = req.body || {}
   if (!token_id || !plan_slug) return res.status(400).json({ error: 'Faltan datos del pago' })
 
-  const precio = PRECIOS[plan_slug]
-  if (!precio) return res.status(400).json({ error: 'Plan no válido' })
-  const monto = con_app ? precio.app : precio.base
+  if (PLANES_NO_CHECKOUT.has(plan_slug)) {
+    return res.status(400).json({ error: 'El plan Miembros no se paga por adelantado: se factura a fin de mes según tus socios activos' })
+  }
+  const monto = await precioDe(plan_slug, con_app)
+  if (monto == null) return res.status(400).json({ error: 'Plan no válido' })
+  if (monto <= 0) return res.status(400).json({ error: 'Este plan no se cobra por adelantado' })
   const montoCentavos = Math.round(monto * 100)
 
   // Registrar el intento ANTES de cobrar (queda rastro aunque el charge falle).

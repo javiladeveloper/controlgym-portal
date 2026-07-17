@@ -1,7 +1,9 @@
-// Endpoint de facturación NORAC. Dos acciones en un solo archivo (el plan Hobby
-// de Vercel limita el nº de funciones serverless):
-//   POST /api/facturacion?action=probar  → prueba la conexión a NORAC (admin)
-//   POST /api/facturacion                → worker: emite los comprobantes
+// Endpoint de facturación. Varias acciones en un solo archivo (el plan Hobby de
+// Vercel limita el nº de funciones serverless y ya estamos en el tope):
+//   POST /api/facturacion?action=probar      → prueba la conexión a NORAC (admin)
+//   POST /api/facturacion?action=cierre-mes  → cierre del plan 'miembros': emite
+//     las facturas del mes cerrado y bloquea las impagas (cron diario).
+//   POST /api/facturacion                    → worker: emite los comprobantes
 //     pendientes (cron con CRON_SECRET, o disparo al vuelo tras el cobro).
 import { db, env, usuarioDesdeJwt } from '../_lib/db.js'
 import { emitirEnNorac } from './_norac.js'
@@ -11,7 +13,34 @@ const MAX_INTENTOS = 10
 export default async function handler(req, res) {
   const action = (req.query?.action || '').toString()
   if (action === 'probar') return probar(req, res)
+  if (action === 'cierre-mes') return cierreMes(req, res)
   return emitir(req, res)
+}
+
+// ── Cierre mensual del plan 'miembros' ──────────────────────────────────────
+// Corre a diario y se guía por fechas, no por "hoy es 1": si el cron falla un
+// día, al siguiente emite y vence igual lo que tocaba. Ambos pasos son
+// idempotentes en BD (unique(sede_id, periodo) y filtros por estado).
+async function cierreMes(req, res) {
+  // Solo el cron. A diferencia del worker de comprobantes, esto EMITE DEUDA y
+  // BLOQUEA gimnasios: no se acepta un JWT de usuario, únicamente el secreto.
+  //
+  // REQUIERE la env var CRON_SECRET en Vercel: si está definida, Vercel la manda
+  // sola como `Authorization: Bearer <secret>` al invocar el cron. Sin ella el
+  // endpoint responde 401 y el cierre NO corre — falla cerrado a propósito:
+  // dejarlo abierto permitiría a cualquiera emitir facturas y bloquear sedes.
+  const secret = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  if (!env('CRON_SECRET') || secret !== env('CRON_SECRET')) {
+    return res.status(401).json({ error: 'no autorizado' })
+  }
+
+  const pool = db()
+  // Emite las del mes cerrado (por defecto el anterior al actual).
+  const { rows: em } = await pool.query('select public.emitir_facturas_periodo() as r')
+  // Vence las que pasaron su plazo → la sede queda en solo lectura.
+  const { rows: ve } = await pool.query('select public.vencer_facturas() as r')
+
+  return res.status(200).json({ ok: true, emision: em[0].r, vencimiento: ve[0].r })
 }
 
 // ── Probar conexión a NORAC del gym del usuario autenticado (admin) ──────────

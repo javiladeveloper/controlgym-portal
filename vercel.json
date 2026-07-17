@@ -5,6 +5,7 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/facturacion", "schedule": "0 3 * * *" }
+    { "path": "/api/facturacion", "schedule": "0 3 * * *" },
+    { "path": "/api/facturacion?action=cierre-mes", "schedule": "0 4 * * *" }
   ]
 }

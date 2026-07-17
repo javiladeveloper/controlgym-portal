@@ -26,7 +26,66 @@ async function culqi(method, path, body) {
 export default async function handler(req, res) {
   const action = (req.query?.action || '').toString()
   if (action === 'agregar-app') return agregarApp(req, res)
+  if (action === 'pagar-factura') return pagarFactura(req, res)
   return suscribir(req, res)
+}
+
+// ── Pago de una factura del plan 'miembros' (cargo ÚNICO, no suscripción) ────
+// El plan por miembro no tiene cuota fija: cada fin de mes se emite una factura
+// por los socios activos y el gym la paga con tarjeta desde el panel.
+// Body: { factura_id, token_id, email } — token_id del Culqi Checkout.
+async function pagarFactura(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+  try {
+    if (!env('CULQI_SECRET_KEY')) return res.status(503).json({ error: 'Pagos aún no habilitados' })
+
+    const user = await usuarioDesdeJwt(req)
+    if (!user) return res.status(401).json({ error: 'No autenticado' })
+    const { factura_id, token_id, email } = req.body || {}
+    if (!factura_id || !token_id) return res.status(400).json({ error: 'Faltan datos del pago' })
+
+    const pool = db()
+    // El monto sale de la BD, jamás del cliente. Y la factura debe ser de una
+    // empresa donde el usuario sea admin activo: sin eso, cualquiera con sesión
+    // podría pagar (o sondear) facturas ajenas.
+    const { rows } = await pool.query(
+      `select f.id, f.empresa_id, f.monto, f.estado, f.periodo, f.socios_contados
+         from public.factura_sede f
+         join public.usuario_empresa ue on ue.empresa_id = f.empresa_id
+         join public.rol r on r.id = ue.rol_id
+        where f.id = $1 and ue.usuario_id = $2 and ue.activo = true and r.codigo = 'admin'`,
+      [factura_id, user.id])
+    const fac = rows[0]
+    if (!fac) return res.status(404).json({ error: 'Factura no encontrada' })
+    if (!['emitida', 'vencida'].includes(fac.estado)) {
+      return res.status(400).json({ error: 'Esa factura ya está pagada' })
+    }
+
+    const charge = await culqi('POST', '/charges', {
+      amount: Math.round(Number(fac.monto) * 100),
+      currency_code: 'PEN',
+      email: email || user.email || 'pagos@fitcorecenter.com',
+      source_id: token_id,
+      description: `FitCore — ${fac.socios_contados} socios activos (${String(fac.periodo).slice(0, 7)})`,
+      metadata: { factura_id: fac.id, periodo: String(fac.periodo).slice(0, 7) },
+    })
+
+    // Deja rastro del cobro y marca la factura pagada. marcar_factura_pagada
+    // reactiva la sede solo si ya no le quedan facturas pendientes.
+    const { rows: pg } = await pool.query(
+      `insert into public.pago_plataforma (empresa_id, monto, moneda, estado, proveedor, proveedor_pago_id, raw)
+       values ($1, $2, 'PEN', 'exitoso', 'culqi', $3, $4)
+       on conflict (proveedor_pago_id) do update set estado = 'exitoso'
+       returning id`,
+      [fac.empresa_id, fac.monto, charge.id, JSON.stringify(charge)])
+
+    const { rows: mk } = await pool.query(
+      'select public.marcar_factura_pagada($1, $2) as r', [fac.id, pg[0].id])
+
+    return res.status(200).json({ ok: true, cargo_id: charge.id, monto: Number(fac.monto), resultado: mk[0].r })
+  } catch (e) {
+    return res.status(400).json({ error: e.message || 'No se pudo procesar el pago' })
+  }
 }
 
 // ── Activa el pago automático de la suscripción de FitCore para una empresa ──
