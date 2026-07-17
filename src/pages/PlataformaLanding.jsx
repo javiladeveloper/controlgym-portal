@@ -365,7 +365,7 @@ const CONTENIDO_PLANES = {
       'Agenda con alertas de leads sin atender',
       'Reactivación automática de ex socios',
       'Cumpleaños y campañas automáticas',
-      'Varias marcas / franquicias en una cuenta',
+      'Sedes ilimitadas en una cuenta',
       'Soporte prioritario por WhatsApp',
     ],
     no: [],

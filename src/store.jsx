@@ -48,6 +48,22 @@ export function SedeProvider({ children }) {
   })
   const enabledModules = modsSede.data ?? modulosEmpresa ?? []
 
+  // Rank del plan de la sede activa (1 estudio/miembros · 2 crecimiento · 3 pro).
+  // Para las features Pro que viven DENTRO de una pantalla ya visible (aforo,
+  // KPIs, agenda de leads…) el front las oculta con planRank >= 3. El módulo no
+  // sirve ahí porque no son pantallas propias; el candado real está en el RPC.
+  const rankSede = useQuery({
+    queryKey: ['rank-sede', sedeId],
+    enabled: !!sedeId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('rank_de_sede', { p_sede_id: sedeId })
+      if (error) throw error
+      return data
+    },
+  })
+  const planRank = rankSede.data ?? 1   // sin resolver: asume el mínimo (no filtra de más)
+
   const value = {
     sedeId,
     sede,                       // objeto { id, nombre }
@@ -55,6 +71,8 @@ export function SedeProvider({ children }) {
     sedes: sedes ?? [],
     setSede,
     enabledModules,             // módulos según el plan de la sede activa
+    planRank,                   // rank del plan (para gatear piezas Pro internas)
+    esPro: planRank >= 3,
   }
 
   return <SedeContext.Provider value={value}>{children}</SedeContext.Provider>

@@ -7,3 +7,8 @@
 // verdad). Poner en `true` cuando la conexión con Meta esté lista para reactivar
 // el tab de Configuración, las vistas del CRM y la sección de la landing.
 export const LEADIA_VISIBLE = false
+
+// Facturación electrónica (NORAC): el tab está construido pero NORAC aún no está
+// en producción (sale en ~1 mes). Oculto para TODOS hasta entonces. Cuando salga:
+// poner en `true` — el módulo 'facturacion' rank 3 la dejará solo para Pro.
+export const FACTURACION_VISIBLE = false

@@ -743,7 +743,7 @@ async function sincronizarLeadia(sedeId) {
 }
 
 export default function CRM() {
-  const { sedeId, sedeNombre } = usePanel()
+  const { sedeId, sedeNombre, esPro } = usePanel()
   const { empresa, rol } = useAuth()
   const qc = useQueryClient()
   const esAdmin = rol === 'admin'
@@ -868,7 +868,8 @@ export default function CRM() {
         <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas con leads para hoy — el detalle está en la Agenda" variant="accent" />
       </div>
 
-      <AgendaComercial sedeId={sedeId} empresaId={empresa?.id} leads={leads.data || []} />
+      {/* Agenda de seguimiento con alertas de leads sin atender: feature de Pro. */}
+      {esPro && <AgendaComercial sedeId={sedeId} empresaId={empresa?.id} leads={leads.data || []} />}
       <QueOfrecer moneda={empresa?.moneda} empresaId={empresa?.id} />
 
       {leads.isLoading && <LoadingState variant="cards" rows={4} />}
@@ -975,7 +976,8 @@ export default function CRM() {
 
       <PerdidosPanel perdidos={(leads.data || []).filter((l) => l.etapa === 'perdido')} sedeId={sedeId} />
 
-      <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />
+      {/* Reactivación automática de ex socios: feature de Pro. */}
+      {esPro && <ReactivacionExSocios sedeId={sedeId} empresaId={empresa?.id} />}
 
       {LEADIA_VISIBLE && <FriosIgnorados sedeId={sedeId} empresaId={empresa?.id} />}
     </div>

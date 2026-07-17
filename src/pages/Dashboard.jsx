@@ -200,7 +200,7 @@ function etiquetaMetodo(metodo) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { sedeId, sedeNombre } = usePanel()
+  const { sedeId, sedeNombre, esPro } = usePanel()
   const { usuario, empresa, rol } = useAuth()
   // Los especialistas (entrenador/nutricionista) no ven la plata del gym
   const veIngresos = rol === 'admin' || rol === 'recepcion'
@@ -232,8 +232,11 @@ export default function Dashboard() {
     : NaN
   const aforoDelta = Number.isFinite(aforoPct) ? `aforo ${Math.round(aforoPct)}%` : ' '
 
-  // Color de la barra de aforo en vivo según el % ocupado.
-  const aforoBar = aforo.data && aforo.data.aforo_max
+  // Color de la barra de aforo EN VIVO según el % ocupado. El aforo en vivo es
+  // feature de Pro: sin Pro, aforoBar queda null y el Dashboard muestra el
+  // conteo simple "En la sede ahora" (que sí ven todos los planes). El RPC
+  // aforo_actual además niega los datos a un plan menor — esto es solo la UI.
+  const aforoBar = esPro && aforo.data && aforo.data.aforo_max
     ? (aforo.data.pct >= 90 ? 'bg-red' : aforo.data.pct >= 70 ? 'bg-amber-500' : 'bg-green')
     : null
 

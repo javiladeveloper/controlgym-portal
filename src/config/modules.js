@@ -39,6 +39,13 @@ export const MODULES = [
   { slug: 'reportes',    label: 'Reportes',         grupo: 'negocio',   roles: ['admin'] },
 
   { slug: 'configuracion', label: 'Configuración',   grupo: 'config',    roles: ['admin'], alwaysOn: true },
+
+  // Sub-features gateadas por plan que viven como PESTAÑAS dentro de Configuración
+  // (no van al sidebar — grupo null). Existen aquí para que canAccessModule()
+  // gatee cada tab por su plan: croquis = Crecimiento+, acceso/facturación = Pro.
+  { slug: 'croquis',       label: 'Croquis',          grupo: null, roles: ['admin'] },
+  { slug: 'acceso_fisico', label: 'Acceso y cámaras', grupo: null, roles: ['admin'] },
+  { slug: 'facturacion',   label: 'Facturación',      grupo: null, roles: ['admin'] },
 ]
 
 // Devuelve los módulos visibles para un usuario según empresa (módulos habilitados),

@@ -70,7 +70,17 @@ export default function ReporteSocios() {
         <div className="mt-4 rounded-[10px] bg-red-50 px-4 py-3 text-[12.5px] font-bold text-red">No se pudo cargar: {error.message}</div>
       )}
 
-      {!cargando && !error && data && (
+      {/* KPIs de socios (churn, proyección, nuevos) son del plan Pro. El RPC
+          niega los datos a un plan menor; aquí se invita a subir en vez de un
+          reporte vacío. */}
+      {!cargando && !error && data?.plan_insuficiente && (
+        <div className="mt-4 rounded-[10px] border border-orange-100 bg-orange-50 px-4 py-3.5 text-[12.5px] font-semibold text-muted">
+          <b className="text-ink">Los KPIs de socios son del plan Pro.</b> Churn, proyección de ingresos y
+          altas de los últimos 30 días. Súbete a Pro en <a href="/configuracion?tab=plan" className="font-extrabold text-orange">Mi plan</a> para verlos.
+        </div>
+      )}
+
+      {!cargando && !error && data && !data.plan_insuficiente && (
         <div className="mt-5 flex flex-col gap-6">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard label="Activos" valor={data.total_activos ?? 0} color={T.primary} />

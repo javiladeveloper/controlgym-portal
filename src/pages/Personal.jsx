@@ -462,6 +462,7 @@ function PermisosEmpleado({ usuarioId }) {
 
 function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   const qc = useQueryClient()
+  const { esPro } = usePanel()   // las metas de vendedor son del plan Pro
   const [f, setF] = useState({
     rol: colaborador.rol_codigo || 'recepcion',
     tipo_pago: colaborador.tipo_pago || 'mensual',
@@ -493,7 +494,8 @@ function EditarColaboradorModal({ colaborador, sedeId, empresaId, onClose }) {
   }, [metaActual.data])
   // Metas SOLO para comunicadores (decisión del owner): los admin/recepción
   // no son fuerza de venta — sus metas ensuciaban el dashboard del equipo.
-  const puedeVender = f.rol === 'comunicador'
+  // Metas y ranking de vendedores son feature de Pro (además del rol vendedor).
+  const puedeVender = f.rol === 'comunicador' && esPro
 
   async function guardarMetaDiaria() {
     try {

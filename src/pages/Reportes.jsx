@@ -17,23 +17,29 @@ import { usePanel } from '../store.jsx'
 //    rango de horas y serie por día.
 //  · Personal: atenciones de entrenadores — ayudas/cargas atendidas +
 //    rutinas/dietas enviadas, ranking por persona y tendencia diaria.
-const TABS = [
+// `pro: true` = pestaña con KPIs/ranking del plan Pro. Socios (churn/proyección)
+// y Comercial (ranking de vendedores + conversión) son Pro; el resto es
+// Crecimiento. El RPC de cada una además niega los datos a un plan menor.
+const TODOS_TABS = [
   { key: 'ventas', label: 'Ventas 💰', Comp: ReporteVentas },
-  { key: 'socios', label: 'Socios 👥', Comp: ReporteSocios },
-  { key: 'comercial', label: 'Comercial 🎯', Comp: ReporteComercial },
+  { key: 'socios', label: 'Socios 👥', Comp: ReporteSocios, pro: true },
+  { key: 'comercial', label: 'Comercial 🎯', Comp: ReporteComercial, pro: true },
   { key: 'asistencia', label: 'Asistencias 📊', Comp: ReporteAsistencias },
   { key: 'personal', label: 'Personal 🏋️', Comp: ReporteAtenciones },
 ]
 
 export default function Reportes() {
-  const { sedeNombre } = usePanel()
+  const { sedeNombre, esPro } = usePanel()
+  const TABS = TODOS_TABS.filter((t) => !t.pro || esPro)
 
-  // Deep-link: /reportes?tab=socios abre esa pestaña directo
+  // Deep-link: /reportes?tab=socios abre esa pestaña directo. Si el plan no la
+  // habilita, cae a la primera visible.
   const [tab, setTab] = useState(() => {
     const t = new URLSearchParams(window.location.search).get('tab')
-    return TABS.some((x) => x.key === t) ? t : 'ventas'
+    return TODOS_TABS.some((x) => x.key === t) ? t : 'ventas'
   })
-  const Active = TABS.find((t) => t.key === tab)?.Comp
+  const tabActivo = TABS.some((x) => x.key === tab) ? tab : (TABS[0]?.key ?? 'ventas')
+  const Active = TABS.find((t) => t.key === tabActivo)?.Comp
 
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
