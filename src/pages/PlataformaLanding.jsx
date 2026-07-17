@@ -324,19 +324,50 @@ const CONTENIDO_PLANES = {
   estudio: {
     foto: '/landing/paso2.jpg',
     para: 'Yoga, pilates, baile y gimnasios pequeños',
-    features: ['Socios, membresías y cobros', 'Clases y check-in con QR', 'Página web propia con tu marca', 'Hasta 2 usuarios del panel', 'Reportes básicos'],
-    no: ['CRM y captación desde redes', 'Rutinas, kardex y finanzas'],
+    features: [
+      'App para tus socios (iOS y Android)',
+      'Socios, membresías y cobros',
+      'Control de asistencia con QR',
+      'Clases y reservas con cupo',
+      'Página web propia con tu marca',
+      'Tienda de productos en la app',
+      'Reportes del día y caja diaria',
+      'Hasta 2 usuarios del panel',
+    ],
+    no: ['CRM y captación desde redes', 'Rutinas y catálogo de ejercicios', 'Kardex, finanzas y máquinas'],
   },
   crecimiento: {
     foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
-    features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'Biblioteca de +1,300 ejercicios con video', 'Rutinas automáticas según el objetivo del socio', 'Dietas y kardex de progreso', 'CRM + captación con origen por red', 'Croquis del gym y control de máquinas', 'Finanzas, promociones al cobro y reportes en Excel', 'Personalización total (8 diseños)'],
-    no: ['Control de acceso físico y cámaras', 'Reportes avanzados de asistencia'],
+    features: [
+      'Todo lo de Estudio, sin límite de usuarios',
+      'Biblioteca de +1,300 ejercicios con video',
+      'Rutinas automáticas según el objetivo del socio',
+      'Dietas y kardex de progreso del socio',
+      'CRM con captación por red (IG, Facebook, TikTok)',
+      'Croquis del gym con sus máquinas por piso',
+      'Inventario y control de equipos',
+      'Finanzas, promociones al cobro y reportes en Excel',
+      'Página web con 8 diseños y personalización total',
+    ],
+    no: ['Control de acceso físico (torniquetes/huella)', 'Cámaras en vivo y KPIs avanzados'],
   },
   pro: {
     foto: '/landing/devices.jpg',
-    para: 'Gestión avanzada y KPIs',
-    features: ['Todo lo de Crecimiento', 'Reportes avanzados y KPIs: ventas, cancelación y proyección de ingresos', 'Metas diarias y ranking de vendedores', 'Agenda de seguimiento con alertas de leads sin atender', 'Reactivación automática de ex socios', 'Aforo en vivo por sede con alertas', 'Verificación por foto en el check-in', 'Cumpleaños y campañas automáticas', 'Torniquetes, huella y cámaras en vivo', 'Varias marcas / franquicias en una cuenta', 'Soporte prioritario por WhatsApp'],
+    para: 'Cadenas y gestión avanzada con KPIs',
+    features: [
+      'Todo lo de Crecimiento',
+      'Torniquetes, huella y cámaras en vivo',
+      'Aforo por sede en tiempo real con alertas',
+      'Verificación por foto en el check-in',
+      'KPIs de ventas, cancelación y proyección de ingresos',
+      'Metas diarias y ranking de vendedores',
+      'Agenda con alertas de leads sin atender',
+      'Reactivación automática de ex socios',
+      'Cumpleaños y campañas automáticas',
+      'Varias marcas / franquicias en una cuenta',
+      'Soporte prioritario por WhatsApp',
+    ],
     no: [],
   },
 }
@@ -1068,23 +1099,33 @@ export default function PlataformaLanding() {
               </div>
               <div className="text-[12px] font-extrabold" style={{ color: C.primary }}>por cada sede</div>
               <div className="mt-1 text-[11.5px] font-semibold" style={{ color: C.muted }}>
-                App del socio incluida · socios ilimitados en cada sede
+                Todo por cada sede · sin permanencia
               </div>
-              <ul className="mt-5 flex-1 space-y-2 text-[13px] font-semibold" style={{ color: C.muted }}>
-                <li className="flex items-start gap-2 font-extrabold text-white">
-                  <span className="mt-0.5" style={{ color: C.primary }}>✓</span>App para tus socios (iOS y Android)
-                </li>
-                {p.features.map((x) => (
-                  <li key={x} className="flex items-start gap-2"><span className="mt-0.5" style={{ color: C.primary }}>✓</span>{x}</li>
+              <ul className="mt-5 flex-1 space-y-[9px] text-[13px] font-semibold" style={{ color: C.ink }}>
+                {/* El primer beneficio de cada plan es su gancho: se destaca. */}
+                {p.features.map((x, i) => (
+                  <li key={x} className={`flex items-start gap-2 ${i === 0 ? 'font-extrabold text-white' : ''}`}>
+                    <span className="mt-[3px] flex-shrink-0" style={{ color: C.primary }}>✓</span>
+                    <span>{x}</span>
+                  </li>
                 ))}
+                {p.no.length > 0 && (
+                  <li className="mt-1 pt-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: C.faint, borderTop: C.border }}>
+                    No incluye
+                  </li>
+                )}
                 {p.no.map((x) => (
-                  <li key={x} className="flex items-start gap-2 opacity-40"><span className="mt-0.5">✕</span>{x}</li>
+                  <li key={x} className="flex items-start gap-2" style={{ color: C.faint }}>
+                    <span className="mt-[3px] flex-shrink-0">✕</span><span>{x}</span>
+                  </li>
                 ))}
               </ul>
+              {/* No dice "Empezar gratis": el precio está justo arriba y ser­ía
+                  contradictorio. El mes de prueba se explica bajo la grilla. */}
               <a href={`${APP_URL}/registro`}
                 className="mt-6 block rounded-lg py-3 text-center text-[14px] font-extrabold text-white transition-transform hover:scale-[1.02]"
                 style={p.popular ? { background: C.primary } : { border: `1px solid ${C.primary}`, color: C.primary }}>
-                Empezar gratis
+                Probar 1 mes gratis
               </a>
               </div>
             </div>
