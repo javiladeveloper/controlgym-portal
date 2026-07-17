@@ -5,6 +5,39 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 🐛 PANEL → APP (2026-07-17): BUG 44 — El croquis no se muestra al hacer clic en un piso (backend OK, es del cliente)
+> **Síntoma reportado por el owner:** en la app se ven las PLANTAS/pisos del gym,
+> pero al hacer clic en un piso **no aparece el croquis** (la grilla con máquinas).
+>
+> **Diagnóstico ya hecho (el backend NO es el problema):** probé los 3 RPCs del
+> PEDIDO 42 con la sesión del socio real (usuario `f0102dc8`, socio de MaximusGym)
+> y **todos devuelven datos correctos**:
+> - `pisos_de_sede(sede)` → 2 pisos ✔ (por eso el socio SÍ ve las plantas)
+> - `elementos_del_piso('fbf1b51b-...')` → **28 elementos** (24 máquinas + refs) ✔
+> - `casillas_de_piso('fbf1b51b-...')` → **48 casillas** (la forma del piso) ✔
+>
+> Los 3 tienen grant a `authenticated` y la RLS deja pasar al socio. La data llega.
+> **El bug está en la app** (render/navegación), no en Supabase.
+>
+> **Dónde mirar en el cliente (por probabilidad):**
+> 1. ¿Al hacer clic en un piso se **disparan** las llamadas a `elementos_del_piso`
+>    y `casillas_de_piso` con el `piso_id` correcto? (revisar que el id del piso
+>    seleccionado se pase al detalle — un `piso_id` null/equivocado da grilla vacía).
+> 2. ¿La app sigue usando el RPC viejo `maquinas_del_piso` en vez de
+>    `elementos_del_piso`? Ambos existen, pero el viejo NO trae las referencias
+>    (entrada/escalera/baño) y su forma de respuesta difiere.
+> 3. **Nombres de parámetros:** los RPCs esperan `p_piso_id` (no `piso_id`) y
+>    `p_sede_id`. Si la app manda la clave mal, PostgREST devuelve error/vacío.
+> 4. **Render de la grilla:** si `casillas_de_piso` viene con filas, SOLO esas
+>    casillas son piso; el resto es hueco. Un bug ahí puede dejar todo transparente
+>    y parecer "vacío". Recordá: casillas 0-indexadas, y una máquina con N unidades
+>    aparece en N casillas.
+>
+> **Para reproducir/depurar:** MaximusGym, sede `77496573-c230-449a-b11e-55cab3e2f6ac`,
+> piso "Planta baja" = `fbf1b51b-f9f0-46b1-ae3a-c9b13e9fc70d` (28 elementos, 48
+> casillas). Loguea la respuesta cruda de los 3 RPCs en la app: vas a ver que
+> llegan con datos. El fix es de UI.
+
 > ## 📩 PANEL → APP (2026-07-17): PEDIDO 43 — Un gym puede DEJAR de estar en la app (plan sin app) ⚠️ afecta a la app YA
 > Nace el plan **Miembros**: el gym usa el sistema gratis y paga S/1 por socio
 > activo a fin de mes, pero en ese plan **el gym no existe para la app**. Hasta
