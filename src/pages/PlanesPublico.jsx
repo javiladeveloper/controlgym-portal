@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FitCoreLogo } from '../components/icons.jsx'
+import { planPorSlug, precioPlan, appIncluida } from '../config/planesComerciales.js'
 
 // Página PÚBLICA de planes con checkout de Culqi (fitcorecenter.com/planes).
 // Requisito de Culqi para aprobar el comercio: >=5 servicios con imagen +
@@ -14,34 +15,49 @@ const C = {
 
 const CULQI_PK = (import.meta.env.VITE_CULQI_PUBLIC_KEY || '').trim()
 
-// Los 6 planes/servicios de FitCore. imagen = captura real del producto.
-// base = solo panel · app = panel + app del socio (adicional).
-const PLANES = [
-  { slug: 'trainer', nombre: 'Trainer', base: 29, app: 49, img: '/landing/capturas/clientes.jpg',
+// Los 6 planes/servicios de FitCore: aquí vive el CONTENIDO (imagen, copy); el
+// PRECIO sale siempre de planesComerciales.js, que es espejo de precio_plan()
+// en la BD — el servidor cobra desde ahí, así que duplicarlo aquí solo sirve
+// para mentirle al cliente cuando cambien los precios.
+const CONTENIDO = [
+  { slug: 'trainer', img: '/landing/capturas/clientes.jpg',
     para: 'Personal trainers',
     desc: 'Tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes.',
     incluye: ['Clientes y paquetes de sesiones', 'Cobros y recordatorios', 'Tu página web personal'] },
-  { slug: 'academia', nombre: 'Academia', base: 49, app: 69, img: '/landing/capturas/membresias.jpg',
+  { slug: 'academia', img: '/landing/capturas/membresias.jpg',
     para: 'Yoga, pilates, baile y box',
     desc: 'Clases, alumnos, reservas, cobros y tu página web — sin módulos de gimnasio que no usas. Un panel a la medida de tu estudio.',
     incluye: ['Clases y reservas con cupo', 'Alumnos y membresías', 'Página web con tu marca'] },
-  { slug: 'estudio', nombre: 'Estudio', base: 49, app: 79, img: '/landing/capturas/web.jpg',
+  { slug: 'estudio', img: '/landing/capturas/web.jpg',
     para: 'Gimnasios pequeños',
-    desc: 'Socios, membresías, cobros, clases, check-in y tu página web. Hasta 2 usuarios del panel. Socios ilimitados en tu sede.',
-    incluye: ['Socios ilimitados por sede', 'Membresías, cobros y check-in', 'Página web + reportes básicos'] },
-  { slug: 'ninos', nombre: 'Niños', base: 69, app: 109, img: '/landing/capturas/personal.jpg',
+    desc: 'Socios, membresías, cobros, clases, check-in y tu página web. Hasta 2 usuarios del panel. Socios ilimitados en tu sede. App para tus socios incluida.',
+    incluye: ['Socios ilimitados por sede', 'App para tus socios incluida', 'Página web + reportes básicos'] },
+  { slug: 'ninos', img: '/landing/capturas/personal.jpg',
     para: 'Academias infantiles',
     desc: 'Alumnos con apoderados, clases por edades, control de recojo autorizado y tu página web. Pensado para escuelas deportivas de niños.',
     incluye: ['Alumnos con apoderados', 'Clases por edades', 'Recojo autorizado + página web'] },
-  { slug: 'crecimiento', nombre: 'Crecimiento', base: 99, app: 139, img: '/landing/capturas/finanzas.jpg', popular: true,
+  { slug: 'crecimiento', img: '/landing/capturas/finanzas.jpg', popular: true,
     para: 'El gym que quiere crecer',
-    desc: 'Socios ilimitados, CRM con captación por red, rutinas y dietas, promociones al cobro, kardex, máquinas, finanzas y 8 diseños de página.',
-    incluye: ['CRM + captación desde redes', 'Rutinas, kardex y finanzas', 'Reportes Excel · 8 diseños'] },
-  { slug: 'pro', nombre: 'Pro', base: 179, app: 229, img: '/landing/capturas/rutinas.jpg',
+    desc: 'Socios ilimitados, CRM con captación por red, rutinas y dietas, promociones al cobro, kardex, máquinas, finanzas y 8 diseños de página. App para tus socios incluida.',
+    incluye: ['CRM + captación desde redes', 'Rutinas, kardex y finanzas', 'App para tus socios incluida'] },
+  { slug: 'pro', img: '/landing/capturas/rutinas.jpg',
     para: 'Gestión avanzada y KPIs',
     desc: 'Todo lo de Crecimiento + reportes y KPIs de ventas y cancelación, metas y ranking de vendedores, alertas de seguimiento, reactivación de ex socios, aforo en vivo, cámaras y control de acceso físico.',
     incluye: ['Reportes avanzados y KPIs de ventas', 'Metas, ranking y alertas de seguimiento', 'Aforo en vivo, torniquetes y cámaras'] },
 ]
+
+// Contenido + precio del catálogo. `base`/`app` se calculan con precioPlan, así
+// que los planes de gym muestran el mismo número en ambos (app incluida).
+const PLANES = CONTENIDO.map((c) => {
+  const ficha = planPorSlug(c.slug)
+  return {
+    ...c,
+    nombre: ficha.nombre,
+    base: precioPlan(ficha, false),
+    app: precioPlan(ficha, true),
+    appIncluida: appIncluida(c.slug),
+  }
+})
 
 const money = (n) => `S/ ${Number(n).toLocaleString('es-PE')}`
 
@@ -119,12 +135,18 @@ export default function PlanesPublico() {
             El plan justo para tu negocio
           </h1>
           <p style={{ maxWidth: 560, margin: '0 auto 28px', fontSize: 16, lineHeight: 1.6, color: C.muted, fontWeight: 500 }}>
-            Software de gestión + página web propia para gimnasios, estudios y entrenadores del Perú. Contrata en un minuto, con o sin la app para tus socios.
+            Software de gestión + página web propia para gimnasios, estudios y entrenadores del Perú.
+            Los planes de gimnasio traen la app para tus socios incluida.
           </p>
+          {/* El toggle solo mueve el precio de Trainer/Academia/Niños: en los
+              planes de gym la app va incluida y el precio no cambia. */}
           <div className="pp-toggle" role="group" aria-label="Incluir app del socio">
-            <button className={!conApp ? 'on' : ''} onClick={() => setConApp(false)}>Solo panel</button>
-            <button className={conApp ? 'on' : ''} onClick={() => setConApp(true)}>Panel + App del socio</button>
+            <button className={!conApp ? 'on' : ''} onClick={() => setConApp(false)}>Sin app del socio</button>
+            <button className={conApp ? 'on' : ''} onClick={() => setConApp(true)}>Con app del socio</button>
           </div>
+          <p style={{ margin: '12px auto 0', fontSize: 12, color: C.faint, fontWeight: 600 }}>
+            Aplica a Trainer, Academia y Niños — en los planes de gimnasio la app ya viene incluida.
+          </p>
         </div>
       </section>
 
@@ -133,7 +155,8 @@ export default function PlanesPublico() {
         <div className="pp-wrap">
           <div className="pp-grid">
             {PLANES.map((p) => {
-              const precio = conApp ? p.app : p.base
+              // En los planes de gym la app va incluida: el toggle no los mueve.
+              const precio = p.appIncluida ? p.base : conApp ? p.app : p.base
               return (
                 <div key={p.slug} className="pp-card pp-reveal" style={p.popular ? { borderColor: C.orange } : undefined}>
                   <div style={{ position: 'relative' }}>
@@ -159,7 +182,8 @@ export default function PlanesPublico() {
                         </li>
                       ))}
                     </ul>
-                    <button className="pp-btn" style={{ marginTop: 'auto' }} onClick={() => setCheckout({ ...p, precio, conApp })}>
+                    <button className="pp-btn" style={{ marginTop: 'auto' }}
+                      onClick={() => setCheckout({ ...p, precio, conApp: p.appIncluida || conApp })}>
                       Contratar {money(precio)}/mes
                     </button>
                   </div>

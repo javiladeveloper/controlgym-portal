@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FitCoreLogo, WhatsAppIcon } from '../components/icons.jsx'
 import { ROOT_DOMAIN } from '../lib/tenant.js'
 import { LEADIA_VISIBLE } from '../lib/features.js'
+import { PLANES_GYM, PLAN_MIEMBROS, planPorSlug, costoMiembros, planQueConviene } from '../config/planesComerciales.js'
 
 // Landing de la PLATAFORMA (fitcorecenter.com): dark premium.
 // Tokens: bg #141B2E · surface #1F293D · primary #FF6B35 · muted #8E9AA8 · radius 8px
@@ -312,30 +313,41 @@ const SLIDES = [
   },
 ]
 
-// Cada plan tiene 2 precios: solo panel, o panel + app para socios (adicional).
 // Precio POR SEDE: cada sede del gimnasio paga su plan. Un gym con 3 sedes paga
 // 3× el plan. La calculadora de abajo hace el total. Los planes se diferencian
 // por FEATURES (qué tan completo es el gym), no por número de sedes.
-const PLANES = [
-  {
-    nombre: 'Estudio', base: 49, conApp: 79, popular: false, foto: '/landing/paso2.jpg',
+//
+// Los planes de gym traen la app del socio INCLUIDA: precio único. Aquí vive el
+// contenido de marketing; el precio sale de planesComerciales.js (espejo de
+// precio_plan() en la BD), nunca duplicado a mano.
+const CONTENIDO_PLANES = {
+  estudio: {
+    foto: '/landing/paso2.jpg',
     para: 'Yoga, pilates, baile y gimnasios pequeños',
     features: ['Socios, membresías y cobros', 'Clases y check-in', 'Página web con subdominio', 'Hasta 2 usuarios del panel', 'Reportes básicos'],
     no: ['CRM y captación desde redes', 'Rutinas, kardex y finanzas'],
   },
-  {
-    nombre: 'Crecimiento', base: 99, conApp: 139, popular: true, foto: '/landing/hero.jpg',
+  crecimiento: {
+    foto: '/landing/hero.jpg',
     para: 'El gimnasio que quiere captar y crecer',
     features: ['Todo lo de Estudio', 'Usuarios ilimitados', 'CRM + captación con origen por red', 'Rutinas y dietas (asignación por IMC)', 'Kardex, tienda en la app y máquinas', 'Finanzas y reportes en Excel', 'Promociones aplicadas al cobro', 'Personalización total (8 diseños)'],
     no: ['Control de acceso físico y cámaras', 'Reportes avanzados de asistencia'],
   },
-  {
-    nombre: 'Pro', base: 179, conApp: 229, popular: false, foto: '/landing/devices.jpg',
+  pro: {
+    foto: '/landing/devices.jpg',
     para: 'Gestión avanzada y KPIs',
     features: ['Todo lo de Crecimiento', 'Reportes avanzados y KPIs: ventas, cancelación y proyección de ingresos', 'Metas diarias y ranking de vendedores', 'Agenda de seguimiento con alertas de leads sin atender', 'Reactivación automática de ex socios', 'Aforo en vivo por sede con alertas', 'Verificación por foto en el check-in', 'Cumpleaños y campañas automáticas', 'Torniquetes, huella y cámaras en vivo', 'Varias marcas / franquicias en una cuenta', 'Soporte prioritario por WhatsApp'],
     no: [],
   },
-]
+}
+
+const PLANES = PLANES_GYM.map((p) => ({
+  ...CONTENIDO_PLANES[p.slug],
+  slug: p.slug,
+  nombre: p.nombre,
+  precio: p.precio,
+  popular: !!p.popular,
+}))
 
 // Slide visual: si existe la CAPTURA REAL del módulo en
 // /landing/capturas/<tipo>.jpg la muestra (basta con subir el archivo — sin
@@ -625,30 +637,35 @@ function CarruselModulos() {
 }
 
 // Calculadora de precio: como se cobra POR SEDE, el gym elige plan y cuántas
-// sedes tiene → total = precio del plan × nº de sedes (+ app opcional por sede).
-function CalculadoraPrecio({ conApp: conAppInicial }) {
-  const [planIdx, setPlanIdx] = useState(1) // Crecimiento por defecto
+// sedes tiene → total = precio del plan × nº de sedes. El plan Miembros entra
+// como una opción más: no tiene cuota, cobra por socio, así que su "total"
+// depende de los socios y no de las sedes.
+function CalculadoraPrecio() {
+  const [slug, setSlug] = useState('crecimiento')
   const [sedes, setSedes] = useState(1)
-  const [conApp, setConApp] = useState(conAppInicial)
-  const plan = PLANES[planIdx]
-  const precioSede = conApp ? plan.conApp : plan.base
-  const total = precioSede * sedes
+  const [socios, setSocios] = useState(60)
+  const esMiembros = slug === 'miembros'
+  const plan = planPorSlug(slug)
+  const total = esMiembros ? costoMiembros(socios) : plan.precio * sedes
+  const conviene = esMiembros ? planQueConviene(socios) : null
 
   return (
     <div className="mx-auto mt-10 max-w-[720px] rounded-xl p-6" style={{ background: C.surface, border: C.border }}>
       <div className="text-center text-[16px] font-extrabold">Calcula tu precio</div>
       <p className="mt-1 text-center text-[12.5px] font-semibold" style={{ color: C.muted }}>
-        Cobramos por sede. Elige tu plan y cuántas sedes tienes.
+        {esMiembros
+          ? 'Sin cuota fija: pagas S/ 1 por cada socio activo, a fin de mes.'
+          : 'Cobramos por sede. Elige tu plan y cuántas sedes tienes. La app para tus socios va incluida.'}
       </p>
 
       {/* Plan */}
       <div className="mt-5">
         <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Plan</div>
-        <div className="grid grid-cols-3 gap-2">
-          {PLANES.map((p, i) => (
-            <button key={p.nombre} onClick={() => setPlanIdx(i)}
+        <div className="grid grid-cols-4 gap-2">
+          {[PLAN_MIEMBROS, ...PLANES_GYM].map((p) => (
+            <button key={p.slug} onClick={() => setSlug(p.slug)}
               className="rounded-lg px-3 py-2.5 text-[13px] font-extrabold transition-colors"
-              style={i === planIdx
+              style={p.slug === slug
                 ? { background: C.primary, color: '#fff' }
                 : { border: C.border, color: C.muted }}>
               {p.nombre}
@@ -657,22 +674,45 @@ function CalculadoraPrecio({ conApp: conAppInicial }) {
         </div>
       </div>
 
-      {/* Sedes */}
-      <div className="mt-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Número de sedes</span>
-          <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{sedes} {sedes === 1 ? 'sede' : 'sedes'}</span>
+      {esMiembros ? (
+        /* Socios activos: lo único que mueve el precio del plan por miembro */
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Socios activos</span>
+            <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{socios} socios</span>
+          </div>
+          <input type="range" min="0" max="400" step="5" value={socios} onChange={(e) => setSocios(Number(e.target.value))}
+            className="w-full cursor-pointer" style={{ accentColor: C.primary }} />
+          <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>0</span><span>400</span></div>
         </div>
-        <input type="range" min="1" max="10" value={sedes} onChange={(e) => setSedes(Number(e.target.value))}
-          className="w-full cursor-pointer accent-orange-500" style={{ accentColor: C.primary }} />
-        <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>1</span><span>10+</span></div>
-      </div>
+      ) : (
+        /* Sedes */
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.5px]" style={{ color: C.muted }}>Número de sedes</span>
+            <span className="text-[15px] font-extrabold" style={{ color: C.primary }}>{sedes} {sedes === 1 ? 'sede' : 'sedes'}</span>
+          </div>
+          <input type="range" min="1" max="10" value={sedes} onChange={(e) => setSedes(Number(e.target.value))}
+            className="w-full cursor-pointer accent-orange-500" style={{ accentColor: C.primary }} />
+          <div className="mt-1 flex justify-between text-[10px] font-semibold" style={{ color: C.muted }}><span>1</span><span>10+</span></div>
+        </div>
+      )}
 
-      {/* App opcional */}
-      <label className="mt-4 flex cursor-pointer items-center gap-2.5">
-        <input type="checkbox" checked={conApp} onChange={(e) => setConApp(e.target.checked)} className="h-4 w-4" style={{ accentColor: C.primary }} />
-        <span className="text-[13px] font-bold">Agregar la app para socios (+S/ {plan.conApp - plan.base}/mes por sede)</span>
-      </label>
+      {/* Con el plan por miembro, decimos cuándo conviene migrar: es la verdad y
+          evita que el gym grande se sienta estafado al recibir su factura. */}
+      {conviene && (
+        <div className="mt-4 rounded-lg px-3.5 py-2.5 text-[12.5px] font-semibold" style={{ border: C.border, color: C.ink }}>
+          💡 Con <b>{conviene.plan.nombre}</b> pagarías <b>S/ {conviene.plan.precio}</b> al mes en vez de{' '}
+          <b>S/ {total}</b> — ahorras <b style={{ color: '#22c55e' }}>S/ {conviene.ahorro}</b> y tus socios tienen la app.
+        </div>
+      )}
+      {esMiembros && !conviene && (
+        <div className="mt-4 rounded-lg px-3.5 py-2.5 text-[12.5px] font-semibold" style={{ border: C.border, color: C.muted }}>
+          {socios === 0
+            ? '✓ Sin socios registrados no pagas nada.'
+            : '✓ A este tamaño, pagar por socio te sale más barato que cualquier plan fijo.'}
+        </div>
+      )}
 
       {/* Total */}
       <div className="mt-5 rounded-lg p-4 text-center" style={{ background: C.primary }}>
@@ -681,19 +721,21 @@ function CalculadoraPrecio({ conApp: conAppInicial }) {
           S/ {total.toLocaleString('es-PE')}<span className="text-[14px] font-semibold text-white/80">/mes</span>
         </div>
         <div className="text-[12px] font-semibold text-white/90">
-          {plan.nombre} · S/ {precioSede}/sede × {sedes} {sedes === 1 ? 'sede' : 'sedes'}
+          {esMiembros
+            ? `${plan.nombre} · S/ ${plan.porSocio} × ${socios} socios activos`
+            : `${plan.nombre} · S/ ${plan.precio}/sede × ${sedes} ${sedes === 1 ? 'sede' : 'sedes'}`}
         </div>
       </div>
       <p className="mt-3 text-center text-[11px] font-semibold" style={{ color: C.muted }}>
-        ¿Más de 10 sedes o varias marcas? <a href={`${APP_URL}/registro`} className="font-extrabold" style={{ color: C.primary }}>Hablemos de un precio especial →</a>
+        {esMiembros
+          ? 'Se cobra a fin de mes, según los socios que tengas activos ese día.'
+          : <>¿Más de 10 sedes o varias marcas? <a href={`${APP_URL}/registro`} className="font-extrabold" style={{ color: C.primary }}>Hablemos de un precio especial →</a></>}
       </p>
     </div>
   )
 }
 
 export default function PlataformaLanding() {
-  // Precios: alterna entre solo panel y panel + app para socios
-  const [conApp, setConApp] = useState(false)
   // Menú móvil del header
   const [menu, setMenu] = useState(false)
   // Aparición suave de secciones al hacer scroll
@@ -997,30 +1039,52 @@ export default function PlataformaLanding() {
           Estudio de yoga, gym de barrio o cadena multi-sede: paga solo por lo que necesitas.
         </p>
 
-        {/* Toggle: solo panel vs panel + app del socio */}
-        <div className="mt-8 flex justify-center">
-          <div className="inline-flex rounded-full p-1" style={{ background: C.surface, border: C.border }}>
-            <button onClick={() => setConApp(false)}
-              className="rounded-full px-5 py-2 text-[13px] font-extrabold transition-colors"
-              style={conApp ? { color: C.muted } : { background: C.primary, color: '#fff' }}>
-              Solo panel
-            </button>
-            <button onClick={() => setConApp(true)}
-              className="flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-extrabold transition-colors"
-              style={conApp ? { background: C.primary, color: '#fff' } : { color: C.muted }}>
-              📱 Panel + App del socio
-              <span className="rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide"
-                style={{ background: conApp ? 'rgba(255,255,255,0.2)' : 'rgba(255,107,53,0.15)', color: conApp ? '#fff' : C.primary }}>
-                Pronto
-              </span>
-            </button>
+        {/* Plan Miembros: la puerta de entrada. Va ANTES de los planes fijos —
+            es la oferta que hace que un gym chico se anime a probar. */}
+        <div className="mx-auto mt-8 max-w-[1000px] overflow-hidden rounded-xl"
+          style={{ background: C.surface, border: `2px solid ${C.primary}` }}>
+          <div className="flex flex-wrap items-center justify-between gap-5 p-7">
+            <div className="min-w-[280px] flex-1">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[15px] font-extrabold">{PLAN_MIEMBROS.nombre}</span>
+                <span className="rounded-full px-2.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide"
+                  style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                  Empieza sin pagar
+                </span>
+              </div>
+              <div className="mt-2 text-[26px] font-extrabold tracking-[-1px]" style={{ color: '#22c55e' }}>
+                {PLAN_MIEMBROS.eslogan}
+              </div>
+              <p className="mt-2 max-w-[520px] text-[13.5px] font-semibold leading-relaxed" style={{ color: C.muted }}>
+                {PLAN_MIEMBROS.detalle}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                {PLAN_MIEMBROS.notas.map((n) => (
+                  <span key={n} className="text-[12px] font-bold" style={{ color: C.ink }}>✓ {n}</span>
+                ))}
+              </div>
+              <p className="mt-3 text-[11.5px] font-semibold" style={{ color: C.muted, opacity: 0.75 }}>
+                📱 {PLAN_MIEMBROS.letraChica} Está incluida en Estudio, Crecimiento y Pro.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[44px] font-extrabold tracking-[-2px]">S/ {PLAN_MIEMBROS.porSocio}</span>
+                <span className="text-[14px] font-semibold" style={{ color: C.muted }}>/ socio</span>
+              </div>
+              <div className="text-[12px] font-extrabold" style={{ color: C.primary }}>al mes, solo los activos</div>
+              <a href={`${APP_URL}/registro`}
+                className="mt-4 block rounded-lg px-7 py-3 text-center text-[14px] font-extrabold text-white transition-transform hover:scale-[1.02]"
+                style={{ background: C.primary }}>
+                Empezar gratis
+              </a>
+            </div>
           </div>
         </div>
-        {conApp && (
-          <p className="mt-3 text-center text-[12.5px] font-semibold" style={{ color: C.muted }}>
-            Tus socios reservan clases, ven su rutina y su membresía desde su celular. Disponible muy pronto — el precio ya es el definitivo.
-          </p>
-        )}
+
+        <p className="mt-9 text-center text-[12px] font-extrabold uppercase tracking-[1px]" style={{ color: C.muted }}>
+          O elige un plan fijo — con la app para tus socios incluida
+        </p>
 
         <div className="mx-auto mt-10 grid max-w-[1000px] grid-cols-1 gap-4 md:grid-cols-3">
           {PLANES.map((p) => (
@@ -1042,21 +1106,17 @@ export default function PlataformaLanding() {
               <div className="text-[15px] font-extrabold">{p.nombre}</div>
               <div className="mt-0.5 text-[12px] font-semibold" style={{ color: C.muted }}>{p.para}</div>
               <div className="mt-4 flex items-baseline gap-1.5">
-                <span className="text-[38px] font-extrabold tracking-[-2px]">S/ {conApp ? p.conApp : p.base}</span>
+                <span className="text-[38px] font-extrabold tracking-[-2px]">S/ {p.precio}</span>
                 <span className="text-[14px] font-semibold" style={{ color: C.muted }}>/ mes</span>
               </div>
               <div className="text-[12px] font-extrabold" style={{ color: C.primary }}>por cada sede</div>
               <div className="mt-1 text-[11.5px] font-semibold" style={{ color: C.muted }}>
-                {conApp
-                  ? `S/ ${p.base} sin app · socios ilimitados en cada sede`
-                  : `+S/ ${p.conApp - p.base} por sede si sumas la app del socio`}
+                App del socio incluida · socios ilimitados en cada sede
               </div>
               <ul className="mt-5 flex-1 space-y-2 text-[13px] font-semibold" style={{ color: C.muted }}>
-                {conApp && (
-                  <li className="flex items-start gap-2 font-extrabold text-white">
-                    <span className="mt-0.5" style={{ color: C.primary }}>✓</span>App para tus socios (iOS y Android)
-                  </li>
-                )}
+                <li className="flex items-start gap-2 font-extrabold text-white">
+                  <span className="mt-0.5" style={{ color: C.primary }}>✓</span>App para tus socios (iOS y Android)
+                </li>
                 {p.features.map((x) => (
                   <li key={x} className="flex items-start gap-2"><span className="mt-0.5" style={{ color: C.primary }}>✓</span>{x}</li>
                 ))}
@@ -1077,8 +1137,9 @@ export default function PlataformaLanding() {
           Todos los planes incluyen 1 mes de prueba gratis, sin tarjeta. Cambia de plan cuando quieras.
         </p>
 
-        {/* Calculadora: cuánto pagarías según plan, nº de sedes y si sumas la app */}
-        <CalculadoraPrecio conApp={conApp} />
+        {/* Calculadora: cuánto pagarías según plan y nº de sedes (o socios, en
+            el plan por miembro) */}
+        <CalculadoraPrecio />
 
         {/* Segmentos especiales: no todo negocio fitness es un gimnasio clásico */}
         <div className="mx-auto mt-10 max-w-[1000px] rounded-xl p-6" style={{ background: C.surface, border: C.border }}>
