@@ -5,6 +5,34 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-17): PEDIDO 43 — Un gym puede DEJAR de estar en la app (plan sin app) ⚠️ afecta a la app YA
+> Nace el plan **Miembros**: el gym usa el sistema gratis y paga S/1 por socio
+> activo a fin de mes, pero en ese plan **el gym no existe para la app**. Hasta
+> ahora `con_app` solo calculaba el precio y nadie lo miraba; ya está cableado.
+>
+> **Qué cambia para ti (backend ya aplicado, nada que pedirnos):**
+> - `select * from socio where usuario_id = <yo>` ahora **no devuelve** los socios
+>   cuyo gym esté en un plan sin app. No es un borrado: la fila sigue ahí, la RLS
+>   la filtra. Si el gym vuelve a un plan con app, reaparece sola.
+> - `supabase.rpc('vincular_socio')` no engancha socios de gyms sin app:
+>   `vinculados_ahora` puede volver 0 aunque el gym sí tenga a esa persona
+>   registrada como socio.
+> - Un usuario **ya vinculado** cuyo gym baje a plan Miembros **deja de verlo de
+>   un día para otro**. No hay evento ni notificación: simplemente su lista de
+>   gyms queda vacía en la siguiente consulta.
+>
+> **Lo que necesitamos de la app:** que "sin gym" sea un estado normal y no un
+> error. El usuario debe caer en el **modo libre** que ya existe (PEDIDO 40:
+> catálogo de ejercicios, rutinas propias, perfil) sin pantallas rotas, sin
+> spinners infinitos y sin "no se pudo cargar". La app del socio **sigue siendo
+> gratis para él** — lo que se paga es el vínculo con el gym.
+>
+> **Cómo probarlo:** con un socio de MaximusGym, cambia el plan de su sede a
+> `miembros` en Configuración › Mi plan del panel (o por SQL:
+> `update suscripcion_sede set plan_slug='miembros', con_app=false where sede_id=…`)
+> y abre la app con ese usuario: debe quedar en modo libre sin romperse.
+> Para verificar desde SQL qué ve el socio: `select public.sede_con_app('<sede_id>')`.
+
 > ## 📩 PANEL → APP (2026-07-16): PEDIDO 42 — Mapa del gym por pisos (CUADRÍCULA) + piso al pedir ayuda
 > El gym arma su croquis por PISOS con una CUADRÍCULA: cada piso es una grilla de
 > filas×columnas, y sus máquinas registradas se colocan en casillas (fila/columna).
