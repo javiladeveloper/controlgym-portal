@@ -117,6 +117,7 @@ function Ficha({ socioId, onBack, onVerSocio }) {
         <Card className="p-[19px]">
           <div className="mb-3 text-[14px] font-extrabold">Datos del socio</div>
           <div className="grid grid-cols-2 gap-[13px] sm:grid-cols-2">
+            <Field label="DNI" value={ficha.documento || '—'} />
             <Field label="Edad" value={edadDe(ficha.fecha_nacimiento)} />
             <Field label="Teléfono" value={ficha.telefono || '—'} />
             <Field label="Talla" value={ficha.talla_m ? `${ficha.talla_m} m` : '—'} />
