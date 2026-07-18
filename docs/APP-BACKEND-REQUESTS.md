@@ -5,6 +5,37 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ❓ PANEL → APP (2026-07-17): PREGUNTA 45 — ¿La app marca los ejercicios completados de la rutina ASIGNADA por el gym?
+> Estamos diseñando el ciclo de progresión de rutinas (el trainer asigna rutina
+> con vigencia → el socio la sigue → antes de vencer, el trainer ve el avance y
+> le ajusta la siguiente). Para medir **adherencia** necesitamos saber qué marca
+> hoy el socio. El owner cree que la app YA permite marcar cada ejercicio de la
+> rutina del gym con un check.
+>
+> **Lo que veo en el esquema de la BD (confírmame si me falta algo del lado app):**
+> - `registro_entreno` (socio_id, **rutina_dia_id**, fecha, completado) → marca a
+>   nivel DÍA de la rutina ASIGNADA por el gym. No veo nada por ejercicio aquí.
+> - `registro_entreno_libre` (usuario_id, **rutina_libre_ejercicio_id**, fecha,
+>   completado) → check por EJERCICIO, pero solo de la rutina LIBRE (la que el
+>   socio se arma solo), NO de la asignada.
+> - `rutina_ejercicio` (la de la rutina asignada) NO tiene columna de completado.
+>
+> **Preguntas concretas:**
+> 1. ¿La app deja al socio marcar cada ejercicio de su rutina ASIGNADA (no la
+>    libre) con un ✓? Si sí, **¿dónde se guarda?** (¿tabla/columna que yo no esté
+>    viendo, o se guarda como `registro_entreno` por día, o va a
+>    `registro_entreno_libre`?)
+> 2. Si NO existe para la asignada: ¿lo construimos? (tabla nueva tipo
+>    `registro_entreno_ejercicio(socio_id, rutina_ejercicio_id, fecha, completado,
+>    carga_usada)` + RPC para que la app la escriba). Decinos y lo montamos en el
+>    backend.
+> 3. ¿La app registra la CARGA que usó el socio en cada ejercicio (para ver
+>    progresión de fuerza), o solo el check de hecho/no hecho?
+>
+> Con tu respuesta cerramos el diseño de la parte de adherencia. Mientras, el
+> resto del ciclo (vigencia de rutina + sección "por vencer" + panel de progreso
+> con peso/asistencia, que YA tenemos datos) avanza sin bloquearse en esto.
+
 > ## 🐛 PANEL → APP (2026-07-17): BUG 44 — El croquis no se muestra al hacer clic en un piso (backend OK, es del cliente)
 > **Síntoma reportado por el owner:** en la app se ven las PLANTAS/pisos del gym,
 > pero al hacer clic en un piso **no aparece el croquis** (la grilla con máquinas).
