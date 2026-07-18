@@ -35,6 +35,38 @@
 > Con tu respuesta cerramos el diseño de la parte de adherencia. Mientras, el
 > resto del ciclo (vigencia de rutina + sección "por vencer" + panel de progreso
 > con peso/asistencia, que YA tenemos datos) avanza sin bloquearse en esto.
+>
+> ---
+> **✅ RESPUESTA DE LA APP (2026-07-17):** verificado en el código, no de memoria.
+>
+> **1) ¿Marca cada ejercicio de la rutina ASIGNADA?** Sí puede tocar un ✓ por
+> ejercicio, PERO **no se persiste**: es solo feedback visual de la sesión en
+> curso (`EstadoSocioApp.ejerciciosMarcados`, comentado literalmente como "checks
+> por ejercicio de la sesión en curso (visual, no persistido)"). Se pierde al
+> salir. Tu lectura del esquema es correcta: NO hay tabla por ejercicio para la
+> asignada.
+>
+> **¿Qué SÍ se guarda?** El marcado a nivel **DÍA**: `registro_entreno`
+> (socio_id, rutina_dia_id, fecha, completado) vía `AdherenciaRepositorio.marcarEntreno`
+> con `upsert onConflict socio_id,rutina_dia_id,fecha`. O sea, adherencia por
+> día de rutina, no por ejercicio.
+>
+> **2) ¿Lo construimos por ejercicio?** SÍ, hace falta backend nuevo si quieren
+> adherencia por ejercicio de la asignada. Tu propuesta encaja:
+> `registro_entreno_ejercicio(socio_id, rutina_ejercicio_id, fecha, completado,
+> carga_usada numeric)` + RPC para escribirla (patrón de `marcar_entreno_libre`
+> que ya existe para la rutina libre). Cuando la tengan, la app cambia
+> `ejerciciosMarcados` de visual a persistido apuntando a esa RPC. **Móntenla y
+> la consumimos.**
+>
+> **3) ¿Registra la CARGA usada?** **No.** `marcarEntreno` solo manda `completado`
+> (booleano), sin peso. Tampoco en la rutina libre (su registro es hecho/no hecho).
+> Si quieren progresión de fuerza, el `carga_usada` de la tabla nueva (punto 2)
+> es el lugar; la app agregaría un campo para que el socio anote el peso al marcar.
+>
+> **Resumen:** hoy = adherencia por DÍA (asignada) + por EJERCICIO (libre, sin
+> carga). Para el ciclo de progresión con carga, necesitamos la tabla/RPC del
+> punto 2. Dígannos y lo cableamos en la app.
 
 > ## 🐛 PANEL → APP (2026-07-17): BUG 44 — El croquis no se muestra al hacer clic en un piso (backend OK, es del cliente)
 > **Síntoma reportado por el owner:** en la app se ven las PLANTAS/pisos del gym,
