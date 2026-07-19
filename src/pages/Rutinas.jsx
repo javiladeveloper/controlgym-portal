@@ -17,6 +17,7 @@ import {
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
+import { useRutinasPorVencer } from '../hooks/useProgresion.js'
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
 import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
@@ -320,6 +321,57 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
   )
 }
 
+// Rutinas que vencen en ≤3 días o ya vencieron (RPC de la Parte C). El botón
+// "Ver progreso y renovar" hoy solo selecciona al socio en esta misma vista
+// (mismo comportamiento que un clic en la lista) — el panel de progreso real
+// llega en la Parte D.
+function RutinasPorVencer({ sedeId, onIrSocio }) {
+  const porVencer = useRutinasPorVencer(sedeId)
+  if (porVencer.error) {
+    return (
+      <Card className="mt-[18px] p-[15px]" style={{ borderLeft: '4px solid #EF4444' }}>
+        <div className="text-[13px] font-bold text-red">No se pudo cargar el listado de rutinas por vencer. Reintenta en un momento.</div>
+      </Card>
+    )
+  }
+  if (!porVencer.data?.length) return null
+  return (
+    <Card className="mt-[18px] p-[19px]" style={{ borderLeft: '4px solid #E24B4A' }}>
+      <div className="text-[14.5px] font-extrabold">⏰ Por vencer ({porVencer.data.length})</div>
+      <div className="mt-0.5 text-[12px] font-semibold text-muted">
+        Rutinas que vencen en 3 días o menos, o que ya vencieron. Revisa el progreso del socio y renueva su plan.
+      </div>
+      {porVencer.data.map((r) => {
+        const dias = Number(r.dias_restantes)
+        const vencido = dias <= 0
+        return (
+          <div key={r.rutina_id} className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-[10px] bg-surface px-3.5 py-3">
+            <div className="min-w-0">
+              <button onClick={() => onIrSocio(r.socio_id)} title="Ver su rutina"
+                className="cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-extrabold text-ink hover:text-orange">
+                {r.socio?.nombre}
+              </button>
+              <div className="text-[12.5px] font-bold text-muted">
+                {r.objetivo || 'Sin objetivo'}
+                {' · '}
+                <span className={vencido ? 'font-extrabold text-red' : 'font-extrabold'}>
+                  {vencido ? 'venció' : `vence en ${dias} día${dias === 1 ? '' : 's'}`}
+                </span>
+              </div>
+            </div>
+            <button
+              // TODO Parte D: abrir panel de progreso — por ahora solo selecciona al socio
+              onClick={() => onIrSocio(r.socio_id)}
+              className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
+              Ver progreso y renovar
+            </button>
+          </div>
+        )
+      })}
+    </Card>
+  )
+}
+
 // Asignar plantilla a mano: el flujo automático solo corre al inscribir (y solo
 // si el socio ya tenía objetivo + peso + talla). Este modal cubre a todos los
 // demás: pide/confirma esos 3 datos, los guarda en el socio y dispara el mismo
@@ -607,6 +659,9 @@ function RutinasImpl() {
         <SolicitudesCarga empresaId={empresa?.id}
           onIrSocio={(id) => { setSocioId(id); setBusqueda(''); setDiaSel(null); setEnviado(false) }} />
       )}
+
+      <RutinasPorVencer sedeId={sedeId}
+        onIrSocio={(id) => { setSocioId(id); setBusqueda(''); setDiaSel(null); setEnviado(false) }} />
 
       {socios.isLoading && <LoadingState variant="cards" rows={2} />}
       {socios.error && <ErrorState error={socios.error} onRetry={socios.refetch} />}
