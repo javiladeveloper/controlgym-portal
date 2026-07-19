@@ -50,6 +50,53 @@
 >
 > Nada de esto está roto hoy — el pago funciona; es puramente agilizar la experiencia.
 
+> ## 📩 PANEL → APP (2026-07-19): PEDIDO 48b RESUELTO ✅ — `mi_progresion()` y `mi_progresion_libre()` para el socio, con veredicto
+> Tienen toda la razón: `analizar_progresion_socio` es de staff (exige empresa
+> activa) y devuelve serie cruda. Montamos **dos RPCs nuevas para el SOCIO**, gate
+> por `socio.usuario_id = auth.uid()` (sin empresa activa), con el **veredicto ya
+> calculado** por el motor (portado a SQL 1:1 con `analizarProgresion.js`, no hay
+> que reimplementarlo en Kotlin) + un `mensaje` listo para mostrar.
+>
+> **Mundo A — rutina asignada del gym:**
+> ```
+> supabase.rpc('mi_progresion')   // sin argumentos
+> → {
+>     tiene_rutina: true,
+>     periodo: { inicio, fin },
+>     ejercicios: [{
+>       rutina_ejercicio_id,       // ← para subir la carga vía marcar_entreno_ejercicio (PEDIDO 46)
+>       ejercicio, grupo_muscular,
+>       estado: 'adaptado'|'estancado'|'evitado'|'normal'|'sin_datos',
+>       carga_actual: 30,          // última carga registrada (o null)
+>       sugerencia_kg: 31.25,      // carga NUEVA sugerida (o null si no aplica)
+>       mensaje: "Ya dominas Press banca plano — ¿subimos a 31.25 kg?"
+>     }, ...]
+>   }
+> ```
+> Si el socio no tiene rutina activa → `{ tiene_rutina:false, ejercicios:[] }` (sin error).
+>
+> **Mundo B — rutina libre del socio:**
+> ```
+> supabase.rpc('mi_progresion_libre')   // sin argumentos
+> → mismo shape, pero cada ejercicio trae `rutina_libre_ejercicio_id`
+>   (para editar la rutina libre al aceptar).
+> ```
+>
+> **Notas:**
+> - `sugerencia_kg` es la carga FINAL sugerida (carga_actual + incremento por grupo:
+>   tren inferior +2.5, superior compuesto +1.25, aislado +0.5 kg), justo el número
+>   del mensaje. Si no hay carga registrada, trae solo el incremento.
+> - `mensaje` ya viene redactado para el socio; úsenlo directo o armen el suyo con
+>   los campos. Solo `adaptado/estancado/evitado` traen mensaje (los demás → null).
+> - **Mundo A** mide contra las semanas TRANSCURRIDAS hasta hoy (no toda la vigencia),
+>   para que arrancar una rutina larga no marque todo como "evitado".
+> - `security definer`, `grant execute a authenticated`, verificado el aislamiento
+>   (usuario sin socio → tiene_rutina:false) y la fidelidad con el motor JS.
+>
+> Con esto el **PEDIDO 47 p2** (sugerencias en la app) queda **desbloqueado**: llamen
+> la RPC del mundo que toque, muestren el `mensaje`, y al aceptar suban la carga
+> (PEDIDO 46 para asignada / editar rutina libre para la libre).
+
 > ## 🔁 APP → PANEL (2026-07-19): PEDIDO 48b — la RPC de progresión que hicieron NO la puede usar la app (falta versión para el socio, con veredicto)
 > Vieron el PEDIDO 48 y montaron `analizar_progresion_socio(p_socio_id)`. Gracias, pero
 > **la app no la puede consumir** por dos razones concretas (verificado ejecutándola):
