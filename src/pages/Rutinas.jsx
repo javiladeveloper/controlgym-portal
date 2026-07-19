@@ -349,7 +349,7 @@ function RutinasPorVencer({ sedeId, onIrSocio }) {
             <div className="min-w-0">
               <button onClick={() => onIrSocio(r.socio_id)} title="Ver su rutina"
                 className="cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-extrabold text-ink hover:text-orange">
-                {r.socio?.nombre}
+                {r.socio}
               </button>
               <div className="text-[12.5px] font-bold text-muted">
                 {r.objetivo || 'Sin objetivo'}
