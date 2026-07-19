@@ -2705,3 +2705,60 @@ Los medios (gif_url/foto_url del catálogo) YA están en Storage (bucket públic
 
 Creado: 2026-07-14 (catálogo de ejercicios — panel + backend).
 Ampliado: 2026-07-14 (mi_rutina_detalle + medios subidos a Storage).
+
+---
+
+# HANDOFF BACKEND — Membresía vencida y multi-sede (2026-07-18)
+
+**Para el agente del panel.** La app implementó "membresía vencida y multi-sede":
+al vencer, el gym NO desaparece de la app, se degrada (visible para renovar, sin
+beneficios de socio activo); el aforo sigue a la sede abierta y solo aparece con
+membresía vigente. Esto tocó 3 RPCs de la DB compartida.
+
+**IMPORTANTE:** las 3 RPCs YA ESTÁN APLICADAS a la DB de producción (vía MCP) y
+verificadas con datos reales. NO necesitas aplicarlas. Este handoff es para que
+tu repo de migraciones quede coherente con lo que ya corre en la DB. Los archivos
+.sql ya están en `supabase/migrations/`:
+
+1. `20260717500001_aforo_mi_sede_gate_app.sql` — fix del gate en aforo_mi_sede
+   (se conserva por compatibilidad, aunque la app ya no la usa).
+2. `20260718100001_aforo_de_sede.sql` — NUEVA. Reemplaza el uso de aforo_mi_sede.
+3. `20260718100002_bootstrap_corte_90d.sql` — get_mi_app_bootstrap con corte 90d.
+
+## Qué cambió y por qué
+
+### 1. `aforo_de_sede(p_sede_id uuid)` — NUEVA RPC
+Antes: `aforo_mi_sede()` elegía "una sola sede" del socio por membresía activa más
+reciente. Con multi-gym mostraba el aforo de la sede equivocada (o 0).
+Ahora: la app pasa la sede que tiene ABIERTA (`p_sede_id`), igual que el kiosco.
+La RPC devuelve aforo SOLO si:
+  - la sede tiene app (`sede_con_app(p_sede_id)`), y
+  - el usuario es socio de ESA sede, y
+  - tiene membresía VIGENTE ahí (`estado='activa' AND (fecha_fin IS NULL OR fecha_fin >= hoy)`).
+Si no: `encontrado:false` (sin socio/sin app) o `aforo_max:null` (sin membresía
+vigente o sede sin aforo configurado). Permisos: `revoke ... from anon, public;
+grant ... to authenticated` (igual que aforo_mi_sede).
+Verificado: review@fitcore.app (vigente MaximusGym) -> dentro:1/aforo_max:120;
+jonathan MaximusGym (vencida) -> aforo_max:null; Estudio personal (sin app) -> false.
+
+### 2. `get_mi_app_bootstrap()` — corte 90 días
+Se añadió al WHERE del subselect de `gimnasios` una condición: una sede cuya última
+membresía venció hace MÁS de 90 días (y sin ninguna vigente) se ARCHIVA de la lista
+del socio. Si renueva, reaparece. Sedes con membresía vigente, vencida hace ≤90 días,
+o sin ninguna membresía todavía (socio recién creado), se conservan. La forma del
+JSON NO cambió. Verificado: jonathan ve MaximusGym (vencida hace 1 día) + Bushido
+Dojo (activa); vencida hace 108d se excluye.
+
+## Nota de coherencia (por si el panel toca membresías vitalicias)
+La app (cliente) trata `fecha_fin IS NULL` como VENCIDA (conservador); el backend lo
+trata como VIGENTE. Hoy es inocuo porque las membresías reales llevan fecha_fin. Si
+en el panel se introduce el patrón "activa + fecha_fin NULL" (membresía sin
+vencimiento) como caso legítimo, avísale a la app para alinear `estadoMembresia` en
+el cliente — sino esos socios verían "vencida" en la UI aunque el backend los liste.
+
+## Decisión de producto (para que el panel lo sepa)
+- Con membresía vencida, la app deja visibles: Pagos/renovación, carnet/QR, info del
+  gym. Oculta: rutina, dieta, aforo, reservas, clases, mapa, galería.
+- Ventana de retención elegida: 90 días (estándar de apps de gym).
+
+Creado: 2026-07-18 (membresía vencida y multi-sede — app + backend).
