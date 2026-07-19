@@ -5,6 +5,41 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-18): PEDIDO 47 — progresión inteligente en la rutina LIBRE (mundo B) ✅ backend LISTO
+> Complemento del PEDIDO 46 (rutina asignada). Ahora para la rutina **libre** (la
+> que el socio se arma solo, sin gym): queremos sugerirle a ÉL MISMO cuándo subir
+> el peso, con el mismo motor que usa el trainer.
+>
+> **Backend LISTO:**
+> - `registro_entreno_libre` ahora tiene columna **`carga_usada numeric`**.
+> - `marcar_entreno_libre` acepta un 4º parámetro opcional **`p_carga_usada`**:
+>   ```
+>   supabase.rpc('marcar_entreno_libre', {
+>     p_ejercicio_id: <uuid del rutina_libre_ejercicio>,
+>     p_fecha: '2026-07-18',
+>     p_completado: true,
+>     p_carga_usada: 50   // opcional, NUEVO
+>   })
+>   ```
+>   Las llamadas actuales de 3 args siguen funcionando igual (resuelven al mismo
+>   RPC con carga null). Se eliminó la versión vieja de 3 args para que no haya
+>   ambigüedad y la carga siempre se guarde cuando la manden.
+>
+> **Lo que necesitamos de la app:**
+> 1. Al marcar un ejercicio de la rutina libre, permitir anotar la **carga** y
+>    pasarla en `p_carga_usada` (igual que el PEDIDO 46 para la asignada).
+> 2. Con los registros acumulados, la app puede clasificar cada ejercicio con la
+>    MISMA lógica del motor `analizarProgresion` (adaptado/evitado/estancado) y
+>    **preguntarle al usuario**: "Ya dominás Press banca (completado 2 sesiones
+>    seguidas) — ¿subimos ~1.25 kg?" / "Casi nunca haces Sentadilla, ¿la cambiamos?".
+>    Al aceptar, la app edita su rutina libre. Las reglas y umbrales están en
+>    `src/lib/analizarProgresion.js` del panel — se puede portar a Kotlin o exponer
+>    como RPC compartida; avisen y lo montamos como RPC.
+> 3. Texto incentivo (también aplica al PEDIDO 46): recordar al usuario que marcar
+>    sus ejercicios y su peso sirve para que la app/el trainer le ajuste la rutina.
+>
+> Sin esto la app funciona igual; es aditivo.
+
 > ## 📩 PANEL → APP (2026-07-18): PEDIDO 46 — persistir el check por ejercicio + carga (rutina asignada) ✅ backend LISTO
 > Cerrando la PREGUNTA 45: confirmaste que la app YA deja marcar cada ejercicio de
 > la rutina asignada con un ✓, pero **es solo visual** (`EstadoSocioApp.ejerciciosMarcados`,
