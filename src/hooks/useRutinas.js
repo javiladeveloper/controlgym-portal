@@ -349,6 +349,58 @@ export function useEnviarPlan(socioId) {
   })
 }
 
+// ── Edición de ejercicios de una PLANTILLA (rutina del gym generada por
+// generar_plantilla_rutina). Antes solo se podía regenerar la plantilla
+// entera; estos hooks permiten agregar/editar/quitar ejercicios uno por uno,
+// igual que se hace con la rutina de un socio. Van sobre RPCs (no tabla
+// directa) porque plantilla_rutina_ejercicio no tiene empresa_id propio: la
+// función valida el aislamiento subiendo hasta plantilla_rutina.empresa_id.
+export function usePlantillaAgregarEj(empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ plantillaDiaId, nombre, series, reps, descanso }) => {
+      const { data, error } = await supabase.rpc('plantilla_agregar_ejercicio', {
+        p_plantilla_dia_id: plantillaDiaId,
+        p_nombre: (nombre || '').trim().replace(/\s+/g, ' '),
+        p_series: series != null && series !== '' ? Number(series) : null,
+        p_reps: reps || null,
+        p_descanso: descanso || null,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plantillas-rutina', empresaId] }),
+  })
+}
+
+export function usePlantillaEditarEj(empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, nombre, series, reps, descanso }) => {
+      const { error } = await supabase.rpc('plantilla_editar_ejercicio', {
+        p_ejercicio_id: id,
+        p_nombre: (nombre || '').trim().replace(/\s+/g, ' '),
+        p_series: series != null && series !== '' ? Number(series) : null,
+        p_reps: reps || null,
+        p_descanso: descanso || null,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plantillas-rutina', empresaId] }),
+  })
+}
+
+export function usePlantillaQuitarEj(empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.rpc('plantilla_quitar_ejercicio', { p_ejercicio_id: id })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plantillas-rutina', empresaId] }),
+  })
+}
+
 // Asigna vigencia (fecha de vencimiento) a la rutina recién enviada. Vive
 // separado de useEnviarPlan porque solo aplica a rutinas (no a dietas) y el
 // trainer elige la duración en semanas justo antes de confirmar el envío.

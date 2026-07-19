@@ -13,7 +13,7 @@ import {
   useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
   useSolicitudesCarga, useResponderSolicitud, useAsignarPlanAutomatico,
-  useAsignarVigencia,
+  useAsignarVigencia, usePlantillaAgregarEj, usePlantillaEditarEj, usePlantillaQuitarEj,
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
@@ -211,6 +211,34 @@ function EjercicioFila({ ej, banco, onGuardar, onEliminar }) {
       <input value={e.carga || ''} onChange={set('carga')} onBlur={commit} placeholder="Carga" title="Carga (40kg, banda…)" className={cls + ' w-[76px] text-center'} />
       <input value={e.descanso || ''} onChange={set('descanso')} onBlur={commit} placeholder="Desc." title="Descanso" className={cls + ' w-[58px] text-center'} />
       <input value={e.notas || ''} onChange={set('notas')} onBlur={commit} placeholder="Nota técnica" className={cls + ' min-w-[120px] flex-1'} />
+      <button onClick={() => onEliminar(ej.id)} title="Quitar ejercicio"
+        className="cursor-pointer rounded-[7px] border-none bg-transparent px-1 text-[12px] text-faint hover:text-red">🗑</button>
+    </div>
+  )
+}
+
+// Fila editable de un ejercicio de PLANTILLA. A propósito NO expone carga ni
+// notas: plantilla_editar_ejercicio (RPC) solo persiste nombre/series/reps/
+// descanso — esos dos campos son por-socio (carga real que levanta, nota
+// técnica del trainer) y no tienen sentido en una plantilla genérica. Mostrar
+// esos inputs aquí sería un guardado fantasma (se ve el campo, no se guarda).
+function EjercicioFilaPlantilla({ ej, banco, onGuardar, onEliminar }) {
+  const [e, setE] = useState(ej)
+  useEffect(() => { setE(ej) }, [ej])
+  const set = (k) => (ev) => setE((s) => ({ ...s, [k]: ev.target.value }))
+  const commit = () => { if (JSON.stringify(e) !== JSON.stringify(ej)) onGuardar(e) }
+  const commitNombre = (ev) => {
+    const merged = ev?.target?.value != null ? { ...e, nombre: ev.target.value } : e
+    if (JSON.stringify(merged) !== JSON.stringify(ej)) onGuardar(merged)
+  }
+  const cls = 'rounded-[8px] border border-line bg-white px-2 py-1.5 text-[12px] font-bold outline-none focus:border-orange'
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-t border-line2 py-1.5 first:border-0">
+      <InputEjercicio value={e.nombre} onChange={set('nombre')} onBlur={commitNombre} placeholder="Ejercicio"
+        banco={banco} className={cls + ' min-w-[150px] flex-1 font-extrabold'} />
+      <input value={e.series ?? ''} onChange={set('series')} onBlur={commit} placeholder="Ser." type="number" min="1" title="Series" className={cls + ' w-[52px] text-center'} />
+      <input value={e.reps || ''} onChange={set('reps')} onBlur={commit} placeholder="Reps" title="Repeticiones" className={cls + ' w-[64px] text-center'} />
+      <input value={e.descanso || ''} onChange={set('descanso')} onBlur={commit} placeholder="Desc." title="Descanso" className={cls + ' w-[58px] text-center'} />
       <button onClick={() => onEliminar(ej.id)} title="Quitar ejercicio"
         className="cursor-pointer rounded-[7px] border-none bg-transparent px-1 text-[12px] text-faint hover:text-red">🗑</button>
     </div>
@@ -1137,6 +1165,7 @@ function PlantillasPanel({ empresaId }) {
   const dietas = usePlantillasDieta(empresaId)
   const cargando = objetivos.isLoading || rutinas.isLoading || dietas.isLoading
   const error = objetivos.error || rutinas.error || dietas.error
+  const [editando, setEditando] = useState(null) // id de la plantilla_rutina (propia del gym) que se está editando
 
   return (
     <Card className="mt-[18px] p-[19px]">
@@ -1144,7 +1173,7 @@ function PlantillasPanel({ empresaId }) {
       <p className="mt-0.5 text-[12px] font-semibold text-muted">
         Al inscribir a un socio con objetivo + peso + talla, el sistema copia estas plantillas (moduladas por su IMC) como su rutina y dieta iniciales.
         También puedes asignarlas a mano: en «Por socio», elige al socio y pulsa «⚡ Usar plantilla».
-        Prioriza la plantilla personalizada del gym; si no existe, usa la global. El editor de ejercicios/comidas de cada plantilla llega en una próxima mejora.
+        Prioriza la plantilla personalizada del gym; si no existe, usa la global. Puedes editar los ejercicios de la plantilla de tu gym sin tener que regenerarla entera.
       </p>
 
       {cargando && <div className="mt-4"><LoadingState variant="table" rows={4} /></div>}
@@ -1175,6 +1204,12 @@ function PlantillasPanel({ empresaId }) {
                           <Badge bg={rGym ? '#E7F6F0' : '#EEF1FF'} color={rGym ? '#1D9E75' : '#4C5AA8'}>
                             {rGym ? 'Personalizada (tu gym)' : 'Global'}
                           </Badge>
+                          {rGym && (
+                            <button onClick={() => setEditando(editando === rGym.id ? null : rGym.id)}
+                              className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50">
+                              {editando === rGym.id ? '✕ Cerrar' : '✎ Editar ejercicios'}
+                            </button>
+                          )}
                         </>
                       ) : <span className="text-faint">— sin plantilla aún</span>}
                     </div>
@@ -1191,6 +1226,9 @@ function PlantillasPanel({ empresaId }) {
                     </div>
                   </div>
                 )}
+                {rGym && editando === rGym.id && (
+                  <PlantillaEditor plantilla={rGym} empresaId={empresaId} />
+                )}
               </div>
             )
           })}
@@ -1200,6 +1238,94 @@ function PlantillasPanel({ empresaId }) {
         </div>
       )}
     </Card>
+  )
+}
+
+// Editor de ejercicios de UNA plantilla propia del gym: pestañas por día +
+// las mismas filas editables (EjercicioFila/InputEjercicio) que se usan para
+// la rutina de un socio, para que se sienta igual. Solo aplica a rGym: la
+// global es de solo lectura (no tiene empresa_id, las RPCs la rechazan).
+function PlantillaEditor({ plantilla, empresaId }) {
+  const [diaId, setDiaId] = useState(plantilla.dias?.[0]?.id ?? null)
+  const [catalogoOpen, setCatalogoOpen] = useState(false)
+  const [nuevoEj, setNuevoEj] = useState('')
+  const banco = useBancoEjercicios(empresaId)
+  const agregar = usePlantillaAgregarEj(empresaId)
+  const editar = usePlantillaEditarEj(empresaId)
+  const quitar = usePlantillaQuitarEj(empresaId)
+
+  const dias = plantilla.dias || []
+  const diaActivo = dias.find((d) => d.id === diaId) || dias[0]
+  const ejs = diaActivo?.ejercicios || []
+
+  const agregarEj = (nombre) => {
+    if (!diaActivo) return
+    agregar.mutate(
+      { plantillaDiaId: diaActivo.id, nombre, series: 3, reps: '12', descanso: '60s' },
+      { onError: (er) => toast.error(er.message) },
+    )
+  }
+
+  if (!dias.length) {
+    return <div className="mt-2.5 rounded-xl border border-line bg-white p-3 text-[12px] font-semibold text-faint">Esta plantilla no tiene días — regénerala desde "✨ Generar plantilla".</div>
+  }
+
+  return (
+    <div className="mt-2.5 rounded-xl border border-line bg-white p-[13px]">
+      <div className="flex flex-wrap gap-1.5">
+        {dias.map((d) => (
+          <button key={d.id} onClick={() => setDiaId(d.id)}
+            className={`cursor-pointer rounded-[7px] border-none px-2.5 py-1 text-[11px] font-extrabold transition-colors ${diaActivo?.id === d.id ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-orange'}`}>
+            {['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][d.dia_semana]}
+            {d.foco && <span className="ml-1 font-bold opacity-80">· {d.foco}</span>}
+          </button>
+        ))}
+      </div>
+
+      {diaActivo && (
+        <div className="mt-3 border-t border-line2 pt-2.5">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-faint">serie · reps · descanso — se guarda al salir del campo</span>
+            <button onClick={() => setCatalogoOpen(true)}
+              className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50">
+              📚 Agregar del catálogo
+            </button>
+          </div>
+          {ejs.map((ej) => (
+            <EjercicioFilaPlantilla key={ej.id} ej={ej} banco={banco.data || []}
+              onGuardar={(e) => editar.mutate(
+                { id: ej.id, nombre: e.nombre, series: e.series, reps: e.reps, descanso: e.descanso },
+                { onError: (er) => toast.error(er.message) },
+              )}
+              onEliminar={(id) => quitar.mutate(id, { onError: (er) => toast.error(er.message) })} />
+          ))}
+          {ejs.length === 0 && (
+            <div className="py-2 text-[12px] font-semibold text-faint">Sin ejercicios aún — agrega el primero:</div>
+          )}
+          <div className="mt-2 flex gap-2 border-t border-line2 pt-2.5">
+            <InputEjercicio value={nuevoEj} onChange={(e) => setNuevoEj(e.target.value)} banco={banco.data || []}
+              onSelect={(nombre) => { agregarEj(nombre); setNuevoEj('') }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && nuevoEj.trim()) { agregarEj(nuevoEj.trim()); setNuevoEj('') } }}
+              placeholder="Nuevo ejercicio (ej. Press banca) y Enter…"
+              className="rounded-[9px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange" />
+            <button onClick={() => { if (nuevoEj.trim()) { agregarEj(nuevoEj.trim()); setNuevoEj('') } }}
+              className="cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600">
+              + Agregar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {catalogoOpen && diaActivo && (
+        <Modal title="Catálogo de ejercicios" subtitle="Elige uno para agregarlo al día seleccionado" width={720} onClose={() => setCatalogoOpen(false)}>
+          <BuscadorEjercicios onElegir={(ej) => {
+            agregarEj(ej.nombre)
+            toast.ok(`${ej.nombre} agregado`)
+            setCatalogoOpen(false)
+          }} />
+        </Modal>
+      )}
+    </div>
   )
 }
 
