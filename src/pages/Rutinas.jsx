@@ -767,6 +767,13 @@ function RutinasImpl() {
   useEffect(() => {
     if (!vigenciaTocada && duracionSugerida) setSemanasVigencia(duracionSugerida)
   }, [duracionSugerida, vigenciaTocada])
+  // Al cambiar de socio se olvida la elección manual del anterior: si no, la
+  // vigencia que el trainer fijó a mano para el socio A se le escribiría al
+  // socio B (su plantilla puede sugerir otra duración).
+  useEffect(() => {
+    setVigenciaTocada(false)
+    setSemanasVigencia(8)
+  }, [socioId])
   const rutina = useRutinaSocio(socioId)
   const crearRutina = useCrearRutina(socioId, empresa?.id)
   const crearDieta = useCrearDieta(socioId, empresa?.id)
@@ -1363,8 +1370,14 @@ function PlantillaDietaEditor({ plantilla, empresaId }) {
   const comidas = plantilla.comidas || []
   const diasConComida = [...new Set(comidas.map((c) => c.dia_semana ?? 0))].sort((a, b) => a - b)
   const dias = diasConComida.length ? diasConComida : [0]
-  const [dia, setDia] = useState(dias[0])
+  const [diaSel, setDiaSel] = useState(dias[0])
   const [nueva, setNueva] = useState('')
+  // El día seleccionado se recalcula contra los días que existen AHORA: si el
+  // trainer borra la última comida de un día, ese día desaparece de las pestañas
+  // y quedaríamos apuntando a uno invisible (las comidas nuevas irían a un día
+  // que no se puede ver). Si el seleccionado ya no está, caemos al primero.
+  const dia = dias.includes(diaSel) ? diaSel : dias[0]
+  const setDia = setDiaSel
 
   const agregar = useComidaAgregar(empresaId)
   const editar = useComidaEditar(empresaId)
