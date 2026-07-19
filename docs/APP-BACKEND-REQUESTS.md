@@ -5,6 +5,111 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-19): PEDIDO 49 — agilizar el pago del socio con Yape (hoy solo "Pagar con MercadoPago" y saca al navegador)
+> **Contexto (lo que observó el owner probando desde el celular):** el carrito de la
+> app tiene un solo botón **"Pagar con MercadoPago"** que **abre el navegador externo**
+> (el `init_point` del Checkout Pro). Ahí MP muestra las tarjetas guardadas del usuario
+> y **Yape queda escondido** detrás de "Elegir otro medio de pago". Dos problemas de UX:
+> te saca de la app, y Yape (el medio #1 en Perú) no está a la mano.
+>
+> **Aclaración de negocio (para que no haya sorpresa):** el objetivo elegido es
+> **rapidez**, quedándonos en Mercado Pago (Yape *dentro* de MP → comisión MP ~4.5%,
+> cero integración nueva, concilia solo por el webhook que ya existe). NO es Yape
+> Empresa directo (2.95%, otra integración, sin recurrencia) — eso queda para después.
+>
+> **Límite de MP que ya verificamos (importante):** el **Checkout Pro NO permite
+> priorizar/ordenar** métodos (la doc solo deja *excluir*). O sea "poner Yape arriba"
+> no se puede en el `init_point`. Para un Yape más directo hay que cambiar de flujo.
+>
+> **Opciones para la app (de menor a mayor esfuerzo), elijan la que puedan:**
+>
+> **A) Mínimo — abrir el checkout en WebView embebido, no en navegador externo.**
+> Mismo `init_point` de hoy, pero dentro de la app (no te expulsa al navegador). MP
+> recomienda oficialmente WebView para móvil. **No requiere nada nuevo del backend**
+> (el endpoint `crear-pago` ya devuelve `init_point`). Es la mejora más barata.
+>
+> **B) Recomendada — Yape directo con Checkout API (número + OTP dentro de la app).**
+> El flujo "wow": botón **"Pagar con Yape"** → el socio ingresa su **número de Yape +
+> el OTP** que le aparece en su app Yape → paga sin salir ni ver menú de tarjetas. Es
+> el estándar de las apps peruanas. Referencia MP:
+> `developers/checkout-api-payments/integration-configuration/yape` (token con SDK JS
+> por número+OTP → `POST /v1/payments` con `payment_method_id:'yape'`).
+> **Lo que el backend expondría para esto (lo montamos cuando confirmen que la app lo
+> hará):** un endpoint nuevo `POST /api/mp/pagar-yape` que reciba el token de Yape que
+> genere el brick/SDK de MP en la app + el `pago_app` ya creado, y llame a `/v1/payments`
+> con el split del 5% (mismo `marketplace_fee` que `crear-pago`). El webhook actual ya
+> concilia igual (renueva membresía / registra venta / comprobante).
+>
+> **Lo que necesitamos que nos confirmen:**
+> 1. ¿Pueden hacer (A) WebView ya? Es la ganancia inmediata sin backend nuevo.
+> 2. ¿Quieren ir a (B) Yape directo? Si sí, ¿el brick/SDK de MP corre en KMP/WebView, o
+>    necesitan que el backend haga más parte del flujo? Con su respuesta montamos
+>    `pagar-yape` a la medida.
+> 3. Para membresía y para carrito de productos el flujo de pago es el mismo endpoint
+>    (`crear-pago` ya soporta ambos `tipo`), así que la mejora aplica a los dos.
+>
+> Nada de esto está roto hoy — el pago funciona; es puramente agilizar la experiencia.
+
+> ## 🔁 APP → PANEL (2026-07-19): PEDIDO 48b — la RPC de progresión que hicieron NO la puede usar la app (falta versión para el socio, con veredicto)
+> Vieron el PEDIDO 48 y montaron `analizar_progresion_socio(p_socio_id)`. Gracias, pero
+> **la app no la puede consumir** por dos razones concretas (verificado ejecutándola):
+>
+> 1. **Exige empresa activa** (`auth_empresa_id()` → `raise 'Sin empresa activa'`).
+>    Es una RPC de STAFF (la llama el trainer desde el panel). En la app la llama
+>    **el socio**, que NO tiene empresa activa → siempre falla.
+> 2. **No trae el veredicto ni la sugerencia.** Devuelve la **serie cruda** de
+>    sesiones por ejercicio (`sesiones: [{fecha, completado, carga}]`), pero la
+>    clasificación (adaptado/estancado/evitado) y el `sugerencia_kg` siguen en el
+>    JS del panel (`analizarProgresion.js`), fuera de la RPC. La app necesitaría
+>    reimplementar el motor en Kotlin — justo lo que queríamos evitar con la RPC.
+>
+> **Lo que la app necesita** (una RPC nueva, o que `analizar_progresion_socio`
+> acepte modo socio): que el **socio autenticado** (sin empresa activa) llame algo como
+> `mi_progresion()` o `analizar_mi_progresion()` y reciba, por ejercicio, el
+> veredicto YA calculado por el motor:
+> ```
+> [{ rutina_ejercicio_id, ejercicio, estado: 'adaptado'|'estancado'|'evitado'|'sin_datos',
+>    sesiones, carga_actual, sugerencia_kg /* o null */,
+>    mensaje: "Ya dominas Press banca — ¿subimos a 31.25 kg?" }]
+> ```
+> - Gate por RLS del socio (`socio.usuario_id = auth.uid()`), NO por empresa activa.
+> - Ideal: que sirva para AMBOS mundos (rutina asignada del gym y rutina libre), o
+>   una gemela `mi_progresion_libre()`.
+> - El motor de clasificación ya lo tienen en JS/SQL — solo falta exponerlo al
+>   socio con el veredicto incluido.
+> **El PEDIDO 47 p2 (sugerencias en la app) sigue en espera de esto.** El p1 (campo
+> de peso + progresión visible en el perfil) ya está implementado y funcionando.
+
+> ## 🆕 APP → PANEL (2026-07-18): PEDIDO 48 — expongan `analizar_progresion` como RPC (para el PEDIDO 47)
+> Respondiendo su PEDIDO 47: elegimos **RPC compartida** en vez de portar el
+> motor a Kotlin (una sola lógica, no se desincroniza). Necesitamos que monten
+> `analizarProgresion.js` como RPC de Postgres para que la app la llame.
+>
+> **Lo que la app necesita de la RPC** (nombre tentativo `analizar_progresion_ejercicio`):
+> - Entrada: el ejercicio a evaluar. Idealmente que acepte AMBOS mundos:
+>   `p_rutina_ejercicio_id` (asignada, PEDIDO 46) **o** `p_ejercicio_libre_id`
+>   (rutina libre, PEDIDO 47) — uno u otro. La RPC lee los registros del socio
+>   autenticado (`auth.uid()`) de la tabla que corresponda.
+> - Salida: el veredicto del motor + la acción sugerida, algo como:
+>   ```
+>   { estado: 'adaptado' | 'estancado' | 'evitado' | 'sin_datos',
+>     sesiones: 3,                 // veces con la carga actual
+>     carga_actual: 30,
+>     sugerencia_kg: 31.25,        // o null si no aplica
+>     mensaje: "Ya dominas Press banca — ¿subimos a 31.25 kg?" }
+>   ```
+> - `security definer`, `grant execute a authenticated`, gate por RLS del socio.
+> Con eso la app muestra la sugerencia y, al aceptar, sube la carga (PEDIDO 46) o
+> edita la rutina libre (PEDIDO 47). Avísennos el nombre/forma final y lo
+> consumimos. **El PEDIDO 47 en la app queda en espera de esta RPC.**
+
+> ## 📩 PANEL → APP (2026-07-18): PEDIDO 47 — progresión inteligente en la rutina LIBRE (mundo B) ✅ backend LISTO
+> **[RESPUESTA APP 2026-07-18]:** el punto 1 (campo de carga al marcar la libre)
+> lo hacemos con el mismo patrón del PEDIDO 46 ya implementado. El punto 2
+> (sugerencias del motor) lo pedimos como RPC compartida — ver PEDIDO 48 arriba.
+> El punto 3 (texto incentivo) lo incluimos en ambos mundos. Queda en espera de
+> la RPC del motor.
+
 > ## 📩 PANEL → APP (2026-07-18): PEDIDO 47 — progresión inteligente en la rutina LIBRE (mundo B) ✅ backend LISTO
 > Complemento del PEDIDO 46 (rutina asignada). Ahora para la rutina **libre** (la
 > que el socio se arma solo, sin gym): queremos sugerirle a ÉL MISMO cuándo subir
