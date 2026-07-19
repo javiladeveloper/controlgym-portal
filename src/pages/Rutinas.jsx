@@ -667,7 +667,11 @@ function GenerarPlantillaModal({ onClose }) {
   const qc = useQueryClient()
   const objetivos = useObjetivos()
   const [codigo, setCodigo] = useState('')
-  const [dias, setDias] = useState(3)
+  // 5 días por defecto: más días de actividad = mejores resultados (sobre todo
+  // en bajar de peso) y más razones para que el socio venga al gym. El admin
+  // puede bajarlo (rehabilitación, principiantes) o subirlo.
+  const [dias, setDias] = useState(5)
+  const [semanas, setSemanas] = useState(8)   // mesociclo estándar
   const [busy, setBusy] = useState(false)
 
   async function submit(e) {
@@ -679,6 +683,7 @@ function GenerarPlantillaModal({ onClose }) {
       p_sede_id: sedeId,
       p_objetivo_codigo: codigo,
       p_dias: Number(dias),
+      p_duracion_semanas: semanas === '' ? null : Number(semanas),
     })
     setBusy(false)
     if (error) {
@@ -701,10 +706,22 @@ function GenerarPlantillaModal({ onClose }) {
         </Campo>
         <Campo label="Días por semana *">
           <select required value={dias} onChange={(e) => setDias(Number(e.target.value))} className={inputCls + ' cursor-pointer'}>
-            {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} días</option>)}
+            {[2, 3, 4, 5, 6].map((n) => (
+              <option key={n} value={n}>{n} días{n === 5 ? ' (recomendado)' : ''}</option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Duración sugerida del plan">
+          <select value={semanas} onChange={(e) => setSemanas(e.target.value === '' ? '' : Number(e.target.value))}
+            className={inputCls + ' cursor-pointer'}>
+            <option value="">Sin sugerencia</option>
+            {[4, 8, 12, 16].map((n) => (
+              <option key={n} value={n}>{n} semanas{n === 8 ? ' (recomendado)' : ''}</option>
+            ))}
           </select>
         </Campo>
         <p className="-mt-1 text-[11.5px] font-semibold text-faint">
+          La duración pre-llena la vigencia al asignar esta plantilla a un socio (el trainer puede cambiarla).
           Si ese objetivo ya tenía una plantilla, se reemplaza por esta versión. No afecta a los socios que ya la tienen asignada.
         </p>
         <BotonesModal onCancel={onClose} busy={busy} submitLabel="Generar" />

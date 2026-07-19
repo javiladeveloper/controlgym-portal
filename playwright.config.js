@@ -12,6 +12,10 @@ const BASE = process.env.BASE_URL || 'https://fitcorecenter.com'
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Renueva la sesión guardada antes de correr: el access_token de Supabase dura
+  // 1h y, si vence a mitad de suite, TODOS los tests del panel fallan con
+  // "Cargando…" y parece un bug del panel cuando es la credencial.
+  globalSetup: './tests/e2e/global-setup.js',
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
