@@ -16,7 +16,9 @@ import {
   useAsignarVigencia, usePlantillaAgregarEj, usePlantillaEditarEj, usePlantillaQuitarEj,
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
-import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
+import { useObjetivos, usePlantillasRutina, usePlantillasDieta,
+  usePersonalizarPlantilla, useSetDuracionPlantilla,
+  useComidaAgregar, useComidaEditar, useComidaQuitar } from '../hooks/usePlantillas.js'
 import { useRutinasPorVencer, useProgresoSocio, useAnalizarProgresion } from '../hooks/useProgresion.js'
 import { sugerenciasDeProgreso } from '../lib/sugerenciasRutina.js'
 
@@ -1213,7 +1215,20 @@ function PlantillasPanel({ empresaId }) {
   const dietas = usePlantillasDieta(empresaId)
   const cargando = objetivos.isLoading || rutinas.isLoading || dietas.isLoading
   const error = objetivos.error || rutinas.error || dietas.error
-  const [editando, setEditando] = useState(null) // id de la plantilla_rutina (propia del gym) que se está editando
+  const [editando, setEditando] = useState(null) // id de la plantilla (del gym) que se está editando
+  const personalizar = usePersonalizarPlantilla(empresaId)
+
+  // Abre el editor de una plantilla. Si es GLOBAL, primero crea la copia de este
+  // gym (copy-on-write) y edita esa: la global es compartida por todos los gyms y
+  // nunca se modifica. Idempotente, así que pulsar dos veces no duplica.
+  const abrirEditor = (plantilla, tipo) => {
+    if (!plantilla) return
+    if (plantilla.empresa_id) { setEditando(editando === plantilla.id ? null : plantilla.id); return }
+    personalizar.mutate({ plantillaId: plantilla.id, tipo }, {
+      onSuccess: (nuevoId) => setEditando(nuevoId),
+      onError: (e) => toast.error(e.message),
+    })
+  }
 
   return (
     <Card className="mt-[18px] p-[19px]">
@@ -1221,7 +1236,8 @@ function PlantillasPanel({ empresaId }) {
       <p className="mt-0.5 text-[12px] font-semibold text-muted">
         Al inscribir a un socio con objetivo + peso + talla, el sistema copia estas plantillas (moduladas por su IMC) como su rutina y dieta iniciales.
         También puedes asignarlas a mano: en «Por socio», elige al socio y pulsa «⚡ Usar plantilla».
-        Prioriza la plantilla personalizada del gym; si no existe, usa la global. Puedes editar los ejercicios de la plantilla de tu gym sin tener que regenerarla entera.
+        Prioriza la plantilla personalizada del gym; si no existe, usa la global. Al editar una plantilla «Global» se crea automáticamente
+        tu versión personalizada (la global queda intacta para los demás gimnasios). Dentro del editor también fijas la duración sugerida del plan.
       </p>
 
       {cargando && <div className="mt-4"><LoadingState variant="table" rows={4} /></div>}
@@ -1252,12 +1268,11 @@ function PlantillasPanel({ empresaId }) {
                           <Badge bg={rGym ? '#E7F6F0' : '#EEF1FF'} color={rGym ? '#1D9E75' : '#4C5AA8'}>
                             {rGym ? 'Personalizada (tu gym)' : 'Global'}
                           </Badge>
-                          {rGym && (
-                            <button onClick={() => setEditando(editando === rGym.id ? null : rGym.id)}
-                              className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50">
-                              {editando === rGym.id ? '✕ Cerrar' : '✎ Editar ejercicios'}
-                            </button>
-                          )}
+                          <button onClick={() => abrirEditor(rutinaUsada, 'rutina')}
+                            disabled={personalizar.isPending}
+                            className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50 disabled:opacity-50">
+                            {rGym && editando === rGym.id ? '✕ Cerrar' : '✎ Editar'}
+                          </button>
                         </>
                       ) : <span className="text-faint">— sin plantilla aún</span>}
                     </div>
@@ -1269,13 +1284,21 @@ function PlantillasPanel({ empresaId }) {
                           <Badge bg={dGym ? '#E7F6F0' : '#EEF1FF'} color={dGym ? '#1D9E75' : '#4C5AA8'}>
                             {dGym ? 'Personalizada (tu gym)' : 'Global'}
                           </Badge>
+                          <button onClick={() => abrirEditor(dietaUsada, 'dieta')}
+                            disabled={personalizar.isPending}
+                            className="cursor-pointer rounded-[7px] border border-orange bg-transparent px-2 py-1 text-[10.5px] font-extrabold text-orange hover:bg-orange-50 disabled:opacity-50">
+                            {dGym && editando === dGym.id ? '✕ Cerrar' : '✎ Editar'}
+                          </button>
                         </>
                       ) : <span className="text-faint">— sin plantilla aún</span>}
                     </div>
                   </div>
                 )}
                 {rGym && editando === rGym.id && (
-                  <PlantillaEditor plantilla={rGym} empresaId={empresaId} />
+                  <PlantillaEditor plantilla={rGym} empresaId={empresaId} tipo="rutina" />
+                )}
+                {dGym && editando === dGym.id && (
+                  <PlantillaDietaEditor plantilla={dGym} empresaId={empresaId} />
                 )}
               </div>
             )
@@ -1293,7 +1316,135 @@ function PlantillasPanel({ empresaId }) {
 // las mismas filas editables (EjercicioFila/InputEjercicio) que se usan para
 // la rutina de un socio, para que se sienta igual. Solo aplica a rGym: la
 // global es de solo lectura (no tiene empresa_id, las RPCs la rechazan).
-function PlantillaEditor({ plantilla, empresaId }) {
+// Selector de la duración SUGERIDA de una plantilla (rutina o dieta). Al asignar
+// la plantilla a un socio, este valor pre-llena la vigencia de su rutina — el
+// trainer siempre puede cambiarla. Compartido por ambos editores.
+function SelectorDuracionPlantilla({ plantilla, tipo, setDuracion }) {
+  return (
+    <label className="mb-2.5 flex flex-wrap items-center gap-2 border-b border-line2 pb-2.5 text-[12px] font-bold text-muted">
+      ⏳ Duración sugerida del plan:
+      <select
+        value={plantilla.duracion_semanas ?? ''}
+        onChange={(e) => setDuracion.mutate({
+          plantillaId: plantilla.id, tipo,
+          semanas: e.target.value === '' ? null : Number(e.target.value),
+        }, { onError: (er) => toast.error(er.message) })}
+        className="rounded-[7px] border border-line bg-white px-2 py-1 text-[12px] font-extrabold text-ink outline-none focus:border-orange">
+        <option value="">Sin sugerencia</option>
+        {[4, 8, 12, 16].map((n) => <option key={n} value={n}>{n} semanas</option>)}
+      </select>
+      <span className="text-[11px] font-semibold text-faint">
+        Se usará al asignar esta plantilla a un socio (el trainer puede cambiarla).
+      </span>
+    </label>
+  )
+}
+
+// Editor de comidas de la plantilla de DIETA del gym: pestañas por día (o "Todos
+// los días" cuando dia_semana es null) + filas editables con nombre, hora, kcal y
+// descripción. Espejo de PlantillaEditor para que se sienta igual.
+function PlantillaDietaEditor({ plantilla, empresaId }) {
+  const comidas = plantilla.comidas || []
+  const diasConComida = [...new Set(comidas.map((c) => c.dia_semana ?? 0))].sort((a, b) => a - b)
+  const dias = diasConComida.length ? diasConComida : [0]
+  const [dia, setDia] = useState(dias[0])
+  const [nueva, setNueva] = useState('')
+
+  const agregar = useComidaAgregar(empresaId)
+  const editar = useComidaEditar(empresaId)
+  const quitar = useComidaQuitar(empresaId)
+  const setDuracion = useSetDuracionPlantilla(empresaId)
+
+  const delDia = comidas.filter((c) => (c.dia_semana ?? 0) === dia)
+  const label = (n) => (n === 0 ? 'Todos los días' : ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][n])
+
+  const agregarComida = (nombre) => {
+    agregar.mutate(
+      { plantillaDietaId: plantilla.id, nombre, hora: null, descripcion: null, kcal: null,
+        diaSemana: dia === 0 ? null : dia },
+      { onError: (er) => toast.error(er.message) },
+    )
+  }
+
+  return (
+    <div className="mt-2.5 rounded-xl border border-line bg-white p-[13px]">
+      <SelectorDuracionPlantilla plantilla={plantilla} tipo="dieta" setDuracion={setDuracion} />
+
+      <div className="flex flex-wrap gap-1.5">
+        {dias.map((d) => (
+          <button key={d} onClick={() => setDia(d)}
+            className={`cursor-pointer rounded-[7px] border-none px-2.5 py-1 text-[11px] font-extrabold transition-colors ${dia === d ? 'bg-orange text-white' : 'bg-surface text-muted hover:text-orange'}`}>
+            {label(d)}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 border-t border-line2 pt-2.5">
+        <div className="mb-1 text-[10.5px] font-bold text-faint">nombre · hora · kcal · descripción — se guarda al salir del campo</div>
+        {delDia.map((c) => (
+          <ComidaFilaPlantilla key={c.id} comida={c}
+            onGuardar={(v) => editar.mutate(
+              { id: c.id, nombre: v.nombre, hora: v.hora, descripcion: v.descripcion, kcal: v.kcal },
+              { onError: (er) => toast.error(er.message) },
+            )}
+            onEliminar={() => quitar.mutate(c.id, { onError: (er) => toast.error(er.message) })} />
+        ))}
+        {delDia.length === 0 && (
+          <div className="py-2 text-[12px] font-semibold text-faint">Sin comidas aún — agrega la primera:</div>
+        )}
+        <div className="mt-2 flex gap-2 border-t border-line2 pt-2.5">
+          <input value={nueva} onChange={(e) => setNueva(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && nueva.trim()) { agregarComida(nueva.trim()); setNueva('') } }}
+            placeholder="Nueva comida (ej. Desayuno) y Enter…"
+            className="flex-1 rounded-[9px] border border-dashed border-line bg-[#FAFBFC] px-3 py-2 text-[12.5px] font-bold outline-none focus:border-orange" />
+          <button onClick={() => { if (nueva.trim()) { agregarComida(nueva.trim()); setNueva('') } }}
+            className="cursor-pointer rounded-[9px] border-none bg-orange px-4 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600">
+            + Agregar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Fila editable de una comida de plantilla. Guarda al salir del campo (onBlur),
+// mismo patrón que EjercicioFilaPlantilla.
+function ComidaFilaPlantilla({ comida, onGuardar, onEliminar }) {
+  const [nombre, setNombre] = useState(comida.nombre || '')
+  // la hora viene de Postgres como 'HH:MM:SS'; el input muestra HH:MM
+  const [hora, setHora] = useState((comida.hora || '').slice(0, 5))
+  const [kcal, setKcal] = useState(comida.kcal ?? '')
+  const [descripcion, setDescripcion] = useState(comida.descripcion || '')
+
+  const guardar = () => {
+    if (!nombre.trim()) { setNombre(comida.nombre || ''); return }
+    onGuardar({
+      nombre: nombre.trim(), hora: hora || null,
+      descripcion: descripcion || null, kcal: kcal === '' ? null : Number(kcal),
+    })
+  }
+
+  const input = 'rounded-[7px] border border-line bg-white px-2 py-1 text-[12px] font-bold outline-none focus:border-orange'
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-t border-line2 py-1.5 first:border-0">
+      <input value={nombre} onChange={(e) => setNombre(e.target.value)} onBlur={guardar}
+        className={`${input} min-w-[130px] flex-1`} placeholder="Comida" />
+      <input value={hora} onChange={(e) => setHora(e.target.value)} onBlur={guardar}
+        className={`${input} w-[74px]`} placeholder="08:00" />
+      <input value={kcal} onChange={(e) => setKcal(e.target.value)} onBlur={guardar}
+        className={`${input} w-[70px]`} placeholder="kcal" inputMode="numeric" />
+      <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} onBlur={guardar}
+        className={`${input} min-w-[150px] flex-[2]`} placeholder="Descripción" />
+      <button onClick={onEliminar} title="Quitar"
+        className="cursor-pointer rounded-[7px] border-none bg-transparent px-2 py-1 text-[13px] text-faint hover:text-red-600">
+        ✕
+      </button>
+    </div>
+  )
+}
+
+function PlantillaEditor({ plantilla, empresaId, tipo = 'rutina' }) {
   const [diaId, setDiaId] = useState(plantilla.dias?.[0]?.id ?? null)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
   const [nuevoEj, setNuevoEj] = useState('')
@@ -1301,6 +1452,7 @@ function PlantillaEditor({ plantilla, empresaId }) {
   const agregar = usePlantillaAgregarEj(empresaId)
   const editar = usePlantillaEditarEj(empresaId)
   const quitar = usePlantillaQuitarEj(empresaId)
+  const setDuracion = useSetDuracionPlantilla(empresaId)
 
   const dias = plantilla.dias || []
   const diaActivo = dias.find((d) => d.id === diaId) || dias[0]
@@ -1314,12 +1466,19 @@ function PlantillaEditor({ plantilla, empresaId }) {
     )
   }
 
+  // Sin días aún: igual se puede fijar la duración sugerida (no se pierde el control).
   if (!dias.length) {
-    return <div className="mt-2.5 rounded-xl border border-line bg-white p-3 text-[12px] font-semibold text-faint">Esta plantilla no tiene días — regénerala desde "✨ Generar plantilla".</div>
+    return (
+      <div className="mt-2.5 rounded-xl border border-line bg-white p-[13px]">
+        <SelectorDuracionPlantilla plantilla={plantilla} tipo={tipo} setDuracion={setDuracion} />
+        <div className="text-[12px] font-semibold text-faint">Esta plantilla no tiene días — regénerala desde "✨ Generar plantilla".</div>
+      </div>
+    )
   }
 
   return (
     <div className="mt-2.5 rounded-xl border border-line bg-white p-[13px]">
+      <SelectorDuracionPlantilla plantilla={plantilla} tipo={tipo} setDuracion={setDuracion} />
       <div className="flex flex-wrap gap-1.5">
         {dias.map((d) => (
           <button key={d.id} onClick={() => setDiaId(d.id)}
