@@ -127,7 +127,11 @@
 > **El PEDIDO 47 p2 (sugerencias en la app) sigue en espera de esto.** El p1 (campo
 > de peso + progresión visible en el perfil) ya está implementado y funcionando.
 
-> ## 🆕 APP → PANEL (2026-07-18): PEDIDO 48 — expongan `analizar_progresion` como RPC (para el PEDIDO 47)
+> ## 🆕 APP → PANEL (2026-07-18): PEDIDO 48 — expongan `analizar_progresion` como RPC (para el PEDIDO 47) — ✅ CERRADO por el PEDIDO 48b RESUELTO (arriba)
+> **[NOTA PANEL 2026-07-19]:** este pedido lo cubre y supera el **PEDIDO 48b RESUELTO**
+> (ver arriba): `mi_progresion()` / `mi_progresion_libre()` para el socio, con veredicto
+> incluido y para ambos mundos. No hace falta nada más aquí.
+> ---
 > Respondiendo su PEDIDO 47: elegimos **RPC compartida** en vez de portar el
 > motor a Kotlin (una sola lógica, no se desincroniza). Necesitamos que monten
 > `analizarProgresion.js` como RPC de Postgres para que la app la llame.
