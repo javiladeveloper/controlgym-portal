@@ -349,6 +349,25 @@ export function useEnviarPlan(socioId) {
   })
 }
 
+// Asigna vigencia (fecha de vencimiento) a la rutina recién enviada. Vive
+// separado de useEnviarPlan porque solo aplica a rutinas (no a dietas) y el
+// trainer elige la duración en semanas justo antes de confirmar el envío.
+export function useAsignarVigencia(socioId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ rutinaId, semanas }) => {
+      const { data, error } = await supabase.rpc('asignar_rutina_con_vigencia', {
+        p_rutina_id: rutinaId, p_duracion_semanas: semanas })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rutina', socioId] })
+      qc.invalidateQueries({ queryKey: ['rutinas-por-vencer'] })
+    },
+  })
+}
+
 // ── Solicitudes de subir carga (desde la app del socio) ─────────────────────
 // Quedan EN HOLD (estado 'pendiente') hasta que ALGUIEN del staff decida:
 // no pertenecen a un trainer — si el que firmó la rutina está enfermo o ya

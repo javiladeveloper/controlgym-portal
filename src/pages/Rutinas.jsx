@@ -13,6 +13,7 @@ import {
   useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
   useSolicitudesCarga, useResponderSolicitud, useAsignarPlanAutomatico,
+  useAsignarVigencia,
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
@@ -476,6 +477,8 @@ function RutinasImpl() {
       : undefined)
   const dieta = useDietaSocio(socioId)
   const enviar = useEnviarPlan(socioId)
+  const asignarVigencia = useAsignarVigencia(socioId)
+  const [semanasVigencia, setSemanasVigencia] = useState(8)
   const rutina = useRutinaSocio(socioId)
   const crearRutina = useCrearRutina(socioId, empresa?.id)
   const crearDieta = useCrearDieta(socioId, empresa?.id)
@@ -869,11 +872,29 @@ function RutinasImpl() {
             )}
           </Card>
 
-          <div className="mt-[18px] flex items-center gap-3.5">
-            <button disabled={(!dieta.data?.id && !rutina.data?.id) || enviar.isPending}
-              onClick={() => enviar.mutate({ dietaId: dieta.data?.id, rutinaId: veRutina ? rutina.data?.id : null }, { onSuccess: () => setEnviado(true) })}
+          <div className="mt-[18px] flex flex-wrap items-center gap-3.5">
+            {veRutina && rutina.data?.id && (
+              <label className="flex items-center gap-2 text-[12.5px] font-bold text-muted">
+                Vigencia del plan:
+                <select value={semanasVigencia} onChange={(e) => setSemanasVigencia(Number(e.target.value))}
+                  className={inputCls + ' w-auto cursor-pointer !py-1.5'}>
+                  {[4, 8, 12, 16].map((n) => <option key={n} value={n}>{n} semanas</option>)}
+                </select>
+                <span className="text-faint">— al vencer, te avisamos para renovarlo.</span>
+              </label>
+            )}
+            <button disabled={(!dieta.data?.id && !rutina.data?.id) || enviar.isPending || asignarVigencia.isPending}
+              onClick={() => enviar.mutate({ dietaId: dieta.data?.id, rutinaId: veRutina ? rutina.data?.id : null }, {
+                onSuccess: () => {
+                  setEnviado(true)
+                  if (veRutina && rutina.data?.id) {
+                    asignarVigencia.mutate({ rutinaId: rutina.data.id, semanas: semanasVigencia },
+                      { onError: (er) => toast.error(er.message) })
+                  }
+                },
+              })}
               className="cursor-pointer rounded-[11px] border-none bg-orange px-6 py-[13px] text-[14px] font-extrabold text-white shadow-[0_4px_14px_rgba(255,107,53,0.32)] transition-colors hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50">
-              {enviar.isPending ? 'Enviando…' : 'Enviar a la app del socio'}
+              {enviar.isPending || asignarVigencia.isPending ? 'Enviando…' : 'Enviar a la app del socio'}
             </button>
             {enviado && (
               <div className="flex animate-fadeSlide items-center gap-2 rounded-[10px] bg-green-50 px-4 py-[11px]">
