@@ -158,6 +158,32 @@ enlaza `rutina_anterior_id` a la que vence.
 - **App**: PEDIDO documentado — persistir check por ejercicio + carga vía la RPC
   nueva.
 
+## Estado de implementación (2026-07-18)
+
+Feature implementada y cerrada (A+B+C+D). Revisión final: el ciclo cierra
+end-to-end (asignar con vigencia → por vencer → renovar; la rutina vieja se
+desactiva, sale de "por vencer", el aviso se resetea). Decisiones tomadas al
+construir:
+
+- **La renovación desde el panel edita la rutina en el lugar**, no crea una nueva.
+  El flujo de "usar plantilla" se bloquea cuando el socio ya tiene rutina activa,
+  así que el botón "Asignar siguiente rutina" lleva a editar la rutina vigente y
+  re-fija su vigencia. **Consecuencia:** `rutina_anterior_id` NO se enlaza — el
+  historial R1→R2 que este spec describía no se guarda. El owner decidió dejarlo
+  así (2026-07-18): hoy ningún panel muestra ese historial, así que no hay pérdida
+  visible. **Follow-up** cuando se quiera exponer la progresión: cambiar la
+  renovación para crear una rutina nueva (copiando la anterior) y enlazarla.
+- **Adherencia por ejercicio + carga (Parte B)**: el backend está montado
+  (`registro_entreno_ejercicio` + `marcar_entreno_ejercicio`), pero la app aún la
+  consume (PEDIDO 46). Hasta entonces el panel degrada limpio: `adherencia_ejercicio`
+  viene vacío y se muestra "aún sin registros por ejercicio".
+
+Follow-ups menores no bloqueantes: guard contra división por cero en
+`sugerenciasDeProgreso` (casos degenerados); UX del toast cuando falla solo la
+vigencia; `useRenovarRutina` es código forward-looking sin uso; y las policies RLS
+`USING(true)` de `plantilla_rutina_dia/ejercicio` (deuda preexistente, un gym puede
+LEER plantillas de otro — las RPCs de edición sí validan empresa).
+
 ## Fuera de alcance
 
 - **Sugerencias con IA/ML**: las sugerencias son reglas simples sobre los datos,
