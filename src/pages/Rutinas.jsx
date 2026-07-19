@@ -17,7 +17,8 @@ import {
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
-import { useRutinasPorVencer } from '../hooks/useProgresion.js'
+import { useRutinasPorVencer, useProgresoSocio } from '../hooks/useProgresion.js'
+import { sugerenciasDeProgreso } from '../lib/sugerenciasRutina.js'
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
 import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
@@ -322,10 +323,8 @@ function SolicitudesCarga({ empresaId, onIrSocio }) {
 }
 
 // Rutinas que vencen en ≤3 días o ya vencieron (RPC de la Parte C). El botón
-// "Ver progreso y renovar" hoy solo selecciona al socio en esta misma vista
-// (mismo comportamiento que un clic en la lista) — el panel de progreso real
-// llega en la Parte D.
-function RutinasPorVencer({ sedeId, onIrSocio }) {
+// "Ver progreso y renovar" abre el panel de progreso (Parte D) sobre ese socio.
+function RutinasPorVencer({ sedeId, onIrSocio, onVerProgreso }) {
   const porVencer = useRutinasPorVencer(sedeId)
   if (porVencer.error) {
     return (
@@ -360,8 +359,7 @@ function RutinasPorVencer({ sedeId, onIrSocio }) {
               </div>
             </div>
             <button
-              // TODO Parte D: abrir panel de progreso — por ahora solo selecciona al socio
-              onClick={() => onIrSocio(r.socio_id)}
+              onClick={() => { onIrSocio(r.socio_id); onVerProgreso(r.socio_id) }}
               className="cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-orange-600">
               Ver progreso y renovar
             </button>
@@ -369,6 +367,150 @@ function RutinasPorVencer({ sedeId, onIrSocio }) {
         )
       })}
     </Card>
+  )
+}
+
+// Mini-serie de peso en SVG puro (sin librería de charts): suficiente para que
+// el trainer vea la tendencia de un vistazo. Si hay 0-1 puntos no se dibuja.
+function MiniSerie({ serie }) {
+  const puntos = (serie || []).filter((p) => p.peso_kg != null)
+  if (puntos.length < 2) return null
+  const w = 220, h = 46, pad = 4
+  const valores = puntos.map((p) => Number(p.peso_kg))
+  const min = Math.min(...valores), max = Math.max(...valores)
+  const rango = max - min || 1
+  const xs = puntos.map((_, i) => pad + (i * (w - pad * 2)) / (puntos.length - 1))
+  const ys = valores.map((v) => h - pad - ((v - min) / rango) * (h - pad * 2))
+  const path = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mt-1.5">
+      <path d={path} fill="none" stroke={T.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {xs.map((x, i) => <circle key={i} cx={x} cy={ys[i]} r="2.5" fill={T.primary} />)}
+    </svg>
+  )
+}
+
+// Panel de progreso del socio (Parte D3): pinta lo que trae progreso_socio +
+// las sugerencias de sugerenciasDeProgreso, y ofrece renovar la rutina.
+//
+// Approach de renovación elegido: el flujo "crear desde plantilla" YA existe
+// (AsignarPlantillaModal → asignar_plan_automatico) pero está pensado para un
+// socio SIN rutina activa (bloquea con motivo 'ya_tiene_plan' si ya tiene una).
+// Encadenarlo aquí exigiría desactivar la rutina vieja antes de poder generar
+// la nueva desde plantilla, lo que duplica lógica que ya vive en el RPC de
+// vigencia. En su lugar, "Asignar siguiente rutina" cierra este panel y deja
+// al trainer en la vista de edición de la rutina del socio (ya seleccionado),
+// con las sugerencias a la vista arriba: ahí ajusta/edita la rutina existente
+// (o la reemplaza ejercicio por ejercicio) y, al pulsar "Enviar a la app del
+// socio", el botón YA dispara asignar_rutina_con_vigencia (useAsignarVigencia)
+// con la duración elegida — eso fija la nueva vigencia y enlaza la rutina
+// anterior vía rutina_anterior_id. Es el mismo RPC que useRenovarRutina expone
+// para un uso más directo si en el futuro se arma un flujo de "copiar y enlazar"
+// sin pasar por la edición manual.
+function ProgresoRenovarModal({ socio, objetivoCodigo, onClose, onIrEditar }) {
+  const progreso = useProgresoSocio(socio.id)
+  const sugerencias = sugerenciasDeProgreso(progreso.data, objetivoCodigo)
+  const p = progreso.data || {}
+  const peso = p.peso || {}
+  const asistencia = p.asistencia || {}
+  const adhDia = p.adherencia_dia || {}
+  const adhEj = p.adherencia_ejercicio || []
+
+  return (
+    <Modal title={`📈 Progreso de ${socio.nombre}`} subtitle="Periodo de la rutina activa (o últimos 60 días si no tenía)." width={560} onClose={onClose}>
+      {progreso.isLoading && <LoadingState variant="table" rows={4} />}
+      {progreso.error && <ErrorState error={progreso.error} onRetry={progreso.refetch} />}
+
+      {!progreso.isLoading && !progreso.error && (
+        <div className="flex flex-col gap-4">
+          {/* Sugerencias arriba: lo primero que ve el trainer */}
+          {sugerencias.length > 0 && (
+            <div className="rounded-xl border border-orange bg-orange-50 p-[13px]">
+              <div className="text-[12.5px] font-extrabold text-orange">💡 Sugerencias para la siguiente rutina</div>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {sugerencias.map((s, i) => (
+                  <li key={i} className="text-[12.5px] font-bold text-ink">· {s.texto}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {sugerencias.length === 0 && (
+            <div className="rounded-xl border border-line bg-surface p-[13px] text-[12.5px] font-semibold text-muted">
+              Aún no hay suficientes datos para sugerir ajustes automáticos — revisa el detalle abajo.
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Peso */}
+            <div className="rounded-xl border border-line bg-white p-[13px]">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">⚖️ Peso</div>
+              {peso.delta != null ? (
+                <div className={`mt-1 text-[15px] font-extrabold ${peso.delta < 0 ? 'text-green-600' : peso.delta > 0 ? 'text-orange' : 'text-muted'}`}>
+                  {peso.delta > 0 ? '+' : ''}{Number(peso.delta).toFixed(1)} kg
+                </div>
+              ) : (
+                <div className="mt-1 text-[12.5px] font-semibold text-faint">Sin datos suficientes</div>
+              )}
+              {peso.meta?.objetivo_kg != null && peso.serie?.length > 0 && (
+                <div className="mt-0.5 text-[11px] font-bold text-faint">
+                  Meta: {peso.meta.objetivo_kg} kg · última {Number(peso.serie[peso.serie.length - 1].peso_kg).toFixed(1)} kg
+                </div>
+              )}
+              <MiniSerie serie={peso.serie} />
+            </div>
+
+            {/* Asistencia */}
+            <div className="rounded-xl border border-line bg-white p-[13px]">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">📅 Asistencia</div>
+              <div className="mt-1 text-[15px] font-extrabold text-ink">
+                {asistencia.dias ?? 0} día{asistencia.dias === 1 ? '' : 's'}
+              </div>
+              <div className="mt-0.5 text-[11px] font-bold text-faint">
+                en {asistencia.semanas ?? '—'} semana{asistencia.semanas === 1 ? '' : 's'} de periodo
+              </div>
+            </div>
+          </div>
+
+          {/* Adherencia por día */}
+          <div className="rounded-xl border border-line bg-white p-[13px]">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">✅ Adherencia por día</div>
+            <div className="mt-1 text-[15px] font-extrabold text-ink">
+              {adhDia.completados ?? 0} de {adhDia.esperados ?? 0} días completados
+            </div>
+          </div>
+
+          {/* Adherencia por ejercicio */}
+          <div className="rounded-xl border border-line bg-white p-[13px]">
+            <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">🏋️ Adherencia por ejercicio</div>
+            {adhEj.length === 0 ? (
+              <div className="text-[12.5px] font-semibold text-faint">Aún sin registros por ejercicio.</div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {adhEj.map((e, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 border-t border-line2 pt-1.5 first:border-0 first:pt-0">
+                    <span className="text-[12.5px] font-bold text-ink">{e.ejercicio}</span>
+                    <span className="text-[11.5px] font-extrabold text-muted">
+                      {e.veces}×{e.carga_prom != null ? ` · ${Number(e.carga_prom).toFixed(1)} kg prom.` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 border-t border-line2 pt-3.5">
+            <button onClick={onClose} type="button"
+              className="cursor-pointer rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-extrabold text-muted hover:border-orange">
+              Cerrar
+            </button>
+            <button onClick={onIrEditar} type="button"
+              className="cursor-pointer rounded-[10px] border-none bg-orange px-5 py-2.5 text-[13.5px] font-extrabold text-white hover:bg-orange-600">
+              Asignar siguiente rutina
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
   )
 }
 
@@ -555,6 +697,7 @@ function RutinasImpl() {
   const [tab, setTab] = useState('socios') // 'socios' | 'plantillas'
   const [plantillaOpen, setPlantillaOpen] = useState(false) // modal "Usar plantilla"
   const [generarOpen, setGenerarOpen] = useState(false) // modal "Generar plantilla"
+  const [progresoSocioId, setProgresoSocioId] = useState(null) // modal "Ver progreso y renovar"
 
   // Ejercicios de la rutina (mismas filas que escribe la app del entrenador)
   const diasIds = (rutina.data?.dias || []).map((d) => d.id)
@@ -641,6 +784,23 @@ function RutinasImpl() {
       {bancoOpen && <BancoEjerciciosModal onClose={() => setBancoOpen(false)} />}
       {generarOpen && <GenerarPlantillaModal onClose={() => setGenerarOpen(false)} />}
       {plantillaOpen && socio && <AsignarPlantillaModal socio={socio} onClose={() => setPlantillaOpen(false)} />}
+      {progresoSocioId && (() => {
+        const socioProgreso = socios.data?.find((s) => s.id === progresoSocioId)
+          || (progresoSocioId === socio?.id ? socio : { id: progresoSocioId, nombre: 'Socio', objetivo_id: null })
+        const objetivoCodigo = objetivosCatalogo.find((o) => o.id === socioProgreso.objetivo_id)?.codigo
+        return (
+          <ProgresoRenovarModal socio={socioProgreso} objetivoCodigo={objetivoCodigo}
+            onClose={() => setProgresoSocioId(null)}
+            onIrEditar={() => {
+              setSocioId(socioProgreso.id)
+              setBusqueda('')
+              setDiaSel(null)
+              setEnviado(false)
+              setProgresoSocioId(null)
+              toast.ok('Ajusta la rutina abajo y usa "Enviar a la app del socio" para fijar la nueva vigencia')
+            }} />
+        )
+      })()}
       {catalogoOpen && diaSel && (
         <Modal title="Catálogo de ejercicios" subtitle="Elige uno para agregarlo al día seleccionado" width={720} onClose={() => setCatalogoOpen(false)}>
           <BuscadorEjercicios onElegir={(ej) => {
@@ -661,7 +821,8 @@ function RutinasImpl() {
       )}
 
       <RutinasPorVencer sedeId={sedeId}
-        onIrSocio={(id) => { setSocioId(id); setBusqueda(''); setDiaSel(null); setEnviado(false) }} />
+        onIrSocio={(id) => { setSocioId(id); setBusqueda(''); setDiaSel(null); setEnviado(false) }}
+        onVerProgreso={(id) => setProgresoSocioId(id)} />
 
       {socios.isLoading && <LoadingState variant="cards" rows={2} />}
       {socios.error && <ErrorState error={socios.error} onRetry={socios.refetch} />}
