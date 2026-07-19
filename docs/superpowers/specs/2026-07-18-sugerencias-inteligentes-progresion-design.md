@@ -64,8 +64,11 @@ Y por día: `dia_abandonado` si la adherencia del día entero < umbral.
 
 **Reglas de las señales** (el "cuánto/cuándo" de adaptado/estancado espera la
 investigación; evitado/abandonado ya se pueden definir):
-- **evitado**: `tasa < 0.30` (completa menos del 30% de las veces que tocaba).
-- **día abandonado**: adherencia del día entero `< 0.20`.
+- **evitado**: por ausencia (`intentos/esperado < 0.30`) o por incompletitud
+  (`completados/esperado < 0.30`). Ver el árbol de decisión de abajo para el orden.
+- **día abandonado**: adherencia del día entero `< 0.20`, evaluada solo sobre los
+  ejercicios del día que SÍ tienen datos (un día entero sin registros = sin datos,
+  no abandonado).
 - **adaptado**: ⏳ PENDIENTE INVESTIGACIÓN — regla de "cuándo el cuerpo se adaptó
   y toca subir" (double progression: completar el objetivo N sesiones seguidas).
 - **estancado**: ⏳ PENDIENTE INVESTIGACIÓN — carga plana durante X tiempo pese a
@@ -136,15 +139,29 @@ ejercicio es baja pero no nula (viene a veces), **no** se sugiere subir aunque
 **evitado**, no adaptado. Solo se sugiere subir a quien viene con constancia
 (tasa alta) y completa.
 
-**Resumen del árbol de decisión por ejercicio:**
+**Resumen del árbol de decisión por ejercicio** (en este orden — la evaluación
+para en la primera que aplica):
 ```
-tasa < 0.30                              → EVITADO (replantear/motivar)
-tasa alta + completa objetivo N seguidas → ADAPTADO (subir carga, incremento por grupo)
-tasa alta + falla objetivo 3 seguidas    → ESTANCADO (deload; luego cambiar)
-tasa alta + carga plana ≥4 sem completando → ESTANCADO (cambiar ejercicio/esquema)
-resto                                    → NORMAL (seguir igual)
+sin ningún registro en el periodo         → NORMAL + sin_datos (la app aún no persiste; NO es evitar)
+intentos/esperado < 0.30                   → EVITADO por ausencia (casi no viene → replantear/motivar)
+constante + falla objetivo 3 seguidas      → ESTANCADO (deload; luego cambiar)  [antes que incompletitud]
+completados/esperado < 0.30                → EVITADO por incompletitud (viene pero no termina → bajar exigencia)
+constante + completa objetivo N seguidas   → ADAPTADO (subir carga, incremento por grupo)
+resto                                      → NORMAL (seguir igual)
 ```
-donde N = 2 (novato) o 3 (intermedio), inferido del historial de carga.
+donde N = 2 (novato) o 3 (intermedio), inferido del historial de carga; "constante"
+= tasa de intentos ≥ 0.5.
+
+**Dos matices que salieron al implementar (revisión adversarial):**
+- **`sin_datos` primero.** Un ejercicio sin ningún registro en el periodo NO es
+  "evitado": es que la app aún no persiste (`registro_entreno_ejercicio` a 0 filas
+  hoy). El motor lo marca `normal` + `sin_datos:true` y el panel degrada a "aún sin
+  registros". Sin este corte, con la BD vacía TODO saldría en rojo — el bug opuesto
+  a la degradación buscada.
+- **Evitado tiene dos formas.** Ausencia (no viene: intentos bajos) e incompletitud
+  (viene pero casi nunca termina: completados bajos). El estancado se evalúa entre
+  ambas para no confundir una meseta real (racha de fallos con la misma carga) con
+  "nunca completa".
 
 ## Los datos que faltan (dependencia dura)
 

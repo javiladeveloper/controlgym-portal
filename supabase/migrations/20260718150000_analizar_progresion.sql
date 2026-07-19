@@ -43,6 +43,7 @@ begin
       'ejercicio', t.nombre,
       'grupo_muscular', t.grupo_muscular,
       'dia', t.dia_nombre,
+      'dia_id', t.dia_id,
       'series_obj', t.series,
       'veces_esperado', round(v_semanas)::int,
       'sesiones', t.sesiones
@@ -51,6 +52,7 @@ begin
   from (
     select re.id, re.nombre, re.orden, re.series,
            ej.grupo_muscular,
+           rd.id as dia_id,
            rd.dia_semana,
            coalesce(nullif(trim(rd.foco), ''), 'Día ' || rd.dia_semana::text) as dia_nombre,
            coalesce((

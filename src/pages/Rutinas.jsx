@@ -543,17 +543,17 @@ function ProgresoRenovarModal({ socio, objetivoCodigo, onClose, onIrEditar }) {
 
             {/* aviso de día abandonado */}
             {diasAbandonados.map((d) => (
-              <div key={d.dia} className="mb-1.5 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-bold text-red-700">
+              <div key={d.dia_id || d.dia} className="mb-1.5 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-bold text-red-700">
                 ⚠️ Casi no entrena <strong>{d.dia}</strong> — replantea ese día o motívalo.
               </div>
             ))}
 
             {senales.length > 0 ? (
               <div className="flex flex-col gap-1.5">
-                {senales.map((e) => {
+                {senales.map((e, i) => {
                   const s = SENAL_PROGRESION[e.estado]
                   return (
-                    <div key={`${e.dia}-${e.ejercicio}`} className="border-t border-line2 pt-1.5 first:border-0 first:pt-0">
+                    <div key={`${e.dia_id || e.dia}-${e.ejercicio}-${i}`} className="border-t border-line2 pt-1.5 first:border-0 first:pt-0">
                       <div className={`text-[12.5px] font-extrabold ${s?.cls || 'text-muted'}`}>
                         {s?.icon} {e.ejercicio} <span className="font-bold text-muted">· {s?.label}</span>
                       </div>

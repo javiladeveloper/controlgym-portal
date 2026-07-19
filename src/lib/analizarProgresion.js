@@ -75,8 +75,17 @@ function clasificarEjercicio(ej) {
   const intentos = sesiones.length
   const tasaIntentos = veces_esperado > 0 ? intentos / veces_esperado : 0
 
-  // 1) EVITADO — casi ni lo intenta (pocos registros vs lo que tocaba). Se mide
-  //    por INTENTOS, no por completados: el que viene y falla no está evitando.
+  // SIN DATOS — ningún registro en el periodo. NO es "evita": es que la app aún
+  // no persiste (registro_entreno_ejercicio a 0 filas). Devolver 'normal' + flag
+  // sin_datos para que el panel degrade a su mensaje de "aún sin registros" en
+  // vez de pintar 🔴 en todos los ejercicios. Sin este corte, todo saldría evitado.
+  if (intentos === 0) {
+    return { ...ej, veces_completado, tasa, estado: 'normal', sugerencia: null, sin_datos: true }
+  }
+
+  // 1) EVITADO por AUSENCIA — casi ni lo intenta (pocos registros vs lo que
+  //    tocaba). Se mide por INTENTOS, no por completados: distingue al que no
+  //    aparece del que aparece y falla (ese es estancado, no evita).
   if (veces_esperado > 0 && tasaIntentos < TASA_EVITADO) {
     return {
       ...ej, veces_completado, tasa, estado: 'evitado',
@@ -89,10 +98,12 @@ function clasificarEjercicio(ej) {
 
   // Para adaptado/estancado necesitamos que venga con constancia (aparece seguido).
   const constante = tasaIntentos >= 0.5
+  const fallosSeguidos = rachaFinal(sesiones, (s) => s.completado === false)
+  const completadasSeguidas = rachaFinal(sesiones, (s) => s.completado === true)
 
   // 2) ESTANCADO — viene y registra, pero falla el objetivo con la misma carga
-  //    3 sesiones seguidas (plateau). Necesita datos: sesiones registradas.
-  const fallosSeguidos = rachaFinal(sesiones, (s) => s.completado === false)
+  //    3 sesiones seguidas (plateau). Se evalúa ANTES del evitado-por-completado
+  //    para no confundir una meseta real (racha de fallos) con "nunca completa".
   if (constante && fallosSeguidos >= FALLOS_ESTANCADO) {
     return {
       ...ej, veces_completado, tasa, estado: 'estancado',
@@ -103,10 +114,22 @@ function clasificarEjercicio(ej) {
     }
   }
 
-  // 3) ADAPTADO — completa el objetivo N sesiones consecutivas → subir carga.
+  // 3) EVITADO por INCOMPLETUD — viene (registra) pero casi nunca lo COMPLETA
+  //    (tasa de completado < 0.30) y sin ser una meseta limpia. Captura al que
+  //    abandona el ejercicio a media serie una y otra vez.
+  if (veces_esperado > 0 && tasa < TASA_EVITADO) {
+    return {
+      ...ej, veces_completado, tasa, estado: 'evitado',
+      sugerencia: {
+        tipo: 'evitado',
+        texto: `Registra ${ej.ejercicio} pero casi nunca lo termina (${veces_completado}/${intentos} completadas). Replantéalo o bájale la exigencia; conversa la motivación.`,
+      },
+    }
+  }
+
+  // 4) ADAPTADO — completa el objetivo N sesiones consecutivas → subir carga.
   //    Con datos de carga: la racha de completados; sin datos, igual (solo completado).
   const N = esNovato(sesiones) ? RACHA_NOVATO : RACHA_INTERMEDIO
-  const completadasSeguidas = rachaFinal(sesiones, (s) => s.completado === true)
   if (constante && completadasSeguidas >= N) {
     return {
       ...ej, veces_completado, tasa, estado: 'adaptado',
@@ -130,16 +153,25 @@ export function analizarProgresion(ejercicios) {
 
   // Día abandonado: agrupar por día; si la adherencia promedio del día < 0.20,
   // marcarlo (el trainer ve un aviso a nivel día, no solo por ejercicio).
+  // Se agrupa por dia_id (estable) para no fusionar dos días con el mismo foco;
+  // se conserva el label (dia) para mostrar. Si no hay dia_id, cae al label.
   const porDia = new Map()
   for (const e of analizados) {
-    const key = e.dia || '—'
-    if (!porDia.has(key)) porDia.set(key, [])
-    porDia.get(key).push(e)
+    const key = e.dia_id || e.dia || '—'
+    if (!porDia.has(key)) porDia.set(key, { dia_id: e.dia_id ?? null, dia: e.dia ?? null, ejs: [] })
+    porDia.get(key).ejs.push(e)
   }
   const dias = []
-  for (const [dia, ejs] of porDia) {
-    const tasa = ejs.reduce((a, e) => a + e.tasa, 0) / ejs.length
-    dias.push({ dia, tasa, abandonado: tasa < TASA_DIA_ABANDONADO })
+  for (const { dia_id, dia, ejs } of porDia.values()) {
+    // Solo se evalúa un día si al menos un ejercicio tiene datos. Un día entero
+    // sin registros = sin datos (la app aún no persiste), NO abandonado.
+    const conDatos = ejs.filter((e) => !e.sin_datos)
+    if (conDatos.length === 0) {
+      dias.push({ dia_id, dia, tasa: 0, abandonado: false, sin_datos: true })
+      continue
+    }
+    const tasa = conDatos.reduce((a, e) => a + e.tasa, 0) / conDatos.length
+    dias.push({ dia_id, dia, tasa, abandonado: tasa < TASA_DIA_ABANDONADO })
   }
 
   return { ejercicios: analizados, dias }
