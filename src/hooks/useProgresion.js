@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
+import { analizarProgresion } from '../lib/analizarProgresion.js'
 
 // Socios cuya rutina activa vence en ≤3 días o ya venció (RPC de la Parte C).
 export function useRutinasPorVencer(sedeId) {
@@ -48,6 +49,25 @@ export function useRenovarRutina(socioId) {
       qc.invalidateQueries({ queryKey: ['rutina', socioId] })
       qc.invalidateQueries({ queryKey: ['progreso-socio', socioId] })
       qc.invalidateQueries({ queryKey: ['rutinas-por-vencer'] })
+    },
+  })
+}
+
+// Análisis inteligente por ejercicio (adaptado/evitado/estancado/día abandonado).
+// Trae la serie por ejercicio de la RPC y la clasifica con el motor puro
+// (analizarProgresion). Alimenta las señales al lado de cada ejercicio en
+// ProgresoRenovarModal — el trainer edita a mano con la sugerencia a la vista.
+export function useAnalizarProgresion(socioId) {
+  return useQuery({
+    queryKey: ['analizar-progresion', socioId],
+    enabled: !!socioId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('analizar_progresion_socio', { p_socio_id: socioId })
+      if (error) throw error
+      const raw = data || {}
+      const { ejercicios, dias } = analizarProgresion(raw.ejercicios || [])
+      return { periodo: raw.periodo || null, ejercicios, dias }
     },
   })
 }

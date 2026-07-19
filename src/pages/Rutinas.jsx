@@ -17,8 +17,15 @@ import {
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
 import { useObjetivos, usePlantillasRutina, usePlantillasDieta } from '../hooks/usePlantillas.js'
-import { useRutinasPorVencer, useProgresoSocio } from '../hooks/useProgresion.js'
+import { useRutinasPorVencer, useProgresoSocio, useAnalizarProgresion } from '../hooks/useProgresion.js'
 import { sugerenciasDeProgreso } from '../lib/sugerenciasRutina.js'
+
+// Señal visual por estado del análisis inteligente por ejercicio.
+const SENAL_PROGRESION = {
+  adaptado: { icon: '🟢', label: 'Adaptado — subir', cls: 'text-green-600' },
+  evitado: { icon: '🔴', label: 'Lo evita', cls: 'text-red-600' },
+  estancado: { icon: '🟡', label: 'Estancado', cls: 'text-orange' },
+}
 import { toast } from '../lib/toast.js'
 import { useProductos } from '../hooks/useOperaciones.js'
 import BancoEjerciciosModal from '../components/forms/BancoEjerciciosModal.jsx'
@@ -437,8 +444,11 @@ function MiniSerie({ serie }) {
 // sin pasar por la edición manual.
 function ProgresoRenovarModal({ socio, objetivoCodigo, onClose, onIrEditar }) {
   const progreso = useProgresoSocio(socio.id)
+  const analisis = useAnalizarProgresion(socio.id)
   const sugerencias = sugerenciasDeProgreso(progreso.data, objetivoCodigo)
   const p = progreso.data || {}
+  const senales = (analisis.data?.ejercicios || []).filter((e) => e.estado !== 'normal')
+  const diasAbandonados = (analisis.data?.dias || []).filter((d) => d.abandonado)
   const peso = p.peso || {}
   const asistencia = p.asistencia || {}
   const adhDia = p.adherencia_dia || {}
@@ -523,6 +533,44 @@ function ProgresoRenovarModal({ socio, objetivoCodigo, onClose, onIrEditar }) {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Análisis inteligente por ejercicio (sobrecarga progresiva): qué subir,
+              qué cambiar, qué está evitando. Alimenta las decisiones de edición. */}
+          <div className="rounded-xl border border-line bg-white p-[13px]">
+            <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-[0.5px] text-muted">🎯 Análisis por ejercicio</div>
+
+            {/* aviso de día abandonado */}
+            {diasAbandonados.map((d) => (
+              <div key={d.dia} className="mb-1.5 rounded-lg bg-red-50 px-3 py-2 text-[12px] font-bold text-red-700">
+                ⚠️ Casi no entrena <strong>{d.dia}</strong> — replantea ese día o motívalo.
+              </div>
+            ))}
+
+            {senales.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                {senales.map((e) => {
+                  const s = SENAL_PROGRESION[e.estado]
+                  return (
+                    <div key={`${e.dia}-${e.ejercicio}`} className="border-t border-line2 pt-1.5 first:border-0 first:pt-0">
+                      <div className={`text-[12.5px] font-extrabold ${s?.cls || 'text-muted'}`}>
+                        {s?.icon} {e.ejercicio} <span className="font-bold text-muted">· {s?.label}</span>
+                      </div>
+                      {e.sugerencia && (
+                        <div className="mt-0.5 text-[12px] font-semibold text-ink">{e.sugerencia.texto}</div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              diasAbandonados.length === 0 && (
+                <div className="text-[12.5px] font-semibold text-faint">
+                  Aún sin registros por ejercicio. Cuando el socio marque sus ejercicios y su peso
+                  en la app, aquí verás qué subir, qué cambiar y qué está evitando.
+                </div>
+              )
             )}
           </div>
 
