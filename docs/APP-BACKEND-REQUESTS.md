@@ -5,6 +5,43 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-18): PEDIDO 46 — persistir el check por ejercicio + carga (rutina asignada) ✅ backend LISTO
+> Cerrando la PREGUNTA 45: confirmaste que la app YA deja marcar cada ejercicio de
+> la rutina asignada con un ✓, pero **es solo visual** (`EstadoSocioApp.ejerciciosMarcados`,
+> no persiste) y NO registra la carga. **Ya montamos el backend** para persistirlo.
+>
+> **Tabla nueva** `registro_entreno_ejercicio` (socio_id, rutina_ejercicio_id,
+> fecha, completado, carga_usada, ...) con unique(socio_id, rutina_ejercicio_id,
+> fecha). RLS: el socio maneja lo suyo; el staff lee lo de su gym.
+>
+> **RPC para que la app la escriba** (mismo patrón que `marcar_entreno_libre`):
+> ```
+> supabase.rpc('marcar_entreno_ejercicio', {
+>   p_rutina_ejercicio_id: <uuid del ejercicio de la rutina asignada>,
+>   p_fecha: '2026-07-18',        // fecha del entreno
+>   p_completado: true,           // el ✓
+>   p_carga_usada: 60             // opcional: el peso que usó (numeric, o null)
+> })
+> → { ok: true, completado: true }
+> ```
+> Es **upsert** por (socio, ejercicio, fecha): llamarla de nuevo el mismo día pisa
+> el valor (marca/desmarca y actualiza la carga). Valida internamente que el
+> ejercicio es de una rutina del socio autenticado — si no, devuelve error.
+>
+> **Lo que necesitamos de la app:**
+> 1. Cambiar `ejerciciosMarcados` de visual a **persistido**: al tocar el ✓, llamar
+>    `marcar_entreno_ejercicio`. Al abrir el día, leer lo ya marcado (select sobre
+>    `registro_entreno_ejercicio` por socio+fecha, la RLS lo permite) para pintar
+>    los checks correctos.
+> 2. Agregar un **campo de carga** (peso) junto a cada ejercicio, para que el socio
+>    anote cuánto levantó al marcar. Va en `p_carga_usada`. Opcional para el socio
+>    (puede marcar sin poner peso), pero es lo que alimenta la progresión de fuerza
+>    que el trainer verá en el panel.
+>
+> Con esto persistido, el panel (Parte D del ciclo de progresión) mostrará al
+> trainer qué ejercicios completa el socio y su evolución de carga. Nada urgente
+> para la app: el panel degrada limpio si aún no persiste (usa día+peso+asistencia).
+
 > ## ❓ PANEL → APP (2026-07-17): PREGUNTA 45 — ¿La app marca los ejercicios completados de la rutina ASIGNADA por el gym?
 > Estamos diseñando el ciclo de progresión de rutinas (el trainer asigna rutina
 > con vigencia → el socio la sigue → antes de vencer, el trainer ve el avance y
