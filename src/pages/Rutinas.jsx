@@ -751,6 +751,22 @@ function RutinasImpl() {
   const enviar = useEnviarPlan(socioId)
   const asignarVigencia = useAsignarVigencia(socioId)
   const [semanasVigencia, setSemanasVigencia] = useState(8)
+  // La plantilla del objetivo del socio puede sugerir la duración del ciclo
+  // (prioriza la del gym sobre la global). Solo SUGIERE: en cuanto el trainer
+  // toca el selector, su elección manda (vigenciaTocada).
+  const [vigenciaTocada, setVigenciaTocada] = useState(false)
+  const plantillasRutina = usePlantillasRutina(empresa?.id)
+  const duracionSugerida = (() => {
+    const objId = socio?.objetivo_id
+    if (!objId) return null
+    const lista = plantillasRutina.data || []
+    const delGym = lista.find((p) => p.objetivo_id === objId && p.empresa_id)
+    const global = lista.find((p) => p.objetivo_id === objId && !p.empresa_id)
+    return (delGym || global)?.duracion_semanas ?? null
+  })()
+  useEffect(() => {
+    if (!vigenciaTocada && duracionSugerida) setSemanasVigencia(duracionSugerida)
+  }, [duracionSugerida, vigenciaTocada])
   const rutina = useRutinaSocio(socioId)
   const crearRutina = useCrearRutina(socioId, empresa?.id)
   const crearDieta = useCrearDieta(socioId, empresa?.id)
@@ -1170,7 +1186,7 @@ function RutinasImpl() {
             {veRutina && rutina.data?.id && (
               <label className="flex items-center gap-2 text-[12.5px] font-bold text-muted">
                 Vigencia del plan:
-                <select value={semanasVigencia} onChange={(e) => setSemanasVigencia(Number(e.target.value))}
+                <select value={semanasVigencia} onChange={(e) => { setVigenciaTocada(true); setSemanasVigencia(Number(e.target.value)) }}
                   className={inputCls + ' w-auto cursor-pointer !py-1.5'}>
                   {[4, 8, 12, 16].map((n) => <option key={n} value={n}>{n} semanas</option>)}
                 </select>
