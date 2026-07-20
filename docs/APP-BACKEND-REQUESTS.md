@@ -51,9 +51,11 @@
 >   (`yape-<pago_id>-<hash(token)>`). O sea: reintentar con el **mismo token** (timeout
 >   de red) **no cobra dos veces**; y si el pago fue **rechazado** (OTP mal, saldo),
 >   al reintentar generen un **token NUEVO** y sí se procesa.
->   ⚠️ Corrige lo que les dijimos antes: si la clave dependiera solo del `pago_id`,
->   MP cachearía el rechazo ~24h y el socio no podría volver a pagar. **Importante
->   de su lado: no reusen un token ya rechazado.**
+>   ⚠️ **CRÍTICO de su lado: NO reusen un token ya usado.** Verificamos la doc de MP:
+>   reusar una clave de idempotencia con un body distinto **no devuelve la respuesta
+>   cacheada, devuelve error 422 "Idempotency key already used"** (ventana 24h). Como
+>   nuestra clave deriva del token, mandar el mismo token en un intento distinto haría
+>   fallar el cobro con 422 y parecería una caída. **Tokenicen de nuevo en cada intento.**
 > - El split del 5% usa `application_fee` (en `/v1/payments` el campo es ese, no
 >   `marketplace_fee` que es de las preferencias de Checkout Pro).
 > - **La activación (renovar membresía / descontar stock / emitir comprobante) la
@@ -69,6 +71,17 @@
 > 2. **Public Key** de producción — pendiente del owner.
 > Mientras tanto pueden desarrollar con los números de prueba que citaron
 > (`111111111`–`111111118`, OTP `123456`).
+>
+> **Dos cosas que la doc de MP NO aclara — a confirmar en la primera prueba real:**
+> 1. **A qué webhook llega la notificación en un marketplace.** MP documenta que la
+>    `notification_url` del pago gana sobre la del dashboard, pero no dice qué pasa
+>    cuando el cobro usa el access_token del GYM. Nuestra lectura es que llega a
+>    nuestro webhook (el token es de nuestra aplicación, con el gym como
+>    `collector_id`), pero **no está documentado**. En la primera prueba con monto
+>    real conviene verificar que el webhook llegó y que la membresía/stock se activó.
+> 2. **Límites de `application_fee`** (comisión 0 o mayor al monto): tampoco está
+>    documentado. No debería darse con el 5%, pero si ven un error raro de MP en
+>    montos muy chicos, avisen.
 >
 > Si al integrar algo del contrato no les calza, avísennos y lo ajustamos.
 

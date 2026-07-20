@@ -113,10 +113,16 @@ async function pagarYape(req, res) {
     const email = pago.socio_email || pago.nuevo_email || `socio+${pago.id}@fitcore.pe`
 
     // 3) Cobro con Yape. La idempotencia se ata al PAGO **y AL TOKEN**: así un
-    //    reintento por timeout de red (mismo token) no cobra dos veces, pero un
-    //    reintento legítimo tras un rechazo (OTP mal, saldo) usa un token nuevo
-    //    y sí se procesa. Atarla solo al pago dejaría al socio sin poder pagar
-    //    ~24h tras un rechazo, porque MP cachea la respuesta de la clave.
+    //    reintento por timeout de red (mismo token, mismo body) no cobra dos
+    //    veces, y un reintento legítimo tras un rechazo (OTP mal, saldo) llega
+    //    con un token nuevo → clave nueva → sí se procesa.
+    //
+    //    OJO: MP NO hace "replay" de la respuesta cacheada. Si se reusa la misma
+    //    clave con un body distinto responde **422 'Idempotency key already
+    //    used'** (ventana de 24h). Por eso la clave NO puede depender solo del
+    //    pago_id: tras un rechazo, el socio quedaría 24h sin poder pagar y se
+    //    vería como una caída del sistema.
+    //    Doc: developers/pt/docs/wallet-connect/payment-flow/idempotency/responses
     const claveIdem = `yape-${pago.id}-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 16)}`
     const r = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
@@ -137,6 +143,9 @@ async function pagarYape(req, res) {
         // (renovar membresía / descontar stock / emitir comprobante) la hace el
         // webhook. Sin esto dependeríamos de la config del dashboard de MP y un
         // socio podría pagar y quedarse sin su beneficio.
+        // MP documenta que gana la del pago: "Las URLs configuradas durante la
+        // creación de un pago tendrán prioridad por sobre aquellas configuradas
+        // a través de Tus integraciones".
         notification_url: `${env('PANEL_URL')}/api/mp/webhook`,
         payer: { email },
       }),
