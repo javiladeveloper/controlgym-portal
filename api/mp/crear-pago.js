@@ -8,6 +8,7 @@
 // Body (1 producto): { empresa_id, tipo:'producto', ref_id, socio_id?, sede_id?, nuevo? }
 // Body (carrito):    { empresa_id, tipo:'producto', items:[{producto_id, cantidad}],
 //                      socio_id?, sede_id?, nuevo? }
+import crypto from 'node:crypto'
 import { env, db, usuarioDesdeJwt } from '../_lib/db.js'
 
 const COMISION = 0.05 // 5% FitCore
@@ -44,9 +45,158 @@ async function oauthStart(req, res) {
   return res.status(200).json({ url: authUrl.toString() })
 }
 
+// ── Yape directo (PEDIDO 49) ────────────────────────────────────────────────
+// La app tokeniza el Yape del socio contra MP (celular + OTP, endpoint REST, sin
+// SDK ni WebView) y nos manda ese token junto al pago_app ya creado por
+// crear-pago. Aquí se cobra server-side con el access_token DEL GYM y el mismo
+// split del 5% para FitCore.
+//
+// Se consolida como ?action=pagar-yape en vez de un archivo nuevo porque Vercel
+// Hobby está en el tope de 12 funciones serverless (mismo patrón que oauth-start).
+//
+// El resultado es SÍNCRONO: Yape es débito inmediato, solo devuelve approved o
+// rejected (nunca pending), así que la app muestra el resultado al instante sin
+// polling. El webhook sigue existiendo como respaldo/conciliación — y como es
+// idempotente, que llegue después no duplica nada.
+//
+// Body: { token, pago_id }
+async function pagarYape(req, res) {
+  const { token, pago_id } = req.body || {}
+  if (!token || !pago_id) return res.status(400).json({ error: 'Faltan datos del pago' })
+
+  // El socio debe estar autenticado y el pago tiene que ser SUYO. Sin esto,
+  // cualquiera con un pago_id podría (a) sondear el estado de pagos ajenos y
+  // (b) pagar la orden de otro con su propio Yape: se cobra él, pero el
+  // beneficio (renovar membresía, reservar stock) se activa en la orden de la
+  // víctima. Mismo criterio que pagar-factura en api/culqi.
+  const user = await usuarioDesdeJwt(req)
+  if (!user?.id) return res.status(401).json({ error: 'No autenticado' })
+
+  try {
+    // 1) El pago debe existir, ser del usuario y estar pendiente. El monto/fee
+    //    salen de la BD, NUNCA del cliente (mismo criterio que crear-pago).
+    //    Un pago sin socio_id (alta de socio nuevo desde la app) se valida por
+    //    el usuario que lo creó vía su socio en esa misma empresa.
+    const { rows } = await db().query(
+      `select p.id, p.empresa_id, p.monto, p.comision_fitcore, p.concepto, p.estado_pago,
+              p.nuevo_email, s.email as socio_email
+         from public.pago_app p
+         left join public.socio s on s.id = p.socio_id
+        where p.id = $1
+          and (
+            -- pago de un socio: tiene que ser el socio del usuario autenticado
+            (p.socio_id is not null and s.usuario_id = $2)
+            -- alta de socio nuevo (aún sin socio_id): el usuario debe tener un
+            -- socio en esa misma empresa (es quien está haciendo la compra)
+            or (p.socio_id is null and exists (
+                  select 1 from public.socio s2
+                   where s2.usuario_id = $2 and s2.empresa_id = p.empresa_id
+                     and s2.deleted_at is null))
+          )`,
+      [pago_id, user.id])
+    const pago = rows[0]
+    if (!pago) return res.status(404).json({ error: 'Pago no encontrado' })
+    if (pago.estado_pago === 'aprobado') {
+      return res.status(200).json({ estado: 'aprobado', ya_pagado: true })
+    }
+    if (pago.estado_pago === 'cancelado') {
+      return res.status(409).json({ error: 'Este cobro fue cancelado' })
+    }
+
+    // 2) Token del gym que cobra (el pago va a SU cuenta, con nuestro fee).
+    const { rows: mpRows } = await db().query(
+      `select access_token from public.empresa_mp where empresa_id = $1`, [pago.empresa_id])
+    const gym = mpRows[0]
+    if (!gym) return res.status(400).json({ error: 'Este gimnasio aún no habilitó los pagos en línea' })
+
+    // MP exige un email de pagador; si el socio no tiene, uno neutro del gym.
+    const email = pago.socio_email || pago.nuevo_email || `socio+${pago.id}@fitcore.pe`
+
+    // 3) Cobro con Yape. La idempotencia se ata al PAGO **y AL TOKEN**: así un
+    //    reintento por timeout de red (mismo token) no cobra dos veces, pero un
+    //    reintento legítimo tras un rechazo (OTP mal, saldo) usa un token nuevo
+    //    y sí se procesa. Atarla solo al pago dejaría al socio sin poder pagar
+    //    ~24h tras un rechazo, porque MP cachea la respuesta de la clave.
+    const claveIdem = `yape-${pago.id}-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 16)}`
+    const r = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${gym.access_token}`,
+        'content-type': 'application/json',
+        'X-Idempotency-Key': claveIdem,
+      },
+      body: JSON.stringify({
+        token,
+        transaction_amount: Number(pago.monto),
+        installments: 1,
+        payment_method_id: 'yape',
+        description: pago.concepto || 'Pago FitCore',
+        external_reference: pago.id,          // para casar el webhook
+        application_fee: Number(pago.comision_fitcore),   // el 5% de FitCore
+        // Explícito, igual que en la preferencia de crear-pago: la ACTIVACIÓN
+        // (renovar membresía / descontar stock / emitir comprobante) la hace el
+        // webhook. Sin esto dependeríamos de la config del dashboard de MP y un
+        // socio podría pagar y quedarse sin su beneficio.
+        notification_url: `${env('PANEL_URL')}/api/mp/webhook`,
+        payer: { email },
+      }),
+    })
+    const data = await r.json().catch(() => ({}))
+
+    if (!r.ok) {
+      // El detalle de MP queda en el log, no en la respuesta: es diagnóstico de
+      // integración (token inválido, permisos de la cuenta) y no le sirve al socio.
+      console.error('mp pagar-yape error', data)
+      return res.status(400).json({ error: 'No se pudo procesar el pago con Yape' })
+    }
+
+    const aprobado = data.status === 'approved'
+    // 4) Guardamos el resultado. Si fue aprobado NO activamos aquí (renovar
+    //    membresía / descontar stock / emitir comprobante): de eso ya se encarga
+    //    el webhook, que es idempotente y la única fuente de esa lógica. Así no
+    //    hay dos caminos que puedan divergir.
+    //
+    //    El guard es POSITIVO (solo 'pendiente'): si entre el SELECT y este
+    //    UPDATE recepción canceló el cobro, no lo pisamos. 'cancelado' existe
+    //    justo para suprimir la activación — sobrescribirlo la reactivaría.
+    const { rowCount } = await db().query(
+      `update public.pago_app
+          set estado_pago = $1, mp_payment_id = $2, pagado_at = now()
+        where id = $3 and estado_pago = 'pendiente'`,
+      [aprobado ? 'aprobado' : 'rechazado', String(data.id), pago.id])
+
+    if (rowCount === 0 && aprobado) {
+      // Se canceló mientras cobrábamos y el socio YA pagó: dejamos rastro y
+      // avisamos al gym para que reembolse (mismo criterio que el webhook).
+      await db().query(
+        `update public.pago_app set mp_payment_id = $1, pagado_at = now() where id = $2`,
+        [String(data.id), pago.id])
+      await db().query(
+        `insert into public.notificacion
+           (empresa_id, sede_id, tipo, titulo, subtitulo, nivel, ref_tipo, ref_id)
+         select $1, sede_id, 'pago_cancelado_pagado', '⚠️ Pago recibido de un cobro cancelado',
+                'Se recibió S/' || monto || ' por Yape de un cobro que ya estaba cancelado — reembolsar en MercadoPago',
+                'warning', 'pago_app', id
+           from public.pago_app where id = $2`,
+        [pago.empresa_id, pago.id])
+      return res.status(409).json({ error: 'El cobro fue cancelado; el pago será reembolsado' })
+    }
+
+    return res.status(200).json({
+      estado: aprobado ? 'aprobado' : 'rechazado',
+      mp_payment_id: data.id,
+      status_detail: data.status_detail || null,
+    })
+  } catch (e) {
+    console.error('mp pagar-yape', e)
+    return res.status(500).json({ error: 'Error al procesar el pago' })
+  }
+}
+
 export default async function handler(req, res) {
   if ((req.query?.action || '') === 'oauth-start') return oauthStart(req, res)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+  if ((req.query?.action || '') === 'pagar-yape') return pagarYape(req, res)
   const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal } = req.body || {}
   const canalPago = ['app', 'mostrador'].includes(canal) ? canal : 'app'
   if (!empresa_id || !tipo) return res.status(400).json({ error: 'Faltan datos del pago' })

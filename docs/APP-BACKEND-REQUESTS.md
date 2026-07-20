@@ -5,6 +5,73 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-20): PEDIDO 49 — `pagar-yape` LISTO ✅ (backend montado)
+> Excelente investigación: tienen razón en las tres cosas. El **WebView está
+> deprecado** por MP, el **SDK nativo no cubre Perú**, y el token se puede generar
+> por **REST puro**. Descartamos (A) y vamos por (B) tal como plantearon.
+>
+> **El endpoint ya está montado. La ruta EXACTA es:**
+> ```
+> POST /api/mp/crear-pago?action=pagar-yape
+> Authorization: Bearer <access_token de la sesión Supabase del socio>   ← OBLIGATORIO
+> Body: { "token": "<el token que devuelve la tokenización>", "pago_id": "<uuid del pago_app>" }
+> ```
+> ⚠️ **Requiere el JWT del socio.** Una revisión de seguridad lo destapó: sin auth,
+> cualquiera con un `pago_id` podía (a) sondear el estado de pagos ajenos y (b) pagar
+> la orden de OTRO con su propio Yape — se cobraba él, pero la membresía/stock se
+> activaba en la orden de la víctima. Ahora se valida que el pago sea del socio
+> autenticado. Manda el header como en el resto de llamadas a Supabase.
+> Sin él → **401**; si el pago no es suyo → **404**.
+> ⚠️ **Ojo**: NO es `/api/mp/pagar-yape`. Va como **query param sobre `crear-pago`**
+> porque Vercel Hobby nos limita a 12 funciones serverless y ya estamos justo en el
+> tope — un archivo nuevo rompería el deploy. Mismo patrón que `?action=oauth-start`.
+>
+> **Respuesta (síncrona, como pidieron — sin polling):**
+> ```
+> { estado: "aprobado" | "rechazado",
+>   mp_payment_id: 123456789,
+>   status_detail: "accredited" | "cc_rejected_..." }   // motivo, para el mensaje al usuario
+> ```
+> Casos especiales: si el pago ya estaba aprobado devuelve
+> `{ estado:"aprobado", ya_pagado:true }` (idempotente, no recobra); si el cobro
+> fue cancelado en mostrador devuelve **409** (si alcanzó a cobrarse, se avisa al
+> gym para reembolsar). Errores de MP devuelven **400** con un mensaje genérico —
+> el detalle técnico queda en nuestros logs, no se expone al socio.
+>
+> **Cómo queda el flujo completo:**
+> 1. La app llama `crear-pago` como hoy → obtiene `pago_id` (esto NO cambia:
+>    sigue calculando monto, split y tipo server-side).
+> 2. La app tokeniza con MP (celular + OTP).
+> 3. La app llama `pagar-yape` con `{token, pago_id}` → muestra el resultado al toque.
+>
+> **Detalles de implementación que les sirven saber:**
+> - El monto y la comisión **se leen del `pago_app`**, nunca del body — así el
+>   cliente no puede alterar el precio.
+> - **Reintentos:** la clave de idempotencia se ata al pago **y al token**
+>   (`yape-<pago_id>-<hash(token)>`). O sea: reintentar con el **mismo token** (timeout
+>   de red) **no cobra dos veces**; y si el pago fue **rechazado** (OTP mal, saldo),
+>   al reintentar generen un **token NUEVO** y sí se procesa.
+>   ⚠️ Corrige lo que les dijimos antes: si la clave dependiera solo del `pago_id`,
+>   MP cachearía el rechazo ~24h y el socio no podría volver a pagar. **Importante
+>   de su lado: no reusen un token ya rechazado.**
+> - El split del 5% usa `application_fee` (en `/v1/payments` el campo es ese, no
+>   `marketplace_fee` que es de las preferencias de Checkout Pro).
+> - **La activación (renovar membresía / descontar stock / emitir comprobante) la
+>   sigue haciendo el webhook**, no este endpoint. Es a propósito: una sola fuente
+>   de esa lógica, ya idempotente. O sea el resultado que ven es inmediato, y la
+>   activación llega por el camino de siempre. El cobro manda `notification_url`
+>   explícito (igual que la preferencia de `crear-pago`) para no depender de la
+>   config del dashboard de MP — si no, el socio podría pagar y quedarse sin su
+>   beneficio.
+>
+> **Sobre lo que nos pidieron confirmar (es del owner, no del código):**
+> 1. Activar **Yape** en el panel de MP de producción — pendiente del owner.
+> 2. **Public Key** de producción — pendiente del owner.
+> Mientras tanto pueden desarrollar con los números de prueba que citaron
+> (`111111111`–`111111118`, OTP `123456`).
+>
+> Si al integrar algo del contrato no les calza, avísennos y lo ajustamos.
+
 > ## ✅ APP → PANEL (2026-07-20): RESPUESTA AL PEDIDO 49 — vamos por (B) Yape directo, y NO hace falta WebView ni SDK JS
 > Investigamos la doc oficial de MP antes de responder. **Hallazgo que cambia el plan
 > que propusieron:** el token de Yape se puede generar por **endpoint REST puro**, sin
