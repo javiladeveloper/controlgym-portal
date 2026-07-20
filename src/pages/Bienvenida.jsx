@@ -119,6 +119,24 @@ const TITULOS = {
 
 const COLORES_MARCA = ['#FF6B35', '#E11D48', '#DC2626', '#7C3AED', '#2563EB', '#0EA5E9', '#059669', '#F59E0B', '#0C0A09']
 
+// Equipamiento de la sala. El `id` es el `equipment` del catálogo global de
+// ejercicios: con esto el generador de rutinas sabe qué puede usar. Los `tipico`
+// vienen premarcados (los tiene casi cualquier gym) para que las rutinas salgan
+// completas desde el día uno sin que el dueño configure nada.
+// Debe coincidir con public.sembrar_equipamiento_sede().
+const EQUIPOS_GYM = [
+  { id: 'dumbbell', nombre: 'Mancuernas', tipico: true },
+  { id: 'barbell', nombre: 'Barra olímpica', tipico: true },
+  { id: 'ez barbell', nombre: 'Barra Z', tipico: true },
+  { id: 'cable', nombre: 'Poleas / cables', tipico: true },
+  { id: 'leverage machine', nombre: 'Máquinas de placa', tipico: true },
+  { id: 'smith machine', nombre: 'Multipower (Smith)', tipico: true },
+  { id: 'kettlebell', nombre: 'Kettlebells', tipico: true },
+  { id: 'band', nombre: 'Bandas elásticas', tipico: true },
+  { id: 'stability ball', nombre: 'Pelota de estabilidad', tipico: true },
+  { id: 'weighted', nombre: 'Banco / colchoneta', tipico: true },
+]
+
 const chipCls = (on) =>
   `cursor-pointer rounded-full border px-4 py-2 text-[13px] font-extrabold transition-colors ${on ? 'border-orange bg-orange-50 text-orange' : 'border-line bg-white text-muted hover:border-orange'}`
 
@@ -155,6 +173,10 @@ export default function Bienvenida() {
   const [whatsapp, setWhatsapp] = useState('')
   const [direccion, setDireccion] = useState('')
   const [ubicacionSel, setUbicacionSel] = useState(null) // coords del autocompletado
+  // Equipamiento de la sala. Define qué ejercicios puede usar el generador de
+  // rutinas: sin esto solo hay peso corporal (24% del catálogo). Viene premarcado
+  // con lo típico de cualquier gym — el dueño solo destilda lo que no tiene.
+  const [equipos, setEquipos] = useState(() => EQUIPOS_GYM.map((e) => ({ ...e, on: e.tipico })))
   const [sedesExtra, setSedesExtra] = useState(esCadena ? [''] : [])
   // P4: logo + color. El archivo se guarda en memoria y se sube AL FINAL
   // (recién ahí existe la empresa); la vista previa y los colores salen del blob local.
@@ -242,6 +264,19 @@ export default function Bienvenida() {
 
       const { error } = await supabase.rpc('aplicar_onboarding', { p_empresa_id: empresaId, p_config: config })
       if (error) throw error
+
+      // Equipamiento de la sala: define qué ejercicios puede usar el generador de
+      // rutinas. El registro ya sembró lo típico; aquí aplicamos lo que el dueño
+      // ajustó (destildar lo que no tiene). Best-effort: si falla, se queda con
+      // lo sembrado y lo corrige en Máquinas.
+      if (tipo !== 'personal_trainer') {
+        try {
+          await supabase.rpc('ajustar_equipamiento_empresa', {
+            p_empresa_id: empresaId,
+            p_equipos: equipos.filter((e) => e.on).map((e) => e.id),
+          })
+        } catch { /* no bloquea el onboarding */ }
+      }
       // Horario estructurado (el RPC solo guarda el texto derivado)
       await supabase.from('empresa').update({ horario }).eq('id', empresaId)
       // Logo (si lo eligió): recién ahora se sube, ya con empresa creada
@@ -409,6 +444,24 @@ export default function Bienvenida() {
                   <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">Horario de atención</span>
                   <HorarioEditor value={horario} onChange={setHorario} />
                 </div>
+                {tipo !== 'personal_trainer' && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11.5px] font-extrabold uppercase tracking-[0.5px] text-muted">¿Qué equipos tienes?</span>
+                    <p className="-mt-0.5 text-[11.5px] font-semibold text-muted">
+                      Con esto las rutinas que genere el sistema usan tus máquinas de verdad. Destilda lo que no tengas.
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {equipos.map((eq, i) => (
+                        <button key={eq.id} type="button"
+                          onClick={() => setEquipos((s) => s.map((x, j) => j === i ? { ...x, on: !x.on } : x))}
+                          className={`cursor-pointer rounded-full border px-3 py-1.5 text-[12px] font-extrabold transition-colors ${
+                            eq.on ? 'border-orange bg-orange text-white' : 'border-line bg-white text-muted hover:border-orange'}`}>
+                          {eq.on ? '✓ ' : ''}{eq.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {esCadena && (
                   <p className="rounded-[10px] bg-surface px-3.5 py-2.5 text-[12px] font-semibold text-muted">
                     🏢 ¿Tienes más sedes? Se agregan en <b>Configuración → Sedes</b> al activar tu plan
