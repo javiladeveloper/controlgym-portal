@@ -16,15 +16,19 @@ export default function ChecklistActivacion() {
     enabled: !!empresa?.id && rol === 'admin' && !oculto,
     staleTime: 60_000,
     queryFn: async () => {
-      const [socios, visitas, sus] = await Promise.all([
+      const [socios, visitas, sus, pendientes] = await Promise.all([
         supabase.from('socio').select('id', { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from('landing_visita').select('id', { count: 'exact', head: true }),
         supabase.rpc('get_mi_suscripcion'),
+        // datos de contacto que el wizard de bienvenida pide pero es salteable:
+        // sin ellos la página web del gym sale sin teléfono, dirección ni horario
+        supabase.rpc('datos_pendientes_gym'),
       ])
       return {
         socios: socios.count || 0,
         visitas: visitas.count || 0,
         pagoActivo: sus.data?.estado === 'activa',
+        faltan: pendientes.data?.faltan || [],
       }
     },
   })
@@ -32,8 +36,18 @@ export default function ChecklistActivacion() {
   if (rol !== 'admin' || oculto || !estado.data) return null
 
   const L = empresa?.landing || {}
+  // Contacto: se agrupa en un solo ítem (WhatsApp/dirección/horario) para no
+  // inflar la lista; el texto dice cuántos faltan y lleva al tab correcto.
+  const contacto = (estado.data.faltan || []).filter((f) => f.tab === 'negocio')
   const items = [
     { ok: !!tema?.logo_url, icon: '🎨', label: 'Sube tu logo y elige tus colores', to: '/configuracion?tab=marca' },
+    {
+      ok: contacto.length === 0, icon: '📍',
+      label: contacto.length
+        ? `Completa tus datos de contacto (falta ${contacto.map((f) => f.que.toLowerCase()).join(', ')})`
+        : 'Completa tus datos de contacto',
+      to: '/configuracion?tab=negocio',
+    },
     { ok: !!L.hero_url, icon: '🖼️', label: 'Ponle portada a tu página web', to: '/configuracion?tab=pagina' },
     { ok: estado.data.socios > 0, icon: '💪', label: `Registra tu primer ${empresa?.plan_slug === 'trainer' ? 'cliente' : 'socio'}`, to: '/clientes' },
     { ok: estado.data.visitas > 0, icon: '📣', label: 'Comparte tu página en tus redes', to: '/configuracion?tab=pagina' },
