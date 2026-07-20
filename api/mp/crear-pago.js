@@ -11,7 +11,13 @@
 import crypto from 'node:crypto'
 import { env, db, usuarioDesdeJwt } from '../_lib/db.js'
 
-const COMISION = 0.05 // 5% FitCore
+// 5% de FitCore, calculado sobre el monto BRUTO de la venta.
+// Cómo reparte MP: primero descuenta SU comisión del total, y nuestro
+// application_fee sale del saldo que le queda al gym. O sea el gym recibe
+// (monto − comisión MP − nuestro 5%). En tickets chicos (S/30) esa doble
+// comisión se siente, así que si algún día se quiere cobrar sobre el neto,
+// este es el punto a cambiar.
+const COMISION = 0.05
 
 // PEDIDO 23: precio efectivo con la oferta permanente del producto (si hay).
 // Misma lógica que el CASE de la RPC catalogo_app — el backend es quien decide
@@ -138,6 +144,12 @@ async function pagarYape(req, res) {
         payment_method_id: 'yape',
         description: pago.concepto || 'Pago FitCore',
         external_reference: pago.id,          // para casar el webhook
+        // ⚠️ SIN CONFIRMAR EN DOC: MP documenta application_fee (marketplace) y
+        // Yape por separado, y en ninguna parte dice que se puedan combinar en
+        // la misma llamada. Es plausible (mismo endpoint /v1/payments) pero NO
+        // está garantizado. VERIFICAR EN LA PRIMERA PRUEBA REAL que (a) el cobro
+        // pasa y (b) el 5% se descuenta. Si MP lo rechaza, el plan B es cobrar
+        // sin fee y liquidar la comisión aparte.
         application_fee: Number(pago.comision_fitcore),   // el 5% de FitCore
         // Explícito, igual que en la preferencia de crear-pago: la ACTIVACIÓN
         // (renovar membresía / descontar stock / emitir comprobante) la hace el

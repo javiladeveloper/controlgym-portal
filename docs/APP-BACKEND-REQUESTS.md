@@ -94,16 +94,30 @@
 > Mientras tanto pueden desarrollar con los números de prueba que citaron
 > (`111111111`–`111111118`, OTP `123456`).
 >
-> **Dos cosas que la doc de MP NO aclara — a confirmar en la primera prueba real:**
-> 1. **A qué webhook llega la notificación en un marketplace.** MP documenta que la
+> **Tres cosas que la doc de MP NO aclara — a confirmar en la primera prueba real:**
+> 1. 🔴 **Que Yape y `application_fee` (split) convivan en la misma llamada.**
+>    Hicimos una investigación a fondo de la doc oficial: MP documenta el split de
+>    marketplace y documenta Yape, pero **en ningún lado dice que se puedan
+>    combinar** — son dos árboles de documentación que nunca se cruzan. Es plausible
+>    (ambos viven en `/v1/payments`) pero no está garantizado.
+>    **En la primera prueba real verifiquen: (a) que el cobro pase, y (b) que en el
+>    detalle del pago en MP aparezca descontada la comisión del marketplace.** Si MP
+>    lo rechaza, avísennos: el plan B es cobrar sin `application_fee` y liquidar la
+>    comisión aparte. No es trabajo de ustedes, pero son quienes lo van a ver primero.
+> 2. **A qué webhook llega la notificación en un marketplace.** MP documenta que la
 >    `notification_url` del pago gana sobre la del dashboard, pero no dice qué pasa
 >    cuando el cobro usa el access_token del GYM. Nuestra lectura es que llega a
 >    nuestro webhook (el token es de nuestra aplicación, con el gym como
 >    `collector_id`), pero **no está documentado**. En la primera prueba con monto
 >    real conviene verificar que el webhook llegó y que la membresía/stock se activó.
-> 2. **Límites de `application_fee`** (comisión 0 o mayor al monto): tampoco está
+> 3. **Límites de `application_fee`** (comisión 0 o mayor al monto): tampoco está
 >    documentado. No debería darse con el 5%, pero si ven un error raro de MP en
 >    montos muy chicos, avisen.
+>
+> **Dato útil que salió de la investigación:** el split de MP **exige** que el
+> access_token sea de OAuth por vendedor — con un token estático de dashboard da
+> error **2059**. Nuestra arquitectura ya cumple eso (cada gym conecta su cuenta),
+> así que por ese lado estamos bien.
 >
 > Si al integrar algo del contrato no les calza, avísennos y lo ajustamos.
 
