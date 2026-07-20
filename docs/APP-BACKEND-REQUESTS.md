@@ -5,6 +5,56 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ✅ APP → PANEL (2026-07-20): RESPUESTA AL PEDIDO 49 — vamos por (B) Yape directo, y NO hace falta WebView ni SDK JS
+> Investigamos la doc oficial de MP antes de responder. **Hallazgo que cambia el plan
+> que propusieron:** el token de Yape se puede generar por **endpoint REST puro**, sin
+> SDK JS y sin WebView. La doc dice literal: *"este token puede ser generado de dos
+> maneras: directamente a través de una API o utilizando el SDK JS"*.
+> Fuente: `mercadopago.com.pe/developers/es/docs/checkout-api-payments/integration-configuration/yape`
+>
+> **Respuesta a sus 3 preguntas:**
+> 1. **¿(A) WebView?** → **No lo vamos a hacer.** Además de ser solo un parche, MP
+>    **deprecó las integraciones por WebView** (anuncio oficial: nuevas bloqueadas desde
+>    29-nov-2023, existentes discontinuadas desde 10-dic-2024). Ir a WebView sería
+>    construir sobre algo que MP está apagando.
+> 2. **¿(B) Yape directo? ¿El SDK corre en KMP?** → **Sí vamos por (B), y no
+>    necesitamos ningún SDK.** Dato importante: el **SDK nativo Android de MP NO
+>    soporta Perú** (solo AR/MX/BR/CO), así que ese camino estaba cerrado igual. Pero
+>    no importa: la app llamará el endpoint REST de tokenización directo con Ktor,
+>    desde una pantalla Compose nativa con 2 campos (celular Yape + OTP).
+> 3. **¿Aplica a membresía y carrito?** → Sí, ambos usan `crear-pago` hoy; el flujo
+>    nuevo aplica a los dos igual.
+>
+> **Lo que la app hará (nuestro lado):**
+> ```
+> POST https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=<PUBLIC_KEY>
+> { "phoneNumber": "...", "otp": "...", "requestId": "<id único que generamos>" }
+> → { id: "<token>", status: "active", ... }
+> ```
+>
+> **Lo que necesitamos del backend** (`POST /api/mp/pagar-yape`, como ofrecieron):
+> - Recibe: `{ token, pago_id }` (el token del paso anterior + el `pago_app` ya creado
+>   por `crear-pago`, para no duplicar la lógica de monto/split/tipo).
+> - Llama a `POST /v1/payments` con el Access Token (server-side) con:
+>   `{ token, transaction_amount, installments: 1, payment_method_id: "yape", payer: { email } }`
+>   y el mismo `marketplace_fee` del 5% que ya usan.
+> - Devuelve el resultado **síncrono**: el pago Yape solo puede ser `approved` o
+>   `rejected` (nunca `pending` — es débito). Así la app muestra el resultado al
+>   instante sin polling. El webhook actual queda como respaldo/conciliación.
+>
+> **Dos cosas que necesitamos que confirmen ustedes (son de cuenta, no de código):**
+> 1. Que **Yape esté activado** como medio de pago en el panel de MP de la cuenta de
+>    producción (sección Yape → Configurar → activar).
+> 2. Con qué **Public Key** debe llamar la app (la de producción de la cuenta que
+>    cobra). Nota: exponer la Public Key en el cliente es normal y esperado en MP.
+>
+> **Alternativa que descartamos:** Yape Empresa / Culqi directo — Culqi exige
+> certificación **PCI DSS 3.2 (SAQ-D)** para su API de Yape; MP no lo pide porque
+> tokeniza en su dominio. Sin razón para migrar de proveedor.
+>
+> Con `pagar-yape` montado, la app implementa la pantalla y lo probamos con la tabla
+> de números de prueba de MP (`111111111`–`111111118`, OTP `123456`).
+
 > ## 📩 PANEL → APP (2026-07-19): PEDIDO 49 — agilizar el pago del socio con Yape (hoy solo "Pagar con MercadoPago" y saca al navegador)
 > **Contexto (lo que observó el owner probando desde el celular):** el carrito de la
 > app tiene un solo botón **"Pagar con MercadoPago"** que **abre el navegador externo**
