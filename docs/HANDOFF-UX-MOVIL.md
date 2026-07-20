@@ -1,10 +1,47 @@
-# 📱 Handoff — Arreglar el UI/UX del panel en móvil
+# 📱 Handoff — UI/UX del panel en móvil
 
-> **Estado:** pendiente · **Detectado:** 2026-07-19 en la revisión de UI/UX previa a
-> la demo de producto · **Alcance:** solo el panel (no la app móvil KMP).
+> **Estado:** ✅ **Hallazgos 1 y 2 RESUELTOS** (2026-07-20) · quedan los cosméticos
+> (3 y 4) · **Alcance:** solo el panel web (no la app móvil KMP, que es otro repo).
 >
 > El panel **en escritorio se ve profesional y está listo para mostrar**. Este
-> documento cubre lo único que quedó mal: **el layout en pantallas de celular**.
+> documento cubrió el layout en pantallas de celular.
+
+---
+
+## ✅ Lo que ya se arregló (2026-07-20)
+
+Verificado a 390 px midiendo `getBoundingClientRect()` en las 14 rutas del panel:
+**ninguna pantalla tiene botones inalcanzables**.
+
+| Pantalla | Qué pasaba | Fix aplicado |
+|---|---|---|
+| **Clientes** | "Nuevo socio" fuera de pantalla (`x=383` de 390 px) | `flex-wrap` en la cabecera + input `w-full sm:w-[290px]` |
+| **Máquinas** | `overflow-hidden` **recortaba** la tabla (min-w 660px) y su grid de 2 columnas no cabía | `overflow-x-auto` + `grid-cols-1 lg:grid-cols-[1.7fr_1fr]` |
+| **CRM** | filas de lista sin envolver | `flex-wrap` en las 4 filas con ese patrón |
+
+**Correcciones al diagnóstico original** (útiles para no repetir el análisis):
+- El **kanban de CRM ya estaba bien**: usa `max-lg:overflow-x-auto` con snap y
+  columnas de `78vw` (carrusel deslizable). Era un falso positivo del detector,
+  que buscaba la clase `overflow-x-auto` exacta en vez del estilo computado.
+- Las **tablas de Clientes/Membresías/Personal/Kardex ya tenían `overflow-x-auto`**:
+  sus acciones se alcanzan deslizando. Es mejorable (ver Hallazgo 2) pero **no
+  bloquea**.
+- **Clases** no tenía problema real.
+
+**Cómo detectarlo bien** (el detector correcto usa estilo computado, no clases):
+
+```js
+const scrollable = (el) => { let p = el
+  while (p && p !== document.body) { const s = getComputedStyle(p)
+    if (s.overflowX === 'auto' || s.overflowX === 'scroll') return true
+    p = p.parentElement } return false }
+const d = document.documentElement
+;[...document.querySelectorAll('button,a')]
+  .filter(e => { const b = e.getBoundingClientRect()
+    return b.width > 0 && b.right > d.clientWidth + 2 && !scrollable(e) })
+  .map(e => e.textContent.trim())
+```
+Debe devolver `[]` en todas las rutas con el viewport en 390 px.
 
 ---
 
@@ -104,6 +141,19 @@ Con el panel corriendo y sesión guardada (`tests/e2e/.auth/admin.json`):
 ```bash
 BASE_URL=http://localhost:5173 npx playwright test panel.auth --project=mobile
 ```
+
+> ⚠️ **Ojo con la sesión de los e2e.** El `access_token` de Supabase dura 1 h y el
+> `refresh_token` es de **un solo uso**. `tests/e2e/global-setup.js` lo renueva al
+> arrancar, pero si el storageState quedó viejo (o alguien ya gastó ese refresh),
+> **toda la suite del panel falla con "Cargando…"** y parece un bug del panel
+> cuando es la credencial. Si ves fallos masivos, comprueba primero:
+> ```bash
+> node -e "const t=JSON.parse(require('fs').readFileSync('tests/e2e/.auth/admin.json','utf8')).origins[0].localStorage[0].value; const e=JSON.parse(t).expires_at; console.log(e<Date.now()/1000?'TOKEN EXPIRADO':'ok')"
+> ```
+> Para regenerarlo: loguearse en el panel y volver a guardar el storageState.
+> **Mejora pendiente:** que el global-setup haga login con usuario/clave de QA
+> (desde variables de entorno) en vez de depender de un refresh token de un solo
+> uso — así la suite nunca queda bloqueada por credenciales.
 
 Y esta comprobación directa detecta elementos fuera de pantalla en cualquier ruta:
 

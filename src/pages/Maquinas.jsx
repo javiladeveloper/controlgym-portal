@@ -229,8 +229,10 @@ export default function Maquinas() {
       )}
 
       {data.length > 0 && (
-        <div className="mt-[15px] grid grid-cols-[1.7fr_1fr] items-start gap-[15px]">
-          <Card className="overflow-hidden">
+        // en móvil una sola columna; la tabla (min-w 660px) necesita scroll
+        // horizontal propio o sus acciones quedan recortadas e inalcanzables
+        <div className="mt-[15px] grid grid-cols-1 items-start gap-[15px] lg:grid-cols-[1.7fr_1fr]">
+          <Card className="overflow-x-auto">
             <div className="grid min-w-[660px] grid-cols-[1.9fr_0.9fr_1.2fr_50px] items-center gap-3 bg-surface px-5 py-[13px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted">
               <div>Equipo</div><div>Zona</div><div>Estado (toca para cambiar)</div><div />
             </div>

@@ -166,7 +166,7 @@ function FilaAgenda({ t, conFecha, onCompletar }) {
       : fh.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
     : '—'
   return (
-    <div className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+    <div className="flex flex-wrap items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
       <button type="button" onClick={() => onCompletar(t)} title="Marcar como realizado"
         className="flex h-6 w-6 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-[#C6CBD4] bg-transparent transition-colors hover:border-green hover:bg-green-50" />
       <span className="w-[92px] flex-shrink-0 font-extrabold text-faint">{cuando}</span>
@@ -362,7 +362,7 @@ function PerdidosPanel({ perdidos, sedeId }) {
       {abierto && (
         <div className="border-t border-line2">
           {perdidos.map((ld) => (
-            <div key={ld.id} className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+            <div key={ld.id} className="flex flex-wrap items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-extrabold">{ld.nombre}</div>
                 <div className="truncate text-[11px] font-bold text-muted">{ld.fuente}{ld.motivo_perdida ? ` · ${ld.motivo_perdida}` : ''}</div>
@@ -402,7 +402,7 @@ function FilaExSocio({ ex, sedeId, empresaId, gymNombre, moneda }) {
   }
 
   return (
-    <div className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+    <div className="flex flex-wrap items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
       <div className="min-w-0 flex-1">
         <div className="truncate font-extrabold">{ex.nombre}</div>
         <div className="truncate text-[11px] font-bold text-muted">{ex.ultimo_plan || 'Sin plan registrado'}</div>
@@ -649,7 +649,7 @@ function FriosIgnorados({ sedeId, empresaId }) {
           {!frios.isLoading && !frios.isError && data?.activo && items.map((it) => {
             const wa = it.telefono && waLink(it.telefono, `Hola${it.nombre ? ' ' + it.nombre.split(' ')[0] : ''}! 👋 Te escribimos de ${'nuestro gimnasio'}. ¿Te gustaría conocer nuestros planes?`)
             return (
-              <div key={it.id || it.sujeto} className="flex items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
+              <div key={it.id || it.sujeto} className="flex flex-wrap items-center gap-2.5 border-t border-line2 px-4 py-2.5 text-[12.5px] first:border-t-0">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-extrabold">{it.nombre || it.sujeto || 'Contacto'}</div>
                   {it.resumen && <div className="truncate text-[11px] font-semibold text-muted">{it.resumen}</div>}

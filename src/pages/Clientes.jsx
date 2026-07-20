@@ -381,12 +381,15 @@ export default function Clientes() {
             {clientes?.length ?? 0} socios · {sedeNombre}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        {/* flex-wrap + input fluido: en celular (~390px) el input de ancho fijo
+            empujaba "Nuevo socio" fuera de la pantalla y no había forma de
+            alcanzarlo (la cabecera no tiene scroll horizontal). */}
+        <div className="flex flex-wrap items-center gap-3">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre, DNI, N.º, teléfono o correo…"
-            className="w-[290px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange"
+            className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange sm:w-[290px]"
           />
           <GhostButton onClick={() => setImportarOpen(true)} title="Migra tus socios desde tu Excel en minutos">⬆ Importar</GhostButton>
           <PrimaryButton onClick={() => setNuevoOpen(true)}>Nuevo socio</PrimaryButton>
