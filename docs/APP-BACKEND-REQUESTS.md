@@ -77,11 +77,17 @@
 > jamás sale):
 > ```
 > supabase.rpc('mp_public_key_de_sede', { p_sede_id: <uuid de la sede> })
-> → { disponible: true,  public_key: "APP_USR-..." }   // úsenla para tokenizar
-> → { disponible: false }                              // ese gym no conectó MP
+> → { disponible: true, public_key: "APP_USR-...", yape: true }   // tokenicen con esa key
+> → { disponible: true, public_key: "APP_USR-...", yape: false }  // gym sin Yape → solo tarjeta
+> → { disponible: false, yape: false }                            // gym sin MP conectado
 > ```
-> **Si `disponible` es false, oculten el pago con Yape** para esa sede (el gym no
-> tiene cobros en línea) en vez de intentar cobrar y fallar.
+> **Cómo usarlo:**
+> - `disponible:false` → ese gym no tiene cobros en línea: no muestren pago en la app.
+> - `yape:false` → muestren solo tarjeta (ese gym no acepta Yape).
+> - `yape:true` → muestren el botón de Yape y tokenicen con esa `public_key`.
+>
+> El campo `yape` sale de consultar los medios habilitados de la cuenta del gym al
+> conectarla (`/v1/payment_methods`), así el dueño **no tiene que configurar nada**.
 >
 > **Lo que sigue pendiente del owner:** activar **Yape** como medio de pago en el
 > panel de MP de **cada gym** que quiera usarlo (es un switch en su cuenta).
