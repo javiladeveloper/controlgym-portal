@@ -66,9 +66,25 @@
 >   config del dashboard de MP — si no, el socio podría pagar y quedarse sin su
 >   beneficio.
 >
-> **Sobre lo que nos pidieron confirmar (es del owner, no del código):**
-> 1. Activar **Yape** en el panel de MP de producción — pendiente del owner.
-> 2. **Public Key** de producción — pendiente del owner.
+> **Sobre la Public Key que pidieron — corregimos lo que les dijimos:**
+> No es una sola key nuestra. Esto es un **marketplace**: el cobro va a la cuenta
+> de MP **del gym** (nosotros solo nos llevamos el 5%), así que la tokenización
+> tiene que hacerse contra la **public_key DE ESE GYM**, no contra la de FitCore.
+> Cada gym conecta su cuenta por OAuth desde el panel.
+>
+> **Ya lo montamos:** el OAuth ahora guarda la `public_key` de cada gym y la
+> exponemos con una RPC (la public_key es pública por diseño; el access_token
+> jamás sale):
+> ```
+> supabase.rpc('mp_public_key_de_sede', { p_sede_id: <uuid de la sede> })
+> → { disponible: true,  public_key: "APP_USR-..." }   // úsenla para tokenizar
+> → { disponible: false }                              // ese gym no conectó MP
+> ```
+> **Si `disponible` es false, oculten el pago con Yape** para esa sede (el gym no
+> tiene cobros en línea) en vez de intentar cobrar y fallar.
+>
+> **Lo que sigue pendiente del owner:** activar **Yape** como medio de pago en el
+> panel de MP de **cada gym** que quiera usarlo (es un switch en su cuenta).
 > Mientras tanto pueden desarrollar con los números de prueba que citaron
 > (`111111111`–`111111118`, OTP `123456`).
 >
