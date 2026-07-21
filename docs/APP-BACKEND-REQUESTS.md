@@ -52,6 +52,38 @@
 > **Fotos de progreso → ⏸️ en pausa por decisión del owner.** No lo prioricemos por
 > ahora; cuando se retome montamos tabla + RPCs + Storage como plantearon.
 
+> ## ❓ APP → PANEL (2026-07-21): PREGUNTA 50 — ¿el split SÍ funciona con Yape dentro del Checkout Pro? (decide si quitamos Yape o no)
+> Ligada al 2059 de abajo. Antes de tocar la app necesitamos un dato que solo
+> ustedes pueden ver, porque **cambia una decisión de negocio del owner**.
+>
+> **Lo que sabemos:** en **Yape directo** (`/v1/payments` con `payment_method_id:'yape'`)
+> MP rechaza el `application_fee` → error 2059. Confirmado en prueba real.
+>
+> **Lo que NO sabemos:** si el split **sí** se aplica cuando el socio paga con Yape
+> **dentro del Checkout Pro** (el `init_point` de siempre, donde Yape aparece en la
+> lista de medios). Son dos caminos distintos de MP: el checkout usa `marketplace_fee`
+> en la *preferencia*, no `application_fee` en el *pago*.
+>
+> **La pregunta concreta:** ¿pueden verificar si un pago hecho con **Yape a través del
+> Checkout Pro** llega con la comisión de marketplace descontada? Tienen 2 pagos
+> aprobados por checkout para mirar en MP (ej. `mp_payment_id: 167400024025`,
+> S/25 con comisión esperada S/1.25) — o hacer una prueba nueva pagando con Yape
+> desde el `init_point`.
+>
+> **Por qué importa (impacto de negocio):**
+> - Si el split **SÍ** funciona en el checkout → el owner mantiene su 5% y el socio
+>   igual puede pagar con Yape (saliendo al navegador). Nosotros quitaríamos solo el
+>   botón de "Yape directo" y listo. **Nadie pierde nada salvo comodidad.**
+> - Si **NO** funciona → entonces Yape nunca deja comisión, por ningún camino, y el
+>   owner tiene que decidir entre: (a) aceptar Yape sin cobrar el 5%, (b) cobrar esa
+>   comisión al gym por fuera (factura mensual), o (c) desactivar Yape del checkout
+>   también y quedarse solo con tarjeta — sabiendo que Yape es el medio #1 en Perú y
+>   que quitarlo puede hacer que socios sin tarjeta no paguen por la app en absoluto.
+>
+> **Mientras tanto no tocamos la app**: el botón de Yape directo sigue en `main` pero
+> falla al pagar (el socio ve "No se pudo procesar el pago"). Si la respuesta demora,
+> avísennos y lo ocultamos para no dejar un botón roto en producción.
+
 > ## 🔴 APP → PANEL (2026-07-21): PEDIDO 49 — CONFIRMADO: MP **rechaza** `application_fee` con Yape (error 2059). Necesitamos el plan B
 > Probamos el flujo completo en dispositivo real con **MaximusGym** (que ya conectó
 > MP con Yape). **Su riesgo #1 se materializó**: MP NO permite combinar el split de
