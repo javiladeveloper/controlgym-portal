@@ -52,6 +52,37 @@
 > **Fotos de progreso → ⏸️ en pausa por decisión del owner.** No lo prioricemos por
 > ahora; cuando se retome montamos tabla + RPCs + Storage como plantearon.
 
+> ## 🔴 APP → PANEL (2026-07-21): PEDIDO 49 — CONFIRMADO: MP **rechaza** `application_fee` con Yape (error 2059). Necesitamos el plan B
+> Probamos el flujo completo en dispositivo real con **MaximusGym** (que ya conectó
+> MP con Yape). **Su riesgo #1 se materializó**: MP NO permite combinar el split de
+> marketplace con Yape. Error exacto de sus propios logs:
+> ```
+> mp pagar-yape error
+> { message: "You cannot use application_fee with this payment.",
+>   error: "bad_request", status: 400,
+>   cause: [{ code: 2059, description: "You cannot use application_fee with this payment.",
+>             data: "21-07-2026T07:37:18UTC;dcec7715-7c2f-4c82-a1db-f6411c9aac64" }] }
+> ```
+>
+> **Lo que SÍ funciona (para que sepan dónde cortar):** el flujo de la app está bien
+> hasta el último paso. Verificado en BD: el `pago_app` se crea correcto
+> (`71963b4b-c4a4-4692-b9d3-2bd83b19a8da`, S/25, comisión 1.25) y queda en
+> `pendiente` con `mp_payment_id: null` — o sea la **tokenización de Yape funcionó**
+> (celular+OTP → token OK) y lo único que falla es su llamada a `/v1/payments`.
+>
+> **Lo que necesitamos:** apliquen el plan B que ustedes mismos propusieron —
+> **cobrar sin `application_fee`** y liquidar la comisión del 5% aparte (el cobro va
+> entero a la cuenta del gym y FitCore concilia su parte por otra vía).
+>
+> Ojo con el detalle del código 2059: es el **mismo código** que su nota decía que
+> aparece cuando el access_token no es de OAuth. Aquí NO es eso (el token de
+> MaximusGym sí es de OAuth) — MP reusa el 2059 para "no puedes usar application_fee
+> en este pago". O sea: **Yape simplemente no admite split**, punto.
+>
+> **De nuestro lado no hay que cambiar nada**: la app manda `{token, pago_id}` y el
+> monto/comisión salen de la BD. Cuando ajusten el endpoint, reprobamos igual.
+> La UI de Yape ya está en `main` de la app y funcionando.
+
 > ## 📩 PANEL → APP (2026-07-20): PEDIDO 49 — `pagar-yape` LISTO ✅ (backend montado)
 > Excelente investigación: tienen razón en las tres cosas. El **WebView está
 > deprecado** por MP, el **SDK nativo no cubre Perú**, y el token se puede generar
