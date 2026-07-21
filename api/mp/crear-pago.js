@@ -65,8 +65,26 @@ async function oauthStart(req, res) {
 // polling. El webhook sigue existiendo como respaldo/conciliación — y como es
 // idempotente, que llegue después no duplica nada.
 //
+// ⚠️ ESTADO (2026-07-21): este endpoint queda DESACTIVADO por decisión de negocio.
+// MP no permite el split de marketplace con Yape por Checkout API (error 2059), así
+// que cobrar por aquí significaría que FitCore NO se lleva su 5% — el dinero iría
+// entero al gym. Como el **Checkout Pro sí aplica el split** y ahí Yape está
+// disponible igual, el flujo correcto para Yape es el `init_point` de crear-pago.
+//
+// Se conserva el código (no se borra) porque la tokenización de la app ya funciona:
+// si MP habilita el split en Checkout API, se reactiva quitando el 501 y devolviendo
+// el application_fee.
+//
 // Body: { token, pago_id }
 async function pagarYape(req, res) {
+  // Falla explícita y temprana: mejor un mensaje claro que un cobro sin comisión.
+  // (El resto del cuerpo se conserva a propósito para reactivarlo sin reescribirlo.)
+  if (env('MP_YAPE_DIRECTO') !== '1') {
+    return res.status(501).json({
+      error: 'El pago con Yape directo no está disponible; usa el checkout de MercadoPago.',
+      motivo: 'mp_no_permite_split_con_yape',
+    })
+  }
   const { token, pago_id } = req.body || {}
   if (!token || !pago_id) return res.status(400).json({ error: 'Faltan datos del pago' })
 
@@ -144,13 +162,16 @@ async function pagarYape(req, res) {
         payment_method_id: 'yape',
         description: pago.concepto || 'Pago FitCore',
         external_reference: pago.id,          // para casar el webhook
-        // ⚠️ SIN CONFIRMAR EN DOC: MP documenta application_fee (marketplace) y
-        // Yape por separado, y en ninguna parte dice que se puedan combinar en
-        // la misma llamada. Es plausible (mismo endpoint /v1/payments) pero NO
-        // está garantizado. VERIFICAR EN LA PRIMERA PRUEBA REAL que (a) el cobro
-        // pasa y (b) el 5% se descuenta. Si MP lo rechaza, el plan B es cobrar
-        // sin fee y liquidar la comisión aparte.
-        application_fee: Number(pago.comision_fitcore),   // el 5% de FitCore
+        // ⚠️ SIN application_fee A PROPÓSITO. Confirmado en prueba real (2026-07-21):
+        // MP RECHAZA el split en Yape por Checkout API →
+        //   2059 "You cannot use application_fee with this payment."
+        // (mismo código que usa para "el token no es de OAuth", pero aquí el token
+        // SÍ era de OAuth: Yape simplemente no admite split por esta vía).
+        //
+        // Dónde SÍ se cobra el 5%: en el **Checkout Pro**, vía `marketplace_fee` en
+        // la preferencia (ver crear-pago más abajo). Verificado sobre pagos reales:
+        // en el pago 167400024025 MP descontó `application_fee=1.25` de S/25.
+        // Por eso el flujo recomendado para Yape es el checkout, no este endpoint.
         // Explícito, igual que en la preferencia de crear-pago: la ACTIVACIÓN
         // (renovar membresía / descontar stock / emitir comprobante) la hace el
         // webhook. Sin esto dependeríamos de la config del dashboard de MP y un

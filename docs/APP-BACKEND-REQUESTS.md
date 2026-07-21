@@ -52,6 +52,54 @@
 > **Fotos de progreso → ⏸️ en pausa por decisión del owner.** No lo prioricemos por
 > ahora; cuando se retome montamos tabla + RPCs + Storage como plantearon.
 
+> ## ✅ PANEL → APP (2026-07-21): RESPUESTA A LA PREGUNTA 50 — el split SÍ funciona en Checkout Pro. **No quiten Yape.**
+> Verificado contra la API real de MP con la cuenta de MaximusGym. Tres evidencias:
+>
+> **1. El split SÍ se cobra en Checkout Pro (dato duro, pago real):**
+> El pago `167400024025` que nos señalaron, consultado en `/v1/payments`:
+> ```
+> monto: S/25 · estado: approved
+> fee_details: mercadopago_fee=2.21 (collector) · application_fee=1.25 (collector)
+> neto al vendedor: 21.54
+> ```
+> **Ese `application_fee=1.25` es exactamente el 5% de FitCore, cobrado y descontado.**
+> Idem el de S/3 (`application_fee=0.09`). O sea: por Checkout Pro **el split funciona**.
+>
+> **2. La preferencia acepta `marketplace_fee` sin problema:** creamos una de prueba
+> con el mismo shape que usa `crear-pago` → **HTTP 201**, `marketplace_fee: 1.25`
+> guardado, `init_point` generado.
+>
+> **3. Yape está activo en la cuenta:** `/v1/payment_methods` de MaximusGym devuelve
+> `yape` con `status: active` (tipo `debit_card`), entre sus 11 medios. Aparece en el
+> checkout.
+>
+> **Conclusión:** el problema es **exclusivo de la Checkout API** (`/v1/payments` con
+> `payment_method_id:'yape'` + `application_fee` → 2059). El Checkout Pro usa otro
+> camino (`marketplace_fee` en la preferencia) y **ahí el split sí se aplica**.
+>
+> **Lo que significa para el negocio:** el owner **mantiene su 5%** y el socio **sigue
+> pudiendo pagar con Yape** desde el checkout. No hay que desactivar Yape ni cobrar la
+> comisión por fuera. Lo único que se pierde es la comodidad del "Yape directo" sin
+> salir de la app.
+>
+> **Lo que les pedimos hacer:**
+> - **Oculten el botón de "Yape directo"** (el que llama `pagar-yape`) para no dejar un
+>   botón roto en producción, tal como propusieron.
+> - **Dejen el flujo de Checkout Pro como está** — ahí Yape sigue disponible y con split.
+> - Su trabajo de tokenización no se pierde: si MP habilita el split en Checkout API
+>   más adelante, se reactiva cambiando una línea.
+>
+> **Honestidad sobre el alcance de la prueba:** no encontramos ningún pago histórico
+> hecho **con Yape** (0 de 10 en el historial de la cuenta), así que la evidencia de
+> que el split se aplica es de pagos con tarjeta por el mismo checkout. El
+> `marketplace_fee` vive en la *preferencia*, no en el medio de pago, así que debería
+> aplicar igual — pero conviene **confirmarlo con un pago real con Yape desde el
+> `init_point`** la próxima vez que prueben, mirando que aparezca el `application_fee`
+> en el detalle del pago.
+>
+> ---
+> *(pregunta original abajo)*
+>
 > ## ❓ APP → PANEL (2026-07-21): PREGUNTA 50 — ¿el split SÍ funciona con Yape dentro del Checkout Pro? (decide si quitamos Yape o no)
 > Ligada al 2059 de abajo. Antes de tocar la app necesitamos un dato que solo
 > ustedes pueden ver, porque **cambia una decisión de negocio del owner**.
