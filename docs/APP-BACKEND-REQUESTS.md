@@ -5,6 +5,53 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 🎒 APP → PANEL (2026-07-21): PEDIDO 51 — "Tu rutina te acompaña" (rutina portable entre gyms)
+> Handoff completo en `controlgym-app/docs/RUTINA-PORTABLE-HANDOFF.md`. Resumen:
+>
+> **La idea:** la rutina es del SOCIO, no del gym. Caso real del owner: *"estaba en
+> otro gym con una rutina que me venía bien, entré a este y me generó una con la que
+> no me siento cómodo — quiero usar la mía"*. Con 1369 ejercicios en el catálogo,
+> cada persona arma la rutina que le funciona; perderla al cambiar de gym es absurdo.
+>
+> **La regla (decisión del owner, cierra todos los casos):**
+> ```
+> ¿Tiene rutina propia (rutina_libre activa)?
+>  NO → acepta la que el gym genera, Y ESA SE ADOPTA COMO SUYA
+>  SÍ → puede importarla al gym y seguir con la suya
+> ```
+> Después del primer gym, todo socio tiene rutina propia. El caso "sin rutina" solo
+> existe una vez y se resuelve solo.
+>
+> **RPCs que pedimos:** `adoptar_rutina_del_gym()`, `importar_mi_rutina_al_gym(empresa)`,
+> `llevar_rutina_del_gym()`.
+>
+> **Decisiones que les tocan a ustedes** (afectan sus reportes): qué pasa con
+> `entrenador_id` en una rutina importada (hoy una rutina cuenta como "atención"
+> solo si lo tiene — una importada no debería inflar las atenciones de nadie, pero
+> el trainer sí debería poder adoptarla al optimizarla), `enviado_at` y la vigencia.
+>
+> **⚠️ Bloqueante técnico que encontramos:** `public.ejercicio` (catálogo del gym)
+> **no tiene link** a `public.ejercicio_catalogo` (el global). Sin ese puente, los
+> ejercicios importados llegan solo por nombre: pierden el GIF del gym y el historial
+> de progresión (que se ata a `rutina_ejercicio_id`). Sugerimos agregar
+> `ejercicio.catalogo_id` (nullable) y crear el ejercicio en el catálogo del gym
+> desde el global si no existe — pero ustedes conocen mejor las implicancias.
+>
+> **⚠️ Regla de seguridad que va con esto — las CARGAS caducan:** la rutina se
+> lleva, pero el peso no es eterno. Volver tras 1 año e intentar levantar lo de
+> antes es vía directa a lesión (se pierde adaptación neuromuscular). Propuesta
+> según la última vez que registró ese ejercicio: <1 mes = igual · 1-3 meses =
+> ~10-20% menos · 3-12 meses = ~30-50% menos · >12 meses = sin carga sugerida
+> (arrancar de cero). Son **sugerencias**, no imposiciones: el socio ajusta y el
+> trainer corrige — que es donde el gym aporta valor. Esto aplica al importar a un
+> gym nuevo Y al volver tras una pausa larga en el mismo gym. Encaja con
+> `mi_progresion`: si retoma con menos peso, el motor detecta "adaptado" y sube.
+>
+> **Contexto:** va junto con el rediseño del motor de rutinas que ya aplicamos
+> (`20260721100000_motor_rutinas_frecuencia_imc.sql`): frecuencia 2×/semana por
+> músculo, días 1-6, IMC y herencia de cargas. La rutina que el gym genera por
+> defecto debería seguir el mismo criterio.
+
 > ## 📩 PANEL → APP (2026-07-21): FEATURES USUARIO LIBRE — respuesta al handoff
 > Leímos `docs/FEATURES-USUARIO-LIBRE-HANDOFF.md`. Buen planteo: prioriza por
 > impacto/esfuerzo y reusa lo que ya existe. Respuesta por feature:

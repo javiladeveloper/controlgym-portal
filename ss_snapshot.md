@@ -1,0 +1,773 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e6]:
+        - list [ref=e8]:
+          - listitem [ref=e9]:
+            - link "GET STARTED" [ref=e10] [cursor=pointer]:
+              - /url: https://startingstrength.com/get-started
+          - listitem [ref=e11]:
+            - link "STORE" [ref=e12] [cursor=pointer]:
+              - /url: https://aasgaardco.com
+        - list [ref=e14]:
+          - listitem [ref=e15]:
+            - link "Follow us on Facebook":
+              - /url: https://www.facebook.com/pages/Starting-Strength-The-Aasgaard-Company/142424022490628
+          - listitem [ref=e16]:
+            - link "Follow us on Twitter":
+              - /url: https://twitter.com/SS_strength
+          - listitem [ref=e17]:
+            - link "Follow us on Instagram":
+              - /url: https://www.instagram.com/startingstrength
+          - listitem [ref=e18]:
+            - link "Follow us on YouTube":
+              - /url: https://www.youtube.com/user/AasgaardCo
+          - listitem [ref=e19]:
+            - link "Search the Starting Strength website":
+              - /url: https://startingstrength.com/search
+      - link [ref=e25] [cursor=pointer]:
+        - /url: https://startingstrength.com
+        - img "starting strength wordmark fallback" [ref=e27]
+      - generic [ref=e28]:
+        - separator [ref=e29]
+        - separator [ref=e30]
+      - navigation [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - list [ref=e34]:
+              - listitem [ref=e35]:
+                - link:
+                  - /url: "#"
+                - list [ref=e36]:
+                  - listitem [ref=e37]:
+                    - link "What is Starting Strength?" [ref=e38] [cursor=pointer]:
+                      - /url: https://startingstrength.com/about
+                  - listitem [ref=e39]:
+                    - link "Get Started" [ref=e40] [cursor=pointer]:
+                      - /url: https://startingstrength.com/get-started
+                  - separator [ref=e41]
+                  - listitem [ref=e42]:
+                    - link "Articles" [ref=e43] [cursor=pointer]:
+                      - /url: https://startingstrength.com/article
+                  - listitem [ref=e44]:
+                    - link "Videos" [ref=e45] [cursor=pointer]:
+                      - /url: https://startingstrength.com/video
+                  - listitem [ref=e46]:
+                    - link "Podcasts" [ref=e47] [cursor=pointer]:
+                      - /url: https://startingstrength.com/radio
+                  - listitem [ref=e48]:
+                    - link "Training Log" [ref=e49] [cursor=pointer]:
+                      - /url: https://startingstrength.com/training
+                  - listitem [ref=e50]:
+                    - link "Forums" [ref=e51] [cursor=pointer]:
+                      - /url: https://startingstrength.com/resources/forum/
+                  - separator [ref=e52]
+                  - listitem [ref=e53]:
+                    - link "Gyms" [ref=e54] [cursor=pointer]:
+                      - /url: https://coaching.startingstrength.com/gyms/
+                  - listitem [ref=e55]:
+                    - link "Equipment" [ref=e56] [cursor=pointer]:
+                      - /url: https://startingstrength.com/equipment
+                  - listitem [ref=e57]:
+                    - link "Coaching" [ref=e58] [cursor=pointer]:
+                      - /url: https://coaching.startingstrength.com/
+                  - listitem [ref=e59]:
+                    - link "Events" [ref=e60] [cursor=pointer]:
+                      - /url: https://startingstrength.com/event
+                  - separator [ref=e61]
+                  - listitem [ref=e62]:
+                    - link "Store" [ref=e63] [cursor=pointer]:
+                      - /url: https://aasgaardco.com
+                  - listitem [ref=e64]:
+                    - link "Careers" [ref=e65] [cursor=pointer]:
+                      - /url: https://startingstrength.com/careers
+                  - listitem [ref=e66]:
+                    - link "About" [ref=e67] [cursor=pointer]:
+                      - /url: https://startingstrength.com/about
+            - list [ref=e68]:
+              - listitem [ref=e69]:
+                - link "Follow us on Facebook":
+                  - /url: http://www.facebook.com/pages/Starting-Strength-The-Aasgaard-Company/142424022490628
+              - listitem [ref=e70]:
+                - link "Follow us on Twitter":
+                  - /url: http://twitter.com/SS_strength
+              - listitem [ref=e71]:
+                - link "Follow us on Instagram":
+                  - /url: https://www.instagram.com/startingstrength
+              - listitem [ref=e72]:
+                - link "Follow us on YouTube":
+                  - /url: http://www.youtube.com/user/AasgaardCo
+              - listitem [ref=e73]:
+                - link "Search the Starting Strength website":
+                  - /url: https://startingstrength.com/search
+          - list [ref=e75]:
+            - listitem [ref=e76]:
+              - link "Content Library" [ref=e77] [cursor=pointer]:
+                - /url: ""
+              - list [ref=e78]:
+                - listitem [ref=e79]:
+                  - link "Articles" [ref=e80] [cursor=pointer]:
+                    - /url: https://startingstrength.com/article
+                - listitem [ref=e81]:
+                  - link "Videos" [ref=e82] [cursor=pointer]:
+                    - /url: https://startingstrength.com/video
+                - listitem [ref=e83]:
+                  - link "Podcasts" [ref=e84] [cursor=pointer]:
+                    - /url: https://startingstrength.com/radio
+                - listitem [ref=e85]:
+                  - link "Training Log" [ref=e86] [cursor=pointer]:
+                    - /url: https://startingstrength.com/training
+                - listitem [ref=e87]:
+                  - link "Report" [ref=e88] [cursor=pointer]:
+                    - /url: https://startingstrength.com/report/index.html
+            - listitem [ref=e89]:
+              - link "Podcast" [ref=e90] [cursor=pointer]:
+                - /url: https://startingstrength.com/radio
+            - listitem [ref=e91]:
+              - link "Forums" [ref=e92] [cursor=pointer]:
+                - /url: https://startingstrength.com/resources/forum/
+            - listitem [ref=e93]:
+              - link "Gyms" [ref=e94] [cursor=pointer]:
+                - /url: https://startingstrength.com/gyms
+            - listitem [ref=e95]:
+              - link "Equipment" [ref=e96] [cursor=pointer]:
+                - /url: https://startingstrength.com/equipment
+            - listitem [ref=e97]:
+              - link "Coaching" [ref=e98] [cursor=pointer]:
+                - /url: https://startingstrength.com/coaching
+              - list [ref=e99]:
+                - listitem [ref=e100]:
+                  - link "Seminars" [ref=e101] [cursor=pointer]:
+                    - /url: https://startingstrength.com/coaching/seminars
+                - listitem [ref=e102]:
+                  - link "Training Camps" [ref=e103] [cursor=pointer]:
+                    - /url: https://startingstrength.com/coaching/camps
+                - listitem [ref=e104]:
+                  - link "Coach Development" [ref=e105] [cursor=pointer]:
+                    - /url: https://startingstrength.com/careers
+                - separator [ref=e106]
+                - listitem [ref=e107]:
+                  - link "At SS Gyms" [ref=e108] [cursor=pointer]:
+                    - /url: https://startingstrength.com/gyms
+                - listitem [ref=e109]:
+                  - link "Find Coaches" [ref=e110] [cursor=pointer]:
+                    - /url: https://startingstrength.com/coaching/ssc
+                - listitem [ref=e111]:
+                  - link "Online Coaching" [ref=e112] [cursor=pointer]:
+                    - /url: https://startingstrengthonlinecoaching.com
+            - listitem [ref=e113]:
+              - link "Events" [ref=e114] [cursor=pointer]:
+                - /url: https://startingstrength.com/event
+              - list [ref=e115]:
+                - listitem [ref=e116]:
+                  - link "Seminars" [ref=e117] [cursor=pointer]:
+                    - /url: https://startingstrength.com/event/seminars
+                - listitem [ref=e118]:
+                  - link "Coaching Camps" [ref=e119] [cursor=pointer]:
+                    - /url: https://startingstrength.com/event/coaching-development
+                - listitem [ref=e120]:
+                  - link "Training Camps" [ref=e121] [cursor=pointer]:
+                    - /url: https://startingstrength.com/event/camps
+                - listitem [ref=e122]:
+                  - link "Meets" [ref=e123] [cursor=pointer]:
+                    - /url: https://startingstrength.com/event/meets
+            - listitem [ref=e124]:
+              - link "Store" [ref=e125] [cursor=pointer]:
+                - /url: https://aasgaardco.com
+            - listitem [ref=e126]:
+              - link "Careers" [ref=e127] [cursor=pointer]:
+                - /url: https://startingstrength.com/careers
+            - listitem [ref=e128]:
+              - link "About" [ref=e129] [cursor=pointer]:
+                - /url: https://startingstrength.com/about
+              - list [ref=e130]:
+                - listitem [ref=e131]:
+                  - link "Starting Strength" [ref=e132] [cursor=pointer]:
+                    - /url: https://startingstrength.com/about
+                - listitem [ref=e133]:
+                  - link "Get Started" [ref=e134] [cursor=pointer]:
+                    - /url: https://startingstrength.com/get-started
+                - listitem [ref=e135]:
+                  - link "Mark Rippetoe" [ref=e136] [cursor=pointer]:
+                    - /url: https://startingstrength.com/about/mark-rippetoe
+                - listitem [ref=e137]:
+                  - link "Who We Are" [ref=e138] [cursor=pointer]:
+                    - /url: https://startingstrength.com/about/aasgaard
+                - listitem [ref=e139]:
+                  - link "The Team" [ref=e140] [cursor=pointer]:
+                    - /url: https://startingstrength.com/about/team
+                - listitem [ref=e141]:
+                  - link "Contact" [ref=e142] [cursor=pointer]:
+                    - /url: https://startingstrength.com/about/contact
+    - list [ref=e144]:
+      - listitem [ref=e145]:
+        - link "Categories" [ref=e146] [cursor=pointer]:
+          - /url: https://startingstrength.com/article
+        - list [ref=e147]:
+          - listitem [ref=e148]:
+            - link "All" [ref=e149] [cursor=pointer]:
+              - /url: https://startingstrength.com/article
+          - separator [ref=e150]
+          - listitem [ref=e151]:
+            - link "Lifts" [ref=e152] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/lifts
+          - listitem [ref=e153]:
+            - link "Coaching" [ref=e154] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/coaching
+          - listitem [ref=e155]:
+            - link "Programming" [ref=e156] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/programming
+          - listitem [ref=e157]:
+            - link "Competition" [ref=e158] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/competition
+          - listitem [ref=e159]:
+            - link "Military" [ref=e160] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/military
+          - separator [ref=e161]
+          - listitem [ref=e162]:
+            - link "Strength & Health" [ref=e163] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/strength-health
+          - listitem [ref=e164]:
+            - link "Science & Medicine" [ref=e165] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/science-medicine
+          - listitem [ref=e166]:
+            - link "The Gym" [ref=e167] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/gym
+          - listitem [ref=e168]:
+            - link "History" [ref=e169] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/history
+          - separator [ref=e170]
+          - listitem [ref=e171]:
+            - link "中文" [ref=e172] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/cn
+          - listitem [ref=e173]:
+            - link "Czech" [ref=e174] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/cz
+          - listitem [ref=e175]:
+            - link "Deutsch" [ref=e176] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/de
+          - listitem [ref=e177]:
+            - link "Eesti keel" [ref=e178] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/et
+          - listitem [ref=e179]:
+            - link "Español" [ref=e180] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/es
+          - listitem [ref=e181]:
+            - link "Français" [ref=e182] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/fr
+          - listitem [ref=e183]:
+            - link "日本語" [ref=e184] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/jp
+          - listitem [ref=e185]:
+            - link "한국어" [ref=e186] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/kr
+          - listitem [ref=e187]:
+            - link "Bahasa Indonesia" [ref=e188] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/in
+          - listitem [ref=e189]:
+            - link "Italiano" [ref=e190] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/it
+          - listitem [ref=e191]:
+            - link "Português" [ref=e192] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/pt
+          - listitem [ref=e193]:
+            - link "русский язык" [ref=e194] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/ru
+          - listitem [ref=e195]:
+            - link "Română" [ref=e196] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/ro
+          - listitem [ref=e197]:
+            - link "Slovak" [ref=e198] [cursor=pointer]:
+              - /url: https://startingstrength.com/article/sk
+          - separator [ref=e199]
+    - generic [ref=e200]:
+      - list [ref=e202]:
+        - listitem [ref=e203]:
+          - link "All" [ref=e204] [cursor=pointer]:
+            - /url: https://startingstrength.com/article
+        - separator [ref=e205]
+        - listitem [ref=e206]:
+          - link "Lifts" [ref=e207] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/lifts
+        - listitem [ref=e208]:
+          - link "Coaching" [ref=e209] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/coaching
+        - listitem [ref=e210]:
+          - link "Programming" [ref=e211] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/programming
+        - listitem [ref=e212]:
+          - link "Competition" [ref=e213] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/competition
+        - listitem [ref=e214]
+        - listitem [ref=e215]:
+          - link "Military" [ref=e216] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/military
+        - separator [ref=e217]
+        - listitem [ref=e218]:
+          - link "Strength & Health" [ref=e219] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/strength-health
+        - listitem [ref=e220]:
+          - link "Science & Medicine" [ref=e221] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/science-medicine
+        - listitem [ref=e222]:
+          - link "The Gym" [ref=e223] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/gym
+        - listitem [ref=e224]:
+          - link "History" [ref=e225] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/history
+        - separator [ref=e226]
+        - listitem [ref=e227]:
+          - link "中文" [ref=e228] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/cn
+        - listitem [ref=e229]:
+          - link "Czech" [ref=e230] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/cz
+        - listitem [ref=e231]:
+          - link "Deutsch" [ref=e232] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/de
+        - listitem [ref=e233]:
+          - link "Eesti keel" [ref=e234] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/et
+        - listitem [ref=e235]:
+          - link "Español" [ref=e236] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/es
+        - listitem [ref=e237]:
+          - link "Français" [ref=e238] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/fr
+        - listitem [ref=e239]:
+          - link "日本語" [ref=e240] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/jp
+        - listitem [ref=e241]:
+          - link "한국어" [ref=e242] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/kr
+        - listitem [ref=e243]:
+          - link "Bahasa Indonesia" [ref=e244] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/in
+        - listitem [ref=e245]:
+          - link "Italiano" [ref=e246] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/it
+        - listitem [ref=e247]:
+          - link "Português" [ref=e248] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/pt
+        - listitem [ref=e249]:
+          - link "русский язык" [ref=e250] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/ru
+        - listitem [ref=e251]:
+          - link "Română" [ref=e252] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/ro
+        - listitem [ref=e253]:
+          - link "Slovak" [ref=e254] [cursor=pointer]:
+            - /url: https://startingstrength.com/article/sk
+        - separator [ref=e255]
+      - generic [ref=e256]:
+        - heading "Articles" [level=2] [ref=e257]
+        - separator [ref=e258]
+        - generic [ref=e259]:
+          - generic [ref=e260]:
+            - article [ref=e261]:
+              - heading "Incremental Increases" [level=3] [ref=e262]
+              - heading [level=5] [ref=e263]:
+                - text: by
+                - link "Mark Rippetoe" [ref=e264] [cursor=pointer]:
+                  - /url: https://startingstrength.com/author/mark-rippetoe
+                - text: "| December 02, 2009"
+              - list [ref=e265]:
+                - listitem [ref=e266]:
+                  - link "Share on Facebook" [ref=e267] [cursor=pointer]:
+                    - /url: https://www.facebook.com/sharer/sharer.php?u=https://startingstrength.com/article%2Fincremental_increases&t=Incremental Increases | Mark Rippetoe
+                - listitem [ref=e269]:
+                  - link "Tweet" [ref=e270] [cursor=pointer]:
+                    - /url: https://twitter.com/intent/tweet?source=https://startingstrength.com/article%2Fincremental_increases&text=Starting%20Strength
+                - listitem [ref=e272]:
+                  - link "Share on Google+" [ref=e273] [cursor=pointer]:
+                    - /url: https://plus.google.com/share?url=https://startingstrength.com/article%2Fincremental_increases
+                - listitem [ref=e275]:
+                  - link "Submit to Reddit" [ref=e276] [cursor=pointer]:
+                    - /url: http://www.reddit.com/submit?url=https://startingstrength.com/article%2Fincremental_increases&title=Incremental Increases | Mark Rippetoe
+                - listitem [ref=e278]:
+                  - link "Email" [ref=e279] [cursor=pointer]:
+                    - /url: mailto:?subject=Starting%20Strength%20Incremental Increases | Mark Rippetoe&body=https://startingstrength.com/article%2Fincremental_increases
+                - listitem [ref=e281]:
+                  - link:
+                    - /url: https://startingstrength.com/contentfiles/incremental_increases_rippetoe.pdf
+              - generic [ref=e282]:
+                - paragraph [ref=e284]:
+                  - img "strength training incremental increases" [ref=e285]
+                - paragraph
+                - paragraph [ref=e286]:
+                  - text: "Most of the people that join this gym get very little accomplished. I am surprised they pay me. And my gym is better than most in terms of new members using the facilities, because anybody that makes it through the maze of big commercial gyms with professional sales closers and two-year contracts, smaller physical therapist-run “fitness” clubs, and the YMCAs are pretty determined to be here. The typical new gym member comes three of four times on schedule, misses the next two workouts, comes one more time, and then never comes back. You other gym owners reading this will back me up here: most people only"
+                  - emphasis [ref=e287]: think
+                  - text: they want to work out in a real gym, and that’s fine because we make money this way. The majority of the human race is composed of lazy slobs that are prodded through their miserable existences by the media, preconceived notions and prejudices, rumor/hearsay/innuendo, bad advice from fools, and the hope for an easy way to do everything. So it’s okay if they pay us our enrollment fees and some dues, come a few times and then disappear. It’s not our fault. Right?
+                - paragraph [ref=e288]:
+                  - text: Maybe. It’s true that most people are lazy slobs, but if that lazy slob comes to your gym and you put him on a program that either doesn’t make anything about his fat lazy body change – or you put her on no program at all (“Here are the treadmills and the TV controls. Aerobics is at 6.
+                  - emphasis [ref=e289]: Hope you come!
+                  - text: ”) – you can hardly expect them to come back. Perhaps if selling them 24-month paper is your only interest in the situation, this is fine. I don’t write contracts, so my interest has always been having them come back and bring a friend. I have always tried to do my best at making something about their lazy slob bodies change in a positive way as quickly as possible, to catch their interest within that four-workout window of attention.
+                - paragraph [ref=e290]: Now this doesn’t mean that most of my new members don’t quit too. After all, the majority of the human race is composed of lazy slobs, as I said. But I have a better shot at them if I get their attention by making it obvious that the time they spend in my gym will not be wasted. In other words, I know that have about 4 workouts in which to change something – preferably something they can see in the mirror – to even have a chance to keep them paying dues. And I need the money.
+                - paragraph [ref=e291]: As a practical matter, I figured out a long time ago that the easiest way to make the human body look different in the shortest period of time possible was to make it stronger, and that the easiest way to guarantee that this happened was to add weight to the bar every time the member shows up. I would teach them the basic barbell exercises in the first workout, because I found that they worked faster.
+                - paragraph [ref=e292]: I developed a way to teach them quickly and simply to almost everybody that wanted to learn them. Virtually all young guys could squat somewhere between 85 and 145 lbs for five reps with just a little effort after learning the movement, and I found that three sets of five with that weight worked best. I wrote this down in the training book I had them bring to the workout. Next time they came in, they’d go up 10, or perhaps even 20, pounds for those three sets of five. The same was proportionately true for the other basic exercises. After four workouts I could show the kid an increase in his squat numbers of between 40 and 60 pounds, a bodyweight gain of 5-10 pounds, and a definite improvement in his appearance; it doesn’t take much time for the quads to change shape.
+                - paragraph [ref=e293]:
+                  - text: "I trained women the same way. If they could squat, we squatted; if they couldn’t we leg pressed until they were strong enough to squat. The program was the same: I titrated the weight up during the teaching of the movement until I found what seemed like a good place to stop – a weight that was heavy enough that it was a little slower, but not so heavy that two more sets couldn’t be done – and then had her do two more sets with that weight. With few exceptions, three sets of five squats across (or three sets of ten leg presses), three sets of presses or bench presses across, and one set of deadlifts (virtually all women can deadlift the first day, even if they can’t squat) worked just fine for everybody. There were exceptions for older women that were exceptionally weak. But the key to everybody’s progress – male or female, young or old, weak or strong, stupid or smart, scared or tough – was the incremental increase provided by starting at a reasonable weight and going up"
+                  - emphasis [ref=e294]: every time they showed up at the gym
+                  - text: .
+                - paragraph [ref=e295]:
+                  - text: Doing it this way, with just a few simple exercises, allowed me to show them a completely different approach to exercise than they had ever seen, one that focused attention not on the exercises
+                  - emphasis [ref=e296]: per se
+                  - text: ", but on the weights being used on them. Virtually every other gym program, then as now, focuses on the use of as many different exercises as the floor has machines, at least eight and maybe twelve in one workout, while I used at most four basic barbell exercises. I had all the standard machines in the old version of the gym, but I stopped using them because they didn’t contribute to my plan for member retention, which was based entirely on making the member look and feel as different as possible in the four-workout window of attention."
+                - paragraph [ref=e297]: This disturbed many people who, driven by the media, preconceived notions and prejudices, rumor/ hearsay/innuendo, bad advice from fools, and the hope for an easy way to do everything, expected machines in their workout. But had I added the machines, the workout would have been too long for most people’s schedule, and they were absolutely unnecessary anyway. This because selectorized machines fitted with a stack of plates on rails in 10 lb increments that work a small, isolated group of muscles do not lend themselves well to continued incremental increases the way barbell exercises that work large groups of muscles at one time do. My goal was to show new members a linear improvement in the numbers in their training books and a change in their appearance within four workouts; barbells do this and machines do not. So I quit using the damn things, and later got rid of most of them entirely since they weren’t pulling their weight, so to speak.
+                - paragraph [ref=e298]: By setting up my new members programs this way I had an actual product to sell that was palpably valuable in a very short period of time. Even fat people that couldn’t see their thigh muscles could see the linear increase in strength on paper and feel it when they got up off of the toilet. The key was the use of exercises that lent themselves to a linear increase from workout to workout, and the rule that everybody goes up in weight every time they train. The fact that everybody, without exception, showed improvement in important physical parameters within four workouts removed the didn’t-get-any-results objection to continued participation in the program.
+                - paragraph [ref=e299]: "This is wonderful, of course, but after many years of doing things this way it became clear that most people really didn’t give a shit whether it worked or not. Squats, presses, and deadlifts are harder than leg extensions and watching TV on the treadmill, and most people still quit. Lazy slobs, etc. But those that stayed all showed the same pattern in following their linear increases up through the basic exercises: they made rapid progress every workout at first which finally slowed to a stop as they got very strong. These people who had stuck with the simple program for the months it had been productive had gotten strong enough that they were able to produce enough stress during a workout that an adaptation to the stress could not occur within the time between one workout and the next. Conversely, they had gotten so adapted to the stress that the work being done during their simple beginner workout was no longer enough to continue producing a long-term adaptation."
+                - paragraph [ref=e300]: This means that the use of our relatively large incremental increases at first (and then the relatively smaller ones later) produced a stress to which the new member could adapt between Monday’s first workout and the second one on Wednesday, and then again between Wednesday and Friday. It means that the more adapted the member gets, the smaller the increase has to be, but that at first we’re wasting time and attention span if we don’t use bigger increases. Most importantly, it means that if we don’t ask for an adaptation we’re not going to get one; if we use exercises that don’t provide a way to ask for incremental increases and then to obtain them, nothing about the member’s body will change.
+                - paragraph [ref=e301]:
+                  - text: Barbell exercise places a stress on the body that machine exercise does not, and enough has been written about that elsewhere that there is no need to preach to this particular choir. The overlooked (by some lifters who should know better) component is the crucial nature of the incremental increase. I see lots of indications all over the place that the old 10-8-6-5-4-3-2-1 bench press “routine” (quite the appropriate term) has not died the death it so richly deserves. The gist of the thing is that you do a set of ten with a weight that is approximately a 10RM, followed by eight, then six, and so on down to a single. Nothing about this workout has ever made any sense for anyone except a rank beginner – a trainee
+                  - emphasis [ref=e302]: for whom anything at all
+                  - text: will act as an adaptive stimulus, and for whom almost anything else would be more productive. It completely lacks the numerical logic of an increase in weight, and in fact makes such an increase impossible since failure was achieved in the first set and fatigue was present during all subsequent sets. Its appeal lies in the physical sensation of fatigue and the “pump” it produces, not in its ability to generate a predictable, programmable increase in strength. It shares this failing in common with the vast majority of non-productive programs that make you sweaty, tired, sore, “pumped,” and no stronger the next workout. The expression is now trite that “any program is better than no program at all,” and this is absolutely true for unadapted rank novices. It remains true for a short while, but soon more effective programming must be utilized if gains are to continue. Even if physical appearance is your main goal, keep in mind that a guy with a 300 bench has a better looking chest than a guy with a 150 bench, so the best way to a better looking chest is the program that produces the 300 bench. Duh.
+                - paragraph [ref=e303]:
+                  - text: Most productive, of course, would be a program that plans a small incremental increase from the previous workout to be done after a warmup that effectively prepares for these work sets, a program that will
+                  - emphasis [ref=e304]: always
+                  - text: produce progress over time because, if it is done properly,
+                  - emphasis [ref=e305]: no other outcome is possible
+                  - text: . The completion of each subsequent workout is predicated on an increase in weight from the previous workout. And notice that the first workout we did with my new member didn’t go to absolute failure; this is because I have found that you have to leave a little on the bar in order to facilitate the early adaptations. The few times I tried it the wrong way and took the new member to failure, the result was a level of soreness that made the next 3 workouts impossible. The difference in weight between going to failure the first time and the weight on the bar the third workout was always essentially zero, without the carnage, misery, discouragement, and a lost membership attendant to being stupid about a new member’s first workout. By the fourth workout everybody was in legitimate personal record territory, with positive growth momentum and a realistic expectation of continued progress.
+                - paragraph [ref=e306]: The way the incremental increases are programmed is critical to progress. It varies with athlete, but not as much as you might think. It is rare to find a young completely untrained male of average bodyweight that needs to squat more than 145 x 5 x 3 his first workout. Even those with a training history of some sort that does not include an exposure to linear progressive programming will be unlikely to squat more than about 185 below parallel the first day. Bigger individuals at normal bodyfat levels can use heavier weights, but I have seen very few even exceptionally big guys start with more than 225. It is rare to find an untrained individual capable of squatting their own bodyweight on the bar for five. The second workout for either of these guys might take a 20 lb jump, maybe, but the next five to ten workouts will be 10 lbs After this the 10 lb increase will get very hard, and last workout of the 10 lb jumps will be heavy to the point of near-failure; this will likely be the trainee’s first experience with a weight that presents an actual challenge to his ability to lift. The jumps after this will be 5 lb.
+                - paragraph [ref=e307]: The increments must reflect a realistic assessment of the lifter’s ability to actually do them in a sustained progression. The pressing movements may take an initial 10 lb jump, but then immediately drop to 5 lb jumps, and analogous to the 10—> 5 lb drop in the squat they drop to 2.5 lb jumps. Some older women have to start on the leg press in order to develop the strength to squat their own bodyweight the full range of motion, extremely detrained older men likewise. If this is the case, the increments on the 45-degree leg press will be 10-20 lbs for sets of ten until enough hip and leg strength is developed to enable the squat to be a useful exercise. I have found that when a person can do their approximate bodyweight for 10 reps, the leg press is no longer necessary, but until then it is an important tool for incrementally developing the strength to squat. So we use the tools we must use to enable small increments to accumulate into meaningful strength gains.
+                - paragraph [ref=e308]: "This means that for women almost immediately and for every lifter eventually, plates smaller than the standard 1.25 kg/2.5 lb must be available if progress is to continue to accumulate. The athlete must have the ability to match training loads with the ability to lift them, and with the ability to recover from lifting them. It doesn’t take but one workout where all five reps of all three sets are not completed to get stuck. And getting stuck means that you either have to get un-stuck or you stop making progress. Many big men have scoffed at the use of plates smaller than even 5s: “Not in my fucking weight room!” Well, okay, that’s just fine if your fucking weight room only caters to a certain clientele. But mine has always had to cater to enough people to get the bills paid, and in this market that has always meant pretty much everybody I could get through the door. Which meant that I had to have the ability to apply the principles of progressive linear increase to everybody, regardless of genetic endowment, sex, age, or degree of chemical enhancement, in order that my business plan – the one where I got all my bills paid – remained viable. That is why I have a pair of 1 lb plates and a pair of 1.75 lbs so that I can load the bench press to 40, 42, 43.5, 45, 47, 48.5, and 50, for instance, to provide a smooth upward flow of resistance for my female trainees, and so that I can load my own presses to 155, 157. 158.5, and 160 on my way up to 200 lbs."
+                - paragraph [ref=e309]: Without an appreciation for the importance of continued, sustainable incremental increases in training loads, there is no appreciation for the most fundamental form of programming. Novices are the easiest people in the world to train, and that is the reason there are so many programs that are regarded as effective. But if you don’t understand the incremental nature of physical adaptation, you can’t make them do so for more than a short time. If your knowledge of the acquisition of strength is based on the hope that it just happens because you spent some time working out in the weight room, and you have no personal experience with making it happen a little at a time until either you or one of your trainees is a lot stronger, you have no concept of the effectiveness of the most logical way to make it happen. I stumbled upon this method accidentally, essentially out of necessity. Benefit from my experience, please.
+                - separator [ref=e310]
+                - paragraph
+                - paragraph [ref=e311]:
+                  - link "Discuss in Forums" [ref=e312] [cursor=pointer]:
+                    - /url: https://startingstrength.com/resources/forum/articles-and-platform-videos/13680-incremental-increases.html
+            - list [ref=e313]:
+              - listitem [ref=e314]:
+                - link "Share on Facebook" [ref=e315] [cursor=pointer]:
+                  - /url: https://www.facebook.com/sharer/sharer.php?u=https://startingstrength.com/article%2Fincremental_increases&t=Incremental Increases | Mark Rippetoe
+              - listitem [ref=e317]:
+                - link "Tweet" [ref=e318] [cursor=pointer]:
+                  - /url: https://twitter.com/intent/tweet?source=https://startingstrength.com/article%2Fincremental_increases&text=Starting%20Strength
+              - listitem [ref=e320]:
+                - link "Share on Google+" [ref=e321] [cursor=pointer]:
+                  - /url: https://plus.google.com/share?url=https://startingstrength.com/article%2Fincremental_increases
+              - listitem [ref=e323]:
+                - link "Submit to Reddit" [ref=e324] [cursor=pointer]:
+                  - /url: http://www.reddit.com/submit?url=https://startingstrength.com/article%2Fincremental_increases&title=Incremental Increases | Mark Rippetoe
+              - listitem [ref=e326]:
+                - link "Email" [ref=e327] [cursor=pointer]:
+                  - /url: mailto:?subject=Starting%20Strength%20Incremental Increases | Mark Rippetoe&body=https://startingstrength.com/article%2Fincremental_increases
+              - listitem [ref=e329]:
+                - link:
+                  - /url: https://startingstrength.com/contentfiles/incremental_increases_rippetoe.pdf
+            - link "Join the Starting Strength Network" [ref=e331] [cursor=pointer]:
+              - /url: https://network.startingstrength.com
+            - generic [ref=e332]:
+              - link "Previous" [ref=e333] [cursor=pointer]:
+                - /url: baby_bathwater_gear
+              - link "Next" [ref=e334] [cursor=pointer]:
+                - /url: core_stability_training
+            - generic [ref=e335]:
+              - link "Starting Strength Coach Prep Course":
+                - /url: https://aasgaardco.com/store/training/coach-development/coach-prep-course/
+            - generic [ref=e336]:
+              - link "Starting Strength Careers":
+                - /url: https://startingstrength.com/careers
+            - separator [ref=e337]
+            - generic [ref=e338]:
+              - heading "More from Starting Strength" [level=3] [ref=e339]
+              - generic [ref=e340]:
+                - link [ref=e342] [cursor=pointer]:
+                  - /url: https://startingstrength.com/podcast/episode-46-5-inches-to-500-lbs
+                  - img "brian jones on the starting strength podcast" [ref=e343]
+                - link "Episode 46 - 5 Inches to 500 lbs –Mark Rippetoe" [ref=e346] [cursor=pointer]:
+                  - /url: https://startingstrength.com/podcast/episode-46-5-inches-to-500-lbs
+              - generic [ref=e347]:
+                - generic [ref=e348]:
+                  - 'link "RFK Jr. vs. Peter Hotez, VAERS, and Vaccines With Dr. Jessica Rose | Starting Strength Radio #218"':
+                    - /url: https://startingstrength.com/video/rfk-jr-vs-peter-hotez-vaers-and-vaccines-with-dr-jessica-rose-starting-strength-radio-218
+                - 'link "RFK Jr. vs. Peter Hotez, VAERS, and Vaccines With Dr. Jessica Rose | Starting Strength Radio #218 –" [ref=e351] [cursor=pointer]':
+                  - /url: https://startingstrength.com/video/rfk-jr-vs-peter-hotez-vaers-and-vaccines-with-dr-jessica-rose-starting-strength-radio-218
+              - generic [ref=e352]:
+                - link [ref=e354] [cursor=pointer]:
+                  - /url: https://startingstrength.com/article/the-reluctant-female-novice
+                  - img "female lifter approaches the bar" [ref=e355]
+                - link "The Reluctant Female Novice –Rebecca Fishburne" [ref=e358] [cursor=pointer]:
+                  - /url: https://startingstrength.com/article/the-reluctant-female-novice
+              - generic [ref=e359]:
+                - link [ref=e361] [cursor=pointer]:
+                  - /url: https://startingstrength.com/training/five-important-things
+                  - img "close up of the bench press" [ref=e362]
+                - link "Five Important Things –Jim Steel" [ref=e365] [cursor=pointer]:
+                  - /url: https://startingstrength.com/training/five-important-things
+            - generic [ref=e366]:
+              - heading "More from Starting Strength" [level=3] [ref=e367]
+              - generic [ref=e368]:
+                - generic [ref=e369]:
+                  - link "beginning of a squat":
+                    - /url: https://startingstrength.com/article/starting-strength-gyms-the-plan-for-2021
+                    - img "beginning of a squat" [ref=e370] [cursor=pointer]
+                  - paragraph [ref=e371]:
+                    - link "Starting Strength Gyms – The Plan for 2021 –Ray Gillenwater" [ref=e372] [cursor=pointer]:
+                      - /url: https://startingstrength.com/article/starting-strength-gyms-the-plan-for-2021
+                - generic [ref=e373]:
+                  - link "cycling event chris ronan":
+                    - /url: https://startingstrength.com/article/bicycling-and-the-x-factor
+                    - img "cycling event chris ronan" [ref=e374] [cursor=pointer]
+                  - paragraph [ref=e375]:
+                    - link "Bicycling and the X Factor –Chris Ronan" [ref=e376] [cursor=pointer]:
+                      - /url: https://startingstrength.com/article/bicycling-and-the-x-factor
+          - generic [ref=e377]:
+            - heading [level=3] [ref=e378]:
+              - link "What is Starting Strength?" [ref=e379] [cursor=pointer]:
+                - /url: https://startingstrength.com/about
+            - heading [level=3] [ref=e380]:
+              - link "Get Started" [ref=e381] [cursor=pointer]:
+                - /url: https://startingstrength.com/get-started
+            - heading [level=3] [ref=e382]:
+              - link "Find a Gym" [ref=e383] [cursor=pointer]:
+                - /url: https://startingstrength.com/gyms
+            - heading [level=3] [ref=e384]:
+              - link "Online Coaching" [ref=e385] [cursor=pointer]:
+                - /url: http://startingstrengthonlinecoaching.com
+            - heading [level=3] [ref=e386]:
+              - link "Become a Coach" [ref=e387] [cursor=pointer]:
+                - /url: https://startingstrength.com/careers
+            - heading [level=3] [ref=e388]:
+              - link "Starting Strength Network" [ref=e389] [cursor=pointer]:
+                - /url: https://network.startingstrength.com
+            - heading "Starting Strength Seminars" [level=4] [ref=e390]
+            - table [ref=e392]:
+              - rowgroup [ref=e393]:
+                - row [ref=e394]:
+                  - cell [ref=e395]:
+                    - link "Dec 6-8" [ref=e396] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/starting-strength-seminars/starting-strength-seminar-december-6-8-2024-wichita-falls-tx/
+                  - cell [ref=e397]:
+                    - link "Wichita Falls, TX" [ref=e398] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/starting-strength-seminars/starting-strength-seminar-december-6-8-2024-wichita-falls-tx/
+                - row [ref=e399]:
+                  - cell [ref=e400]:
+                    - link "Feb 7-9" [ref=e401] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/starting-strength-seminars/starting-strength-seminar-february-7-9-2025-wichita-falls-tx/
+                  - cell [ref=e402]:
+                    - link "Wichita Falls, TX" [ref=e403] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/starting-strength-seminars/starting-strength-seminar-february-7-9-2025-wichita-falls-tx/
+                - row [ref=e404]:
+                  - cell [ref=e405]:
+                    - link "Apr 4-6" [ref=e406] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/starting-strength-seminars/starting-strength-seminar-april-4-6-2025-wichita-falls-tx/
+                  - cell [ref=e407]:
+                    - link "Wichita Falls, TX" [ref=e408] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/starting-strength-seminars/starting-strength-seminar-april-4-6-2025-wichita-falls-tx/
+            - heading "Training Camps" [level=4] [ref=e409]
+            - heading "The Squat" [level=5] [ref=e410]
+            - table [ref=e412]:
+              - rowgroup [ref=e413]:
+                - row [ref=e414]:
+                  - cell [ref=e415]:
+                    - link "Nov 10" [ref=e416] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/the-squat-november-10-2024-seoul-rok/
+                  - cell [ref=e417]:
+                    - link "Seoul, ROK" [ref=e418] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/the-squat-november-10-2024-seoul-rok/
+            - heading "Press & Bench Press" [level=5] [ref=e419]
+            - table [ref=e421]:
+              - rowgroup [ref=e422]:
+                - row [ref=e423]:
+                  - cell [ref=e424]:
+                    - link "Nov 16" [ref=e425] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/press-bench-press-november-16-2024-long-island-ny/
+                  - cell [ref=e426]:
+                    - link "Long Island, NY" [ref=e427] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/press-bench-press-november-16-2024-long-island-ny/
+            - heading "Deadlift & Power Clean" [level=5] [ref=e428]
+            - table [ref=e430]:
+              - rowgroup [ref=e431]:
+                - row [ref=e432]:
+                  - cell [ref=e433]:
+                    - link "Nov 10" [ref=e434] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/deadlift-clean-november-10-2024-seoul-rok/
+                  - cell [ref=e435]:
+                    - link "Seoul, ROK" [ref=e436] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/deadlift-clean-november-10-2024-seoul-rok/
+            - heading "Squat & Deadlift" [level=5] [ref=e437]
+            - table [ref=e439]:
+              - rowgroup [ref=e440]:
+                - row [ref=e441]:
+                  - cell [ref=e442]:
+                    - link "Dec 14" [ref=e443] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/squat-deadlift-camps/squat-deadlift-december-14-2024-columbus-oh/
+                  - cell [ref=e444]:
+                    - link "Columbus, OH" [ref=e445] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/squat-deadlift-camps/squat-deadlift-december-14-2024-columbus-oh/
+                - row [ref=e446]:
+                  - cell [ref=e447]:
+                    - link "Jan 18" [ref=e448] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/squat-deadlift-january-18-2025-costa-mesa-ca/
+                  - cell [ref=e449]:
+                    - link "Costa Mesa, CA" [ref=e450] [cursor=pointer]:
+                      - /url: https://aasgaardco.com/store/training/training-camps/squat-deadlift-january-18-2025-costa-mesa-ca/
+            - heading "Meets" [level=4] [ref=e451]
+            - table [ref=e453]:
+              - rowgroup [ref=e454]:
+                - row [ref=e455]:
+                  - cell [ref=e456]:
+                    - link "Nov 16" [ref=e457] [cursor=pointer]:
+                      - /url: https://liftingcast.com/meets/m7zief19rvxi/registration
+                  - cell [ref=e458]:
+                    - link "Wichita Falls, TX" [ref=e459] [cursor=pointer]:
+                      - /url: https://liftingcast.com/meets/m7zief19rvxi/registration
+                - row [ref=e460]:
+                  - cell [ref=e461]:
+                    - link "Nov 22" [ref=e462] [cursor=pointer]:
+                      - /url: https://www.eventbrite.com/e/benching-bonanza-the-2024-annual-testify-bench-press-jubilee-tickets-957424932747
+                  - cell [ref=e463]:
+                    - link "Omaha, NE" [ref=e464] [cursor=pointer]:
+                      - /url: https://www.eventbrite.com/e/benching-bonanza-the-2024-annual-testify-bench-press-jubilee-tickets-957424932747
+                - row [ref=e465]:
+                  - cell [ref=e466]:
+                    - link "Dec 8" [ref=e467] [cursor=pointer]:
+                      - /url: https://www.fivex3.com/2024/07/25/stronger-together-2024-a-partners-strength-meet/
+                  - cell [ref=e468]:
+                    - link "Baltimore, MD" [ref=e469] [cursor=pointer]:
+                      - /url: https://www.fivex3.com/2024/07/25/stronger-together-2024-a-partners-strength-meet/
+                - row [ref=e470]:
+                  - cell [ref=e471]:
+                    - link "Dec 14" [ref=e472] [cursor=pointer]:
+                      - /url: https://www.eventbrite.com/e/2024-testify-barbell-blizzard-tickets-1003820583387
+                  - cell [ref=e473]:
+                    - link "Omaha, NE" [ref=e474] [cursor=pointer]:
+                      - /url: https://www.eventbrite.com/e/2024-testify-barbell-blizzard-tickets-1003820583387
+  - separator [ref=e476]
+  - generic [ref=e480]:
+    - link [ref=e482] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/books-posters-dvd/books/starting-strength-basic-barbell-training/
+      - img "starting strength book" [ref=e483]
+    - link [ref=e485] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/books-posters-dvd/books/the-barbell-prescription-strength-training-for-life-after-40/
+      - img "barbell prescription book" [ref=e486]
+    - link [ref=e488] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/books-posters-dvd/books/practical-programming-for-strength-training/
+      - img "practical programming book" [ref=e489]
+    - link [ref=e491] [cursor=pointer]:
+      - /url: https://startingstrengthonlinecoaching.com
+      - img "starting strength online coaching icon" [ref=e492]
+    - link [ref=e494] [cursor=pointer]:
+      - /url: https://aasgaardco.com/category/training/starting-strength-seminars/
+      - img "starting strength seminars" [ref=e495]
+    - link [ref=e497] [cursor=pointer]:
+      - /url: http://www.shabu.co
+      - img "starting strength app" [ref=e498]
+    - link [ref=e500] [cursor=pointer]:
+      - /url: https://aasgaardco.com/category/training/training-camps/
+      - img "starting strength training camps" [ref=e501]
+    - link [ref=e503] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/gear/decals/lifter-sticker/
+      - img "lifter's window sticker" [ref=e504]
+    - link [ref=e506] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/books-posters-dvd/books/strong-enough/
+      - img "strong enough book" [ref=e507]
+    - link [ref=e509] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/books-posters-dvd/books/mean-ol-mr-gravity/
+      - img "mean ol mr gravity book" [ref=e510]
+    - link [ref=e512] [cursor=pointer]:
+      - /url: https://aasgaardco.com/category/gear/shirts/
+      - img "starting strength shirts" [ref=e513]
+    - link [ref=e515] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/gear/mugs/starting-strength-mug-2/
+      - img "starting strength mug" [ref=e516]
+    - link [ref=e518] [cursor=pointer]:
+      - /url: https://aasgaardco.com/store/gear/mugs/aasgaard-mug/
+      - img "aasgaard mug" [ref=e519]
+  - generic [ref=e520]:
+    - separator [ref=e522]
+    - generic [ref=e523]:
+      - generic [ref=e524]:
+        - heading "Starting Strength Weekly Report" [level=5] [ref=e525]
+        - paragraph [ref=e526]:
+          - text: Highlights from the StartingStrength Community.
+          - link "Browse archives." [ref=e527] [cursor=pointer]:
+            - /url: https://startingstrength.com/report/index.html
+      - generic [ref=e530]:
+        - generic [ref=e531]: Your subscription could not be saved. Please try again.
+        - generic [ref=e535]: Your subscription has been successful.
+        - generic [ref=e540]:
+          - generic [ref=e544]:
+            - text: Enter your email address to subscribe
+            - textbox "Enter your email address to subscribe" [ref=e546]:
+              - /placeholder: EMAIL
+          - button "SUBSCRIBE" [ref=e550]
+          - textbox [ref=e553]
+  - contentinfo [ref=e554]:
+    - generic [ref=e555]:
+      - generic [ref=e556]:
+        - generic [ref=e557]:
+          - heading "Get Info" [level=5] [ref=e558]
+          - list [ref=e559]:
+            - listitem [ref=e560]:
+              - link "Articles" [ref=e561] [cursor=pointer]:
+                - /url: https://startingstrength.com/article
+            - listitem [ref=e562]:
+              - link "Videos" [ref=e563] [cursor=pointer]:
+                - /url: https://startingstrength.com/video
+            - listitem [ref=e564]:
+              - link "Podcasts" [ref=e565] [cursor=pointer]:
+                - /url: https://startingstrength.com/podcast
+            - listitem [ref=e566]:
+              - link "Training" [ref=e567] [cursor=pointer]:
+                - /url: https://startingstrength.com/training
+            - listitem [ref=e568]:
+              - link "Search" [ref=e569] [cursor=pointer]:
+                - /url: https://startingstrength.com/search
+        - generic [ref=e570]:
+          - heading [level=5] [ref=e571]:
+            - link "Get Started" [ref=e572] [cursor=pointer]:
+              - /url: https://startingstrength.com/get-started
+          - list [ref=e573]:
+            - listitem [ref=e574]:
+              - link "Learn to Coach" [ref=e575] [cursor=pointer]:
+                - /url: https://coaching.startingstrength.com/learn-to-coach
+            - listitem [ref=e576]:
+              - link "Lifts" [ref=e577] [cursor=pointer]:
+                - /url: https://startingstrength.com/get-started/lifts
+            - listitem [ref=e578]:
+              - link "Programs" [ref=e579] [cursor=pointer]:
+                - /url: https://startingstrength.com/get-started/programs
+            - listitem [ref=e580]:
+              - link "Books" [ref=e581] [cursor=pointer]:
+                - /url: https://startingstrength.com/get-started/equipment
+            - listitem [ref=e582]:
+              - link "App" [ref=e583] [cursor=pointer]:
+                - /url: https://startingstrength.com/get-started/equipment
+            - listitem [ref=e584]:
+              - link "FAQ" [ref=e585] [cursor=pointer]:
+                - /url: https://startingstrength.com/get-started/faq
+        - generic [ref=e586]:
+          - heading "Get Help" [level=5] [ref=e587]
+          - list [ref=e588]:
+            - listitem [ref=e589]:
+              - link "Coaching" [ref=e590] [cursor=pointer]:
+                - /url: https://coaching.startingstrength.com/
+            - listitem [ref=e591]:
+              - link "Online Coaching" [ref=e592] [cursor=pointer]:
+                - /url: https://coaching.startingstrength.com/coaches/
+            - listitem [ref=e593]:
+              - link "Forums" [ref=e594] [cursor=pointer]:
+                - /url: https://startingstrength.com/resources/forum/
+            - listitem [ref=e595]:
+              - link "Events" [ref=e596] [cursor=pointer]:
+                - /url: https://coaching.startingstrength.com/events/
+            - listitem [ref=e597]:
+              - link "Contact Us" [ref=e598] [cursor=pointer]:
+                - /url: https://startingstrength.com/about/contact
+      - separator [ref=e599]
+      - generic [ref=e600]:
+        - generic [ref=e601]: © The Aasgaard Company
+        - generic [ref=e602]:
+          - link "Privacy Policy" [ref=e603] [cursor=pointer]:
+            - /url: https://startingstrength.com/privacy
+          - text: "|"
+          - link "Terms" [ref=e604] [cursor=pointer]:
+            - /url: https://startingstrength.com/terms
+          - text: "|"
+          - link "RSS" [ref=e605] [cursor=pointer]:
+            - /url: https://startingstrength.com/rss.rss
+          - text: "|"
+          - link "Podcast RSS" [ref=e606] [cursor=pointer]:
+            - /url: http://feeds.soundcloud.com/users/soundcloud:users:38229715/sounds.rss
