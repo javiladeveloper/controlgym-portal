@@ -5,6 +5,53 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## 📩 PANEL → APP (2026-07-21): FEATURES USUARIO LIBRE — respuesta al handoff
+> Leímos `docs/FEATURES-USUARIO-LIBRE-HANDOFF.md`. Buen planteo: prioriza por
+> impacto/esfuerzo y reusa lo que ya existe. Respuesta por feature:
+>
+> **1) Timer de descanso + modo guiado → ✅ adelante, no necesitan nada de nosotros.**
+> Confirmado: el `descanso` ya viaja en cada ejercicio del plan y el check por
+> ejercicio ya se persiste (PEDIDO 46). Cero backend.
+>
+> **4) Racha + logros → ✅ LISTO, ya está montado.**
+> Tal como lo pidieron: la app calcula qué logros corresponden y el backend solo
+> recuerda cuáles ya se desbloquearon (para no re-celebrar).
+> ```
+> supabase.rpc('desbloquear_logro', { p_codigo: 'racha_7' })
+> → { codigo: 'racha_7', nuevo: true }    // true SOLO la primera vez → celebren
+> → { codigo: 'racha_7', nuevo: false }   // ya lo tenía → no celebrar
+>
+> supabase.rpc('mis_logros')
+> → [{ codigo, desbloqueado_en, visto }]  // al abrir la app
+>
+> supabase.rpc('marcar_logros_vistos', { p_codigos: ['racha_7'] })  // null = todos
+> ```
+> Es idempotente: pueden llamar `desbloquear_logro` cuantas veces quieran, solo la
+> primera devuelve `nuevo:true`. Tabla `logro_usuario` con RLS por usuario (probado:
+> otro usuario ve `[]`). **Es del USUARIO, no del socio** — funciona para el usuario
+> libre sin gym, que es a quien apunta la feature. Los códigos los definen ustedes;
+> no hay catálogo en BD a propósito, así que sumar logros nuevos no requiere migración.
+>
+> **2) Rutinas prediseñadas v1 → ✅ adelante, tampoco necesitan backend.**
+> Verificamos que `generar_rutina_libre` ya acepta exactamente lo que necesitan:
+> ```
+> supabase.rpc('generar_rutina_libre', {
+>   p_objetivo: 'ganar_masa'|'bajar_peso'|'fuerza'|'resistencia'|'tonificar'|...,
+>   p_nivel: 'principiante'|'intermedio'|'avanzado',
+>   p_dias_semana: 3..6,          // ojo: valida 3-6, fuera de rango lanza error
+>   p_equipo: 'peso_corporal'|'mancuernas'|'gym_completo'
+> })
+> ```
+> **"En casa sin equipo" = `p_equipo:'peso_corporal'`** (filtra a los 325 ejercicios de
+> peso corporal del catálogo). Cada tarjeta del grid = una combinación fija de esos 4
+> parámetros. La RPC ya reemplaza la rutina activa anterior y devuelve el detalle
+> completo, así que "Usar esta rutina" es una sola llamada.
+> ⚠️ Ojo: `p_dias_semana` **solo acepta 3 a 6**. Si quieren una tarjeta de 2 días
+> (ej. movilidad), avísennos y lo ampliamos.
+>
+> **Fotos de progreso → ⏸️ en pausa por decisión del owner.** No lo prioricemos por
+> ahora; cuando se retome montamos tabla + RPCs + Storage como plantearon.
+
 > ## 📩 PANEL → APP (2026-07-20): PEDIDO 49 — `pagar-yape` LISTO ✅ (backend montado)
 > Excelente investigación: tienen razón en las tres cosas. El **WebView está
 > deprecado** por MP, el **SDK nativo no cubre Perú**, y el token se puede generar
