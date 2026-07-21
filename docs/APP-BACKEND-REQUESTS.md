@@ -5,6 +5,63 @@
 > Sesión de la app: KMP/Compose Multiplatform (no Flutter), package
 > `pe.fitcore.app`, repo `../controlgym-app`. Login Google ya operativo.
 
+> ## ✅ PANEL → APP (2026-07-21): PEDIDO 51 LISTO — rutina portable montada (3 RPCs + puente de catálogos + caducidad de cargas)
+> Gran handoff: la regla del owner cierra los casos y la caducidad de cargas es una
+> consideración de seguridad real, no cosmética. Todo implementado y probado.
+>
+> **El bloqueante que encontraron era real** — `ejercicio` no tenía link al catálogo
+> global. Resuelto: agregamos `ejercicio.catalogo_id` (nullable) y **backfill de 374
+> de 390 ejercicios (96%)** por nombre normalizado. Los 16 restantes son ejercicios
+> propios de gyms, correcto que no matcheen.
+>
+> **Las 3 RPCs:**
+> ```
+> supabase.rpc('adoptar_rutina_del_gym')          // la del gym pasa a ser suya
+> → { ok:true, adoptada:true, rutina_libre_id }
+> → { ok:true, adoptada:false, motivo:'ya tenías una rutina propia' }   // idempotente
+>
+> supabase.rpc('llevar_rutina_del_gym')           // me llevo la versión mejorada
+> → mismo shape (reemplaza la propia)
+>
+> supabase.rpc('importar_mi_rutina_al_gym', { p_empresa_id })
+> → { ok:true, rutina_id, vigencia_semanas: 8,
+>     sugerencias_carga: [{ ejercicio, carga_actual, dias_sin_hacerlo, factor, motivo }] }
+> ```
+>
+> **Probado con datos reales** (socio con 22 ejercicios propios, socio de 2 gyms):
+> se copiaron 4 días y **22/22 ejercicios CON link al catálogo del gym** → conservan
+> GIF y la progresión casa. `entrenador_id` quedó null ✓.
+>
+> **Decisiones que nos pidieron resolver:**
+> - **`entrenador_id` → null al importar.** Aclaración importante del owner: *la
+>   rutina NO se amarra a un trainer* ("hoy me ayuda Pedrito, mañana Menganito"). Y
+>   resulta que `reporte_atenciones` **ya funciona así**: cuenta EVENTOS con fecha
+>   (quién la envió ese día), no propiedad. Así que una importada no infla las
+>   atenciones de nadie, y cuando un trainer la optimice y la envíe, el flujo normal
+>   le acredita ESE día. **No hubo que cambiar el modelo.**
+> - **`enviado_at` = now()**: es su rutina, la ve de inmediato.
+> - **Vigencia**: hereda la duración sugerida de la plantilla del gym (8 semanas por
+>   defecto) para que entre al ciclo de "por vencer" y el trainer la revise. Sin esto
+>   quedaría huérfana fuera del flujo del gym.
+>
+> **Caducidad de cargas → SUGERENCIA, nunca imposición** (decisión del owner):
+> la rutina se importa con las cargas **tal cual** y les devolvemos aparte qué
+> sugerir, con el motivo en lenguaje humano para que lo muestren:
+> ```
+> <30 días  → factor 1.0   "entrenaste hace poco: mantén tu carga"
+> 30-90     → factor 0.85  "llevabas más de 1 mes...: empieza ~15% más suave"
+> 90-365    → factor 0.6   "llevabas varios meses...: empieza ~40% más suave"
+> >365      → factor null  "más de un año...: arranca sin carga fija y sube rápido"
+> sin dato  → factor null  "sin registro previo de este ejercicio"
+> ```
+> Nadie pierde su dato histórico; el socio ajusta y el trainer corrige.
+> También pueden llamar `factor_carga_por_pausa(dias)` sola si la necesitan en otro
+> punto (ej. al volver tras una pausa en el MISMO gym, el segundo caso que plantearon).
+>
+> **Nota:** `importar_mi_rutina_al_gym` valida que seas socio de ese gym (si no,
+> lanza excepción), y desactiva la rutina anterior enlazándola como
+> `rutina_anterior_id` — o sea queda el historial.
+
 > ## 🎒 APP → PANEL (2026-07-21): PEDIDO 51 — "Tu rutina te acompaña" (rutina portable entre gyms)
 > Handoff completo en `controlgym-app/docs/RUTINA-PORTABLE-HANDOFF.md`. Resumen:
 >
