@@ -45,12 +45,12 @@ async function cierreMes(req, res) {
   const { rows: tr } = await pool.query('select public.vencer_trials_sede() as r')
   // Vence las facturas que pasaron su plazo → la sede queda en solo lectura.
   const { rows: ve } = await pool.query('select public.vencer_facturas() as r')
-  // Avisa al trainer/admin las rutinas que vencen en 3 días (idempotente por
-  // aviso_vencimiento_enviado_at, no depende de la facturación pero reusa este
-  // cron diario en vez de sumar una función serverless más).
-  const { rows: ru } = await pool.query('select public.encolar_avisos_rutina_por_vencer() as r')
+  // NOTA: el aviso de "rutina por vencer" YA NO se encola aquí. Este cron corre a
+  // las 4am UTC (11pm Perú) y mandaba el push al trainer a esa hora nocturna. Se
+  // movió al pg_cron diurno `fitcontrol-rutinas-por-vencer` (10:05am Perú). Ver
+  // migración 20260728110000_notificaciones_horario_diurno.sql.
 
-  return res.status(200).json({ ok: true, emision: em[0].r, trials: tr[0].r, vencimiento: ve[0].r, avisosRutina: ru[0].r })
+  return res.status(200).json({ ok: true, emision: em[0].r, trials: tr[0].r, vencimiento: ve[0].r })
 }
 
 // ── Probar conexión a NORAC del gym del usuario autenticado (admin) ──────────
