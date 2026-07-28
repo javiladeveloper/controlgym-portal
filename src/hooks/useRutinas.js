@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient.js'
+import { useRealtime } from './useRealtime.js'
 
 // Socios de la sede para el selector.
 export function useSociosSelect(sedeId) {
@@ -425,10 +426,13 @@ export function useAsignarVigencia(socioId) {
 // no pertenecen a un trainer — si el que firmó la rutina está enfermo o ya
 // no trabaja, cualquier entrenador/admin activo las resuelve al volver.
 export function useSolicitudesCarga(empresaId) {
+  // Realtime (useSolicitudesCargaRealtime) invalida esta query al instante en
+  // cada cambio. El refetchInterval queda como RESPALDO por si el websocket se
+  // cae; por eso sube de 60s a 120s (ya no es la vía principal de refresco).
   return useQuery({
     queryKey: ['solicitudes-carga', empresaId],
     enabled: !!empresaId,
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('solicitud_carga')
@@ -439,6 +443,17 @@ export function useSolicitudesCarga(empresaId) {
       if (error) throw error
       return data
     },
+  })
+}
+
+// Suscripción realtime de la bandeja de carga: cada INSERT/UPDATE de
+// solicitud_carga (socio pide, otro trainer responde) refresca la lista al
+// instante. Se monta en la pantalla de Rutinas.
+export function useSolicitudesCargaRealtime(empresaId) {
+  useRealtime({
+    table: 'solicitud_carga',
+    enabled: !!empresaId,
+    invalidate: [['solicitudes-carga', empresaId]],
   })
 }
 

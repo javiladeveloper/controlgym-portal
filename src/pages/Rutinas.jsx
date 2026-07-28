@@ -12,7 +12,7 @@ import {
   useEjerciciosRutina, useGuardarEjercicio, useEliminarEjercicio,
   useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
-  useSolicitudesCarga, useResponderSolicitud, useAsignarPlanAutomatico,
+  useSolicitudesCarga, useSolicitudesCargaRealtime, useResponderSolicitud, useAsignarPlanAutomatico,
   useAsignarVigencia, usePlantillaAgregarEj, usePlantillaEditarEj, usePlantillaQuitarEj,
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
@@ -293,6 +293,7 @@ const haceCuanto = (ts) => {
 // toma, o él mismo las encuentra aquí cuando vuelva.
 function SolicitudesCarga({ empresaId, onIrSocio }) {
   const solicitudes = useSolicitudesCarga(empresaId)
+  useSolicitudesCargaRealtime(empresaId) // refresca en vivo al pedir/responder
   const responder = useResponderSolicitud(empresaId)
   const [rechazando, setRechazando] = useState(null) // solicitud a la que se le escribe el "aún no"
   const [nota, setNota] = useState('')

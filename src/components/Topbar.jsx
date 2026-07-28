@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BellIcon } from './icons.jsx'
 import { supabase } from '../lib/supabaseClient.js'
-import { usePanel } from '../store.jsx'
+import { useRealtime } from '../hooks/useRealtime.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { Avatar } from './ui.jsx'
 import { iniciales } from '../lib/uiHelpers.js'
@@ -97,10 +97,10 @@ function BuscadorGlobalSocios({ placeholder }) {
   )
 }
 
-function useNotificaciones(sedeId) {
+function useNotificaciones(empresaId) {
   return useQuery({
-    queryKey: ['notificaciones', sedeId],
-    enabled: !!sedeId,
+    queryKey: ['notificaciones', empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('notificacion')
@@ -113,12 +113,34 @@ function useNotificaciones(sedeId) {
   })
 }
 
+// Marca como leídas todas las notificaciones del gym (RPC del backend). Con
+// realtime activo, el UPDATE se propaga y el badge se apaga en vivo; igual
+// invalidamos por si el websocket estuviera caído.
+function useMarcarLeidas(empresaId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('marcar_notificaciones_leidas')
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notificaciones', empresaId] }),
+  })
+}
+
 // Header row: título a la izquierda; búsqueda + notificaciones + avatar a la derecha.
 export default function Topbar({ title, subtitle, searchPlaceholder = 'Buscar socio…' }) {
   const [notifOpen, setNotifOpen] = useState(false)
-  const { sedeId } = usePanel()
-  const { usuario } = useAuth()
-  const { data: notifs } = useNotificaciones(sedeId)
+  const { usuario, empresa } = useAuth()
+  const empresaId = empresa?.id
+  const { data: notifs } = useNotificaciones(empresaId)
+  // Realtime: cualquier notificacion nueva/leída del gym refresca la campanita
+  // al instante (antes solo se veía al recargar la página entera).
+  useRealtime({
+    table: 'notificacion',
+    enabled: !!empresaId,
+    invalidate: [['notificaciones', empresaId]],
+  })
+  const marcarLeidas = useMarcarLeidas(empresaId)
   const hayNoLeidas = (notifs || []).some((n) => !n.leida)
   const ini = usuario?.avatar_iniciales || (usuario?.nombre?.[0] ?? 'U')
 
@@ -144,7 +166,15 @@ export default function Topbar({ title, subtitle, searchPlaceholder = 'Buscar so
           <div className="absolute right-0 top-12 z-[80] w-[340px] animate-fadeSlide overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_18px_44px_rgba(20,27,46,0.16)]">
             <div className="flex items-center justify-between border-b border-line2 px-4 py-3.5">
               <div className="text-[13.5px] font-extrabold">Notificaciones</div>
-              <div className="cursor-pointer text-[11px] font-extrabold text-orange">Marcar leídas</div>
+              {hayNoLeidas && (
+                <button
+                  onClick={() => marcarLeidas.mutate()}
+                  disabled={marcarLeidas.isPending}
+                  className="cursor-pointer text-[11px] font-extrabold text-orange disabled:opacity-50"
+                >
+                  {marcarLeidas.isPending ? 'Marcando…' : 'Marcar leídas'}
+                </button>
+              )}
             </div>
             {(notifs || []).length === 0 && (
               <div className="px-4 py-6 text-center text-[12.5px] font-semibold text-muted">Sin notificaciones.</div>
