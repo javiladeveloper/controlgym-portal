@@ -115,6 +115,15 @@ async function dominiosVerificadosVercel() {
   }
 }
 
+// Precarga de la lista de dominios al ARRANCAR el contenedor (no dentro de un
+// request). Con Fluid Compute la instancia se reusa, así que para cuando llega el
+// primer request al sitemap la caché suele estar lista. Si falla, no pasa nada:
+// el sitemap sale sin gyms hasta que la caché se llene.
+calentarDominios()
+function calentarDominios() {
+  dominiosVerificadosVercel().catch(() => {})
+}
+
 // sitemap.xml. En el dominio RAÍZ lista las páginas comerciales + una entrada por
 // cada gym con página activa (para que Google descubra a los clientes). En un
 // SUBDOMINIO de gym lista solo su propia home (su página vive ahí sola).
@@ -136,9 +145,14 @@ async function responderSitemap(res, host, sub) {
     // todavía, servimos el sitemap YA con las páginas comerciales y disparamos la
     // consulta a Vercel en segundo plano para que la próxima lectura ya la tenga.
     // Google marca "no se ha podido obtener" si el sitemap tarda ~>5s.
-    try {
-      const cacheListo = _domCache.set && Date.now() - _domCache.at < 3_600_000
-      if (cacheListo) {
+    // Solo se usan dominios YA cacheados: el handler NUNCA espera a la API de
+    // Vercel (esa llamada tarda ~10s y colgaría la respuesta; Google marca "no se
+    // ha podido obtener" si el sitemap no responde rápido). La caché se llena en
+    // segundo plano al arrancar el contenedor (ver `calentarDominios` abajo), así
+    // que a la 2ª lectura ya trae los gyms. La 1ª (contenedor recién arrancado)
+    // sale solo con las páginas comerciales — válido, y Google reintenta.
+    if (_domCache.set) {
+      try {
         const q = await db().query(
           `select e.slug from public.empresa e
             where e.landing_activa and e.deleted_at is null
@@ -149,12 +163,9 @@ async function responderSitemap(res, host, sub) {
           const fqdn = `${g.slug}.${ROOT}`
           if (_domCache.set.has(fqdn)) urls.push(url(`https://${fqdn}/`, '0.7'))
         }
-      } else {
-        // caché fría: calentarla para la próxima, sin esperarla ahora
-        dominiosVerificadosVercel().catch(() => {})
+      } catch (e) {
+        console.error('sitemap gyms', e)
       }
-    } catch (e) {
-      console.error('sitemap gyms', e)
     }
   } else {
     // subdominio de un gym: solo su home
