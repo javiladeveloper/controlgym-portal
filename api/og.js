@@ -83,10 +83,10 @@ async function dominiosVerificadosVercel() {
   if (_domCache.set && Date.now() - _domCache.at < 3_600_000) return _domCache.set
 
   // Presupuesto de tiempo DURO: si Vercel no responde rápido, NO bloqueamos el
-  // sitemap (Google marca "no se ha podido obtener" si tarda ~>5s). Preferimos
-  // servir el sitemap ya —con lo que hubiera en cache, o sin gyms— que colgarnos.
+  // sitemap (Google marca "no se ha podido obtener" si tarda ~>5s). El abort mata
+  // el fetch para que no quede colgando y retenga la invocación serverless.
   const ctrl = new AbortController()
-  const kill = setTimeout(() => ctrl.abort(), 2500)
+  const kill = setTimeout(() => ctrl.abort(), 1200)
   try {
     const set = new Set()
     let next = null
@@ -113,15 +113,6 @@ async function dominiosVerificadosVercel() {
   } finally {
     clearTimeout(kill)
   }
-}
-
-// Precarga de la lista de dominios al ARRANCAR el contenedor (no dentro de un
-// request). Con Fluid Compute la instancia se reusa, así que para cuando llega el
-// primer request al sitemap la caché suele estar lista. Si falla, no pasa nada:
-// el sitemap sale sin gyms hasta que la caché se llene.
-calentarDominios()
-function calentarDominios() {
-  dominiosVerificadosVercel().catch(() => {})
 }
 
 // sitemap.xml. En el dominio RAÍZ lista las páginas comerciales + una entrada por
@@ -151,21 +142,32 @@ async function responderSitemap(res, host, sub) {
     // segundo plano al arrancar el contenedor (ver `calentarDominios` abajo), así
     // que a la 2ª lectura ya trae los gyms. La 1ª (contenedor recién arrancado)
     // sale solo con las páginas comerciales — válido, y Google reintenta.
-    if (_domCache.set) {
-      try {
-        const q = await db().query(
+    try {
+      // La consulta a Vercel se corre CON un tope de tiempo duro (Promise.race):
+      // si no responde en 1.5s, seguimos sin gyms y el sitemap igual sale rápido.
+      // Google marca "no se ha podido obtener" si el sitemap tarda ~>5s. La
+      // primera lectura (caché fría) puede salir sin gyms; a la 2ª ya vienen,
+      // porque dominiosVerificadosVercel cachea 1h.
+      const [q, dominios] = await Promise.all([
+        db().query(
           `select e.slug from public.empresa e
             where e.landing_activa and e.deleted_at is null
               and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
             order by e.slug limit 5000`,
-        )
+        ),
+        Promise.race([
+          dominiosVerificadosVercel(),
+          new Promise((r) => setTimeout(() => r(_domCache.set), 1500)),
+        ]),
+      ])
+      if (dominios) {
         for (const g of q.rows) {
           const fqdn = `${g.slug}.${ROOT}`
-          if (_domCache.set.has(fqdn)) urls.push(url(`https://${fqdn}/`, '0.7'))
+          if (dominios.has(fqdn)) urls.push(url(`https://${fqdn}/`, '0.7'))
         }
-      } catch (e) {
-        console.error('sitemap gyms', e)
       }
+    } catch (e) {
+      console.error('sitemap gyms', e)
     }
   } else {
     // subdominio de un gym: solo su home
