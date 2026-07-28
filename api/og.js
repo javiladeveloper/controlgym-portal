@@ -73,24 +73,30 @@ function responderRobots(res, host) {
 // Cacheado en memoria del contenedor (la función se reusa entre requests con
 // Fluid Compute) + el s-maxage=3600 de la respuesta: Vercel casi no se consulta.
 const TEAM = 'team_kr4GLmjqzYi9UCOFFz8MPoR6'
+// Cache en memoria del contenedor. Con Fluid Compute la instancia se reusa entre
+// requests, así que la lista de dominios se consulta a Vercel muy de vez en cuando
+// (no en cada request). Vale por 1h; mientras tanto se sirve al instante.
 let _domCache = { at: 0, set: null }
 async function dominiosVerificadosVercel() {
   const token = env('VERCEL_TOKEN')
   if (!token) return null
-  // cache de 10 min en memoria del contenedor
-  if (_domCache.set && Date.now() - _domCache.at < 600_000) return _domCache.set
+  if (_domCache.set && Date.now() - _domCache.at < 3_600_000) return _domCache.set
 
+  // Presupuesto de tiempo DURO: si Vercel no responde rápido, NO bloqueamos el
+  // sitemap (Google marca "no se ha podido obtener" si tarda ~>5s). Preferimos
+  // servir el sitemap ya —con lo que hubiera en cache, o sin gyms— que colgarnos.
+  const ctrl = new AbortController()
+  const kill = setTimeout(() => ctrl.abort(), 2500)
   try {
     const set = new Set()
     let next = null
-    // paginado: Vercel devuelve hasta 100 por página
     for (let i = 0; i < 60; i++) {   // techo de seguridad (6000 dominios)
       const u = new URL(`https://api.vercel.com/v9/projects/fitcore/domains`)
       u.searchParams.set('teamId', TEAM)
       u.searchParams.set('limit', '100')
       if (next) u.searchParams.set('since', String(next))
-      const r = await fetch(u, { headers: { authorization: `Bearer ${token}` } })
-      if (!r.ok) return null
+      const r = await fetch(u, { headers: { authorization: `Bearer ${token}` }, signal: ctrl.signal })
+      if (!r.ok) return _domCache.set   // si falla, reusar lo último bueno (o null)
       const data = await r.json()
       for (const d of data.domains || []) {
         if (d?.name && d.verified !== false) set.add(String(d.name).toLowerCase())
@@ -102,7 +108,10 @@ async function dominiosVerificadosVercel() {
     return set
   } catch (e) {
     console.error('sitemap dominios vercel', e)
-    return null
+    // timeout/abort: servir con lo último cacheado (o null si nunca hubo)
+    return _domCache.set
+  } finally {
+    clearTimeout(kill)
   }
 }
 
@@ -119,29 +128,30 @@ async function responderSitemap(res, host, sub) {
     for (const [path, prio] of [['/', '1.0'], ['/planes', '0.8'], ['/demo', '0.6']]) {
       urls.push(url(`https://${ROOT}${path}`, prio))
     }
-    // + la home de cada gym con página pública activa y suscripción vigente.
-    // OJO: solo subdominios que EXISTEN de verdad en Vercel. Un gym puede quedar
-    // en la BD sin su subdominio aprovisionado (preparar_subdominio falla en
-    // silencio), y basta UNA URL muerta para que Google rechace el sitemap entero.
+    // + la home de cada gym con página pública activa. Solo subdominios que
+    // EXISTEN de verdad en Vercel (basta UNA URL muerta para que Google rechace
+    // todo el sitemap). Cruzamos la BD contra la lista de dominios de Vercel.
     //
-    // En vez de verificar gym por gym (no escala con miles), pedimos a Vercel la
-    // lista de dominios verificados del proyecto en UNA sola llamada y cruzamos.
+    // CLAVE: nunca bloquear la respuesta. Si la lista de dominios NO está cacheada
+    // todavía, servimos el sitemap YA con las páginas comerciales y disparamos la
+    // consulta a Vercel en segundo plano para que la próxima lectura ya la tenga.
+    // Google marca "no se ha podido obtener" si el sitemap tarda ~>5s.
     try {
-      const [q, dominios] = await Promise.all([
-        db().query(
+      const cacheListo = _domCache.set && Date.now() - _domCache.at < 3_600_000
+      if (cacheListo) {
+        const q = await db().query(
           `select e.slug from public.empresa e
             where e.landing_activa and e.deleted_at is null
               and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
             order by e.slug limit 5000`,
-        ),
-        dominiosVerificadosVercel(),
-      ])
-      // dominios == null → no pudimos consultar Vercel (sin token/error): NO
-      // arriesgamos meter URLs muertas, así que el sitemap raíz sale solo con las
-      // páginas comerciales (degradación segura, nunca rota el sitemap).
-      for (const g of q.rows) {
-        const fqdn = `${g.slug}.${ROOT}`
-        if (dominios && dominios.has(fqdn)) urls.push(url(`https://${fqdn}/`, '0.7'))
+        )
+        for (const g of q.rows) {
+          const fqdn = `${g.slug}.${ROOT}`
+          if (_domCache.set.has(fqdn)) urls.push(url(`https://${fqdn}/`, '0.7'))
+        }
+      } else {
+        // caché fría: calentarla para la próxima, sin esperarla ahora
+        dominiosVerificadosVercel().catch(() => {})
       }
     } catch (e) {
       console.error('sitemap gyms', e)
