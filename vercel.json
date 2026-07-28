@@ -4,6 +4,14 @@
     { "source": "/api/app/version", "destination": "/api/og" },
     { "source": "/((?!api/|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
   ],
+  "headers": [
+    {
+      "source": "/(sitemap.xml|robots.txt)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" }
+      ]
+    }
+  ],
   "crons": [
     { "path": "/api/facturacion", "schedule": "0 3 * * *" },
     { "path": "/api/facturacion?action=cierre-mes", "schedule": "0 4 * * *" }
