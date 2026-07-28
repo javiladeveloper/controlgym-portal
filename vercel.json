@@ -2,6 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     { "source": "/api/app/version", "destination": "/api/og" },
+    { "source": "/sitemap.xml", "destination": "/api/og" },
+    { "source": "/robots.txt", "destination": "/api/og" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [

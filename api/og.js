@@ -57,6 +57,51 @@ async function responderVersion(res) {
   })
 }
 
+// robots.txt: permite todo y apunta al sitemap del host actual. Cada subdominio
+// (gym) sirve el suyo. Se sirve desde og.js — vía rewrite — para no sumar función.
+function responderRobots(res, host) {
+  res.setHeader('content-type', 'text/plain; charset=utf-8')
+  res.setHeader('cache-control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+  return res.status(200).send(`User-agent: *\nAllow: /\nSitemap: https://${host}/sitemap.xml\n`)
+}
+
+// sitemap.xml. En el dominio RAÍZ lista las páginas comerciales + una entrada por
+// cada gym con página activa (para que Google descubra a los clientes). En un
+// SUBDOMINIO de gym lista solo su propia home (su página vive ahí sola).
+async function responderSitemap(res, host, sub) {
+  const url = (loc, prio) =>
+    `  <url><loc>${esc(loc)}</loc>${prio ? `<priority>${prio}</priority>` : ''}</url>`
+  const urls = []
+
+  if (!sub || RESERVADOS.has(sub)) {
+    // dominio raíz: web comercial
+    for (const [path, prio] of [['/', '1.0'], ['/planes', '0.8'], ['/demo', '0.6']]) {
+      urls.push(url(`https://${ROOT}${path}`, prio))
+    }
+    // + la home de cada gym con página pública activa y suscripción vigente
+    try {
+      const q = await db().query(
+        `select e.slug from public.empresa e
+          where e.landing_activa and e.deleted_at is null
+            and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
+          order by e.slug limit 5000`,
+      )
+      for (const g of q.rows) urls.push(url(`https://${g.slug}.${ROOT}/`, '0.7'))
+    } catch (e) {
+      console.error('sitemap gyms', e)
+    }
+  } else {
+    // subdominio de un gym: solo su home
+    urls.push(url(`https://${host}/`, '1.0'))
+  }
+
+  res.setHeader('content-type', 'application/xml; charset=utf-8')
+  res.setHeader('cache-control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+  return res.status(200).send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`,
+  )
+}
+
 export default async function handler(req, res) {
   // Ruta de versión de la app (enrutada aquí por vercel.json para ahorrar función).
   const ruta = String(req.url || '').split('?')[0]
@@ -66,6 +111,11 @@ export default async function handler(req, res) {
 
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase()
   const sub = host.endsWith('.' + ROOT) ? host.slice(0, -(ROOT.length + 1)) : ''
+
+  // SEO: robots.txt y sitemap.xml (enrutados aquí por vercel.json).
+  if (ruta === '/robots.txt') return responderRobots(res, host)
+  if (ruta === '/sitemap.xml') return responderSitemap(res, host, sub)
+
   const fitcore = {
     titulo: 'FitCore · El sistema operativo del fitness',
     descripcion: 'Gimnasios, academias, gyms para niños y personal trainers: gestión, página web propia y captación de clientes.',
