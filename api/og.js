@@ -78,15 +78,31 @@ async function responderSitemap(res, host, sub) {
     for (const [path, prio] of [['/', '1.0'], ['/planes', '0.8'], ['/demo', '0.6']]) {
       urls.push(url(`https://${ROOT}${path}`, prio))
     }
-    // + la home de cada gym con página pública activa y suscripción vigente
+    // + la home de cada gym con página pública activa y suscripción vigente.
+    // OJO: solo los subdominios que RESUELVEN de verdad. Algunos gyms quedan en
+    // la BD sin su subdominio aprovisionado en Vercel (preparar_subdominio puede
+    // fallar en silencio), y si Google encuentra UNA sola URL muerta en el
+    // sitemap, rechaza el sitemap ENTERO. Por eso se verifica cada uno en vivo.
     try {
       const q = await db().query(
         `select e.slug from public.empresa e
           where e.landing_activa and e.deleted_at is null
             and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
-          order by e.slug limit 5000`,
+          order by e.slug limit 2000`,
       )
-      for (const g of q.rows) urls.push(url(`https://${g.slug}.${ROOT}/`, '0.7'))
+      // chequeo de resolución en paralelo, con timeout corto para no colgar la
+      // respuesta; un gym que no responde en 4s simplemente no entra al sitemap.
+      const vivos = await Promise.all(q.rows.map(async (g) => {
+        const u = `https://${g.slug}.${ROOT}/`
+        try {
+          const c = new AbortController()
+          const t = setTimeout(() => c.abort(), 4000)
+          const r = await fetch(u, { method: 'HEAD', redirect: 'manual', signal: c.signal })
+          clearTimeout(t)
+          return r.status > 0 && r.status < 500 ? g.slug : null
+        } catch { return null }
+      }))
+      for (const slug of vivos) if (slug) urls.push(url(`https://${slug}.${ROOT}/`, '0.7'))
     } catch (e) {
       console.error('sitemap gyms', e)
     }
