@@ -65,6 +65,47 @@ function responderRobots(res, host) {
   return res.status(200).send(`User-agent: *\nAllow: /\nSitemap: https://${host}/sitemap.xml\n`)
 }
 
+// Dominios YA verificados del proyecto en Vercel (una sola llamada, sirve para
+// 10 o 10.000 gyms). Devuelve un Set de FQDNs ("gym1.fitcorecenter.com", …) o
+// null si no se pudo consultar (sin token / error de red). El sitemap usa null
+// para degradar seguro, no para meter URLs muertas.
+//
+// Cacheado en memoria del contenedor (la función se reusa entre requests con
+// Fluid Compute) + el s-maxage=3600 de la respuesta: Vercel casi no se consulta.
+const TEAM = 'team_kr4GLmjqzYi9UCOFFz8MPoR6'
+let _domCache = { at: 0, set: null }
+async function dominiosVerificadosVercel() {
+  const token = env('VERCEL_TOKEN')
+  if (!token) return null
+  // cache de 10 min en memoria del contenedor
+  if (_domCache.set && Date.now() - _domCache.at < 600_000) return _domCache.set
+
+  try {
+    const set = new Set()
+    let next = null
+    // paginado: Vercel devuelve hasta 100 por página
+    for (let i = 0; i < 60; i++) {   // techo de seguridad (6000 dominios)
+      const u = new URL(`https://api.vercel.com/v9/projects/fitcore/domains`)
+      u.searchParams.set('teamId', TEAM)
+      u.searchParams.set('limit', '100')
+      if (next) u.searchParams.set('since', String(next))
+      const r = await fetch(u, { headers: { authorization: `Bearer ${token}` } })
+      if (!r.ok) return null
+      const data = await r.json()
+      for (const d of data.domains || []) {
+        if (d?.name && d.verified !== false) set.add(String(d.name).toLowerCase())
+      }
+      next = data.pagination?.next
+      if (!next) break
+    }
+    _domCache = { at: Date.now(), set }
+    return set
+  } catch (e) {
+    console.error('sitemap dominios vercel', e)
+    return null
+  }
+}
+
 // sitemap.xml. En el dominio RAÍZ lista las páginas comerciales + una entrada por
 // cada gym con página activa (para que Google descubra a los clientes). En un
 // SUBDOMINIO de gym lista solo su propia home (su página vive ahí sola).
@@ -79,30 +120,29 @@ async function responderSitemap(res, host, sub) {
       urls.push(url(`https://${ROOT}${path}`, prio))
     }
     // + la home de cada gym con página pública activa y suscripción vigente.
-    // OJO: solo los subdominios que RESUELVEN de verdad. Algunos gyms quedan en
-    // la BD sin su subdominio aprovisionado en Vercel (preparar_subdominio puede
-    // fallar en silencio), y si Google encuentra UNA sola URL muerta en el
-    // sitemap, rechaza el sitemap ENTERO. Por eso se verifica cada uno en vivo.
+    // OJO: solo subdominios que EXISTEN de verdad en Vercel. Un gym puede quedar
+    // en la BD sin su subdominio aprovisionado (preparar_subdominio falla en
+    // silencio), y basta UNA URL muerta para que Google rechace el sitemap entero.
+    //
+    // En vez de verificar gym por gym (no escala con miles), pedimos a Vercel la
+    // lista de dominios verificados del proyecto en UNA sola llamada y cruzamos.
     try {
-      const q = await db().query(
-        `select e.slug from public.empresa e
-          where e.landing_activa and e.deleted_at is null
-            and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
-          order by e.slug limit 2000`,
-      )
-      // chequeo de resolución en paralelo, con timeout corto para no colgar la
-      // respuesta; un gym que no responde en 4s simplemente no entra al sitemap.
-      const vivos = await Promise.all(q.rows.map(async (g) => {
-        const u = `https://${g.slug}.${ROOT}/`
-        try {
-          const c = new AbortController()
-          const t = setTimeout(() => c.abort(), 4000)
-          const r = await fetch(u, { method: 'HEAD', redirect: 'manual', signal: c.signal })
-          clearTimeout(t)
-          return r.status > 0 && r.status < 500 ? g.slug : null
-        } catch { return null }
-      }))
-      for (const slug of vivos) if (slug) urls.push(url(`https://${slug}.${ROOT}/`, '0.7'))
+      const [q, dominios] = await Promise.all([
+        db().query(
+          `select e.slug from public.empresa e
+            where e.landing_activa and e.deleted_at is null
+              and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
+            order by e.slug limit 5000`,
+        ),
+        dominiosVerificadosVercel(),
+      ])
+      // dominios == null → no pudimos consultar Vercel (sin token/error): NO
+      // arriesgamos meter URLs muertas, así que el sitemap raíz sale solo con las
+      // páginas comerciales (degradación segura, nunca rota el sitemap).
+      for (const g of q.rows) {
+        const fqdn = `${g.slug}.${ROOT}`
+        if (dominios && dominios.has(fqdn)) urls.push(url(`https://${fqdn}/`, '0.7'))
+      }
     } catch (e) {
       console.error('sitemap gyms', e)
     }
