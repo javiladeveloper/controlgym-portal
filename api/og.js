@@ -57,71 +57,10 @@ async function responderVersion(res) {
   })
 }
 
-// robots.txt: permite todo y apunta al sitemap del host actual. Cada subdominio
-// (gym) sirve el suyo. Se sirve desde og.js — vía rewrite — para no sumar función.
-function responderRobots(res, host) {
-  res.setHeader('content-type', 'text/plain; charset=utf-8')
-  res.setHeader('cache-control', 'public, s-maxage=86400, stale-while-revalidate=604800')
-  return res.status(200).send(`User-agent: *\nAllow: /\nSitemap: https://${host}/sitemap.xml\n`)
-}
-
-// sitemap.xml. En el dominio RAÍZ lista las páginas comerciales + una entrada por
-// cada gym con página activa (para que Google descubra a los clientes). En un
-// SUBDOMINIO de gym lista solo su propia home (su página vive ahí sola).
-async function responderSitemap(res, host, sub) {
-  const t0 = Date.now()
-  const url = (loc, prio) =>
-    `  <url><loc>${esc(loc)}</loc>${prio ? `<priority>${prio}</priority>` : ''}</url>`
-  const urls = []
-
-  if (!sub || RESERVADOS.has(sub)) {
-    // dominio raíz: web comercial
-    for (const [path, prio] of [['/', '1.0'], ['/planes', '0.8'], ['/demo', '0.6']]) {
-      urls.push(url(`https://${ROOT}${path}`, prio))
-    }
-    // + la home de cada gym con página pública activa. Solo subdominios que
-    // EXISTEN de verdad en Vercel (basta UNA URL muerta para que Google rechace
-    // todo el sitemap). Cruzamos la BD contra la lista de dominios de Vercel.
-    //
-    // CLAVE: nunca bloquear la respuesta. Si la lista de dominios NO está cacheada
-    // todavía, servimos el sitemap YA con las páginas comerciales y disparamos la
-    // consulta a Vercel en segundo plano para que la próxima lectura ya la tenga.
-    // Google marca "no se ha podido obtener" si el sitemap tarda ~>5s.
-    // Solo se usan dominios YA cacheados: el handler NUNCA espera a la API de
-    // Vercel (esa llamada tarda ~10s y colgaría la respuesta; Google marca "no se
-    // ha podido obtener" si el sitemap no responde rápido). La caché se llena en
-    // segundo plano al arrancar el contenedor (ver `calentarDominios` abajo), así
-    // que a la 2ª lectura ya trae los gyms. La 1ª (contenedor recién arrancado)
-    // sale solo con las páginas comerciales — válido, y Google reintenta.
-    // Gyms con página activa. La fuente de verdad es la BD (rápida y ya probada):
-    // landing activa + suscripción vigente + subdominio marcado como aprovisionado
-    // (subdominio_ok, que fija preparar_subdominio al confirmar el alta en Vercel).
-    // NO se llama a la API de Vercel aquí: esa llamada tardaba ~10s y hacía que
-    // Google marcara "no se ha podido obtener". El puente subdominio_ok evita meter
-    // URLs muertas sin depender de una llamada externa lenta.
-    try {
-      const q = await db().query(
-        `select e.slug from public.empresa e
-          where e.landing_activa and e.deleted_at is null and e.subdominio_ok
-            and coalesce(e.slug,'') <> '' and public.empresa_tiene_acceso(e.id)
-          order by e.slug limit 5000`,
-      )
-      for (const g of q.rows) urls.push(url(`https://${g.slug}.${ROOT}/`, '0.7'))
-    } catch (e) {
-      console.error('sitemap gyms', e)
-    }
-  } else {
-    // subdominio de un gym: solo su home
-    urls.push(url(`https://${host}/`, '1.0'))
-  }
-
-  res.setHeader('content-type', 'application/xml; charset=utf-8')
-  res.setHeader('cache-control', 'public, s-maxage=3600, stale-while-revalidate=86400')
-  res.setHeader('server-timing', `sitemap;dur=${Date.now() - t0}`)  // diagnóstico
-  return res.status(200).send(
-    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`,
-  )
-}
+// NOTA: sitemap.xml y robots.txt ya NO se sirven desde aquí. Se generan como
+// archivos ESTÁTICOS en el build (scripts/gen-sitemap.mjs) para evitar el
+// cold-start de la función serverless, que hacía que Google marcara el sitemap
+// como "no se ha podido obtener". Ver vercel.json (el catch-all los excluye).
 
 export default async function handler(req, res) {
   // Ruta de versión de la app (enrutada aquí por vercel.json para ahorrar función).
@@ -132,10 +71,6 @@ export default async function handler(req, res) {
 
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase()
   const sub = host.endsWith('.' + ROOT) ? host.slice(0, -(ROOT.length + 1)) : ''
-
-  // SEO: robots.txt y sitemap.xml (enrutados aquí por vercel.json).
-  if (ruta === '/robots.txt') return responderRobots(res, host)
-  if (ruta === '/sitemap.xml') return responderSitemap(res, host, sub)
 
   const fitcore = {
     titulo: 'FitCore · El sistema operativo del fitness',
