@@ -86,7 +86,7 @@ returns jsonb language sql stable security definer set search_path = public as $
   with p as (select * from public.rutina_predisenada where id = p_id and activa)
   select case when not exists (select 1 from p) then null else
     jsonb_build_object(
-      'id', (select id from p), 'nombre', (select nombre from p),
+      'rutina_id', (select id from p), 'nombre', (select nombre from p),
       'categoria', (select categoria from p), 'descripcion', (select descripcion from p),
       'nivel', (select nivel from p), 'dias_por_semana', (select dias_por_semana from p),
       'equipo', (select equipo from p), 'disclaimer_salud', (select disclaimer_salud from p),
