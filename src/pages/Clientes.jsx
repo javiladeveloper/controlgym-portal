@@ -8,6 +8,7 @@ import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
+import { useSolicitudesVinculacion, useResolverVinculacion } from '../hooks/useVinculaciones.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { toast } from '../lib/toast.js'
 import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta, money } from '../lib/uiHelpers.js'
@@ -320,8 +321,84 @@ function MembresiasAnteriores({ membresias, moneda }) {
   )
 }
 
+// Hace cuánto se creó la solicitud (mismo criterio que "hace cuánto" de
+// SolicitudesCarga en Rutinas.jsx, para no inventar otra escala de tiempo).
+const haceCuantoVinculacion = (ts) => {
+  const h = (Date.now() - new Date(ts).getTime()) / 3600000
+  return h < 1 ? 'hace minutos' : h < 24 ? `hace ${Math.round(h)} h` : `hace ${Math.round(h / 24)} día${Math.round(h / 24) === 1 ? '' : 's'}`
+}
+
+// Bandeja de solicitudes de vinculación por DNI (BLOQUE A3). El socio pidió
+// vincularse desde la app poniendo su DNI; nunca queda vinculado solo
+// (anti-suplantación) — recepción, que conoce a la persona, compara los
+// datos del socio contra los de la cuenta que solicita y decide. Mismo
+// patrón que SolicitudesCarga (Rutinas.jsx): se oculta si no hay pendientes.
+function SolicitudesVinculacion({ empresaId, onVerSocio }) {
+  const solicitudes = useSolicitudesVinculacion(empresaId)
+  const resolver = useResolverVinculacion(empresaId)
+
+  if (solicitudes.error) {
+    return (
+      <Card className="mt-[18px] p-[15px]" style={{ borderLeft: '4px solid #EF4444' }}>
+        <div className="text-[13px] font-bold text-red">No se pudieron cargar las solicitudes de vinculación. Reintenta en un momento.</div>
+      </Card>
+    )
+  }
+  if (!solicitudes.data?.length) return null
+
+  function resolverSolicitud(solicitudId, aprobar) {
+    resolver.mutate({ solicitudId, aprobar }, {
+      onSuccess: () => toast.ok(aprobar ? 'Cuenta vinculada' : 'Solicitud rechazada'),
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  return (
+    <Card className="mt-[18px] p-[19px]" style={{ borderLeft: '4px solid #FF6B35' }}>
+      <div className="text-[14.5px] font-extrabold">🔗 Solicitudes de vinculación ({solicitudes.data.length})</div>
+      <div className="mt-0.5 text-[12px] font-semibold text-muted">
+        Pidieron vincular su cuenta de la app a su ficha de socio por DNI. Compara los datos antes de aprobar — nunca se vincula sola.
+      </div>
+      {solicitudes.data.map((s) => (
+        <div key={s.solicitud_id} className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-[10px] bg-surface px-3.5 py-3">
+          <div className="min-w-0 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+            <div>
+              <div className="text-[10.5px] font-extrabold uppercase tracking-[0.5px] text-faint">Socio</div>
+              <button onClick={() => onVerSocio(s.socio?.id)} title="Ver ficha del socio"
+                className="cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-extrabold text-ink hover:text-orange">
+                {s.socio?.nombre}
+              </button>
+              <div className="text-[12px] font-bold text-muted">DNI {s.socio?.documento || '—'}</div>
+            </div>
+            <div className="text-[16px] font-extrabold text-faint">↔</div>
+            <div>
+              <div className="text-[10.5px] font-extrabold uppercase tracking-[0.5px] text-faint">Cuenta que solicita</div>
+              <div className="text-[13.5px] font-extrabold">{s.solicitante?.nombre || '—'}</div>
+              <div className="text-[12px] font-bold text-muted">{s.solicitante?.email || '—'}</div>
+            </div>
+            <div className="text-[11px] font-semibold text-faint">{haceCuantoVinculacion(s.creado_at)}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button disabled={resolver.isPending}
+              onClick={() => resolverSolicitud(s.solicitud_id, true)}
+              className="cursor-pointer rounded-[9px] border-none bg-green px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-600 disabled:opacity-50">
+              ✓ Aprobar
+            </button>
+            <button disabled={resolver.isPending}
+              onClick={() => resolverSolicitud(s.solicitud_id, false)}
+              className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[11.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">
+              Rechazar
+            </button>
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
 export default function Clientes() {
   const { sedeId, sedeNombre } = usePanel()
+  const { empresa } = useAuth()
   // La ficha vive en la URL (/clientes?socio=<id>): así el deep-link entra,
   // F5 la conserva, el botón Atrás del navegador la cierra y el enlace se
   // puede copiar. setFichaId escribe/borra el query param.
@@ -399,6 +476,8 @@ export default function Clientes() {
       {nuevoOpen && <NuevoSocioModal sedeId={sedeId} onClose={() => setNuevoOpen(false)} />}
       {importarOpen && <ImportarSociosModal sedeId={sedeId} onClose={() => setImportarOpen(false)} />}
       {editar && <EditarSocioModal socio={editar} onClose={() => setEditar(null)} onSaved={refetch} />}
+
+      <SolicitudesVinculacion empresaId={empresa?.id} onVerSocio={setFichaId} />
 
       {isLoading && <LoadingState variant="table" rows={6} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
