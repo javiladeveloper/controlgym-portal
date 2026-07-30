@@ -89,7 +89,19 @@ begin
 
   -- Guarda el documento del solicitante para futuros matches legítimos
   -- (p.ej. si el gym decide más adelante ofrecer match automático revisado).
-  update public.usuario set documento = v_doc where id = v_uid;
+  --
+  -- OJO: este update dispara `trg_usuario_propaga`, que copia el documento a
+  -- los socios YA vinculados de este usuario. Si el usuario escribe un DNI que
+  -- en alguno de esos gyms pertenece a OTRO socio, choca con el índice único
+  -- `uq_socio_documento_empresa` y reventaría con un error crudo de Postgres.
+  -- Se aísla en su propio bloque: si falla la propagación, la solicitud igual
+  -- se crea (el DNI se verificará humanamente al aprobar). Nunca tumbamos el
+  -- flujo del usuario por un choque de datos de otro gym.
+  begin
+    update public.usuario set documento = v_doc where id = v_uid;
+  exception when others then
+    null; -- documento ya usado en otro gym u otra violación: no bloquea
+  end;
 
   -- Solo socios SIN cuenta vinculada, en sedes con la app contratada.
   -- "no existe" y "ya vinculado" devuelven el MISMO motivo neutro: no hay
