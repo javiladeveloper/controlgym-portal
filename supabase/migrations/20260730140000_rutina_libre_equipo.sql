@@ -250,8 +250,16 @@ grant execute on function public.generar_rutina_libre(text, text, int, text) to 
 
 -- ── 2. crear_rutina_libre_vacia: acepta y guarda el equipo ──────────────────
 -- Firma nueva con p_equipo opcional (default 'peso_corporal': el armador nace
--- del camino "en casa"). La firma vieja de 1 argumento se mantiene viva para no
--- romper clientes antiguos.
+-- del camino "en casa").
+--
+-- OJO (bug real que rompió "Arma tu rutina" en el emulador): al agregar el
+-- parámetro se creó una SOBRECARGA — quedaban las dos firmas, (text) y
+-- (text,text). Como el nuevo parámetro tiene DEFAULT, una llamada con un solo
+-- argumento se vuelve ambigua y Postgres responde
+-- "function ... is not unique" → la app mostraba "No se pudo crear tu rutina".
+-- Por eso se DROPEA la firma vieja: la nueva ya cubre el caso de 1 argumento.
+drop function if exists public.crear_rutina_libre_vacia(text);
+
 create or replace function public.crear_rutina_libre_vacia(
   p_nombre text,
   p_equipo text default 'peso_corporal'
