@@ -65,7 +65,7 @@ begin
     select fecha, carga_usada from sesiones order by fecha asc
   )
   select
-    coalesce(jsonb_agg(jsonb_build_object('fecha', fecha, 'carga_usada', carga_usada) order by fecha asc), '[]'::jsonb),
+    coalesce(jsonb_agg(jsonb_build_object('fecha', fecha, 'carga_usada', carga_usada, 'completado', true) order by fecha asc), '[]'::jsonb),
     count(*),
     (array_agg(carga_usada order by fecha asc) filter (where carga_usada is not null))[1],
     (array_agg(carga_usada order by fecha desc) filter (where carga_usada is not null))[1]
