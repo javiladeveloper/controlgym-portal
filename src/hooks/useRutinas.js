@@ -58,6 +58,39 @@ export function useRutinaSocio(socioId) {
   })
 }
 
+// Suscripción realtime de la rutina/dieta del socio abierto en el editor
+// (pantalla Rutinas.jsx): si otro trainer la edita desde otra pestaña/
+// dispositivo, o el socio pide algo que la cambia, esta pantalla se entera
+// al instante en vez de quedarse con una versión vieja mientras el staff
+// sigue trabajando sobre ella. Se monta junto a useRutinaSocio/useDietaSocio.
+// rutinaId es opcional (aún no hay rutina creada): sin él no se puede filtrar
+// rutina_ejercicio por rutina_dia_id, así que solo se escuchan rutina/dieta.
+export function useRutinaDietaSocioRealtime(socioId, rutinaId) {
+  useRealtime({
+    table: 'rutina',
+    enabled: !!socioId,
+    invalidate: [['rutina', socioId]],
+  })
+  useRealtime({
+    table: 'dieta',
+    enabled: !!socioId,
+    invalidate: [['dieta', socioId]],
+  })
+  // Ejercicios del día (rutina_ejercicio) y los días mismos (rutina_dia) viven
+  // bajo la misma rutina: un cambio ahí no toca la fila 'rutina' así que hace
+  // falta escucharlos aparte para refrescar la lista de ejercicios en vivo.
+  useRealtime({
+    table: 'rutina_ejercicio',
+    enabled: !!rutinaId,
+    invalidate: [['rutina-ejercicios', rutinaId]],
+  })
+  useRealtime({
+    table: 'rutina_dia',
+    enabled: !!rutinaId,
+    invalidate: [['rutina', socioId]],
+  })
+}
+
 const FOCOS_DEFAULT = ['Pierna y glúteo', 'Pecho y tríceps', 'Espalda y bíceps', 'Hombro y core', 'Full body y cardio']
 
 // Crear rutina semanal con 5 días por defecto.

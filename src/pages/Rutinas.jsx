@@ -13,6 +13,7 @@ import {
   useGuardarComida, useAgregarComida, useEliminarComida, useGuardarSuplementos,
   useGuardarNotasRutina, useBancoEjercicios, useAgregarDia, useEliminarDia,
   useSolicitudesCarga, useSolicitudesCargaRealtime, useResponderSolicitud, useAsignarPlanAutomatico,
+  useRutinaDietaSocioRealtime,
   useAsignarVigencia, usePlantillaAgregarEj, usePlantillaEditarEj, usePlantillaQuitarEj,
 } from '../hooks/useRutinas.js'
 import Modal, { Campo, inputCls, BotonesModal } from '../components/Modal.jsx'
@@ -793,6 +794,7 @@ function RutinasImpl() {
     setSemanasVigencia(8)
   }, [socioId])
   const rutina = useRutinaSocio(socioId)
+  useRutinaDietaSocioRealtime(socioId, rutina.data?.id) // refresca en vivo si otro trainer/el socio la cambia
   const crearRutina = useCrearRutina(socioId, empresa?.id)
   const crearDieta = useCrearDieta(socioId, empresa?.id)
   const setFoco = useSetFoco(socioId)

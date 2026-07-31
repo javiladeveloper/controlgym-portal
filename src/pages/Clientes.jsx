@@ -8,7 +8,7 @@ import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
 import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
-import { useSolicitudesVinculacion, useResolverVinculacion } from '../hooks/useVinculaciones.js'
+import { useSolicitudesVinculacion, useSolicitudesVinculacionRealtime, useResolverVinculacion } from '../hooks/useVinculaciones.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { toast } from '../lib/toast.js'
 import { estadoBadge, avatarColors, iniciales, estadoMembresiaVivo, fechaLocal, claseVence, fechaCorta, money } from '../lib/uiHelpers.js'
@@ -335,6 +335,7 @@ const haceCuantoVinculacion = (ts) => {
 // patrón que SolicitudesCarga (Rutinas.jsx): se oculta si no hay pendientes.
 function SolicitudesVinculacion({ empresaId, onVerSocio }) {
   const solicitudes = useSolicitudesVinculacion(empresaId)
+  useSolicitudesVinculacionRealtime(empresaId) // refresca en vivo al pedir/resolver
   const resolver = useResolverVinculacion(empresaId)
 
   if (solicitudes.error) {
