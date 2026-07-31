@@ -133,7 +133,12 @@ begin
   create temporary table if not exists tmp_dias_def_libre (
     orden int, foco text, targets text[]
   ) on commit drop;
-  delete from tmp_dias_def_libre;
+  -- TRUNCATE, no DELETE: PostgREST corre con `safeupdate` activo y rechaza
+  -- cualquier DELETE sin WHERE con "DELETE requires a WHERE clause" — aunque
+  -- sea sobre una tabla TEMPORAL interna. Por psql no falla (sin esa
+  -- protección), por eso el bug solo se veía desde la app. Mismo problema que
+  -- ya tuvo `tmp_dias_def` en el generador de plantillas del panel.
+  truncate tmp_dias_def_libre;
 
   if v_es_cardio then
     for v_i in 1..p_dias_semana loop
