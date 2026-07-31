@@ -4,6 +4,14 @@ import { supabase } from '../lib/supabaseClient.js'
 export const ETAPAS = ['nuevo', 'contactado', 'clase_prueba', 'inscrito']
 export const ETAPA_LABEL = { nuevo: 'Nuevo', contactado: 'Contactado', clase_prueba: 'Clase de prueba', inscrito: 'Inscrito', perdido: 'Perdido' }
 
+// Techo defensivo: el CRM es un tablero Kanban (drag&drop + agrupado por
+// etapa en memoria), no una lista paginable — partirlo en páginas rompería
+// el drag & drop entre columnas. `lead` es un embudo comercial (no un
+// histórico que crece sin fin como `socio`: se pierde o se convierte), así
+// que un techo generoso alcanza para cualquier sede real y solo protege de
+// un caso patológico (import masivo, bug de sync con Leadia).
+const TECHO_LEADS = 1000
+
 export function useLeads(sedeId) {
   return useQuery({
     queryKey: ['leads', sedeId],
@@ -15,8 +23,29 @@ export function useLeads(sedeId) {
         .eq('sede_id', sedeId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
+        .limit(TECHO_LEADS)
       if (error) throw error
       return data
+    },
+  })
+}
+
+// Conteo exacto de leads de la sede, para el StatCard "Leads totales" del CRM
+// — separado de useLeads (que tiene techo) para que ese número nunca mienta,
+// incluso si la sede algún día supera TECHO_LEADS. Consulta aparte y liviana
+// (head:true, sin traer filas) para no duplicar el payload pesado.
+export function useLeadsCount(sedeId) {
+  return useQuery({
+    queryKey: ['leads-count', sedeId],
+    enabled: !!sedeId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('lead')
+        .select('id', { count: 'exact', head: true })
+        .eq('sede_id', sedeId)
+        .is('deleted_at', null)
+      if (error) throw error
+      return count ?? 0
     },
   })
 }

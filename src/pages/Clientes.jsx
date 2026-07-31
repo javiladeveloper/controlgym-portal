@@ -7,7 +7,7 @@ import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
-import { useClientes, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
+import { useClientes, useClientesBusqueda, useClientesCount, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
 import { useSolicitudesVinculacion, useSolicitudesVinculacionRealtime, useResolverVinculacion } from '../hooks/useVinculaciones.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { toast } from '../lib/toast.js'
@@ -416,25 +416,26 @@ export default function Clientes() {
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [importarOpen, setImportarOpen] = useState(false)
   const [editar, setEditar] = useState(null) // socio en edición rápida desde la lista
-  const { data: clientes, isLoading, error, refetch } = useClientes(sedeId)
   const [q, setQ] = useState('')
+  const [pagina, setPagina] = useState(0)
+  // Búsqueda DNI-first (nombre/código/DNI/teléfono/correo) y paginado ahora
+  // van al servidor: antes se traía TODA la sede sin límite para filtrar en
+  // memoria (dolía desde ~500 socios). Así el buscador SIEMPRE encuentra a
+  // cualquier socio, esté o no en la página visible.
+  const { data: resultado, isLoading, error, refetch } = useClientesBusqueda(sedeId, { q, pagina })
+  const filtered = resultado?.data || []
+  const totalFiltrado = resultado?.count ?? 0
+  const totalPaginas = Math.max(1, Math.ceil(totalFiltrado / 50))
+  // Cabecera "N socios": total de la sede SIN filtrar (mismo comportamiento
+  // que antes — clientes.length no reaccionaba a la búsqueda).
+  const { data: totalSede } = useClientesCount(sedeId)
 
-  if (fichaId) return <Ficha socioId={fichaId} onBack={() => setFichaId(null)} onVerSocio={setFichaId} />
-
-  // Búsqueda DNI-first: por nombre, código, DNI, teléfono o correo.
-  const filtered = (clientes || []).filter((c) => {
-    if (!q) return true
-    const t = q.toLowerCase().trim()
-    return (
-      c.nombre?.toLowerCase().includes(t) ||
-      c.codigo?.includes(q) ||
-      c.documento?.includes(q) ||
-      c.telefono?.replace(/\D/g, '').includes(q.replace(/\D/g, '')) && q.replace(/\D/g, '') !== '' ||
-      c.email?.toLowerCase().includes(t)
-    )
-  })
-
-  // Grupos de promos 2x1/NxM: quiénes entraron juntos (misma promo, misma fecha)
+  // Roster completo de la sede (con techo defensivo de 2000 — no paginado)
+  // solo para saber quién entró junto con quién en una promo 2x1/grupal: ese
+  // cruce necesita comparar contra socios que pueden no estar en la página
+  // actual, así que se mantiene aparte del listado paginado.
+  const { data: clientes } = useClientes(sedeId)
+  function resetPagina(valor) { setQ(valor); setPagina(0) }
   const grupos = new Map()
   for (const c of clientes || []) {
     const m = c.membresia?.[0]
@@ -450,13 +451,15 @@ export default function Clientes() {
     return (grupos.get(`${m.promocion.id}|${m.fecha_inicio}`) || []).filter((n) => n !== c.nombre)
   }
 
+  if (fichaId) return <Ficha socioId={fichaId} onBack={() => setFichaId(null)} onVerSocio={setFichaId} />
+
   return (
     <div className="px-4 pb-9 pt-5 sm:px-7 sm:pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-[22px] font-extrabold tracking-[-0.3px]">Clientes</h1>
           <p className="mt-0.5 text-[13px] font-semibold text-muted">
-            {clientes?.length ?? 0} socios · {sedeNombre}
+            {totalSede ?? 0} socios · {sedeNombre}
           </p>
         </div>
         {/* flex-wrap + input fluido: en celular (~390px) el input de ancho fijo
@@ -465,7 +468,7 @@ export default function Clientes() {
         <div className="flex flex-wrap items-center gap-3">
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => resetPagina(e.target.value)}
             placeholder="Buscar por nombre, DNI, N.º, teléfono o correo…"
             className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-orange sm:w-[290px]"
           />
@@ -532,6 +535,22 @@ export default function Clientes() {
             )
           })}
         </Card>
+      )}
+
+      {!isLoading && !error && totalFiltrado > 50 && (
+        <div className="mt-3.5 flex items-center justify-between gap-3">
+          <span className="text-[12px] font-semibold text-muted">
+            Página {pagina + 1} de {totalPaginas} · {totalFiltrado} {q ? 'resultados' : 'socios'}
+          </span>
+          <div className="flex gap-2">
+            <GhostButton className="!py-2 disabled:cursor-default disabled:opacity-40" disabled={pagina === 0} onClick={() => setPagina((p) => Math.max(0, p - 1))}>
+              ← Anterior
+            </GhostButton>
+            <GhostButton className="!py-2 disabled:cursor-default disabled:opacity-40" disabled={pagina + 1 >= totalPaginas} onClick={() => setPagina((p) => p + 1)}>
+              Siguiente →
+            </GhostButton>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usePanel } from '../store.jsx'
 import {
-  useLeads, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL,
+  useLeads, useLeadsCount, useAvanzarLead, useTareas, useToggleTarea, ETAPAS, ETAPA_LABEL,
   useCrearTarea, useAgendaComercial, useExSocios, TAREA_TIPOS, TAREA_TIPO_LABEL, TAREA_TIPO_ICONO,
   useMarcarPerdido,
 } from '../hooks/useCRM.js'
@@ -806,6 +806,7 @@ export default function CRM() {
   const [convertir, setConvertir] = useState(null) // lead a convertir en socio
   const [perder, setPerder] = useState(null) // lead a marcar como perdido
   const leads = useLeads(sedeId)
+  const leadsCount = useLeadsCount(sedeId)
   const avanzar = useAvanzarLead(sedeId)
   const tareas = useTareas(sedeId) // solo para el KPI "Seguimientos hoy"
 
@@ -862,7 +863,7 @@ export default function CRM() {
       )}
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-[15px]">
-        <StatCard label="Leads totales" value={leads.data?.length ?? 0} delta="en el embudo" />
+        <StatCard label="Leads totales" value={leadsCount.data ?? leads.data?.length ?? 0} delta="en el embudo" />
         <StatCard label="Inscritos" value={inscritos} delta="convertidos" deltaColor={T.success} />
         <StatCard label="En proceso" value={Math.max(0, (leads.data?.length ?? 0) - inscritos - perdidos)} delta="en seguimiento activo" />
         <StatCard label="Seguimientos hoy" value={pendientes} delta="tareas con leads para hoy — el detalle está en la Agenda" variant="accent" />
