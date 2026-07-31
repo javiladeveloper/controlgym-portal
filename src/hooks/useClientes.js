@@ -159,7 +159,42 @@ export function useValidarFoto(sedeId) {
       if (error) throw error
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes', sedeId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes', sedeId] })
+      qc.invalidateQueries({ queryKey: ['fotos-pendientes', sedeId] })
+    },
+  })
+}
+
+// Bandeja de fotos pendientes de aprobar (BLOQUE análogo a la vinculación por
+// DNI): el socio sube su foto desde la app para el reconocimiento facial y
+// queda 'pendiente' hasta que recepción la revise. Antes de esta bandeja, la
+// única forma de verla era entrar a la ficha de ESE socio concreto — nadie
+// entra a 500 fichas buscando fotos pendientes, así que quedaban sin aprobar
+// para siempre (evidencia: 5 fotos pendientes en producción, ninguna resuelta
+// desde que existe la feature). Trae lo mínimo para juzgar la foto: id,
+// nombre, código y la URL de la miniatura.
+export function useFotosPendientes(sedeId) {
+  // La tabla `socio` NO está en la publicación de supabase_realtime (a
+  // diferencia de solicitud_vinculacion / solicitud_carga), así que no hay
+  // websocket que avise el cambio: se refresca por polling cada 60s, igual
+  // que el resto del panel antes de tener Realtime.
+  return useQuery({
+    queryKey: ['fotos-pendientes', sedeId],
+    enabled: !!sedeId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('socio')
+        .select('id,codigo,nombre,foto_url')
+        .eq('sede_id', sedeId)
+        .eq('foto_estado', 'pendiente')
+        .not('foto_url', 'is', null)
+        .is('deleted_at', null)
+        .order('nombre')
+      if (error) throw error
+      return data || []
+    },
   })
 }
 

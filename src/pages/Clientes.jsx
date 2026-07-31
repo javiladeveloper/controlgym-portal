@@ -7,7 +7,7 @@ import NuevoSocioModal from '../components/forms/NuevoSocioModal.jsx'
 import EditarSocioModal from '../components/forms/EditarSocioModal.jsx'
 import ImportarSociosModal from '../components/forms/ImportarSociosModal.jsx'
 import { usePanel } from '../store.jsx'
-import { useClientes, useClientesBusqueda, useClientesCount, useSocioFicha, useValidarFoto, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
+import { useClientes, useClientesBusqueda, useClientesCount, useSocioFicha, useValidarFoto, useFotosPendientes, useAutorizacionMenor, useAutorizarMenor, useHistorialPagos, useMedidasSocio } from '../hooks/useClientes.js'
 import { useSolicitudesVinculacion, useSolicitudesVinculacionRealtime, useResolverVinculacion } from '../hooks/useVinculaciones.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { toast } from '../lib/toast.js'
@@ -42,9 +42,10 @@ function imcDe(talla, peso) {
 function Ficha({ socioId, onBack, onVerSocio }) {
   const navigate = useNavigate()
   const { empresa } = useAuth()
+  const { sedeId } = usePanel()
   const moneda = empresa?.moneda || 'PEN'
   const { data: ficha, isLoading, error, refetch } = useSocioFicha(socioId)
-  const validarFoto = useValidarFoto()
+  const validarFoto = useValidarFoto(sedeId)
   const [editOpen, setEditOpen] = useState(false)
 
   function onValidarFoto(aprobar) {
@@ -397,6 +398,68 @@ function SolicitudesVinculacion({ empresaId, onVerSocio }) {
   )
 }
 
+// Bandeja de fotos pendientes de aprobar. El socio subió su foto desde la app
+// para el reconocimiento facial y queda 'pendiente' hasta que recepción la
+// revise; antes de esta bandeja, la única forma de verla era entrar a la
+// ficha de ESE socio concreto — nadie entra a 500 fichas a buscar fotos
+// pendientes (evidencia: 5 fotos pendientes en producción, ninguna resuelta
+// jamás). Mismo patrón que SolicitudesVinculacion: se oculta si no hay
+// pendientes, y reusa useValidarFoto (la misma mutación de la ficha) para no
+// duplicar la lógica de aprobar/rechazar.
+function FotosPendientes({ sedeId, onVerSocio }) {
+  const pendientes = useFotosPendientes(sedeId)
+  const validarFoto = useValidarFoto(sedeId)
+
+  if (pendientes.isLoading) return null
+  if (pendientes.error) {
+    return (
+      <Card className="mt-[18px] p-[15px]" style={{ borderLeft: '4px solid #EF4444' }}>
+        <div className="text-[13px] font-bold text-red">No se pudieron cargar las fotos pendientes. Reintenta en un momento.</div>
+      </Card>
+    )
+  }
+  if (!pendientes.data?.length) return null
+
+  function onValidar(socioId, aprobar) {
+    validarFoto.mutate({ socioId, aprobar }, {
+      onSuccess: () => toast.ok(aprobar ? 'Foto aprobada' : 'Foto rechazada'),
+      onError: (e) => toast.error(e.message),
+    })
+  }
+
+  return (
+    <Card className="mt-[18px] p-[19px]" style={{ borderLeft: '4px solid #FF6B35' }}>
+      <div className="text-[14.5px] font-extrabold">🖼️ Fotos por validar ({pendientes.data.length})</div>
+      <div className="mt-0.5 text-[12px] font-semibold text-muted">
+        Subieron su foto desde la app para el reconocimiento facial. Revísala: rostro de frente, buena luz, sin gorra ni lentes.
+      </div>
+      {pendientes.data.map((s) => (
+        <div key={s.id} className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-[10px] bg-surface px-3.5 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src={s.foto_url} alt="" className="h-14 w-14 flex-shrink-0 rounded-[10px] object-cover" />
+            <button onClick={() => onVerSocio(s.id)} title="Ver ficha del socio" className="min-w-0 cursor-pointer border-none bg-transparent p-0 text-left">
+              <div className="truncate text-[13.5px] font-extrabold text-ink hover:text-orange">{s.nombre}</div>
+              <div className="text-[12px] font-bold text-muted">Socio N.º {s.codigo}</div>
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button disabled={validarFoto.isPending}
+              onClick={() => onValidar(s.id, true)}
+              className="cursor-pointer rounded-[9px] border-none bg-green px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-600 disabled:opacity-50">
+              ✓ Aprobar
+            </button>
+            <button disabled={validarFoto.isPending}
+              onClick={() => onValidar(s.id, false)}
+              className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[11.5px] font-extrabold text-muted hover:border-red hover:text-red disabled:opacity-50">
+              Rechazar
+            </button>
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
 export default function Clientes() {
   const { sedeId, sedeNombre } = usePanel()
   const { empresa } = useAuth()
@@ -482,6 +545,7 @@ export default function Clientes() {
       {editar && <EditarSocioModal socio={editar} onClose={() => setEditar(null)} onSaved={refetch} />}
 
       <SolicitudesVinculacion empresaId={empresa?.id} onVerSocio={setFichaId} />
+      <FotosPendientes sedeId={sedeId} onVerSocio={setFichaId} />
 
       {isLoading && <LoadingState variant="table" rows={6} />}
       {error && <ErrorState error={error} onRetry={refetch} />}
