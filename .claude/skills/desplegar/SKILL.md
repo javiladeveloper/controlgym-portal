@@ -15,9 +15,19 @@ para que no se relaje "porque esta vez es rápido".
 
 | Componente | Repo | Cómo se publica |
 |---|---|---|
-| App (KMP/Compose) | `controlgym-app` | Tag `interna-*` / `cerrada-*` / `produccion-*` → GitHub Actions → Play |
 | BD (Supabase) | `ControlGym/supabase/migrations/` | `psql` contra prod (solo el controlador, nunca un subagente) |
 | Panel (React/Vite) | `ControlGym` | Push a `master` → Vercel despliega solo (no hay workflow) |
+| App (Android + iOS) | `controlgym-app` | Por tags — **ver la skill `lanzar-release` de ESE repo** |
+
+**La app se publica con su propia skill.** `controlgym-app/.claude/skills/lanzar-release/`
+tiene los tags de cada canal, la trampa del "What's New" de iOS y el diagnóstico
+de "no me sale actualizar". No dupliques esas reglas aquí: si divergen, la de
+aquél repo manda para la app. Lo que sí importa desde este lado:
+
+- **La app va DESPUÉS de la BD** (ver el orden abajo).
+- **iOS se olvida fácil** — llegó a acumular 42 commits de atraso mientras
+  Android publicaba sin parar. Al tocar `commonMain`, pregunta si también toca
+  publicar iOS.
 
 Se despliegan en este orden: **BD primero, luego app y panel**. La app nueva
 puede llamar RPCs que la vieja no usa; el revés rompe a los que aún no
@@ -35,96 +45,15 @@ confirmación explícita antes de cada uno; no los agrupes en una sola pregunta:
 Todo lo demás (verificar en rollback, compilar, tags de interna/cerrada) va
 seguido sin preguntar.
 
-## A. Desplegar la app a Play
+## A. Publicar la app (Android / iOS)
 
-### A1. Antes de crear el tag
+**Lo lleva la skill `lanzar-release` del repo `controlgym-app`.** Ahí están los
+tags de cada canal, el `versionName` que debe ir a la par del tag, la trampa del
+"What's New" de iOS y el diagnóstico de "no me sale actualizar". Aquí solo lo que
+toca a este repo:
 
-- [ ] **El `versionName` debe coincidir con el tag.** `composeApp/build.gradle.kts`
-      → `versionName = "0.9.7"` para el tag `cerrada-v0.9.7`.
-
-      **POR QUÉ:** se quedó congelado en `0.9.1` durante 5 tags. Los builds
-      subían bien, pero el celular mostraba la misma versión de siempre y el
-      owner reportó "no está actualizando". El `versionCode` (que decide la
-      instalación) sí subía; lo que engañaba era el nombre visible. Si no
-      coinciden, se repite el mismo reporte.
-
-- [ ] **Compilar los dos targets** antes de tagear:
-      ```bash
-      cd "d:/Personal Proyects/controlgym-app"
-      ./gradlew :composeApp:compileDebugKotlinAndroid --console=plain -q
-      ./gradlew :composeApp:compileKotlinIosArm64 --console=plain -q
-      ```
-      **POR QUÉ:** el código en `commonMain` compila para Android y iOS. Un
-      arreglo que solo se probó en Android puede romper el build de iOS y
-      tumbar el CI a los 4 minutos.
-
-      **NUNCA correr gradle mientras el owner compila en Android Studio** — se
-      bloquean los archivos (`Unable to delete file ... R.jar`) y le rompes su
-      build. Si está trabajando, pregunta antes.
-
-- [ ] **Todo commiteado y pusheado.** El CI compila el commit al que apunta el
-      tag, no tu working tree.
-
-### A2. Crear el tag
-
-```bash
-git tag -a cerrada-v0.9.7 -m "Prueba cerrada v0.9.7
-
-<qué incluye, en lenguaje de usuario>"
-git push origin cerrada-v0.9.7
-```
-
-Prefijos: `interna-*` (equipo) · `cerrada-*` (testers invitados) ·
-`produccion-*` (**todos, al instante** — checkpoint).
-
-**NO borrar y recrear un tag ya pusheado.** Borrar + recrear cuenta como dos
-pushes y dispara **dos builds con el mismo tag**. El viejo puede terminar
-después del bueno y machacar la ficha con la versión equivocada. Si te
-equivocaste, sube el número (`v0.9.8`), no reutilices el tag. Si ya pasó:
-cancela el run del commit viejo (`gh run cancel <id>`) y verifica que quedó
-`✗ cancelled` sin subir nada.
-
-### A3. Verificar DESPUÉS del build — obligatorio
-
-"CI verde" **no** significa "le llegó al usuario". Verifica en la fuente, nunca
-solo en el log:
-
-```bash
-gh run watch <run-id> --exit-status
-gh run view <run-id> --log | grep -E "Canal de despliegue: |Updating track|Successfully finished" | grep -v '\^\[\[36'
-```
-
-Debe aparecer:
-- `Canal de despliegue: cerrada (ref cerrada-v0.9.7)` — el canal correcto
-- `Updating track 'alpha'...` + `Successfully finished the upload to Google Play`
-
-Y el popup de actualización, **en la BD** (no en el log del CI):
-
-```sql
-select plataforma, version_code, version_name, actualizado_at
-from public.app_version where plataforma='android';
-```
-
-- `version_code` mayor que el anterior (= `run_number` + 26)
-- `version_name` **igual al tag** ← el que falló y nadie miró
-- `actualizado_at` de hace un momento
-
-Al filtrar logs de GitHub Actions usa `grep -v '\^\[\[36'`: sin eso salen las
-líneas del *comando* (con códigos de color ANSI) y no su salida real — es fácil
-creer que verificaste algo cuando solo leíste el `echo`.
-
-### A4. Lo que NO puedes verificar desde aquí
-
-La clave de Play vive solo en GitHub secrets (correcto), así que **no se puede
-consultar el track desde local**. Si el owner dice "no me sale actualizar" y el
-CI subió bien, el problema es de entrega, no de build. Antes de mandarlo a
-buscar, pregunta: **¿la app instalada vino de la prueba cerrada, o de la interna
-/ instalada a mano?** Esa respuesta discrimina entre:
-
-1. No está en la lista de testers de *esa* prueba (interna ≠ cerrada)
-2. La cuenta de Google del celular no es la de la lista
-3. Play tarda en propagar (minutos a horas) — lo más común
-4. La instalada vino de otro track: Play no cruza tracks solo
+- **Publica la app DESPUÉS de aplicar las migraciones** (ver el orden arriba).
+- Un tag `produccion-*` sigue siendo checkpoint: publica al 100% al instante.
 
 ## B. Aplicar migraciones a Supabase
 
@@ -226,9 +155,16 @@ Di **qué se verificó y qué no**. Concreto:
 - ⚠️ Sin verificar: "el arreglo de la foto compila y el flujo es correcto, pero
   **no lo probé en un dispositivo real**"
 
-**POR QUÉ:** se dio por arreglado un bug de foto que en el celular del owner
-seguía fallando, y lo descubrió él. Compilar no es probar. Si algo solo se puede
-comprobar en un dispositivo, dilo y pide que lo prueben — no lo declares hecho.
+**POR QUÉ:** un bug de foto se dio por arreglado **tres veces seguidas** y en el
+celular del owner seguía fallando; lo descubrió él cada vez. Las tres causas eran
+distintas (caché de Coil, un spinner, y un splash decorativo de 2,2 s), y cada
+arreglo parecía "el definitivo". **Compilar no es probar.** Si algo solo se
+comprueba en un dispositivo (cámara, muerte de proceso, notificaciones), dilo y
+pide que lo prueben — no lo declares hecho.
+
+Corolario: cuando el owner dice que un bug **sigue**, no repitas el mismo
+diagnóstico. Sus palabras exactas suelen traer la pista nueva ("pantalla de carga
+FITCORE" era el splash, no un spinner; "es como si reiniciara" era literal).
 
 Y lista lo que depende del owner: regenerar datos que la migración no toca,
 rotar secretos, probar en dispositivo.
