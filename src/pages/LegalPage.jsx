@@ -34,8 +34,13 @@ const PRIVACIDAD = [
   ['4. Quién puede verlos', 'El personal que cada gimnasio autoriza en su panel, según el rol asignado. Nuestro equipo técnico accede solo cuando es indispensable para soporte y de forma registrada.'],
   ['5. Autenticación con Google', 'El inicio de sesión usa tu cuenta de Google. Solo recibimos tu nombre, correo y foto de perfil; nunca tu contraseña.'],
   ['6. Tus derechos', 'Puedes solicitar acceso, corrección o eliminación de tus datos personales escribiendo a soporte@' + ROOT_DOMAIN + '. Si eres socio de un gimnasio, puedes ejercer estos derechos directamente con tu gimnasio o con nosotros.'],
-  ['7. Cookies', 'Usamos únicamente el almacenamiento necesario para mantener tu sesión iniciada y tus preferencias del panel. No usamos cookies de publicidad.'],
-  ['8. Contacto', 'Para cualquier consulta sobre privacidad: soporte@' + ROOT_DOMAIN + ' o WhatsApp +51 986 110 558.'],
+  // Google Play RECHAZÓ la publicación (ago-2026) por no declarar la conservación
+  // de datos: "Indica tus prácticas de conservación de datos en la política o
+  // declara explícitamente que no almacenas ni conservas datos de usuario".
+  // Los plazos de aquí deben ir a la par de los Términos (punto 7: 90 días).
+  ['7. Cuánto tiempo conservamos tus datos', 'Conservamos tus datos mientras tu cuenta esté activa, porque son necesarios para prestarte el servicio. Si cierras tu cuenta o cancelas la suscripción, los conservamos 90 días por si decides volver y luego los eliminamos de forma definitiva de nuestros sistemas. Puedes pedir la eliminación inmediata en cualquier momento desde ' + ROOT_DOMAIN + '/eliminar-cuenta o escribiendo a soporte@' + ROOT_DOMAIN + ': la procesamos en un máximo de 30 días. Si eres socio de un gimnasio, tus datos los conserva ese gimnasio mientras seas su cliente; al darte de baja, él decide si los elimina o mantiene su historial. Excepción: conservamos por 5 años los comprobantes de pago y registros contables que la ley peruana nos obliga a guardar, y las copias de seguridad se rotan y borran en un plazo máximo de 90 días.'],
+  ['8. Cookies', 'Usamos únicamente el almacenamiento necesario para mantener tu sesión iniciada y tus preferencias del panel. No usamos cookies de publicidad.'],
+  ['9. Contacto', 'Para cualquier consulta sobre privacidad: soporte@' + ROOT_DOMAIN + ' o WhatsApp +51 986 110 558.'],
 ]
 
 const DEVOLUCIONES = [
