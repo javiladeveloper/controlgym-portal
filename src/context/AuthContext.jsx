@@ -60,7 +60,14 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/dashboard' },
+      options: {
+        redirectTo: window.location.origin + '/dashboard',
+        // prompt=select_account: Google SIEMPRE muestra el selector de cuenta.
+        // Sin esto reusa la sesión activa del navegador y entra directo — quien
+        // tiene varias cuentas (o acaba de cerrar sesión) no puede cambiarse
+        // sin salir de Google entero.
+        queryParams: { prompt: 'select_account' },
+      },
     })
     if (error) throw error
   }, [])
