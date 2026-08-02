@@ -149,6 +149,63 @@ function GymPageMockup() {
   )
 }
 
+// ── Botones de descarga de la app (Play Store / App Store) ─────────────────
+// Los logos van en SVG INLINE, no como imagen: el CSP del sitio bloquea recursos
+// externos, así que los badges oficiales servidos desde Google/Apple no cargarían.
+// Se respeta la forma de cada marca (triángulo de Play a 4 colores, manzana) para
+// que se reconozcan al instante, dentro de un botón con el estilo del landing.
+const TIENDAS = [
+  {
+    id: 'android',
+    url: 'https://play.google.com/store/apps/details?id=pe.fitcore.app',
+    arriba: 'Disponible en',
+    tienda: 'Google Play',
+    logo: (
+      // Triángulo de Play: cuatro caras, cada una su color de marca.
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M3.6 1.8a1.2 1.2 0 0 0-.4.9v18.6c0 .36.15.68.4.9l10-10.2-10-10.2Z" fill="#00D4FF" />
+        <path d="M17.1 8.4 13.6 12l3.5 3.6 4-2.3c.9-.5.9-1.8 0-2.3l-4-2.6Z" fill="#FFCE00" />
+        <path d="M3.6 1.8 13.6 12l3.5-3.6L5.4 1.6c-.6-.36-1.3-.3-1.8.2Z" fill="#00F076" />
+        <path d="M3.6 22.2c.5.5 1.2.56 1.8.2l11.7-6.8L13.6 12 3.6 22.2Z" fill="#FF3A44" />
+      </svg>
+    ),
+  },
+  {
+    id: 'ios',
+    url: 'https://apps.apple.com/app/fitcore',
+    arriba: 'Descárgala en el',
+    tienda: 'App Store',
+    logo: (
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true">
+        <path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.7 0-1.85-.83-3.05-.8-1.55.02-3 .9-3.8 2.3-1.63 2.82-.42 7 1.16 9.3.77 1.12 1.7 2.38 2.9 2.34 1.17-.05 1.6-.75 3.02-.75 1.4 0 1.8.75 3.03.73 1.25-.02 2.05-1.14 2.8-2.27.89-1.3 1.25-2.56 1.27-2.62-.03-.01-2.43-.93-2.46-3.7ZM14.1 5.9c.63-.77 1.06-1.83.94-2.9-.91.04-2.02.6-2.67 1.37-.58.68-1.09 1.77-.95 2.8 1.02.08 2.05-.51 2.68-1.27Z" />
+      </svg>
+    ),
+  },
+]
+
+function BotonesTienda({ className = '' }) {
+  return (
+    <div className={`flex flex-wrap items-center gap-3 ${className}`}>
+      {TIENDAS.map((t) => (
+        <a
+          key={t.id}
+          href={t.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-3 rounded-xl px-4 py-2.5 transition-transform hover:-translate-y-0.5"
+          style={{ background: '#000', border: '1px solid rgba(255,255,255,0.22)' }}
+        >
+          {t.logo}
+          <span className="flex flex-col leading-none text-left">
+            <span className="text-[9px] font-medium tracking-wide text-white/70">{t.arriba}</span>
+            <span className="mt-0.5 text-[15px] font-semibold text-white">{t.tienda}</span>
+          </span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
 // ── Mockup de la app del socio: rutina con ejercicio animado (guía visual) ──
 // El "GIF" es una figura que hace sentadilla en loop, dibujada en CSS puro
 // (coherente con los otros mockups en código; sin imágenes externas por el CSP).
@@ -233,8 +290,8 @@ const FAQS = [
   ['¿Cómo funciona la página web de mi gimnasio?', 'Al registrarte eliges tu dirección (tugym.' + ROOT_DOMAIN + ') y tu página se genera sola con tus planes, horario, fotos y colores. Eliges entre 8 diseños y todo lo editas desde el panel, sin programadores.'],
   ['¿Cómo cobro a mis socios?', 'Como siempre lo has hecho: Yape, Plin, efectivo o tarjeta. FitCore registra cada cobro, aplica promociones automáticamente y te cuadra la caja. No nos llevamos comisión de tus membresías.'],
   ['¿Sirve si solo doy clases (yoga, baile, box, dojo)?', 'Sí, con plan propio: Academia a S/49/mes con un panel a tu medida — clases, alumnos, reservas y tu página web, sin módulos que no usas.'],
-  ['Soy personal trainer, ¿me sirve?', 'Sí — es nuestro plan más accesible (S/29/mes): tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes. Y cuando salga la app, apareces en las búsquedas de tu zona sin costo extra.'],
-  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. En los planes de gimnasio (Estudio, Crecimiento y Pro) va INCLUIDA, sin costo extra y para todos tus socios. En Trainer, Academia y Niños es un adicional fijo por negocio (no por socio). Se habilita muy pronto.'],
+  ['Soy personal trainer, ¿me sirve?', 'Sí — es nuestro plan más accesible (S/29/mes): tus clientes, tus paquetes de sesiones, tus cobros y tu página personal (tunombre.fitcorecenter.com) para captar desde tus redes. Y en la app apareces en las búsquedas de tu zona sin costo extra.'],
+  ['¿Qué incluye la app para socios y cuánto cuesta?', 'Tus alumnos reservan clases, ven su rutina, su dieta y el estado de su membresía desde su celular. En los planes de gimnasio (Estudio, Crecimiento y Pro) va INCLUIDA, sin costo extra y para todos tus socios. En Trainer, Academia y Niños es un adicional fijo por negocio (no por socio). Ya está disponible en Google Play y App Store.'],
   ['¿Qué pasa cuando termina mi mes de prueba?', 'Eliges el plan que te acomode y sigues donde quedaste. Tus datos nunca se borran ni se bloquean de un día para otro.'],
   ['¿Puedo cambiar de plan o cancelar?', 'Cuando quieras, sin permanencia ni penalidades. Subes o bajas de plan según crece tu gimnasio.'],
 ]
@@ -956,6 +1013,12 @@ export default function PlataformaLanding() {
                 <li key={ic} className="flex items-start gap-3"><span className="text-[16px]">{ic}</span>{txt}</li>
               ))}
             </ul>
+            {/* Descarga de la app: va junto al mockup del celular, que es donde el
+                visitante ya está mirando la app y quiere probarla. */}
+            <p className="mt-7 text-[13px] font-semibold" style={{ color: C.muted }}>
+              Descarga la app y pruébala gratis:
+            </p>
+            <BotonesTienda className="mt-3" />
           </div>
           <div className="flex justify-center md:justify-end">
             <EjercicioMockup />
@@ -1196,8 +1259,9 @@ export default function PlataformaLanding() {
           <p className="mt-8 text-center text-[13px] font-semibold" style={{ color: C.muted }}>
             La app va <b className="text-white">incluida</b> en Estudio, Crecimiento y Pro — sin costo extra y para todos
             tus socios. En Trainer, Academia y Niños es un adicional; en el plan Miembros no está disponible.
-            Se habilita muy pronto.
+            Ya está disponible para descargar:
           </p>
+          <BotonesTienda className="mt-4 justify-center" />
         </div>
       </section>
 
