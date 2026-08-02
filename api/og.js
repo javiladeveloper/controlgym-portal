@@ -53,7 +53,10 @@ async function responderVersion(res) {
   }
   return res.status(200).json({
     android: { latest: android, url: 'https://play.google.com/store/apps/details?id=pe.fitcore.app' },
-    ios: { latest: ios, url: 'https://apps.apple.com/app/fitcore' },
+    // ID numérico real: App Store no resuelve fichas por nombre, así que
+    // `/app/fitcore` daba 404 y el popup de "actualiza tu app" mandaba a una
+    // página inexistente en iOS.
+    ios: { latest: ios, url: 'https://apps.apple.com/pe/app/fitcore-gym/id6788892159' },
   })
 }
 

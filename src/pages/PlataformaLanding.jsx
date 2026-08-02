@@ -172,7 +172,9 @@ const TIENDAS = [
   },
   {
     id: 'ios',
-    url: 'https://apps.apple.com/app/fitcore',
+    // ID numérico real de la ficha (App Store no resuelve fichas por nombre:
+    // `/app/fitcore` devolvía 404 y el botón no llevaba a ninguna parte).
+    url: 'https://apps.apple.com/pe/app/fitcore-gym/id6788892159',
     arriba: 'Descárgala en el',
     tienda: 'App Store',
     logo: (
