@@ -47,88 +47,6 @@ as $$
   from generate_series(1, 8);
 $$;
 
--- Comparte la rutina y devuelve el enlace.
-create or replace function public.compartir_mi_rutina(p_rutina_libre uuid)
-returns jsonb
-language plpgsql
-security definer
-set search_path to 'public'
-as $function$
-declare
-  v_uid uuid := auth.uid();
-  v_rl record;
-  v_token text;
-  v_contenido jsonb;
-  v_existente record;
-begin
-  if v_uid is null then raise exception 'Sesión inválida'; end if;
-
-  select * into v_rl from public.rutina_libre
-   where id = p_rutina_libre and usuario_id = v_uid;
-  if not found then raise exception 'Esa rutina no es tuya'; end if;
-
-  -- IDEMPOTENTE: si ya se compartió y sigue activa, se devuelve el MISMO
-  -- enlace. Sin esto, cada toque del botón generaría un token nuevo y el que
-  -- la persona ya mandó por WhatsApp quedaría huérfano.
-  select * into v_existente from public.rutina_compartida
-   where rutina_libre_id = p_rutina_libre and usuario_id = v_uid and activo
-   limit 1;
-  if found then
-    return jsonb_build_object(
-      'ok', true, 'token', v_existente.token,
-      'url', 'https://fitcorecenter.com/r/' || v_existente.token
-    );
-  end if;
-
-  if not exists (
-    select 1 from public.rutina_libre_dia d
-    join public.rutina_libre_ejercicio e on e.rutina_libre_dia_id = d.id
-    where d.rutina_libre_id = p_rutina_libre
-  ) then
-    raise exception 'Tu rutina no tiene ejercicios todavía';
-  end if;
-
-  -- Copia congelada: días con su foco y sus ejercicios.
-  select coalesce(jsonb_agg(dd order by dd.dia_semana), '[]'::jsonb)
-    into v_contenido
-  from (
-    select d.dia_semana, d.foco,
-           coalesce((
-             select jsonb_agg(jsonb_build_object(
-               'nombre', e.nombre, 'series', e.series,
-               'reps', e.reps, 'descanso', e.descanso
-             ) order by e.orden)
-             from public.rutina_libre_ejercicio e
-             where e.rutina_libre_dia_id = d.id
-           ), '[]'::jsonb) as ejercicios
-    from public.rutina_libre_dia d
-    where d.rutina_libre_id = p_rutina_libre
-  ) dd;
-
-  -- Reintento por si el token choca (improbable, pero el unique lo haría fallar).
-  for i in 1..5 loop
-    v_token := public.generar_token_compartir();
-    exit when not exists (select 1 from public.rutina_compartida where token = v_token);
-  end loop;
-
-  insert into public.rutina_compartida
-    (token, usuario_id, rutina_libre_id, nombre, contenido)
-  values (
-    v_token, v_uid, p_rutina_libre,
-    coalesce(nullif(trim(v_rl.nombre), ''), 'Rutina de FitCore'),
-    v_contenido
-  );
-
-  return jsonb_build_object(
-    'ok', true, 'token', v_token,
-    'url', 'https://fitcorecenter.com/r/' || v_token
-  );
-end;
-$function$;
-
-revoke all on function public.compartir_mi_rutina(uuid) from public;
-grant execute on function public.compartir_mi_rutina(uuid) to authenticated;
-
 -- Lee una rutina compartida. SIN SESIÓN: es lo que hace funcionar la página web
 -- para quien todavía no tiene la app (que es el caso que se quiere captar).
 create or replace function public.ver_rutina_compartida(p_token text)
@@ -204,6 +122,7 @@ grant execute on function public.revocar_rutina_compartida(text) to authenticate
 create unique index if not exists rutina_compartida_activa_uq
   on public.rutina_compartida(rutina_libre_id) where activo;
 
+-- Comparte la rutina y devuelve el enlace.
 create or replace function public.compartir_mi_rutina(p_rutina_libre uuid)
 returns jsonb
 language plpgsql
@@ -223,6 +142,9 @@ begin
    where id = p_rutina_libre and usuario_id = v_uid;
   if not found then raise exception 'Esa rutina no es tuya'; end if;
 
+  -- IDEMPOTENTE: si ya se compartió y sigue activa, se devuelve el MISMO
+  -- enlace. Sin esto, cada toque del botón generaría un token nuevo y el que
+  -- la persona ya mandó por WhatsApp quedaría huérfano.
   select * into v_existente from public.rutina_compartida
    where rutina_libre_id = p_rutina_libre and usuario_id = v_uid and activo
    limit 1;
@@ -241,6 +163,7 @@ begin
     raise exception 'Tu rutina no tiene ejercicios todavía';
   end if;
 
+  -- Copia congelada: días con su foco y sus ejercicios.
   select coalesce(jsonb_agg(dd order by dd.dia_semana), '[]'::jsonb)
     into v_contenido
   from (
@@ -257,11 +180,15 @@ begin
     where d.rutina_libre_id = p_rutina_libre
   ) dd;
 
+  -- Reintento por si el token choca (improbable, pero el unique lo haría fallar).
   for i in 1..5 loop
     v_token := public.generar_token_compartir();
     exit when not exists (select 1 from public.rutina_compartida where token = v_token);
   end loop;
 
+  -- El insert va en su propio bloque para poder capturar el choque de
+  -- concurrencia del índice único (ver comentario más arriba): dos llamadas
+  -- simultáneas pueden llegar hasta aquí ambas creyendo que no existe enlace.
   begin
     insert into public.rutina_compartida
       (token, usuario_id, rutina_libre_id, nombre, contenido)

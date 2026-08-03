@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { urlCompartir, tokenDesdeRuta, diasOrdenados } from '../src/lib/compartir.js'
-
-describe('urlCompartir', () => {
-  it('arma la url pública con el token', () => {
-    expect(urlCompartir('a7k2m9x3')).toBe('https://fitcorecenter.com/r/a7k2m9x3')
-  })
-})
+import { tokenDesdeRuta, diasOrdenados } from '../src/lib/compartir.js'
 
 describe('tokenDesdeRuta', () => {
   it('extrae el token de /r/<token>', () => {

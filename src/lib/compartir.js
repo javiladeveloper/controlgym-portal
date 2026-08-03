@@ -1,13 +1,11 @@
 // Lógica del enlace de rutina compartida. Funciones PURAS a propósito: la
 // página solo llama y pinta, así esto se prueba sin montar componentes.
-
-/** Dominio público de FitCore (el mismo que usa el enlace que se comparte). */
-const BASE = 'https://fitcorecenter.com'
-
-/** URL pública que se comparte (y que se convierte en QR). */
-export function urlCompartir(token) {
-  return `${BASE}/r/${token}`
-}
+//
+// La URL pública (dominio + `/r/<token>`) NO se arma aquí: la construye el
+// backend (`compartir_mi_rutina`, en SQL) y la app la consume tal cual desde
+// `enlace.url`. Tener una segunda función que rearme el mismo string era una
+// fuente de verdad duplicada — si cambia el dominio, hay que acordarse de
+// tocar dos sitios, y un test aquí seguiría verde con el valor viejo.
 
 /**
  * Token de una ruta `/r/<token>`, o null si la ruta no es de compartir.
