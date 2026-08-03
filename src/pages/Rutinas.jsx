@@ -22,7 +22,6 @@ import { useObjetivos, usePlantillasRutina, usePlantillasDieta,
   useComidaAgregar, useComidaEditar, useComidaQuitar } from '../hooks/usePlantillas.js'
 import { useRutinasPorVencer, useProgresoSocio, useAnalizarProgresion } from '../hooks/useProgresion.js'
 import { sugerenciasDeProgreso } from '../lib/sugerenciasRutina.js'
-import { useRutinasPendientes, useResolverRutina } from '../hooks/useRutinasComunidad.js'
 
 // Señal visual por estado del análisis inteligente por ejercicio.
 const SENAL_PROGRESION = {
@@ -735,84 +734,6 @@ function GenerarPlantillaModal({ onClose }) {
 
 // Modal para pedir el motivo del rechazo: sustituye a window.prompt (desentona
 // con el resto del panel) por el modal genérico de la casa.
-function RechazarRutinaModal({ rutina, onClose, onConfirmar, busy }) {
-  const [motivo, setMotivo] = useState('')
-  return (
-    <Modal title="Rechazar rutina" subtitle={`"${rutina.nombre}" — el autor verá este motivo`} onClose={onClose}>
-      <Campo label="Motivo del rechazo *">
-        <textarea autoFocus rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)}
-          placeholder="Ej: le faltan series y repeticiones en el día 3…"
-          className={inputCls + ' resize-none'} />
-      </Campo>
-      <BotonesModal onCancel={onClose} busy={busy} disabled={!motivo.trim()}
-        onSubmit={() => onConfirmar(motivo.trim())} submitLabel="Rechazar" />
-    </Modal>
-  )
-}
-
-// Bandeja de moderación: rutinas que los usuarios publicaron y esperan que el
-// dueño de la plataforma las apruebe o rechace (Task B2). resolver_rutina
-// exige ser superadmin, así que esta card no tiene sentido para el staff del
-// gym — se monta solo si esSuperadmin.
-function RutinasComunidadPendientes() {
-  const { data: pendientes = [], isLoading } = useRutinasPendientes()
-  const resolver = useResolverRutina()
-  const [rechazando, setRechazando] = useState(null) // rutina a la que se le pide el motivo
-
-  // Sin pendientes no se pinta nada: una card vacía es ruido permanente en una
-  // pantalla que se usa todos los días.
-  if (isLoading || pendientes.length === 0) return null
-
-  return (
-    <Card className="mt-[18px] p-[19px]" style={{ borderLeft: '4px solid #FF6B35' }}>
-      <div className="text-[14.5px] font-extrabold">🧩 Rutinas de la comunidad · {pendientes.length} por revisar</div>
-      <div className="mt-0.5 text-[12px] font-semibold text-muted">
-        Publicadas por usuarios de la app. Revísalas antes de que aparezcan en la biblioteca pública.
-      </div>
-      <div className="mt-3 flex flex-col gap-3">
-        {pendientes.map((r) => (
-          <div key={r.id} className="rounded-[10px] bg-surface px-3.5 py-3">
-            <p className="text-[13.5px] font-extrabold text-ink">{r.nombre}</p>
-            {r.descripcion && <p className="mt-0.5 text-[12.5px] font-semibold text-muted">{r.descripcion}</p>}
-            <p className="mt-1 text-[11px] font-bold text-faint">
-              por {r.autor} · {r.objetivo} · {r.dias_por_semana} días · {r.equipo}
-            </p>
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={() => resolver.mutate({ id: r.id, aprobar: true }, { onError: (er) => toast.error(er.message) })}
-                disabled={resolver.isPending}
-                className="cursor-pointer rounded-[9px] border-none bg-green px-3.5 py-2 text-[11.5px] font-extrabold text-white hover:bg-green-600 disabled:opacity-50">
-                ✓ Aprobar
-              </button>
-              <button
-                onClick={() => setRechazando(r)}
-                disabled={resolver.isPending}
-                className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[11.5px] font-extrabold text-muted hover:border-red disabled:opacity-50">
-                Rechazar
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {rechazando && (
-        <RechazarRutinaModal
-          rutina={rechazando}
-          busy={resolver.isPending}
-          onClose={() => setRechazando(null)}
-          onConfirmar={(motivo) => resolver.mutate(
-            { id: rechazando.id, aprobar: false, motivo },
-            {
-              onSuccess: () => setRechazando(null),
-              onError: (er) => toast.error(er.message),
-            },
-          )}
-        />
-      )}
-    </Card>
-  )
-}
-
 function RutinasImpl() {
   const location = useLocation()
   const { sedeId } = usePanel()
@@ -834,7 +755,7 @@ function RutinasImpl() {
     if (!existe) setSocioId(socios.data[0].id)
   }, [socios.data, socioId])
 
-  const { empresa, rol, esSuperadmin } = useAuth()
+  const { empresa, rol } = useAuth()
   // Cada especialista lo suyo: el nutricionista no toca la rutina;
   // entrenador y admin ven ambas (gyms sin nutricionista)
   const veRutina = rol !== 'nutricionista'
@@ -954,7 +875,6 @@ function RutinasImpl() {
     <div className="max-w-[1020px] px-7 pb-9 pt-6">
       {/* Bandeja de moderación de la comunidad: solo el dueño de la
           plataforma puede resolver (resolver_rutina exige superadmin). */}
-      {esSuperadmin && <RutinasComunidadPendientes />}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

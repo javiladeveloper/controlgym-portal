@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { money } from '../lib/uiHelpers.js'
 import { urlPublica } from '../lib/tenant.js'
 import { BASE_TOKENS as T } from '../theme/tokens.js'
+import RutinasComunidadPendientes from '../components/RutinasComunidadPendientes.jsx'
 
 // Dashboard global de FitCore: solo para el dueño de la plataforma.
 function usePlataforma() {
@@ -42,6 +43,12 @@ export default function Plataforma() {
           </p>
         </div>
       </div>
+
+      {/* Rutinas que los usuarios comparten desde la app, esperando tu visto
+          bueno. Va ARRIBA de los KPIs a propósito: es lo único de esta pantalla
+          que requiere una acción tuya, y si no se revisa nadie las ve. Se pinta
+          sola solo cuando hay pendientes. */}
+      <RutinasComunidadPendientes />
 
       {isLoading && <LoadingState variant="kpis" />}
       {error && <ErrorState error={error} onRetry={refetch} />}
