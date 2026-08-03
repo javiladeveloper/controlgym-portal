@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "KGZQMM72VX.pe.fitcore.app",
+        "paths": ["/r/*"]
+      }
+    ]
+  }
+}
