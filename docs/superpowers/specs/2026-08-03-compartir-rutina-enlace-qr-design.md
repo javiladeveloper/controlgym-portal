@@ -122,6 +122,20 @@ En iOS el equivalente va en `Info.plist` (`CFBundleURLSchemes`, donde ya está
 quién la compartió, y los botones de descarga (Google Play / App Store, los
 mismos enlaces que ya usa el landing).
 
+### Dónde vive la lógica (para que sea testeable)
+
+La lógica que se prueba NO puede vivir dentro de componentes de UI: un test que
+tiene que montar una pantalla para comprobar que una URL se arma bien es lento y
+frágil. Va en funciones puras:
+
+- **Panel:** `src/lib/compartir.js` → `urlCompartir(token)`,
+  `tokenDesdeRuta(pathname)`, y el formateo de la rutina para la vista pública.
+  La página solo llama a estas funciones y pinta.
+- **App:** el parseo del deep link (`tokenDeDeepLink`) va junto a los modelos, no
+  dentro del composable ni de `MainActivity`.
+
+Es el mismo criterio que ya sigue `src/lib/unidades.js`, que tiene sus tests.
+
 ## Riesgos y cómo se tratan
 
 **Enumeración de tokens.** 8 caracteres alfanuméricos son ~2.8 billones de
@@ -151,15 +165,62 @@ en el aviso al compartir.
 
 ## Verificación
 
-- **BD (rollback antes de aplicar, varios casos):** compartir dos veces la misma
-  rutina devuelve el MISMO token; `ver_rutina_compartida` funciona con rol `anon`
-  y suma una apertura; un token revocado o inexistente falla con mensaje claro;
-  compartir una rutina ajena falla; un invitado NO puede leer `rutina_compartida`
-  por PostgREST (0 filas).
-- **App:** compilar Android **e** iOS. Probar en emulador que el QR se pinta y
-  que el deep link abre la rutina.
-- **Panel:** `npm test` (83) y `npm run build` limpios; la página `/r/<token>`
-  carga sin sesión.
-- **Contrato:** cada `@SerialName` nuevo se verifica contra el JSON real de la
-  RPC — un desajuste compila, no lanza error y la pantalla queda vacía (ya pasó
-  varias veces en este proyecto).
+Esta feature se entrega **con pruebas automatizadas reales**, no solo con
+comprobaciones manuales. Motivo: los fallos más caros de este proyecto no los
+detectó nadie mirando (el `DELETE` sin `WHERE` que rompía crear rutinas, la fuga
+de rutinas pendientes a cualquier usuario, el `nivel = 'intermedio'` fijo que
+dejaba el filtro inservible). Los tres eran comprobables por código.
+
+### Capa 1 — SQL: `supabase/tests/compartir_rutina.test.sql` (NUEVO)
+
+Hoy **no existen** pruebas de SQL en el repo: las RPCs se verifican a mano en
+`begin; … rollback;` y esa verificación se pierde en cuanto termina la sesión.
+Este archivo la deja escrita y repetible. Corre entero dentro de una transacción
+que hace `rollback` al final, así que se puede lanzar contra producción sin
+tocar datos. Cada caso usa `assert` y falla ruidosamente.
+
+Casos que DEBEN pasar:
+1. `compartir_mi_rutina` devuelve token de 8 caracteres y una url que lo contiene.
+2. Compartir DOS VECES la misma rutina devuelve el **mismo** token (idempotencia)
+   — sin esto, cada toque del botón genera un enlace y el anterior queda huérfano.
+3. `ver_rutina_compartida` con rol `anon` (sin sesión) devuelve el contenido.
+4. Cada llamada a `ver_rutina_compartida` incrementa `aperturas` en 1.
+5. El contenido devuelto trae los días y ejercicios de la rutina original.
+
+Casos que DEBEN fallar:
+6. Compartir una rutina de OTRO usuario → excepción.
+7. `ver_rutina_compartida` con un token inexistente → excepción con mensaje claro.
+8. `ver_rutina_compartida` de un enlace revocado → excepción.
+9. `revocar_rutina_compartida` sobre un enlace ajeno → excepción.
+10. Un usuario `authenticated` cualquiera hace `select` directo sobre
+    `rutina_compartida` de otro → **0 filas** (la RLS aísla; la RPC es la única
+    puerta).
+
+### Capa 2 — Panel: `tests/compartir-rutina.test.js` (NUEVO, vitest)
+
+Sigue el estilo de `tests/unidades.test.js` (funciones puras, sin red). Prueba
+la lógica extraída a `src/lib/compartir.js`:
+- `urlCompartir(token)` arma `https://fitcorecenter.com/r/<token>`.
+- `tokenDesdeRuta('/r/a7k2m9x3')` devuelve el token; con `/r/` o `/otra/cosa`
+  devuelve null (así la página no llama a la RPC con basura).
+- El formateo de la rutina para la vista pública: días ordenados, un día sin
+  ejercicios no rompe, y una rutina sin días devuelve lista vacía en vez de
+  reventar.
+
+### Capa 3 — App: `composeApp/src/commonTest/.../CompartirRutinaTest.kt` (NUEVO)
+
+Sigue el estilo de los tests que ya existen (`CarritoOfertaTest.kt`,
+`MinimoCompraTest.kt`), con `kotlin.test`:
+- El modelo de la rutina compartida **deserializa el JSON REAL** de la RPC
+  (pegado literal en el test). Es la prueba que habría evitado los desajustes de
+  `@SerialName` que ya nos costaron tres pantallas en blanco.
+- Un JSON con campos ausentes o `null` no lanza excepción (defaults correctos).
+- `tokenDeDeepLink("fitcore://rutina?token=a7k2m9x3")` extrae el token, y
+  devuelve null si el enlace viene sin token o con otro host.
+
+### Comprobaciones manuales (lo que un test no cubre)
+
+- Compilar Android **e** iOS.
+- En emulador: el QR se pinta y se puede escanear; el deep link abre la rutina.
+- La página `/r/<token>` carga en el navegador **sin sesión iniciada**.
+- `npm test` y `npm run build` limpios en el panel.
