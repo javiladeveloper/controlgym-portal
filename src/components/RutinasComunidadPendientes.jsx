@@ -8,6 +8,13 @@ import { toast } from '../lib/toast.js'
  * Bandeja para aprobar o rechazar las rutinas que los usuarios comparten con la
  * comunidad desde la app.
  *
+ * OJO — HOY NO SE USA, Y ES A PROPÓSITO. Desde que el clasificador automático
+ * pone el nivel (`clasificar_nivel_rutina`), `publicar_mi_rutina` deja la rutina
+ * en estado 'aprobada' directamente: ya no hay cola de revisión y esta bandeja
+ * sale siempre vacía. NO la borres pensando que es código muerto — el owner
+ * decidió conservarla para cuando una rutina reportada 3 veces se retire sola y
+ * haga falta un sitio donde revisarla antes de reactivarla.
+ *
  * Vive en el Dashboard global (`Plataforma.jsx`), NO en la página de Rutinas:
  * moderar la biblioteca pública es una tarea del dueño de la plataforma, no de
  * los gimnasios. En Rutinas.jsx estaba mezclada con el trabajo diario del staff
