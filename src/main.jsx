@@ -5,6 +5,7 @@ import QueryProvider from './providers/QueryProvider.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { SedeProvider } from './store.jsx'
 import { getTenantSlug, isPlataformaHome, isPlataformaHost } from './lib/tenant.js'
+import { tokenDesdeRuta } from './lib/compartir.js'
 import './index.css'
 
 // Code-splitting por host: cada visitante descarga SOLO su mundo
@@ -16,6 +17,7 @@ const LegalPage = lazy(() => import('./pages/LegalPage.jsx'))
 const Reclamaciones = lazy(() => import('./pages/Reclamaciones.jsx'))
 const DemoVenta = lazy(() => import('./pages/DemoVenta.jsx'))
 const PlanesPublico = lazy(() => import('./pages/PlanesPublico.jsx'))
+const RutinaCompartida = lazy(() => import('./pages/RutinaCompartida.jsx'))
 
 const Cargando = () => (
   <div className="flex min-h-screen items-center justify-center bg-canvas">
@@ -36,8 +38,20 @@ const legalDoc = { '/terminos': 'terminos', '/privacidad': 'privacidad', '/devol
 const esReclamaciones = window.location.pathname === '/reclamaciones'
 const esDemo = window.location.pathname === '/demo'
 const esPlanes = window.location.pathname === '/planes'
+const tokenCompartido = tokenDesdeRuta(window.location.pathname)
 
-if (isPlataformaHome()) {
+if (tokenCompartido) {
+  // Una rutina compartida se ve en CUALQUIER host de la plataforma (el
+  // enlace que se manda por WhatsApp usa el dominio raíz) y sin sesión, así
+  // que va antes que el resto de ramas de enrutado.
+  root.render(
+    <React.StrictMode>
+      <Suspense fallback={<Cargando />}>
+      <RutinaCompartida />
+    </Suspense>
+    </React.StrictMode>,
+  )
+} else if (isPlataformaHome()) {
   root.render(
     <React.StrictMode>
       <Suspense fallback={<Cargando />}>
