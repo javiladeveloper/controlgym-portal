@@ -47,7 +47,13 @@ export default function BloqueoPlan({ children }) {
     )
   }
 
-  if (!bloqueado || pathname.startsWith('/configuracion')) return children
+  // El Dashboard global (/plataforma) NO se bloquea nunca: es la pantalla del
+  // dueño de FitCore, no del gimnasio. Bloquearla por una sede vencida dejaba
+  // al owner sin poder moderar las rutinas de la comunidad solo porque su gym
+  // de pruebas tenía el plan caducado — dos cosas que no tienen relación.
+  if (!bloqueado || pathname.startsWith('/configuracion') || pathname.startsWith('/plataforma')) {
+    return children
+  }
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-6">
