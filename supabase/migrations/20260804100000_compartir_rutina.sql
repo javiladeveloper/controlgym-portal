@@ -190,3 +190,112 @@ $function$;
 
 revoke all on function public.revocar_rutina_compartida(text) from public;
 grant execute on function public.revocar_rutina_compartida(text) to authenticated;
+
+-- ── Idempotencia a prueba de concurrencia ──────────────────────────────────
+-- HALLAZGO DE LA REVISIÓN: el "¿ya existe?" y el `insert` de
+-- `compartir_mi_rutina` son dos sentencias separadas. Bajo READ COMMITTED, dos
+-- llamadas a la vez (doble toque del botón, o un reintento de red del cliente)
+-- pueden ver ambas que no existe y ambas insertar: dos tokens activos para la
+-- misma rutina, rompiendo la garantía de que compartir dos veces devuelve el
+-- MISMO enlace. El test no lo detecta porque es secuencial.
+--
+-- El índice único lo hace imposible a nivel de BD, y la RPC captura el choque
+-- para devolver el token del que ganó la carrera en vez de un error.
+create unique index if not exists rutina_compartida_activa_uq
+  on public.rutina_compartida(rutina_libre_id) where activo;
+
+create or replace function public.compartir_mi_rutina(p_rutina_libre uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_rl record;
+  v_token text;
+  v_contenido jsonb;
+  v_existente record;
+begin
+  if v_uid is null then raise exception 'Sesión inválida'; end if;
+
+  select * into v_rl from public.rutina_libre
+   where id = p_rutina_libre and usuario_id = v_uid;
+  if not found then raise exception 'Esa rutina no es tuya'; end if;
+
+  select * into v_existente from public.rutina_compartida
+   where rutina_libre_id = p_rutina_libre and usuario_id = v_uid and activo
+   limit 1;
+  if found then
+    return jsonb_build_object(
+      'ok', true, 'token', v_existente.token,
+      'url', 'https://fitcorecenter.com/r/' || v_existente.token
+    );
+  end if;
+
+  if not exists (
+    select 1 from public.rutina_libre_dia d
+    join public.rutina_libre_ejercicio e on e.rutina_libre_dia_id = d.id
+    where d.rutina_libre_id = p_rutina_libre
+  ) then
+    raise exception 'Tu rutina no tiene ejercicios todavía';
+  end if;
+
+  select coalesce(jsonb_agg(dd order by dd.dia_semana), '[]'::jsonb)
+    into v_contenido
+  from (
+    select d.dia_semana, d.foco,
+           coalesce((
+             select jsonb_agg(jsonb_build_object(
+               'nombre', e.nombre, 'series', e.series,
+               'reps', e.reps, 'descanso', e.descanso
+             ) order by e.orden)
+             from public.rutina_libre_ejercicio e
+             where e.rutina_libre_dia_id = d.id
+           ), '[]'::jsonb) as ejercicios
+    from public.rutina_libre_dia d
+    where d.rutina_libre_id = p_rutina_libre
+  ) dd;
+
+  for i in 1..5 loop
+    v_token := public.generar_token_compartir();
+    exit when not exists (select 1 from public.rutina_compartida where token = v_token);
+  end loop;
+
+  begin
+    insert into public.rutina_compartida
+      (token, usuario_id, rutina_libre_id, nombre, contenido)
+    values (
+      v_token, v_uid, p_rutina_libre,
+      coalesce(nullif(trim(v_rl.nombre), ''), 'Rutina de FitCore'),
+      v_contenido
+    );
+  exception when unique_violation then
+    -- Otra llamada simultánea ganó la carrera: se devuelve SU token, que es lo
+    -- que la idempotencia promete. Fallar aquí sería peor que compartir.
+    select * into v_existente from public.rutina_compartida
+     where rutina_libre_id = p_rutina_libre and activo limit 1;
+    if v_existente.token is null then raise; end if;
+    return jsonb_build_object(
+      'ok', true, 'token', v_existente.token,
+      'url', 'https://fitcorecenter.com/r/' || v_existente.token
+    );
+  end;
+
+  return jsonb_build_object(
+    'ok', true, 'token', v_token,
+    'url', 'https://fitcorecenter.com/r/' || v_token
+  );
+end;
+$function$;
+
+revoke all on function public.compartir_mi_rutina(uuid) from public;
+grant execute on function public.compartir_mi_rutina(uuid) to authenticated;
+
+-- HALLAZGO MENOR de la revisión: esta función se quedó con los privilegios por
+-- defecto de Postgres (ejecutable por public/anon). Hoy es inocua —no es
+-- security definer ni toca datos—, pero rompe la regla del repo de que ninguna
+-- función queda abierta por omisión, y un futuro `security definer` sobre ella
+-- heredaría ese grant sin que nadie lo note.
+revoke all on function public.generar_token_compartir() from public;
+grant execute on function public.generar_token_compartir() to authenticated;
