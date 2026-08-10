@@ -1176,10 +1176,25 @@ export async function procesarGimnasio(
   // Silencio deliberado: manejado, pero sin enviar nada.
   if (d.texto === null) return { manejado: true, accion: d.accion };
 
-  await enviarMensaje(msg.tenantId, lead.id, msg.canal, msg.contactoExterno, d.texto, 'fija');
+  // La traza queda EN EL MENSAJE, no solo en el log: cuando el gimnasio
+  // pregunte "¿por qué le dijiste eso a mi cliente?", la respuesta está en la
+  // misma fila que el texto. El campo lo añadió el trabajo de trazabilidad de
+  // clínicas y es abierto a propósito, para que cada rubro trace lo suyo.
+  await enviarMensaje(
+    msg.tenantId, lead.id, msg.canal, msg.contactoExterno, d.texto, 'fija',
+    undefined,
+    { paso: d.accion, vecesPrecio, interes: lead.nivelInteres },
+  );
   return { manejado: true, accion: d.accion };
 }
 ```
+
+**NOTA para quien implemente:** `enviarMensaje` ya acepta un 8º parámetro
+`traza?: TrazaDecision` (lo añadió el trabajo de trazabilidad de clínicas,
+commit `f6aa3e2` de LeadAI). El 7º es `botones?`, que aquí va en `undefined`.
+El tipo `TrazaDecision` se importa de `./envio.js` y tiene campos abiertos
+(`paso`, `vecesPrecio`, `velado`, `reglaVelo`, `interes`, y cualquier otro).
+Verifica la firma real antes de escribir la llamada.
 
 - [ ] **Step 4: Correr el test y ver que pasa**
 
