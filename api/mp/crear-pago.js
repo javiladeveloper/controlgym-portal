@@ -422,6 +422,27 @@ export default async function handler(req, res) {
     // carrera en cero filas devueltas, y ahí abajo se recupera el link vivo que
     // ganó — sin llegar a crear una segunda preferencia en MercadoPago.
     const idempotente = !!finny_lead_id && esFinny
+
+    // Antes de insertar: si el ÚNICO cobro abierto de este lead+plan es uno
+    // cuyo link ya venció, hay que sacarlo del índice único primero. MP no
+    // avisa cuando una preferencia caduca sin pagarse (el webhook solo llega
+    // con topic=payment) y no hay ningún cron sobre pago_app, así que si no
+    // se hace aquí esa fila 'pendiente' se queda ocupando el hueco PARA
+    // SIEMPRE: el insert de abajo chocaría contra el índice, y el fallback
+    // (más abajo) terminaría devolviendo ese mismo link muerto como si
+    // siguiera vivo — el lead queda bloqueado sin poder comprar nunca más.
+    // No hace falta pedir el secreto de Finny para esto: si mandan
+    // finny_lead_id sin ser Finny, canalPago ya degradó a 'app' arriba y esta
+    // fila jamás va a chocar con el índice (que exige finny_lead_id).
+    if (idempotente) {
+      await db().query(
+        `update public.pago_app set estado_pago = 'cancelado'
+          where empresa_id = $1 and finny_lead_id = $2 and ref_id = $3
+            and estado_pago = 'pendiente'
+            and init_point_vence_at is not null and init_point_vence_at <= now()`,
+        [empresa_id, finny_lead_id, refUnico])
+    }
+
     const { rows: pagoRows } = await db().query(
       `insert into public.pago_app
          (empresa_id, sede_id, socio_id, tipo, concepto, ref_id, monto, comision_fitcore,
@@ -440,14 +461,28 @@ export default async function handler(req, res) {
       // cobro abierto. Se devuelve SU link (el que el interesado ya recibió),
       // nunca uno nuevo. Si el ganador todavía no guardó su init_point, se
       // responde 409 para que el bot reintente en vez de inventar un link.
+      //
+      // El filtro por vencimiento es obligatorio: sin él, una fila 'pendiente'
+      // cuyo link ya caducó (por ejemplo si el UPDATE de arriba corrió justo
+      // antes de que otra petición volviera a dejarla pendiente — carrera
+      // rarísima pero posible) se devolvería como si siguiera viva, y es
+      // exactamente el bug que se está arreglando: un init_point muerto con
+      // ya_existia:true, sin ninguna señal de error para el bot ni para logs.
       const { rows: vivo } = await db().query(
         `select id, init_point from public.pago_app
           where empresa_id = $1 and finny_lead_id = $2 and ref_id = $3
-            and estado_pago = 'pendiente'`,
+            and estado_pago = 'pendiente'
+            and (init_point_vence_at is null or init_point_vence_at > now())`,
         [empresa_id, finny_lead_id, refUnico])
       if (vivo[0]?.init_point) {
         return res.status(200).json({ init_point: vivo[0].init_point, pago_id: vivo[0].id, ya_existia: true })
       }
+      // No hay ganador vivo: o el que insertó todavía no guardó su init_point
+      // (carrera normal, se resuelve reintentando), o la fila que ocupaba el
+      // hueco ya venció y a este mismo request se le adelantó otra petición
+      // entre el UPDATE y el INSERT. En ambos casos el camino correcto es el
+      // mismo: pedirle al bot que reintente, nunca inventar ni devolver un
+      // link muerto.
       return res.status(409).json({ error: 'Ya se está generando el link de pago; reintenta en unos segundos' })
     }
     const pagoId = pagoRows[0].id
