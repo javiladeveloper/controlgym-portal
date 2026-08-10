@@ -4,6 +4,9 @@
 //     escalar un lead caliente lo empuja aquí en el momento. Sin JWT (se
 //     autentica con el secreto compartido). Es el complemento en caliente de
 //     `sync`, que es manual.
+//   POST /api/leadia?action=link-pago     → LO LLAMA EL BOT cuando el
+//     interesado dice que sí quiere matricularse. Igual que ingresar-lead, sin
+//     JWT (secreto compartido). Devuelve el link de MercadoPago para pagar.
 //   POST /api/leadia?action=aprovisionar  → admin activa el add-on para una sede:
 //     crea el tenant en Leadia + emite su api key + crea el flujo plantilla y
 //     guarda todo cifrado. Requiere la admin key de plataforma (secreto).
@@ -11,7 +14,7 @@
 //   GET  /api/leadia?action=estado        → trae el flujo actual de Leadia.
 //   POST /api/leadia?action=chat          → la app manda el mensaje del socio y
 //     FitCore lo reenvía a Leadia con la api_key descifrada (la app no la ve).
-import { db, usuarioDesdeJwt } from '../_lib/db.js'
+import { db, env, usuarioDesdeJwt } from '../_lib/db.js'
 import { FLUJO_PLANTILLA_GYM } from './_plantilla.js'
 
 export default async function handler(req, res) {
@@ -23,6 +26,7 @@ export default async function handler(req, res) {
   if (action === 'leads-frios') return leadsFrios(req, res)
   if (action === 'sync') return sync(req, res)
   if (action === 'ingresar-lead') return ingresarLead(req, res)
+  if (action === 'link-pago') return linkPago(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -68,6 +72,110 @@ async function ingresarLead(req, res) {
     return res.status(200).json(r)
   } catch (e) {
     return res.status(400).json({ error: 'No se pudo ingresar el lead: ' + e.message })
+  }
+}
+
+// ── Link de pago para Finny ────────────────────────────────────────────────
+// La llama el bot cuando el interesado dice que sí quiere matricularse. Como
+// ingresar-lead, va sin JWT: se autentica con el secreto compartido.
+//
+// IDEMPOTENCIA: un lead + un plan = UN solo link vivo. Ingresar-lead
+// duplicando una entrada al CRM solo molesta; aquí duplicar significa que
+// alguien pague dos veces. Si el bot vuelve a pedirlo (reintento, ráfaga de
+// mensajes, el cliente que dice "no me llegó"), se devuelve EL MISMO link.
+async function linkPago(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Solo POST' })
+  const b = req.body || {}
+  if (!b.secret) return res.status(401).json({ error: 'Falta el secreto' })
+  if (!b.empresa_id || !b.plan_id) {
+    return res.status(400).json({ error: 'Falta empresa_id o plan_id' })
+  }
+
+  const pool = db()
+  try {
+    // 1) ¿Puede cobrar este gym, existe el plan, cuánto sale? finny_preparar_cobro
+    //    también avisa si hay una promo vigente que NO cambia el precio (2x1,
+    //    grupal, semana gratis) para que el bot no invente un descuento.
+    const { rows: pre } = await pool.query(
+      `select public.finny_preparar_cobro($1,$2,$3,$4) as r`,
+      [b.secret, b.empresa_id, b.plan_id, b.promocion_id || null],
+    )
+    const info = pre[0]?.r
+    if (!info?.ok) return res.status(403).json({ error: info?.error || 'Rechazado' })
+    if (!info.puede_cobrar) {
+      // No es un error del bot: es que este gym no cobra por chat. Finny debe
+      // caer al modo visita, así que se le dice explícitamente.
+      return res.status(200).json({ ok: true, puede_cobrar: false, error: info.error })
+    }
+
+    // 2) ¿Ya hay un link vivo para este lead y plan? (idempotencia). Se limita
+    //    a 'pendiente' (aún no vencido/pagado/cancelado en pago_app) y a la
+    //    última hora: pasado eso, la preferencia de MP puede haber expirado y
+    //    conviene generar una nueva en vez de devolver un link muerto.
+    if (b.leadia_lead_id) {
+      const { rows: prev } = await pool.query(
+        `select id, init_point
+           from public.pago_app
+          where empresa_id = $1
+            and finny_lead_id = $2
+            and ref_id = $3
+            and estado_pago = 'pendiente'
+            and creado_at > now() - interval '1 hour'
+          order by creado_at desc
+          limit 1`,
+        [b.empresa_id, b.leadia_lead_id, b.plan_id],
+      )
+      if (prev.length > 0 && prev[0].init_point) {
+        return res.status(200).json({
+          ok: true, puede_cobrar: true, ya_existia: true,
+          link: prev[0].init_point,
+          precio_final: info.precio_final,
+          plan_nombre: info.plan_nombre,
+          promo_nombre: info.promo_nombre || null,
+          promo_sin_descuento_en_precio: info.promo_sin_descuento_en_precio || null,
+        })
+      }
+    }
+
+    // 3) Generar el link nuevo reusando el endpoint de pagos que ya existe.
+    //    tipo:'membresia' + nuevo (sin socio_id) → crear-pago.js interpreta
+    //    ref_id como el PLAN directamente (el interesado todavía no es socio;
+    //    no existe ninguna membresía que referenciar). promocion_id viaja
+    //    también para que el monto cobrado coincida con precio_final: el
+    //    checkout NUNCA confía en un precio que mande el cliente.
+    // SELF_URL (no VERCEL_URL): esa var da la URL de ESTE deploy específico,
+    // no el dominio estable — mismo criterio que usa el webhook para
+    // dispararse a sí mismo (api/mp/webhook.js).
+    const base = env('SELF_URL', 'https://fitcorecenter.com')
+    const r = await fetch(`${base}/api/mp/crear-pago`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        empresa_id: b.empresa_id,
+        sede_id: b.sede_id || null,
+        tipo: 'membresia',
+        ref_id: b.plan_id,
+        promocion_id: b.promocion_id || null,
+        nuevo: { nombre: b.nombre || 'Interesado', telefono: b.telefono || null },
+        canal: 'finny',
+        finny_lead_id: b.leadia_lead_id || null,
+      }),
+    })
+    const out = await r.json().catch(() => ({}))
+    if (!r.ok || !out.init_point) {
+      return res.status(400).json({ error: out.error || 'No se pudo generar el link' })
+    }
+
+    return res.status(200).json({
+      ok: true, puede_cobrar: true, ya_existia: false,
+      link: out.init_point,
+      precio_final: info.precio_final,
+      plan_nombre: info.plan_nombre,
+      promo_nombre: info.promo_nombre || null,
+      promo_sin_descuento_en_precio: info.promo_sin_descuento_en_precio || null,
+    })
+  } catch (e) {
+    return res.status(400).json({ error: 'No se pudo preparar el cobro: ' + e.message })
   }
 }
 

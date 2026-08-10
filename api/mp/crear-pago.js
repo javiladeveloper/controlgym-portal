@@ -239,8 +239,10 @@ export default async function handler(req, res) {
   if ((req.query?.action || '') === 'oauth-start') return oauthStart(req, res)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
   if ((req.query?.action || '') === 'pagar-yape') return pagarYape(req, res)
-  const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal } = req.body || {}
-  const canalPago = ['app', 'mostrador'].includes(canal) ? canal : 'app'
+  const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal, finny_lead_id, promocion_id } = req.body || {}
+  // 'finny' identifica los pagos que arma el bot (link-pago) para poder medir
+  // después cuánto vendió de verdad, sin mezclarse con la app ni el mostrador.
+  const canalPago = ['app', 'mostrador', 'finny'].includes(canal) ? canal : 'app'
   if (!empresa_id || !tipo) return res.status(400).json({ error: 'Faltan datos del pago' })
   if (!['membresia', 'producto'].includes(tipo)) return res.status(400).json({ error: 'Tipo inválido' })
 
@@ -266,13 +268,46 @@ export default async function handler(req, res) {
     let monto, concepto, mpItems = [], carrito = []
 
     if (tipo === 'membresia') {
-      const { rows } = await db().query(
-        `select p.precio, p.nombre from public.membresia m
-           join public.plan p on p.id = m.plan_id
-          where m.id = $1 and m.empresa_id = $2 and m.deleted_at is null`,
-        [ref_id, empresa_id])
-      if (!rows[0]) return res.status(400).json({ error: 'Membresía no válida' })
+      // Socio nuevo (aún no existe: viene con `nuevo` y sin socio_id, p. ej. el
+      // link que arma Finny) → ref_id es el PLAN directamente, no una
+      // membresía (todavía no hay ninguna que referenciar). Coincide con lo que
+      // espera activar_pago_app cuando recepción da de alta al pagador
+      // (pago_app.ref_id = plan_id, ver supabase/migrations/20260706000019).
+      // Socio existente (renovación/abono desde el POS o la app) → ref_id sigue
+      // siendo la membresía, como siempre.
+      const esSocioNuevo = !socio_id && !!nuevo
+      const { rows } = esSocioNuevo
+        ? await db().query(
+            `select precio, nombre from public.plan
+              where id = $1 and empresa_id = $2 and activo and deleted_at is null`,
+            [ref_id, empresa_id])
+        : await db().query(
+            `select p.precio, p.nombre from public.membresia m
+               join public.plan p on p.id = m.plan_id
+              where m.id = $1 and m.empresa_id = $2 and m.deleted_at is null`,
+            [ref_id, empresa_id])
+      if (!rows[0]) return res.status(400).json({ error: esSocioNuevo ? 'Plan no válido' : 'Membresía no válida' })
       monto = Number(rows[0].precio); concepto = 'Plan ' + rows[0].nombre
+
+      // Promo (solo aplica al camino de socio nuevo: es lo que ya cotizó
+      // finny_preparar_cobro y le mostró al interesado — el link tiene que
+      // cobrar EXACTO eso, nunca el precio de lista). Mismos tres tipos que
+      // afectan precio en esa función; el resto (semana_gratis/2x1/grupal) no
+      // cambia el monto de este plan.
+      if (esSocioNuevo && promocion_id) {
+        const { rows: promoRows } = await db().query(
+          `select tipo, valor from public.promocion
+            where id = $1 and empresa_id = $2 and estado = 'activa' and deleted_at is null`,
+          [promocion_id, empresa_id])
+        const promo = promoRows[0]
+        if (promo?.tipo === 'descuento_pct' && promo.valor != null) {
+          monto = Math.round(monto * (1 - Number(promo.valor) / 100) * 100) / 100
+        } else if (promo?.tipo === 'descuento_monto' && promo.valor != null) {
+          monto = Math.max(0, Math.round((monto - Number(promo.valor)) * 100) / 100)
+        } else if (promo?.tipo === 'precio_especial' && promo.valor != null) {
+          monto = Number(promo.valor)
+        }
+      }
       mpItems = [{ title: concepto, quantity: 1, unit_price: monto, currency_id: 'PEN' }]
 
     } else {
@@ -325,11 +360,13 @@ export default async function handler(req, res) {
     const { rows: pagoRows } = await db().query(
       `insert into public.pago_app
          (empresa_id, sede_id, socio_id, tipo, concepto, ref_id, monto, comision_fitcore,
-          fecha_inicio, estado_activacion, nuevo_nombre, nuevo_documento, nuevo_email, nuevo_telefono, canal)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id`,
+          fecha_inicio, estado_activacion, nuevo_nombre, nuevo_documento, nuevo_email, nuevo_telefono, canal,
+          finny_lead_id)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id`,
       [empresa_id, sede_id || null, socio_id || null, tipo, concepto, refUnico, monto, fee,
        fecha_inicio || null, socio_id ? 'no_aplica' : 'pendiente_activacion',
-       nuevo?.nombre || null, nuevo?.documento || null, nuevo?.email || null, nuevo?.telefono || null, canalPago])
+       nuevo?.nombre || null, nuevo?.documento || null, nuevo?.email || null, nuevo?.telefono || null, canalPago,
+       finny_lead_id || null])
     const pagoId = pagoRows[0].id
 
     // 3b) persistimos las líneas del carrito (también para 1 producto, así el
@@ -362,7 +399,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: data?.message || 'No se pudo crear el pago' })
     }
 
-    await db().query(`update public.pago_app set mp_preference_id = $1 where id = $2`, [data.id, pagoId])
+    // init_point se guarda (no solo se devuelve) para que un segundo pedido del
+    // mismo link — típicamente Finny reintentando — pueda leerlo de vuelta en
+    // vez de generar una preferencia nueva.
+    await db().query(
+      `update public.pago_app set mp_preference_id = $1, init_point = $2 where id = $3`,
+      [data.id, data.init_point, pagoId])
     return res.status(200).json({ init_point: data.init_point, pago_id: pagoId })
   } catch (e) {
     console.error('mp crear-pago', e)
