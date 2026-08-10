@@ -19,6 +19,12 @@ import { env, db, usuarioDesdeJwt } from '../_lib/db.js'
 // este es el punto a cambiar.
 const COMISION = 0.05
 
+// Cuánto vive un link de checkout. MP NO caduca las preferencias por defecto:
+// hay que pedírselo explícitamente (`expires` + `expiration_date_to`). 24 h da
+// margen de sobra a quien recibe el link de noche y paga al día siguiente, y a
+// la vez acota la ventana en que un link viejo sigue siendo pagable.
+const VENCIMIENTO_HORAS = 24
+
 // PEDIDO 23: precio efectivo con la oferta permanente del producto (si hay).
 // Misma lógica que el CASE de la RPC catalogo_app — el backend es quien decide
 // el monto, nunca el cliente.
@@ -27,6 +33,26 @@ function precioEfectivo(precio, tipo, valor) {
   if (tipo === 'porcentaje' && v > 0) return Math.round(p * (1 - v / 100) * 100) / 100
   if (tipo === 'monto' && v > 0) return Math.max(0, Math.round((p - v) * 100) / 100)
   return p
+}
+
+// ¿El que llama es el bot? Mismo secreto compartido (`leadia_ingest_key`) que
+// ya autentica a Finny en ingresar-lead y finny_preparar_cobro.
+//
+// Se compara en tiempo constante: un `===` sobre strings corta en el primer
+// byte distinto, y este endpoint es público — el tiempo de respuesta se puede
+// medir para adivinar el secreto carácter a carácter.
+async function secretoFinnyValido(secreto) {
+  try {
+    const { rows } = await db().query(
+      `select valor from privado.secreto where clave = 'leadia_ingest_key'`)
+    const esperado = rows[0]?.valor
+    if (!esperado) return false
+    const a = Buffer.from(String(secreto))
+    const b = Buffer.from(String(esperado))
+    return a.length === b.length && crypto.timingSafeEqual(a, b)
+  } catch {
+    return false
+  }
 }
 
 // oauth-start consolidado aquí (?action=oauth-start) para respetar el límite de
@@ -239,10 +265,37 @@ export default async function handler(req, res) {
   if ((req.query?.action || '') === 'oauth-start') return oauthStart(req, res)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
   if ((req.query?.action || '') === 'pagar-yape') return pagarYape(req, res)
-  const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal, finny_lead_id, promocion_id } = req.body || {}
+  const { empresa_id, tipo, ref_id, items, socio_id, sede_id, fecha_inicio, nuevo, canal,
+          finny_lead_id, finny_secret, promocion_id } = req.body || {}
+
+  // ── Quién puede mover el precio ────────────────────────────────────────────
+  // Este endpoint no exige JWT (el POS del panel no manda cabecera y en la app
+  // el token puede venir null), y no puede exigirlo sin dejar sin cobrar a todo
+  // el mundo. Pero eso solo es aceptable mientras el monto se derive ÚNICAMENTE
+  // de lo que hay en la base: plan/producto → precio. Ahí el cuerpo del request
+  // elige QUÉ se compra, nunca CUÁNTO cuesta.
+  //
+  // `promocion_id` rompía justo eso: es una palanca de descuento en manos del
+  // que llama. Y las promociones son del gimnasio entero (public.promocion no
+  // tiene plan_id: no hay forma de "validar que la promo corresponde al plan"),
+  // así que cualquiera con curl podía pegarle la promo más barata al plan más
+  // caro y pagar S/999 por uno de S/1300. Peor: activar_pago_app inserta
+  // `precio_pagado = pago.monto` tal cual, así que recepción ve un pago
+  // aprobado y da el alta sin que nada revalide el precio.
+  //
+  // Por eso el único camino con descuento es el de Finny, y va autenticado con
+  // el mismo secreto compartido que usa el resto del bot: el precio no lo
+  // calcula este archivo, lo devuelve finny_preparar_cobro (la RPC que ya es la
+  // única autoridad de precio para el bot). Un llamador sin el secreto no tiene
+  // ninguna palanca de descuento — su monto sigue saliendo del plan, como hoy.
+  const esFinny = !!finny_secret && await secretoFinnyValido(finny_secret)
+
   // 'finny' identifica los pagos que arma el bot (link-pago) para poder medir
   // después cuánto vendió de verdad, sin mezclarse con la app ni el mostrador.
-  const canalPago = ['app', 'mostrador', 'finny'].includes(canal) ? canal : 'app'
+  // Solo se concede si el secreto cuadra: el canal alimenta reportes de "cuánto
+  // vendió el bot" y cualquiera podría inflarlos mandando canal:'finny'.
+  const canalPedido = ['app', 'mostrador', 'finny'].includes(canal) ? canal : 'app'
+  const canalPago = canalPedido === 'finny' && !esFinny ? 'app' : canalPedido
   if (!empresa_id || !tipo) return res.status(400).json({ error: 'Faltan datos del pago' })
   if (!['membresia', 'producto'].includes(tipo)) return res.status(400).json({ error: 'Tipo inválido' })
 
@@ -268,45 +321,50 @@ export default async function handler(req, res) {
     let monto, concepto, mpItems = [], carrito = []
 
     if (tipo === 'membresia') {
-      // Socio nuevo (aún no existe: viene con `nuevo` y sin socio_id, p. ej. el
-      // link que arma Finny) → ref_id es el PLAN directamente, no una
-      // membresía (todavía no hay ninguna que referenciar). Coincide con lo que
-      // espera activar_pago_app cuando recepción da de alta al pagador
-      // (pago_app.ref_id = plan_id, ver supabase/migrations/20260706000019).
-      // Socio existente (renovación/abono desde el POS o la app) → ref_id sigue
-      // siendo la membresía, como siempre.
-      const esSocioNuevo = !socio_id && !!nuevo
-      const { rows } = esSocioNuevo
-        ? await db().query(
-            `select precio, nombre from public.plan
-              where id = $1 and empresa_id = $2 and activo and deleted_at is null`,
-            [ref_id, empresa_id])
-        : await db().query(
-            `select p.precio, p.nombre from public.membresia m
-               join public.plan p on p.id = m.plan_id
-              where m.id = $1 and m.empresa_id = $2 and m.deleted_at is null`,
-            [ref_id, empresa_id])
-      if (!rows[0]) return res.status(400).json({ error: esSocioNuevo ? 'Plan no válido' : 'Membresía no válida' })
-      monto = Number(rows[0].precio); concepto = 'Plan ' + rows[0].nombre
+      // ¿ref_id es un PLAN o una MEMBRESÍA? Son dos contratos distintos y la
+      // respuesta NO se adivina mirando el cuerpo del request.
+      //
+      // El guard anterior era `!socio_id && !!nuevo`, y eso pisaba al POS: el
+      // panel manda `nuevo` también al renovar a un socio EXISTENTE (los datos
+      // del comprobante, ver useVentas.js), y su socio_id sale de un optional
+      // chaining — `membresiaSel.socio?.id` en Ventas.jsx. Si `socio` no viene
+      // embebido (hoy ya hay en producción al menos una membresía cuyo socio
+      // está soft-deleted), JSON.stringify borra la clave y la renovación se
+      // colaba por la rama de socio nuevo: o fallaba con "Plan no válido", o
+      // registraba un pago sin socio_id que el webhook no asocia a nadie — el
+      // socio paga y sigue vencido.
+      //
+      // Ahora la rama es EXPLÍCITA y solo la puede pedir Finny (autenticado con
+      // el secreto). El POS y la app no la pueden alcanzar ni por accidente:
+      // para ellos ref_id sigue siendo la membresía, como siempre.
+      const esSocioNuevo = esFinny && !socio_id
 
-      // Promo (solo aplica al camino de socio nuevo: es lo que ya cotizó
-      // finny_preparar_cobro y le mostró al interesado — el link tiene que
-      // cobrar EXACTO eso, nunca el precio de lista). Mismos tres tipos que
-      // afectan precio en esa función; el resto (semana_gratis/2x1/grupal) no
-      // cambia el monto de este plan.
-      if (esSocioNuevo && promocion_id) {
-        const { rows: promoRows } = await db().query(
-          `select tipo, valor from public.promocion
-            where id = $1 and empresa_id = $2 and estado = 'activa' and deleted_at is null`,
-          [promocion_id, empresa_id])
-        const promo = promoRows[0]
-        if (promo?.tipo === 'descuento_pct' && promo.valor != null) {
-          monto = Math.round(monto * (1 - Number(promo.valor) / 100) * 100) / 100
-        } else if (promo?.tipo === 'descuento_monto' && promo.valor != null) {
-          monto = Math.max(0, Math.round((monto - Number(promo.valor)) * 100) / 100)
-        } else if (promo?.tipo === 'precio_especial' && promo.valor != null) {
-          monto = Number(promo.valor)
-        }
+      if (esSocioNuevo) {
+        // El precio NO se calcula aquí. finny_preparar_cobro es la única
+        // autoridad de precio del bot: es la que ya cotizó y la que el bot le
+        // dijo al interesado. Duplicar la fórmula de promociones en JS (como
+        // estaba) son dos implementaciones del mismo precio en dos lenguajes —
+        // en cuanto divergen, el bot promete una cifra y MP cobra otra.
+        // Además la RPC revalida el secreto por dentro, así que el descuento
+        // nunca depende solo de este archivo.
+        const { rows: pre } = await db().query(
+          `select public.finny_preparar_cobro($1,$2,$3,$4) as r`,
+          [finny_secret, empresa_id, ref_id, promocion_id || null])
+        const info = pre[0]?.r
+        if (!info?.ok) return res.status(403).json({ error: info?.error || 'Rechazado' })
+        if (!info.puede_cobrar) return res.status(400).json({ error: info.error || 'Plan no válido' })
+        // ref_id queda siendo el plan: es lo que espera activar_pago_app cuando
+        // recepción da de alta al pagador (ver 20260706000019).
+        monto = Number(info.precio_final)
+        concepto = 'Plan ' + info.plan_nombre
+      } else {
+        const { rows } = await db().query(
+          `select p.precio, p.nombre from public.membresia m
+             join public.plan p on p.id = m.plan_id
+            where m.id = $1 and m.empresa_id = $2 and m.deleted_at is null`,
+          [ref_id, empresa_id])
+        if (!rows[0]) return res.status(400).json({ error: 'Membresía no válida' })
+        monto = Number(rows[0].precio); concepto = 'Plan ' + rows[0].nombre
       }
       mpItems = [{ title: concepto, quantity: 1, unit_price: monto, currency_id: 'PEN' }]
 
@@ -357,16 +415,41 @@ export default async function handler(req, res) {
     // 3) registra la orden pendiente. Para carrito, ref_id queda null (los
     //    productos van en pago_app_item); para 1 producto conservamos ref_id.
     const refUnico = tipo === 'producto' && !esCarrito ? ref_id : (tipo === 'membresia' ? ref_id : null)
+    // Un lead + un plan = UN cobro abierto, y quien lo garantiza es el índice
+    // único parcial (20260811130000), no un select previo: dos mensajes casi
+    // simultáneos del bot pasan los dos por cualquier chequeo de lectura antes
+    // de que ninguno haya insertado. `on conflict do nothing` convierte esa
+    // carrera en cero filas devueltas, y ahí abajo se recupera el link vivo que
+    // ganó — sin llegar a crear una segunda preferencia en MercadoPago.
+    const idempotente = !!finny_lead_id && esFinny
     const { rows: pagoRows } = await db().query(
       `insert into public.pago_app
          (empresa_id, sede_id, socio_id, tipo, concepto, ref_id, monto, comision_fitcore,
           fecha_inicio, estado_activacion, nuevo_nombre, nuevo_documento, nuevo_email, nuevo_telefono, canal,
           finny_lead_id)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id`,
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       ${idempotente ? 'on conflict do nothing' : ''}
+       returning id`,
       [empresa_id, sede_id || null, socio_id || null, tipo, concepto, refUnico, monto, fee,
        fecha_inicio || null, socio_id ? 'no_aplica' : 'pendiente_activacion',
        nuevo?.nombre || null, nuevo?.documento || null, nuevo?.email || null, nuevo?.telefono || null, canalPago,
        finny_lead_id || null])
+
+    if (!pagoRows[0]) {
+      // Perdimos la carrera: otra petición del mismo lead+plan ya tiene el
+      // cobro abierto. Se devuelve SU link (el que el interesado ya recibió),
+      // nunca uno nuevo. Si el ganador todavía no guardó su init_point, se
+      // responde 409 para que el bot reintente en vez de inventar un link.
+      const { rows: vivo } = await db().query(
+        `select id, init_point from public.pago_app
+          where empresa_id = $1 and finny_lead_id = $2 and ref_id = $3
+            and estado_pago = 'pendiente'`,
+        [empresa_id, finny_lead_id, refUnico])
+      if (vivo[0]?.init_point) {
+        return res.status(200).json({ init_point: vivo[0].init_point, pago_id: vivo[0].id, ya_existia: true })
+      }
+      return res.status(409).json({ error: 'Ya se está generando el link de pago; reintenta en unos segundos' })
+    }
     const pagoId = pagoRows[0].id
 
     // 3b) persistimos las líneas del carrito (también para 1 producto, así el
@@ -381,6 +464,15 @@ export default async function handler(req, res) {
     }
 
     // 4) preferencia con split usando el token DEL GYM
+    //
+    // La preferencia CADUCA a propósito (VENCIMIENTO_HORAS). Por defecto MP las
+    // deja vivas para siempre, y "para siempre" es incompatible con devolver
+    // siempre el mismo link: el pago_app se queda 'pendiente' indefinidamente,
+    // así que sin vencimiento no hay forma de que el lead vuelva a comprar
+    // nunca más ese plan. Con vencimiento, el par (link vivo ↔ fila pendiente)
+    // se puede cerrar de verdad: pasado el plazo el link deja de ser pagable y
+    // el bot puede emitir uno nuevo sin riesgo de doble cobro.
+    const venceAt = new Date(Date.now() + VENCIMIENTO_HORAS * 3600 * 1000)
     const pref = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: { authorization: `Bearer ${gym.access_token}`, 'content-type': 'application/json' },
@@ -391,20 +483,34 @@ export default async function handler(req, res) {
         back_urls: { success: `${env('APP_DEEP_LINK', 'fitcore://pago')}?ok=1` },
         auto_return: 'approved',
         notification_url: `${env('PANEL_URL')}/api/mp/webhook`,
+        expires: true,
+        expiration_date_to: venceAt.toISOString(),
       }),
     })
     const data = await pref.json().catch(() => ({}))
     if (!pref.ok) {
       console.error('mp crear-pago pref error', data)
+      // La fila ya existe y ocupa el índice de idempotencia. Si se deja
+      // 'pendiente' sin link, el lead queda bloqueado para siempre: todo
+      // reintento chocaría contra un cobro abierto que nunca tuvo link. Se
+      // cancela para liberar el hueco y que el siguiente intento sí funcione.
+      if (idempotente) {
+        await db().query(
+          `update public.pago_app set estado_pago = 'cancelado'
+            where id = $1 and estado_pago = 'pendiente'`, [pagoId]).catch(() => {})
+      }
       return res.status(400).json({ error: data?.message || 'No se pudo crear el pago' })
     }
 
     // init_point se guarda (no solo se devuelve) para que un segundo pedido del
     // mismo link — típicamente Finny reintentando — pueda leerlo de vuelta en
-    // vez de generar una preferencia nueva.
+    // vez de generar una preferencia nueva. Junto a él va su vencimiento real,
+    // que es lo que decide si el link sigue vivo.
     await db().query(
-      `update public.pago_app set mp_preference_id = $1, init_point = $2 where id = $3`,
-      [data.id, data.init_point, pagoId])
+      `update public.pago_app
+          set mp_preference_id = $1, init_point = $2, init_point_vence_at = $3
+        where id = $4`,
+      [data.id, data.init_point, venceAt.toISOString(), pagoId])
     return res.status(200).json({ init_point: data.init_point, pago_id: pagoId })
   } catch (e) {
     console.error('mp crear-pago', e)

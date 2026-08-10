@@ -108,28 +108,40 @@ async function linkPago(req, res) {
       return res.status(200).json({ ok: true, puede_cobrar: false, error: info.error })
     }
 
-    // 2) ¿Ya hay un link vivo para este lead y plan? (idempotencia). Se limita
-    //    a 'pendiente' (aún no vencido/pagado/cancelado en pago_app) y a la
-    //    última hora: pasado eso, la preferencia de MP puede haber expirado y
-    //    conviene generar una nueva en vez de devolver un link muerto.
+    // 2) ¿Ya hay un link vivo para este lead y plan? (idempotencia).
+    //
+    //    "Vivo" = el cobro sigue abierto (estado_pago 'pendiente') Y el link
+    //    todavía es pagable según SU vencimiento real (init_point_vence_at, el
+    //    que se le pidió a MercadoPago). Antes esto era `creado_at > now() -
+    //    interval '1 hour'`, un plazo inventado aquí: como la preferencia de MP
+    //    no caducaba, a las 11:05 se emitía un segundo link y los dos seguían
+    //    cobrando — justo el doble cobro que la ventana pretendía evitar.
+    //
+    //    Este select es la ruta rápida (evita ir a crear-pago para nada); la
+    //    garantía dura contra la ráfaga de mensajes NO está aquí, sino en el
+    //    índice único de pago_app: dos peticiones simultáneas pasan las dos por
+    //    este select antes de que ninguna haya insertado.
     if (b.leadia_lead_id) {
       const { rows: prev } = await pool.query(
-        `select id, init_point
+        `select id, init_point, monto
            from public.pago_app
           where empresa_id = $1
             and finny_lead_id = $2
             and ref_id = $3
             and estado_pago = 'pendiente'
-            and creado_at > now() - interval '1 hour'
+            and init_point is not null
+            and (init_point_vence_at is null or init_point_vence_at > now())
           order by creado_at desc
           limit 1`,
         [b.empresa_id, b.leadia_lead_id, b.plan_id],
       )
-      if (prev.length > 0 && prev[0].init_point) {
+      if (prev.length > 0) {
         return res.status(200).json({
           ok: true, puede_cobrar: true, ya_existia: true,
           link: prev[0].init_point,
-          precio_final: info.precio_final,
+          // El monto del cobro que ya existe, no lo que la RPC cotiza AHORA: el
+          // link viejo va a cobrar su precio viejo aunque el plan haya subido.
+          precio_final: Number(prev[0].monto),
           plan_nombre: info.plan_nombre,
           promo_nombre: info.promo_nombre || null,
           promo_sin_descuento_en_precio: info.promo_sin_descuento_en_precio || null,
@@ -138,11 +150,14 @@ async function linkPago(req, res) {
     }
 
     // 3) Generar el link nuevo reusando el endpoint de pagos que ya existe.
-    //    tipo:'membresia' + nuevo (sin socio_id) → crear-pago.js interpreta
-    //    ref_id como el PLAN directamente (el interesado todavía no es socio;
-    //    no existe ninguna membresía que referenciar). promocion_id viaja
-    //    también para que el monto cobrado coincida con precio_final: el
-    //    checkout NUNCA confía en un precio que mande el cliente.
+    //    El secreto viaja: es lo que le da a crear-pago.js permiso para tratar
+    //    ref_id como PLAN (el interesado todavía no es socio, no hay ninguna
+    //    membresía que referenciar) y para aplicar la promoción. Sin secreto,
+    //    ese endpoint no acepta ninguna palanca de descuento de quien llama —
+    //    y no debe: es público (el POS del panel no manda JWT).
+    //    El precio NO se manda: lo recalcula crear-pago.js con la MISMA RPC que
+    //    se acaba de consultar arriba. El checkout nunca confía en un monto que
+    //    le llegue por el cuerpo del request.
     // SELF_URL (no VERCEL_URL): esa var da la URL de ESTE deploy específico,
     // no el dominio estable — mismo criterio que usa el webhook para
     // dispararse a sí mismo (api/mp/webhook.js).
@@ -156,6 +171,7 @@ async function linkPago(req, res) {
         tipo: 'membresia',
         ref_id: b.plan_id,
         promocion_id: b.promocion_id || null,
+        finny_secret: b.secret,
         nuevo: { nombre: b.nombre || 'Interesado', telefono: b.telefono || null },
         canal: 'finny',
         finny_lead_id: b.leadia_lead_id || null,
@@ -166,10 +182,20 @@ async function linkPago(req, res) {
       return res.status(400).json({ error: out.error || 'No se pudo generar el link' })
     }
 
+    // El precio que se le informa al bot es el que quedó REALMENTE en el cobro,
+    // leído de pago_app — no el `precio_final` que cotizó la RPC más arriba.
+    // Son el mismo número mientras nada cambie entre las dos llamadas (misma
+    // RPC), pero si algo cambia (el gym edita el plan o vence la promo justo en
+    // el medio) manda lo que MercadoPago va a cobrar: que Finny diga una cifra
+    // y el checkout muestre otra es la peor forma de enterarse.
+    const { rows: cobro } = await pool.query(
+      `select monto from public.pago_app where id = $1`, [out.pago_id])
+    const montoReal = cobro[0]?.monto != null ? Number(cobro[0].monto) : info.precio_final
+
     return res.status(200).json({
-      ok: true, puede_cobrar: true, ya_existia: false,
+      ok: true, puede_cobrar: true, ya_existia: !!out.ya_existia,
       link: out.init_point,
-      precio_final: info.precio_final,
+      precio_final: montoReal,
       plan_nombre: info.plan_nombre,
       promo_nombre: info.promo_nombre || null,
       promo_sin_descuento_en_precio: info.promo_sin_descuento_en_precio || null,
