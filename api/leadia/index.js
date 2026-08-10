@@ -1,5 +1,9 @@
-// Endpoint Leadia (bot IA). Cuatro acciones en un solo archivo (Vercel Hobby
+// Endpoint Leadia (bot IA). Todas las acciones en un solo archivo (Vercel Hobby
 // limita el nº de funciones serverless — ya estamos en el tope):
+//   POST /api/leadia?action=ingresar-lead → LO LLAMA EL BOT, no el panel: al
+//     escalar un lead caliente lo empuja aquí en el momento. Sin JWT (se
+//     autentica con el secreto compartido). Es el complemento en caliente de
+//     `sync`, que es manual.
 //   POST /api/leadia?action=aprovisionar  → admin activa el add-on para una sede:
 //     crea el tenant en Leadia + emite su api key + crea el flujo plantilla y
 //     guarda todo cifrado. Requiere la admin key de plataforma (secreto).
@@ -18,7 +22,53 @@ export default async function handler(req, res) {
   if (action === 'chat') return chat(req, res)
   if (action === 'leads-frios') return leadsFrios(req, res)
   if (action === 'sync') return sync(req, res)
+  if (action === 'ingresar-lead') return ingresarLead(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
+}
+
+// ── Entrada EN CALIENTE desde Leadia (push) ────────────────────────────────
+// La llama el propio motor del bot en el momento en que escala un lead, no un
+// usuario del panel: por eso NO lleva JWT, se autentica con el secreto
+// compartido `leadia_ingest_key` que valida la propia RPC.
+//
+// Existe porque `sync` (más abajo) es PULL y manual: alguien tiene que pulsar
+// "sincronizar" en el CRM. Para vender eso no alcanza — quien pregunta el
+// precio un domingo a las 9 de la noche necesita que su lead llegue en el
+// momento, no cuando el admin se acuerde. Las dos vías conviven: el push trae
+// el caliente al instante, y el sync sigue sirviendo para recuperar lo que se
+// haya perdido (bot caído, panel caído, tibios que maduraron).
+async function ingresarLead(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Solo POST' })
+  const b = req.body || {}
+  if (!b.secret) return res.status(401).json({ error: 'Falta el secreto' })
+  if (!b.empresa_id) return res.status(400).json({ error: 'Falta empresa_id' })
+  if (!b.nombre && !b.telefono) {
+    return res.status(400).json({ error: 'Falta nombre o teléfono' })
+  }
+
+  const pool = db()
+  try {
+    const { rows } = await pool.query(
+      `select public.leadia_ingresar_lead($1,$2,$3,$4,$5,$6,$7,$8,$9) as r`,
+      [
+        b.secret,
+        b.empresa_id,
+        b.nombre || 'Contacto sin nombre',
+        b.telefono || null,
+        b.canal || 'whatsapp',
+        b.resumen || null,
+        b.sede_id || null,
+        b.nivel || 'caliente',
+        b.leadia_lead_id || null,
+      ],
+    )
+    const r = rows[0]?.r
+    // La RPC valida el secreto por dentro; si no cuadra, devuelve ok:false.
+    if (!r?.ok) return res.status(403).json({ error: r?.error || 'Rechazado' })
+    return res.status(200).json(r)
+  } catch (e) {
+    return res.status(400).json({ error: 'No se pudo ingresar el lead: ' + e.message })
+  }
 }
 
 // Config de plataforma (secretos): base de la API + admin key de Leadia.
