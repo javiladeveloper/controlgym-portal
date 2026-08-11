@@ -19,10 +19,18 @@ import { env, db, usuarioDesdeJwt } from '../_lib/db.js'
 // este es el punto a cambiar.
 const COMISION = 0.05
 
-// Cuánto vive un link de checkout. MP NO caduca las preferencias por defecto:
-// hay que pedírselo explícitamente (`expires` + `expiration_date_to`). 24 h da
-// margen de sobra a quien recibe el link de noche y paga al día siguiente, y a
-// la vez acota la ventana en que un link viejo sigue siendo pagable.
+// Cuánto vive un link de checkout DE FINNY. MP NO caduca las preferencias por
+// defecto: hay que pedírselo explícitamente (`expires` + `expiration_date_to`).
+// 24 h da margen de sobra a quien recibe el link de noche y paga al día
+// siguiente, y a la vez acota la ventana en que un link viejo sigue siendo
+// pagable.
+//
+// Esto SOLO aplica a Finny (ver esFinny más abajo, junto al fetch a MP): el
+// vencimiento existe para que la idempotencia del bot funcione (un lead + un
+// plan = un solo link vivo, índice 20260811130000). La app y el mostrador NO
+// tienen ese problema — no hay índice de idempotencia sobre sus pagos — así
+// que sus links deben seguir sin caducar, como siempre en producción: un socio
+// que recibe el link y paga dos días después tiene que poder pagar igual.
 const VENCIMIENTO_HORAS = 24
 
 // PEDIDO 23: precio efectivo con la oferta permanente del producto (si hay).
@@ -500,14 +508,22 @@ export default async function handler(req, res) {
 
     // 4) preferencia con split usando el token DEL GYM
     //
-    // La preferencia CADUCA a propósito (VENCIMIENTO_HORAS). Por defecto MP las
-    // deja vivas para siempre, y "para siempre" es incompatible con devolver
-    // siempre el mismo link: el pago_app se queda 'pendiente' indefinidamente,
-    // así que sin vencimiento no hay forma de que el lead vuelva a comprar
-    // nunca más ese plan. Con vencimiento, el par (link vivo ↔ fila pendiente)
-    // se puede cerrar de verdad: pasado el plazo el link deja de ser pagable y
-    // el bot puede emitir uno nuevo sin riesgo de doble cobro.
-    const venceAt = new Date(Date.now() + VENCIMIENTO_HORAS * 3600 * 1000)
+    // La preferencia CADUCA a propósito, pero SOLO para Finny (esFinny). Por
+    // defecto MP las deja vivas para siempre, y para el bot "para siempre" es
+    // incompatible con devolver siempre el mismo link: el pago_app se queda
+    // 'pendiente' indefinidamente, así que sin vencimiento no hay forma de que
+    // el lead vuelva a comprar nunca más ese plan. Con vencimiento, el par
+    // (link vivo ↔ fila pendiente) se puede cerrar de verdad: pasado el plazo
+    // el link deja de ser pagable y el bot puede emitir uno nuevo sin riesgo
+    // de doble cobro.
+    //
+    // La app y el mostrador NO tienen ese problema (no hay índice de
+    // idempotencia sobre sus filas) y SÍ tienen un comportamiento ya en
+    // producción que no se debe romper: sus links no caducan. Por eso el
+    // objeto que se manda a MP para ellos ni siquiera lleva `expires` — no
+    // "expira en una fecha muy lejana", sencillamente no se le pide caducidad,
+    // igual que antes de este cambio.
+    const venceAt = esFinny ? new Date(Date.now() + VENCIMIENTO_HORAS * 3600 * 1000) : null
     const pref = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: { authorization: `Bearer ${gym.access_token}`, 'content-type': 'application/json' },
@@ -518,8 +534,17 @@ export default async function handler(req, res) {
         back_urls: { success: `${env('APP_DEEP_LINK', 'fitcore://pago')}?ok=1` },
         auto_return: 'approved',
         notification_url: `${env('PANEL_URL')}/api/mp/webhook`,
-        expires: true,
-        expiration_date_to: venceAt.toISOString(),
+        // Formato verificado contra la API real de MercadoPago (no solo la
+        // doc): un POST de prueba a /checkout/preferences con
+        // expiration_date_to en formato .toISOString() (sufijo Z, ej.
+        // "2026-08-12T01:47:52.017Z") devolvió 201 y MP lo normalizó a
+        // "2026-08-12T01:47:52.017+00:00" — lo aceptó y lo interpretó
+        // correctamente como UTC. La doc oficial
+        // (https://www.mercadopago.com.ar/developers/en/docs/checkout-pro/checkout-customization/preferences/expiration-date)
+        // solo muestra ejemplos con offset explícito (-04:00), pero ISO 8601
+        // permite ambas notaciones y la API en efecto acepta 'Z'. No hace
+        // falta reformatear la fecha.
+        ...(esFinny ? { expires: true, expiration_date_to: venceAt.toISOString() } : {}),
       }),
     })
     const data = await pref.json().catch(() => ({}))
@@ -541,11 +566,18 @@ export default async function handler(req, res) {
     // mismo link — típicamente Finny reintentando — pueda leerlo de vuelta en
     // vez de generar una preferencia nueva. Junto a él va su vencimiento real,
     // que es lo que decide si el link sigue vivo.
+    //
+    // Para no-Finny, venceAt es null y así se guarda: las dos consultas de
+    // idempotencia (arriba, y la de leadia/index.js) tratan
+    // `init_point_vence_at is null` como "vive para siempre" — que es
+    // justamente el comportamiento real de un link sin `expires`. No se
+    // guarda una fecha lejana inventada porque eso mentiría sobre lo que MP
+    // en verdad acordó con esta preferencia.
     await db().query(
       `update public.pago_app
           set mp_preference_id = $1, init_point = $2, init_point_vence_at = $3
         where id = $4`,
-      [data.id, data.init_point, venceAt.toISOString(), pagoId])
+      [data.id, data.init_point, venceAt ? venceAt.toISOString() : null, pagoId])
     return res.status(200).json({ init_point: data.init_point, pago_id: pagoId })
   } catch (e) {
     console.error('mp crear-pago', e)
