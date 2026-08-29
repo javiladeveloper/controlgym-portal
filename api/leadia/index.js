@@ -7,9 +7,13 @@
 //   POST /api/leadia?action=link-pago     → LO LLAMA EL BOT cuando el
 //     interesado dice que sí quiere matricularse. Igual que ingresar-lead, sin
 //     JWT (secreto compartido). Devuelve el link de MercadoPago para pagar.
+//   POST /api/leadia?action=evento        → LO LLAMA EL MOTOR: los salientes que
+//     NO nacen de un request de ?action=chat (seguimientos del cron,
+//     reactivación, handoffs). Sin JWT, secreto compartido. Dedupe por mensajeId.
 //   POST /api/leadia?action=aprovisionar  → admin activa el add-on para una sede:
-//     crea el tenant en Leadia + emite su api key + crea el flujo plantilla y
-//     guarda todo cifrado. Requiere la admin key de plataforma (secreto).
+//     crea el tenant en Leadia (alta atómica del ecosistema, que además ENCIENDE
+//     el rubro gimnasio) + crea el flujo plantilla y guarda todo cifrado.
+//     Requiere la admin key de plataforma (secreto).
 //   POST /api/leadia?action=guardar-flujo → el gym editó su árbol → PATCH a Leadia.
 //   GET  /api/leadia?action=estado        → trae el flujo actual de Leadia.
 //   POST /api/leadia?action=chat          → la app manda el mensaje del socio y
@@ -27,6 +31,7 @@ export default async function handler(req, res) {
   if (action === 'sync') return sync(req, res)
   if (action === 'ingresar-lead') return ingresarLead(req, res)
   if (action === 'link-pago') return linkPago(req, res)
+  if (action === 'evento') return evento(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -205,12 +210,77 @@ async function linkPago(req, res) {
   }
 }
 
-// Config de plataforma (secretos): base de la API + admin key de Leadia.
+// ── Evento asíncrono desde el motor de Finny (push) ────────────────────────
+// El chat normal es síncrono: la app manda el mensaje por ?action=chat y la
+// respuesta vuelve en el mismo request. Pero hay salientes que NO nacen de un
+// request nuestro — el seguimiento que dispara el cron del motor, la
+// reactivación de un tibio, el handoff cuando la IA se rinde y pide un humano.
+// Hasta hoy esos mensajes MORÍAN EN SILENCIO: el motor los emitía y FitCore no
+// tenía dónde recibirlos, así que el gimnasio nunca se enteraba de que su bot
+// había escrito.
+//
+// Como ingresar-lead y link-pago: lo llama el motor, no un usuario → sin JWT,
+// se autentica con el secreto compartido que valida la propia RPC.
+//
+// DEDUPE por `mensajeId`: el motor avisa que la respuesta síncrona de /api/chat
+// puede traer el MISMO texto que el evento, y el id es lo que desempata. Lo
+// resuelve un índice único en lead_tarea, no un select previo: dos entregas en
+// paralelo (reintento del motor mientras la primera aún no commitea) pasarían
+// las dos por cualquier chequeo optimista.
+//
+// CONTRATO: 2xx = entregado. Si respondemos error, el motor deja el mensaje
+// 'fallido' de su lado. Por eso los casos que NO son culpa del motor (un evento
+// de un contacto que nunca llegó a ser lead en el CRM) devuelven 200: un
+// reintento no los va a arreglar, y marcarlos fallidos solo ensucia su panel.
+async function evento(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Solo POST' })
+  const b = req.body || {}
+  if (!b.secret) return res.status(401).json({ error: 'Falta el secreto' })
+  if (!b.empresa_id) return res.status(400).json({ error: 'Falta empresa_id' })
+  if (!b.tipo) return res.status(400).json({ error: 'Falta tipo' })
+
+  const pool = db()
+  try {
+    const { rows } = await pool.query(
+      `select public.finny_registrar_evento($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as r`,
+      [
+        b.secret,
+        b.empresa_id,
+        b.tipo,
+        b.texto || null,
+        b.origen || 'ia',
+        b.mensajeId || null,
+        b.leadId || null,
+        b.sujeto || null,
+        b.sede_id || null,
+        b.nivelInteres || null,
+        b.resumen || null,
+      ],
+    )
+    const r = rows[0]?.r
+    // La RPC valida el secreto por dentro; si no cuadra, devuelve ok:false.
+    if (!r?.ok) return res.status(403).json({ error: r?.error || 'Rechazado' })
+    return res.status(200).json(r)
+  } catch (e) {
+    return res.status(400).json({ error: 'No se pudo registrar el evento: ' + e.message })
+  }
+}
+
+// Config de plataforma (secretos): base de la API + admin key de Leadia +
+// el secreto compartido. El ingestKey se trae acá porque el alta atómica
+// (POST /ecosistema/gimnasios) tiene que ENTREGÁRSELO al tenant: es con ese
+// secreto que el motor nos va a llamar de vuelta (ingresar-lead, link-pago y
+// el nuevo action=evento). Antes solo lo leía `sync` con su propia consulta.
 async function configLeadia(pool) {
   const { rows } = await pool.query(
-    `select clave, valor from privado.secreto where clave in ('leadia_api_base','leadia_admin_key')`)
+    `select clave, valor from privado.secreto
+      where clave in ('leadia_api_base','leadia_admin_key','leadia_ingest_key')`)
   const m = Object.fromEntries(rows.map((r) => [r.clave, r.valor]))
-  return { base: m.leadia_api_base || 'https://api.leadai-pe.com', adminKey: m.leadia_admin_key }
+  return {
+    base: m.leadia_api_base || 'https://api.leadai-pe.com',
+    adminKey: m.leadia_admin_key,
+    ingestKey: m.leadia_ingest_key,
+  }
 }
 
 // El admin de la empresa activa del usuario, y que la sede sea suya.
@@ -242,8 +312,14 @@ async function aprovisionar(req, res) {
   const info = await adminYSede(pool, user, sedeId)
   if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
 
-  const { base, adminKey } = await configLeadia(pool)
+  const { base, adminKey, ingestKey } = await configLeadia(pool)
   if (!adminKey || adminKey.startsWith('CONFIGURAR')) {
+    return res.status(400).json({ error: 'Leadia no está configurado en la plataforma (falta la admin key)' })
+  }
+  // Sin el secreto compartido el tenant nacería SORDO: podría contestar, pero no
+  // tendría con qué llamarnos de vuelta (ingresar-lead, link-pago, evento).
+  // Preferimos fallar acá antes que crear un tenant a medias en Leadia.
+  if (!ingestKey) {
     return res.status(400).json({ error: 'Leadia no está configurado en la plataforma (falta la admin key)' })
   }
 
@@ -252,41 +328,80 @@ async function aprovisionar(req, res) {
   // Básica→light, Pro→pro, Full→business. Ojo: NO es 1:1 con el nombre del tier.
   const planLeadia = { basica: 'light', pro: 'pro', full: 'business' }[tier]
   try {
-    // 1) crear el tenant en Leadia (nombre = empresa · sede)
-    const rT = await fetch(`${base}/tenants`, {
+    // 1) ALTA ATÓMICA del gimnasio: un solo request en vez de los 3 de antes
+    //    (crear tenant → emitir api key → …).
+    //
+    //    POR QUÉ SE MIGRÓ (2026-08-28): el alta vieja creaba el tenant con
+    //    `objetivo` vacío y SIN los campos fitcore*, que son justo los que
+    //    ENCIENDEN el comportamiento del rubro gimnasio en el motor (escalera
+    //    de precios de 3 peldaños, regla de salud, cierre de visita) y el
+    //    puente de vuelta hacia acá. Resultado: todo ese comportamiento estaba
+    //    construido y desplegado del lado de LeadAI, pero nunca se ejecutaba —
+    //    se probó contra el tenant real y respondía por el pipeline genérico.
+    //    Esta ruta setea objetivo='matricular_socio' + los 4 fitcore* de una.
+    //
+    //    fitcoreApiKey NO es la api key del tenant: es el secreto COMPARTIDO
+    //    con el que el motor nos autentica cuando nos llama de vuelta. Es el
+    //    mismo `leadia_ingest_key` que ya valida leadia_ingresar_lead.
+    //
+    //    fitcoreUrl tiene que ser una URL válida (el motor la valida con zod) y
+    //    ser el dominio ESTABLE, no el del deploy: el motor la guarda y la usa
+    //    meses después. Mismo criterio que link-pago con SELF_URL.
+    const rT = await fetch(`${base}/ecosistema/gimnasios`, {
       method: 'POST',
       headers: { authorization: `Bearer ${adminKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ nombre: `${info.empresa_nombre} · ${info.sede_nombre}`, plan: planLeadia }),
+      body: JSON.stringify({
+        nombre: `${info.empresa_nombre} · ${info.sede_nombre}`,
+        plan: planLeadia,
+        fitcoreUrl: env('SELF_URL', 'https://fitcorecenter.com'),
+        fitcoreApiKey: ingestKey,
+        fitcoreEmpresaId: info.empresa_id,
+        fitcoreSedeId: sedeId,
+        rubro: 'gimnasio',
+      }),
     })
+    // Se conserva el mismo texto de error que veía el panel: menciona /tenants
+    // porque es lo que el admin ya conoce del mensaje anterior, y el status es
+    // lo único accionable acá.
     if (!rT.ok) return res.status(400).json({ error: `Leadia /tenants respondió ${rT.status}` })
-    const tenant = await rT.json()
+    const alta = await rT.json()
+    // La ruta devuelve {tenantId, apiKey} — no {id}. La apiKey se muestra UNA
+    // sola vez, así que de acá en adelante solo existe en `sede_leadia` cifrada.
+    const tenantId = alta.tenantId
+    const apiKey = alta.apiKey
+    if (!tenantId || !apiKey) {
+      return res.status(400).json({ error: 'Leadia /tenants respondió sin tenant o sin api key' })
+    }
 
-    // 2) emitir la api key del tenant
-    const rK = await fetch(`${base}/tenants/${tenant.id}/api-keys`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${adminKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ nombre: 'FitCore' }),
-    })
-    if (!rK.ok) return res.status(400).json({ error: `Leadia api-keys respondió ${rK.status}` })
-    const key = await rK.json()
-
-    // 3) crear el flujo plantilla del gym con la api key recién emitida
+    // 2) crear el flujo plantilla del gym con la api key recién emitida.
+    //
+    //    POR QUÉ SE MANTIENE aunque el alta nueva no lo cree: el flujo y el
+    //    comportamiento del rubro son dos cosas distintas y conviven. El rubro
+    //    (objetivo=matricular_socio) es lo que la IA hace cuando conversa; el
+    //    flujo es el árbol determinista de la ANTESALA — el saludo, el menú de
+    //    "Precios / Horarios / Quiero inscribirme" y la rama que decide cuándo
+    //    entra la IA. Además el panel lo depende de forma dura: la pestaña
+    //    "🌳 Ajustar el flujo del bot" (src/pages/config/TabLeadia.jsx) lo lista
+    //    con ?action=estado y lo edita con ?action=guardar-flujo. Borrarlo acá
+    //    dejaría esa pantalla vacía con el cartel "Esta sede aún no tiene un
+    //    flujo". Sigue siendo best-effort: si falla, el gym lo crea después.
     let flujoId = null
     try {
       const rF = await fetch(`${base}/flujos`, {
         method: 'POST',
-        headers: { authorization: `Bearer ${key.apiKey}`, 'content-type': 'application/json' },
+        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
         body: JSON.stringify({ nombre: 'Flujo del gimnasio', grafo: FLUJO_PLANTILLA_GYM }),
       })
       if (rF.ok) { const f = await rF.json(); flujoId = f.id || null }
     } catch { /* el flujo se puede crear después desde el panel */ }
 
-    // 4) guardar credenciales cifradas + marcar el tier en la suscripción
+    // 3) guardar credenciales cifradas + marcar el tier en la suscripción.
+    //    set_leadia_tier se queda: es el enlace con el cobro del add-on.
     await pool.query('select public.guardar_leadia_credenciales($1,$2,$3,$4,$5)',
-      [sedeId, info.empresa_id, tenant.id, key.apiKey, flujoId])
+      [sedeId, info.empresa_id, tenantId, apiKey, flujoId])
     await pool.query('select public.set_leadia_tier($1,$2)', [sedeId, tier])
 
-    return res.status(200).json({ ok: true, tenant_id: tenant.id, flujo_id: flujoId, tier })
+    return res.status(200).json({ ok: true, tenant_id: tenantId, flujo_id: flujoId, tier })
   } catch (e) {
     return res.status(400).json({ error: 'No se pudo activar Leadia: ' + e.message })
   }
