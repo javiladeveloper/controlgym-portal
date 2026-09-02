@@ -362,6 +362,14 @@ async function aprovisionar(req, res) {
         fitcoreEmpresaId: info.empresa_id,
         fitcoreSedeId: sedeId,
         rubro: 'gimnasio',
+        // EL PLAYBOOK VA EN EL ALTA (2026-09-02). Es "opcional" en el contrato
+        // del motor, y no mandarlo tenía una consecuencia que no se ve en
+        // ninguna firma: el bot devuelve `sin_perfil` y NO CONTESTA NADA fuera
+        // de la escalera de precios. Encontrado con el WhatsApp real: cinco
+        // "Hola" seguidos sin una sola respuesta, con todo lo demás correcto.
+        perfil: await armarPlaybook(
+          pool, info.empresa_id, sedeId, info.empresa_nombre, info.sede_nombre,
+        ),
       }),
     })
     // Se conserva el mismo texto de error que veía el panel: menciona /tenants
@@ -772,6 +780,28 @@ async function canales(req, res) {
       return res.status(r.status).json(cuerpo)
     }
 
+    // ── Cargar (o recargar) el playbook del gimnasio ───────────────────────
+    //
+    // Para los tenants que ya existían cuando el alta no mandaba `perfil`, y
+    // para refrescarlo cuando el gym cambia sus planes o sus precios: el
+    // catálogo del bot sale de la tabla `plan`, así que un precio nuevo en el
+    // panel no llega al bot hasta que se vuelve a mandar.
+    if (op === 'playbook') {
+      const perfil = await armarPlaybook(
+        pool, info.empresa_id, sedeId, info.empresa_nombre, info.sede_nombre,
+      )
+      const r = await fetch(`${base}/perfil`, {
+        method: 'PUT',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify(perfil),
+      })
+      if (!r.ok) {
+        const d = await r.text().catch(() => '')
+        return res.status(502).json({ error: 'El motor rechazó el playbook: ' + d.slice(0, 300) })
+      }
+      return res.status(200).json({ ok: true, planes: perfil.catalogo.length })
+    }
+
     // ── Encender / apagar a Finny en toda la sede ──────────────────────────
     //
     // EL BOT NACE APAGADO, a propósito (regla del motor): al contratar el
@@ -1159,5 +1189,101 @@ async function campaniaDestinatarios(req, res) {
     })
   } catch (e) {
     return res.status(400).json({ error: 'No se pudo armar la lista: ' + e.message })
+  }
+}
+
+// ── EL PLAYBOOK DEL GIMNASIO ───────────────────────────────────────────────
+//
+// POR QUÉ EXISTE (2026-09-02, encontrado probando con el WhatsApp real).
+//
+// El alta iba SIN `perfil` — era opcional en el contrato del motor y nunca se
+// mandó. Consecuencia: el bot devolvía `sin_perfil` y NO RESPONDÍA NADA a los
+// mensajes que no cayeran en la escalera de precios de Finny.
+//
+// El síntoma en vivo era desconcertante: "cuánto cuesta la mensualidad" sí se
+// contestaba (esa la intercepta captacion-gimnasio antes del pipeline clásico),
+// pero un "Hola" pelado se quedaba en silencio. Cinco "Hola" seguidos sin una
+// sola respuesta, con el bot encendido, el canal conectado y el webhook
+// entregando bien.
+//
+// El perfil es lo que le dice a la IA de qué negocio habla. Sin él responde
+// genérico y fuera de rubro, así que el motor prefiere callar — decisión
+// correcta suya; el error era nuestro por no mandarlo.
+//
+// Se arma con los datos REALES del gym (nombre, planes con su precio) para que
+// el bot no invente ni un nombre ni un monto.
+async function armarPlaybook(pool, empresaId, sedeId, empresaNombre, sedeNombre) {
+  // Los planes vigentes son el catálogo del bot. Sin precio no entran: un plan
+  // sin monto haría que la IA improvise uno.
+  const { rows: planes } = await pool.query(
+    `select nombre, precio, unidad, descripcion
+       from public.plan
+      where empresa_id = $1 and deleted_at is null
+        and coalesce(activo, true) and precio > 0
+      order by precio asc
+      limit 12`,
+    [empresaId],
+  )
+
+  const catalogo = planes.map((p) => ({
+    nombre: String(p.nombre).slice(0, 80),
+    // La unidad importa: "S/80 al mes" y "S/80 por día" son ofertas distintas.
+    precio: `S/${Number(p.precio).toFixed(2)}${p.unidad ? ` / ${p.unidad}` : ''}`,
+    ...(p.descripcion ? { descripcion: String(p.descripcion).slice(0, 200) } : {}),
+  }))
+
+  const nombreNegocio = `${empresaNombre} · ${sedeNombre}`
+
+  return {
+    rubro: 'gimnasio',
+    nombreNegocio,
+    idioma: 'es',
+    // Cómo habla un gimnasio en Perú: cercano, tuteo, sin solemnidad.
+    tono: 'cercano y motivador, de tú',
+    propuestaValor:
+      `${empresaNombre} es un gimnasio con equipamiento completo, entrenadores ` +
+      'que arman tu rutina y horarios amplios. Se puede venir a conocer el local ' +
+      'antes de decidir.',
+    catalogo,
+    // Lo que hay que averiguar para poder vender: objetivo, cuándo entrena y
+    // si ya entrenó antes. Con eso el vendedor sabe qué plan ofrecer.
+    preguntasClave: [
+      '¿Qué te gustaría lograr: bajar de peso, ganar músculo o mantenerte?',
+      '¿En qué horario te queda mejor entrenar?',
+      '¿Has entrenado antes en un gimnasio?',
+    ],
+    senalesCaliente: [
+      'pregunta el precio o las promociones',
+      'pregunta el horario o la dirección',
+      'dice que quiere empezar esta semana',
+      'pregunta cómo pagar o si hay matrícula',
+    ],
+    senalesFrio: [
+      'dice que solo está viendo opciones',
+      'dice que lo va a pensar sin dar fecha',
+      'pregunta por algo que el gimnasio no ofrece',
+    ],
+    objeciones: [
+      { objecion: 'Está caro',
+        respuesta: 'Te entiendo. Sale menos de lo que cuesta un café al día, y puedes ' +
+                   'venir a probar gratis antes de decidir. ¿Te gustaría pasar y conocerlo?' },
+      { objecion: 'No tengo tiempo',
+        respuesta: 'Con 45 minutos, tres veces por semana, ya se ven resultados. ' +
+                   'Tenemos horarios amplios: ¿te acomoda temprano o en la noche?' },
+      { objecion: 'Lo voy a pensar',
+        respuesta: 'Claro, sin apuro. ¿Te reservo un pase de prueba para que lo ' +
+                   'conozcas sin compromiso y decides después?' },
+    ],
+    politicas:
+      'Los precios y promociones vigentes son los del catálogo. No se prometen ' +
+      'descuentos que no estén listados. Cualquier tema de salud o lesión se ' +
+      'deriva al entrenador o al médico: el bot no da indicaciones médicas.',
+    llamadaAccion: 'Ven a conocer el gym con un pase de prueba, sin compromiso.',
+    mensajeBienvenida:
+      `¡Hola! 👋 Soy Finny, de ${empresaNombre}. Te ayudo con planes, horarios y ` +
+      'a reservar tu pase de prueba. ¿Qué te gustaría lograr?',
+    respuestasFijas: [],
+    promociones: [],
+    equipos: [],
   }
 }
