@@ -790,10 +790,11 @@ async function canales(req, res) {
       const perfil = await armarPlaybook(
         pool, info.empresa_id, sedeId, info.empresa_nombre, info.sede_nombre,
       )
+      // El PUT espera { rubro, perfil }, no el perfil plano.
       const r = await fetch(`${base}/perfil`, {
         method: 'PUT',
         headers: { ...auth, 'content-type': 'application/json' },
-        body: JSON.stringify(perfil),
+        body: JSON.stringify({ rubro: 'gimnasio', perfil }),
       })
       if (!r.ok) {
         const d = await r.text().catch(() => '')
@@ -1239,7 +1240,8 @@ async function armarPlaybook(pool, empresaId, sedeId, empresaNombre, sedeNombre)
     nombreNegocio,
     idioma: 'es',
     // Cómo habla un gimnasio en Perú: cercano, tuteo, sin solemnidad.
-    tono: 'cercano y motivador, de tú',
+    // De la lista curada del motor (TONOS_BOT): un tono libre se rechaza.
+    tono: 'cálido y cercano, como atiende el dueño',
     propuestaValor:
       `${empresaNombre} es un gimnasio con equipamiento completo, entrenadores ` +
       'que arman tu rutina y horarios amplios. Se puede venir a conocer el local ' +
