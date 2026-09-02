@@ -573,7 +573,7 @@ function ReactivacionExSocios({ sedeId, empresaId }) {
             ))}
             {/* Teaser de Leadia: oculto hasta que la IA esté disponible */}
             {LEADIA_VISIBLE && (
-              <button disabled title="Próximamente (Leadia): analizará tus campañas pasadas — quiénes se inscribieron con cada promoción y ya no están — y te sugerirá ofertas personalizadas o grupales para traerlos de vuelta"
+              <button disabled title="Próximamente (Finny): analizará tus campañas pasadas — quiénes se inscribieron con cada promoción y ya no están — y te sugerirá ofertas personalizadas o grupales para traerlos de vuelta"
                 className="ml-auto cursor-not-allowed rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-extrabold text-faint">
                 ✨ Sugerencia IA · en construcción
               </button>
@@ -641,7 +641,7 @@ function FriosIgnorados({ sedeId, empresaId }) {
           {frios.isLoading && <LoadingState variant="table" rows={3} />}
           {frios.isError && <ErrorState error={frios.error} onRetry={frios.refetch} />}
           {!frios.isLoading && !frios.isError && data && !data.activo && (
-            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Esta sede no tiene la IA de Leadia activa. Actívala en Configuración › IA Leadia para que el bot califique tus contactos.</div>
+            <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">Esta sede no tiene a Finny activo. Actívalo en Configuración › Finny para que el bot califique tus contactos.</div>
           )}
           {!frios.isLoading && !frios.isError && data?.activo && items.length === 0 && (
             <div className="px-5 py-6 text-[12.5px] font-semibold text-muted">El bot no ha descartado contactos por ahora. Cuando ignore alguno por frío, aparecerá aquí.</div>
@@ -768,7 +768,7 @@ export default function CRM() {
           toast.ok(`${nuevos} prospecto${nuevos > 1 ? 's' : ''} nuevo${nuevos > 1 ? 's' : ''} de la IA 🤖`)
         }
       } else if (!silencioso) {
-        toast.info('Esta sede no tiene la IA de Leadia activa.')
+        toast.info('Esta sede no tiene a Finny activo.')
       }
     } catch (e) {
       if (!silencioso) toast.error(e.message)
@@ -839,7 +839,7 @@ export default function CRM() {
           </button>
           {LEADIA_VISIBLE && esAdmin && (
             <button onClick={() => correrSync()} disabled={sincronizando}
-              title="Traer de la IA de Leadia los prospectos calientes y tibios nuevos"
+              title="Traer de Finny los prospectos calientes y tibios nuevos"
               className="cursor-pointer rounded-[10px] border border-line bg-white px-[16px] py-[11px] text-[13px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange disabled:opacity-50">
               {sincronizando ? 'Sincronizando…' : '🤖 Sincronizar IA'}
             </button>
@@ -906,7 +906,7 @@ export default function CRM() {
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-[13px] font-extrabold leading-[1.25]">{ld.nombre}</span>
                           {NIVEL_LEADIA[ld.nivel_leadia] && (
-                            <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold leading-none" title="Calificado por la IA de Leadia"
+                            <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold leading-none" title="Calificado por Finny"
                               style={{ background: NIVEL_LEADIA[ld.nivel_leadia].bg, color: NIVEL_LEADIA[ld.nivel_leadia].color }}>
                               {NIVEL_LEADIA[ld.nivel_leadia].label}
                             </span>

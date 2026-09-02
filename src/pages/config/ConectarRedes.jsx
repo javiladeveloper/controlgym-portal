@@ -210,136 +210,139 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
   // Arrancar mostrando las redes y saltar a "activa Finny primero" (o al revés)
   // es un parpadeo que hace dudar de lo que se está viendo.
   if (cargando) {
-    return <p className="text-sm text-gray-500">Cargando las redes…</p>
+    return <p className="text-[13px] font-semibold text-faint">Cargando las redes…</p>
   }
 
   if (!activo) {
     return (
-      <Card>
-        <p className="text-sm text-gray-600">
-          Primero activa Finny en <strong>{sedeNombre}</strong> (arriba) y después
-          conecta las redes por donde va a atender.
-        </p>
-      </Card>
+      <p className="text-[13px] font-semibold text-muted">
+        Primero activa Finny en <span className="font-extrabold">{sedeNombre}</span> y
+        después conecta las redes por donde va a atender.
+      </p>
     )
   }
 
   const porTipo = (tipo) => canales.filter((c) => c.tipo === tipo)
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="font-semibold text-gray-900">Redes conectadas</h3>
-        <p className="text-sm text-gray-600">
-          Por acá le llegan los mensajes a Finny. Sin al menos una red conectada,
-          el asistente no puede atender a nadie.
-        </p>
-      </div>
+    <div>
+      <div className="text-[14px] font-extrabold">Redes conectadas</div>
+      <p className="mt-1 text-[12.5px] font-semibold leading-relaxed text-muted">
+        Por acá le llegan los mensajes a Finny. Sin al menos una red conectada, el
+        asistente no puede atender a nadie.
+      </p>
 
       {/* Elegir cuenta cuando Meta devolvió varias páginas */}
       {pendientes.cuentas.length > 0 && (
-        <Card className="border-amber-300 bg-amber-50">
-          <p className="text-sm font-medium text-amber-900">
+        <div className="mt-3 rounded-[12px] border border-orange bg-orange-50 p-3.5">
+          <div className="text-[12.5px] font-extrabold text-orange">
             Tienes {pendientes.cuentas.length} cuentas. ¿Cuál quieres conectar?
-          </p>
-          <div className="mt-3 space-y-2">
+          </div>
+          <div className="mt-2.5 space-y-2">
             {pendientes.cuentas.map((c) => (
-              <div key={c.cuentaExterna} className="flex items-center justify-between gap-3 rounded border border-amber-200 bg-white px-3 py-2">
+              <div key={c.cuentaExterna}
+                className="flex items-center justify-between gap-3 rounded-[10px] border border-line bg-white px-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{c.nombre || 'Cuenta'}</p>
-                  <p className="truncate text-xs text-gray-500">{c.cuentaExterna}</p>
+                  <div className="truncate text-[12.5px] font-extrabold">{c.nombre || 'Cuenta'}</div>
+                  <div className="truncate text-[11px] font-semibold text-faint">{c.cuentaExterna}</div>
                 </div>
                 <button
                   onClick={() => elegirCuenta(pendientes.tipo, c.cuentaExterna)}
                   disabled={!!ocupado}
-                  className="shrink-0 rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+                  className="shrink-0 cursor-pointer rounded-[9px] border-none bg-orange px-3.5 py-2 text-[12px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
                   {ocupado === c.cuentaExterna ? 'Conectando…' : 'Conectar esta'}
                 </button>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {REDES.map((red) => {
-        const conectados = porTipo(red.tipo)
-        return (
-          <Card key={red.tipo}>
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-medium text-gray-900">
-                  <span className="mr-1.5">{red.icono}</span>{red.nombre}
-                </p>
-                <p className="mt-0.5 text-sm text-gray-600">{red.detalle}</p>
-              </div>
-              <span className="shrink-0 text-xs text-gray-500">
-                {/* Un guion no miente: mientras carga no se afirma "sin conectar",
-                    que a alguien con su número conectado le resultaría falso. */}
-                {cargando ? '—' : conectados.length ? `${conectados.length} conectada(s)` : 'Sin conectar'}
-              </span>
-            </div>
-
-            {conectados.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {conectados.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between gap-3 rounded border border-gray-200 px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{c.nombre || c.cuentaExterna}</p>
-                      <p className="truncate text-xs text-gray-500">
-                        {c.creadoEn ? `conectada el ${new Date(c.creadoEn).toLocaleDateString('es-PE')}` : c.cuentaExterna}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        onClick={() => cambiarActivo(c)} disabled={!!ocupado}
-                        className={`rounded px-2 py-1 text-xs font-medium disabled:opacity-50 ${
-                          c.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                        {c.activo ? 'Activo' : 'Apagado'}
-                      </button>
-                      <button
-                        onClick={() => desconectar(c)} disabled={!!ocupado}
-                        className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">
-                        Desconectar
-                      </button>
-                    </div>
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        {REDES.map((red) => {
+          const conectados = porTipo(red.tipo)
+          const hayAlguno = conectados.length > 0
+          return (
+            <div key={red.tipo}
+              className={`rounded-[12px] border p-3.5 ${hayAlguno ? 'border-orange' : 'border-line'}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-extrabold">
+                    <span className="mr-1.5">{red.icono}</span>{red.nombre}
                   </div>
-                ))}
+                  <div className="mt-0.5 text-[11.5px] font-semibold leading-relaxed text-muted">
+                    {red.detalle}
+                  </div>
+                </div>
+                {/* Un guion no miente: mientras carga no se afirma "sin conectar",
+                    que a alguien con su cuenta conectada le resultaría falso. */}
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  hayAlguno ? 'bg-orange-50 text-orange' : 'bg-line2 text-faint'}`}>
+                  {cargando ? '—' : hayAlguno ? `${conectados.length} conectada(s)` : 'Sin conectar'}
+                </span>
               </div>
-            )}
 
-            {/* Una cuenta por red: con algo conectado, desaparece el botón. */}
-            {!cargando && conectados.length === 0 && (
-              <div className="mt-3">
-                {red.metodo === 'whatsapp'
-                  ? <ConectarWhatsApp sedeId={sedeId} alConectar={cargar} />
-                  : (
-                    <button
-                      onClick={() => conectarOAuth(red.tipo)} disabled={!!ocupado}
-                      className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
-                      {ocupado === red.tipo ? 'Abriendo…' : `Conectar ${red.nombre}`}
-                    </button>
-                  )}
-              </div>
-            )}
+              {hayAlguno && (
+                <div className="mt-2.5 space-y-2">
+                  {conectados.map((c) => (
+                    <div key={c.id}
+                      className="flex items-center justify-between gap-2 rounded-[10px] border border-line px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-[12.5px] font-extrabold">{c.nombre || c.cuentaExterna}</div>
+                        <div className="truncate text-[11px] font-semibold text-faint">
+                          {c.creadoEn ? `conectada el ${new Date(c.creadoEn).toLocaleDateString('es-PE')}` : c.cuentaExterna}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          onClick={() => cambiarActivo(c)} disabled={!!ocupado}
+                          title={c.activo ? 'Finny responde por acá' : 'Finny no responde por acá'}
+                          className={`cursor-pointer rounded-full border-none px-2.5 py-1 text-[10.5px] font-extrabold disabled:opacity-50 ${
+                            c.activo ? 'bg-green-50 text-green-600' : 'bg-line2 text-faint'}`}>
+                          {c.activo ? '● Activo' : '○ Apagado'}
+                        </button>
+                        <button
+                          onClick={() => desconectar(c)} disabled={!!ocupado}
+                          className="cursor-pointer rounded-[8px] border-none bg-transparent px-2 py-1 text-[11px] font-extrabold text-muted hover:text-red disabled:opacity-50">
+                          Desconectar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* El texto se ajusta al número real de cuentas: afirmar "desconecta
-                la actual" con dos conectadas es sencillamente falso, y el motor
-                puede devolver más de una (no garantiza el límite que el panel
-                sugiere). */}
-            {!cargando && conectados.length === 1 && (
-              <p className="mt-2 text-xs text-gray-500">
-                Para usar otra cuenta de {red.nombre}, primero desconecta la actual.
-              </p>
-            )}
-            {!cargando && conectados.length > 1 && (
-              <p className="mt-2 text-xs text-gray-500">
-                Tienes {conectados.length} cuentas de {red.nombre} conectadas. Finny
-                atiende por todas las que estén activas.
-              </p>
-            )}
-          </Card>
-        )
-      })}
+              {!cargando && !hayAlguno && (
+                <div className="mt-2.5">
+                  {red.metodo === 'whatsapp'
+                    ? <ConectarWhatsApp sedeId={sedeId} alConectar={cargar} />
+                    : (
+                      <button
+                        onClick={() => conectarOAuth(red.tipo)} disabled={!!ocupado}
+                        className="w-full cursor-pointer rounded-[9px] border-none bg-orange py-2 text-[12px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
+                        {ocupado === red.tipo ? 'Abriendo…' : `Conectar ${red.nombre}`}
+                      </button>
+                    )}
+                </div>
+              )}
+
+              {/* El texto se ajusta al número real de cuentas: afirmar "desconecta
+                  la actual" con dos conectadas es sencillamente falso, y el motor
+                  puede devolver más de una. */}
+              {!cargando && conectados.length === 1 && (
+                <div className="mt-2 text-[11px] font-semibold text-faint">
+                  Para usar otra cuenta, primero desconecta la actual.
+                </div>
+              )}
+              {!cargando && conectados.length > 1 && (
+                <div className="mt-2 text-[11px] font-semibold text-faint">
+                  Finny atiende por todas las que estén activas.
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -495,45 +498,49 @@ function ConectarWhatsApp({ sedeId, alConectar }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="rounded border border-gray-200 bg-gray-50 p-3">
-        <p className="text-xs font-medium text-gray-700">¿Cómo usas hoy ese número?</p>
-        <label className="mt-2 flex items-start gap-2 text-xs text-gray-700">
-          <input type="radio" name="modo-wa" className="mt-0.5" checked={modo === 'coexistencia'}
-            onChange={() => setModo('coexistencia')} />
+    <div>
+      <div className="rounded-[10px] border border-line bg-line2/40 p-3">
+        <div className="text-[11.5px] font-extrabold text-muted">¿Cómo usas hoy ese número?</div>
+        <label className="mt-2 flex cursor-pointer items-start gap-2 text-[11.5px] font-semibold leading-relaxed text-muted">
+          <input type="radio" name={`modo-wa-${sedeId}`} className="mt-0.5 accent-orange"
+            checked={modo === 'coexistencia'} onChange={() => setModo('coexistencia')} />
           <span>
-            <strong>Ya lo uso en WhatsApp Business</strong> (en mi celular).
-            Se conecta sin perderlo: sigue funcionando en la app y Finny atiende en paralelo.
+            <span className="font-extrabold text-ink">Ya lo uso en WhatsApp Business.</span>{' '}
+            Se conecta sin perderlo: sigue en tu celular y Finny atiende en paralelo.
           </span>
         </label>
-        <label className="mt-2 flex items-start gap-2 text-xs text-gray-700">
-          <input type="radio" name="modo-wa" className="mt-0.5" checked={modo === 'nuevo'}
-            onChange={() => setModo('nuevo')} />
-          <span><strong>Es un número nuevo</strong>, sin WhatsApp instalado.</span>
+        <label className="mt-2 flex cursor-pointer items-start gap-2 text-[11.5px] font-semibold leading-relaxed text-muted">
+          <input type="radio" name={`modo-wa-${sedeId}`} className="mt-0.5 accent-orange"
+            checked={modo === 'nuevo'} onChange={() => setModo('nuevo')} />
+          <span><span className="font-extrabold text-ink">Es un número nuevo</span>, sin WhatsApp instalado.</span>
         </label>
       </div>
 
       {enCelular && (
-        <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          El asistente de Meta funciona mucho mejor desde una computadora. Desde el
-          celular abre ventanas, te hace salir de la app a buscar el código y la
-          sesión puede vencerse.
-        </p>
+        <div className="mt-2 rounded-[9px] bg-orange-50 px-3 py-2 text-[11px] font-semibold leading-relaxed text-orange">
+          El asistente de Meta funciona mucho mejor desde una computadora: en el
+          celular abre ventanas, te saca de la app a buscar el código y la sesión
+          puede vencerse.
+        </div>
       )}
 
       <button
         onClick={conectar}
         disabled={estado === 'abriendo' || estado === 'conectando'}
-        className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+        className="mt-2.5 w-full cursor-pointer rounded-[9px] border-none bg-orange py-2 text-[12px] font-extrabold text-white hover:bg-orange-600 disabled:opacity-50">
         {estado === 'abriendo' ? 'Abriendo Meta…'
           : estado === 'conectando' ? 'Conectando…'
           : 'Conectar WhatsApp'}
       </button>
 
       {estado === 'cancelado' && (
-        <p className="text-xs text-gray-600">Se canceló la conexión. Puedes intentarlo otra vez.</p>
+        <div className="mt-2 text-[11px] font-semibold text-faint">
+          Se canceló la conexión. Puedes intentarlo otra vez.
+        </div>
       )}
-      {estado === 'error' && <p className="text-xs text-red-600">{error}</p>}
+      {estado === 'error' && (
+        <div className="mt-2 text-[11px] font-bold leading-relaxed text-red">{error}</div>
+      )}
     </div>
   )
 }

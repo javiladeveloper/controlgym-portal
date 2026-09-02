@@ -67,7 +67,7 @@ export default function TabLeadia() {
   return (
     <div className="max-w-[760px]">
       <Card className="p-[19px]">
-        <div className="text-[15px] font-extrabold">🤖 IA Leadia — vendedor con inteligencia artificial</div>
+        <div className="text-[15px] font-extrabold">🤖 Finny — tu vendedor con inteligencia artificial</div>
         <p className="mt-1 text-[13px] font-semibold leading-relaxed text-muted">
           Un asistente que atiende el WhatsApp de tu gimnasio 24/7: responde al instante, califica a cada
           interesado y te avisa a quién seguir. Los interesados listos para inscribirse entran solos a tu CRM.
