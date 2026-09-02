@@ -657,10 +657,32 @@ async function canales(req, res) {
 
   try {
     // ── Listar lo conectado ──
+    // Se devuelve también si Finny está encendido: la pantalla necesita poder
+    // decir "tienes el canal conectado pero el bot apagado", que es justo el
+    // estado en el que un gimnasio recibe mensajes y nadie le contesta.
     if (op === 'listar') {
-      const r = await fetch(`${base}/canales`, { headers: auth })
-      if (!r.ok) return res.status(200).json({ activo: true, canales: [] })
-      return res.status(200).json({ activo: true, canales: await r.json() })
+      const { adminKey } = await configLeadia(pool)
+      const [canalesR, tenantsR] = await Promise.all([
+        fetch(`${base}/canales`, { headers: auth }),
+        adminKey
+          ? fetch(`${base}/tenants`, { headers: { authorization: `Bearer ${adminKey}` } })
+          : Promise.resolve(null),
+      ])
+      const lista = canalesR.ok ? await canalesR.json().catch(() => []) : []
+
+      // El estado del bot es INFORMATIVO: si no se puede leer, no se rompe el
+      // listado — se devuelve null y el panel simplemente no afirma nada.
+      let botActivo = null
+      try {
+        if (tenantsR?.ok) {
+          const t = await tenantsR.json()
+          const items = Array.isArray(t) ? t : (t.items || t.tenants || [])
+          const mio = items.find((x) => x.id === cred.tenant_id)
+          if (mio && typeof mio.botActivo === 'boolean') botActivo = mio.botActivo
+        }
+      } catch { /* informativo: seguir sin él */ }
+
+      return res.status(200).json({ activo: true, canales: lista, botActivo })
     }
 
     // ── De qué origen viene el aviso del popup de OAuth ──
@@ -748,6 +770,38 @@ async function canales(req, res) {
       })
       const cuerpo = await r.json().catch(() => ({}))
       return res.status(r.status).json(cuerpo)
+    }
+
+    // ── Encender / apagar a Finny en toda la sede ──────────────────────────
+    //
+    // EL BOT NACE APAGADO, a propósito (regla del motor): al contratar el
+    // add-on todavía no hay WhatsApp conectado, y un bot "encendido" sin número
+    // es un estado mentiroso. Se enciende cuando el gym conecta su canal.
+    //
+    // Sania tiene esta palanca en su panel desde el 2026-08-24; FitCore NO la
+    // tenía, así que el gimnasio conectaba su WhatsApp, recibía los mensajes en
+    // la bandeja... y Finny nunca contestaba, sin nada que explicara por qué.
+    // Encontrado en vivo probando con un mensaje real (2026-09-02).
+    //
+    // Va con la ADMIN KEY de plataforma (no la del tenant): el PATCH de tenants
+    // es una ruta de administración del motor. Por eso no se expone la decisión
+    // al navegador — acá ya está verificado que quien pide es admin de la sede.
+    if (op === 'encender') {
+      if (typeof req.body?.activo !== 'boolean') {
+        return res.status(400).json({ error: 'Falta indicar si se enciende' })
+      }
+      const { adminKey } = await configLeadia(pool)
+      if (!adminKey) return res.status(500).json({ error: 'Falta la clave de administración' })
+      const r = await fetch(`${base}/tenants/${encodeURIComponent(cred.tenant_id)}`, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${adminKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ botActivo: req.body.activo }),
+      })
+      if (!r.ok) {
+        const d = await r.text().catch(() => '')
+        return res.status(502).json({ error: 'El motor rechazó el cambio: ' + d.slice(0, 200) })
+      }
+      return res.status(200).json({ ok: true, activo: req.body.activo })
     }
 
     // ── Desconectar ──

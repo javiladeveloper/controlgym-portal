@@ -61,6 +61,8 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
   const [canales, setCanales] = useState([])
   const [cargando, setCargando] = useState(true)
   const [activo, setActivo] = useState(true)
+  // null = no se pudo leer; no se afirma nada en pantalla.
+  const [botActivo, setBotActivo] = useState(null)
   const [ocupado, setOcupado] = useState('')
   const [pendientes, setPendientes] = useState({ tipo: null, cuentas: [] })
 
@@ -72,6 +74,7 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
       const out = await r.json()
       if (!r.ok) throw new Error(out.error || 'No se pudo leer los canales')
       setActivo(out.activo !== false)
+      setBotActivo(out.botActivo ?? null)
       const lista = Array.isArray(out.canales) ? out.canales : []
       setCanales(lista)
       return lista
@@ -207,6 +210,24 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
     return id
   }, [cargar])
 
+  async function cambiarBot() {
+    setOcupado('bot')
+    try {
+      const r = await fetch(`/api/leadia?action=canales&op=encender&sedeId=${sedeId}`, {
+        method: 'POST', headers: await authHeader(),
+        body: JSON.stringify({ sedeId, activo: !botActivo }),
+      })
+      const out = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(out.error || 'No se pudo cambiar')
+      setBotActivo(out.activo)
+      toast.ok(out.activo
+        ? '¡Finny encendido! Ya responde por las redes conectadas.'
+        : 'Finny apagado. Los mensajes siguen llegando a Conversaciones.')
+    } catch (e) {
+      toast.error(e.message)
+    } finally { setOcupado('') }
+  }
+
   async function cambiarActivo(canal) {
     setOcupado(canal.id)
     try {
@@ -264,9 +285,39 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
   }
 
   const porTipo = (tipo) => canales.filter((c) => c.tipo === tipo)
+  const hayAlguna = canales.length > 0
 
   return (
     <div>
+      {/* EL INTERRUPTOR DE FINNY.
+          El bot nace APAGADO a propósito (al contratar el add-on todavía no hay
+          número conectado, y un bot "encendido" sin canal es un estado
+          mentiroso). Pero sin esta palanca en el panel, el gym conectaba su
+          WhatsApp, veía llegar los mensajes... y Finny nunca contestaba, sin
+          nada que explicara por qué. Pasó en vivo el 2026-09-02. */}
+      {botActivo !== null && (
+        <div className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border p-3.5 ${
+          botActivo ? 'border-line bg-white' : 'border-orange bg-orange-50'}`}>
+          <div className="min-w-0">
+            <div className="text-[13px] font-extrabold">
+              {botActivo ? '✓ Finny está atendiendo' : 'Finny está apagado'}
+            </div>
+            <div className="mt-0.5 text-[11.5px] font-semibold leading-relaxed text-muted">
+              {botActivo
+                ? 'Responde solo a quien escriba por las redes conectadas.'
+                : hayAlguna
+                  ? 'Ya tienes una red conectada: enciéndelo para que empiece a responder.'
+                  : 'Conecta una red y enciéndelo para que empiece a responder.'}
+            </div>
+          </div>
+          <button onClick={cambiarBot} disabled={ocupado === 'bot'}
+            className={`shrink-0 cursor-pointer rounded-[9px] border-none px-4 py-2 text-[12px] font-extrabold disabled:opacity-50 ${
+              botActivo ? 'bg-line2 text-muted hover:bg-line' : 'bg-orange text-white hover:bg-orange-600'}`}>
+            {ocupado === 'bot' ? 'Un momento…' : botActivo ? 'Apagar' : 'Encender a Finny'}
+          </button>
+        </div>
+      )}
+
       <div className="text-[14px] font-extrabold">Redes conectadas</div>
       <p className="mt-1 text-[12.5px] font-semibold leading-relaxed text-muted">
         Por acá le llegan los mensajes a Finny. Sin al menos una red conectada, el
