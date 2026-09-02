@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card } from '../components/ui.jsx'
 import { usePanel } from '../store.jsx'
 import TabCampanias from './marketing/TabCampanias.jsx'
+import TabPublicar from './marketing/TabPublicar.jsx'
 
 /**
  * MARKETING (2026-09-02).
@@ -31,8 +32,7 @@ const TABS = [
     label: 'Publicar',
     ayuda: 'Un post, todas tus redes',
     icono: '📷',
-    listo: false,
-    nota: 'Sube una foto una vez y sale en Instagram, Facebook y TikTok a la vez.',
+    listo: true,
   },
   {
     id: 'anuncios',
@@ -88,7 +88,9 @@ export default function Marketing() {
 
       <div className="mt-4">
         {actual.listo
-          ? <TabCampanias sedeId={sedeId} />
+          ? (tab === 'publicar'
+              ? <TabPublicar sedeId={sedeId} />
+              : <TabCampanias sedeId={sedeId} />)
           : (
             <Card className="p-8 text-center">
               <div className="text-[28px]">{actual.icono}</div>

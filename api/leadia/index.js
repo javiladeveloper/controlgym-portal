@@ -36,6 +36,7 @@ export default async function handler(req, res) {
   if (action === 'bandeja') return bandeja(req, res)
   if (action === 'campanias') return campanias(req, res)
   if (action === 'destinatarios') return campaniaDestinatarios(req, res)
+  if (action === 'publicar') return publicar(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -1287,5 +1288,128 @@ async function armarPlaybook(pool, empresaId, sedeId, empresaNombre, sedeNombre)
     respuestasFijas: [],
     promociones: [],
     equipos: [],
+  }
+}
+
+// ── PUBLICAR: un post, todas las redes del gimnasio ────────────────────────
+//
+// El dueño sube su foto UNA vez y sale en Instagram, Facebook y TikTok sin
+// abrir tres apps. El motor ya lo hace de verdad (publicar-meta.ts / tiktok.ts);
+// acá va el puente, con el mismo patrón de seguridad del resto: ADMIN DE ESA
+// SEDE y la api key descifrada en el servidor.
+async function publicar(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+
+  const sedeId = (req.query?.sedeId || req.body?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+  if (!ES_UUID.test(sedeId)) return res.status(400).json({ error: 'sedeId inválido' })
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  const { rows } = await pool.query('select public.leadia_credenciales($1) as c', [sedeId])
+  const cred = rows[0].c
+  if (!cred?.encontrado) return res.status(200).json({ activo: false, items: [] })
+
+  const { base } = await configLeadia(pool)
+  const auth = { authorization: `Bearer ${cred.api_key}` }
+  const op = (req.query?.op || 'listar').toString()
+
+  const pasar = async (ruta, init) => {
+    const r = await fetch(`${base}${ruta}`, init)
+    const cuerpo = await r.json().catch(() => ({}))
+    return res.status(r.status).json(cuerpo)
+  }
+
+  try {
+    // ── Historial de publicaciones ──
+    if (op === 'listar') {
+      const cursor = (req.query?.cursor || '').toString()
+      const q = new URLSearchParams({ limit: '10' })
+      if (cursor) q.set('cursor', cursor)
+      const r = await fetch(`${base}/publicaciones?${q}`, { headers: auth })
+      if (!r.ok) return res.status(200).json({ activo: true, items: [] })
+      return res.status(200).json({ activo: true, ...(await r.json()) })
+    }
+
+    // ── Ideas de post para el rubro ──
+    if (op === 'plantillas') {
+      return pasar('/publicaciones/plantillas', { headers: auth })
+    }
+
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+
+    // ── La IA escribe el texto ──
+    if (op === 'sugerir') {
+      const idea = (req.body?.idea || '').toString().trim()
+      if (!idea) return res.status(400).json({ error: 'Falta la idea' })
+      return pasar('/publicaciones/sugerir', {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ idea }),
+      })
+    }
+
+    // ── Subir la foto o el video ──
+    //
+    // Viaja como data URL. El motor acepta 8MB de imagen y 50MB de video, pero
+    // ESTE proxy es una función serverless con un tope de cuerpo mucho menor —
+    // y base64 infla el archivo ~33%. Sin el chequeo, un video mediano moría
+    // con un error de plataforma ilegible en vez de decir qué pasó.
+    //
+    // El tope se aplica al DATA URL ya codificado, que es lo que de verdad
+    // viaja. 4MB de base64 ≈ 3MB de archivo: alcanza de sobra para una foto de
+    // promoción, que es el caso real de un gimnasio.
+    if (op === 'media') {
+      const imagen = (req.body?.imagen || '').toString()
+      if (!imagen.startsWith('data:')) return res.status(400).json({ error: 'Archivo no válido' })
+      if (imagen.length > 4 * 1024 * 1024) {
+        return res.status(413).json({
+          error: 'El archivo es muy pesado para subirlo desde el panel (máximo ~3MB). ' +
+                 'Usa una foto más liviana.',
+        })
+      }
+      return pasar('/publicaciones/media', {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ imagen }),
+      })
+    }
+
+    // ── Publicar (o programar) ──
+    if (op === 'crear') {
+      const { texto, mediaUrls, tipoMedia, canales, programadaPara } = req.body || {}
+      if (!texto || !texto.trim()) return res.status(400).json({ error: 'Escribe el texto del post' })
+      if (!Array.isArray(canales) || canales.length === 0) {
+        return res.status(400).json({ error: 'Elige al menos una red' })
+      }
+      return pasar('/publicaciones', {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          texto, canales,
+          ...(Array.isArray(mediaUrls) && mediaUrls.length ? { mediaUrls } : {}),
+          ...(tipoMedia ? { tipoMedia } : {}),
+          ...(programadaPara ? { programadaPara } : {}),
+        }),
+      })
+    }
+
+    // ── Quitar del historial (no borra el post de la red) ──
+    if (op === 'borrar') {
+      const id = (req.body?.id || '').toString()
+      if (!id) return res.status(400).json({ error: 'Falta la publicación' })
+      const r = await fetch(`${base}/publicaciones/${encodeURIComponent(id)}`, {
+        method: 'DELETE', headers: auth,
+      })
+      if (r.status === 204) return res.status(200).json({ ok: true })
+      return res.status(r.status).json(await r.json().catch(() => ({ error: 'No se pudo borrar' })))
+    }
+
+    return res.status(400).json({ error: 'Operación no reconocida' })
+  } catch (e) {
+    return res.status(502).json({ error: 'No se pudo hablar con el motor: ' + e.message })
   }
 }
