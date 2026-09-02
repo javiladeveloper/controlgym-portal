@@ -210,6 +210,21 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
     return id
   }, [cargar])
 
+  async function refrescarPlaybook() {
+    setOcupado('playbook')
+    try {
+      const r = await fetch(`/api/leadia?action=canales&op=playbook&sedeId=${sedeId}`, {
+        method: 'POST', headers: await authHeader(),
+        body: JSON.stringify({ sedeId }),
+      })
+      const out = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(out.error || 'No se pudo actualizar')
+      toast.ok(`Listo: Finny ya conoce tus ${out.planes} planes con sus precios de hoy.`)
+    } catch (e) {
+      toast.error(e.message)
+    } finally { setOcupado('') }
+  }
+
   async function cambiarBot() {
     setOcupado('bot')
     try {
@@ -310,11 +325,23 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
                   : 'Conecta una red y enciéndelo para que empiece a responder.'}
             </div>
           </div>
-          <button onClick={cambiarBot} disabled={ocupado === 'bot'}
-            className={`shrink-0 cursor-pointer rounded-[9px] border-none px-4 py-2 text-[12px] font-extrabold disabled:opacity-50 ${
-              botActivo ? 'bg-line2 text-muted hover:bg-line' : 'bg-orange text-white hover:bg-orange-600'}`}>
-            {ocupado === 'bot' ? 'Un momento…' : botActivo ? 'Apagar' : 'Encender a Finny'}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* El bot aprende los planes y precios de UNA copia que se le
+                manda. Si el gym sube un precio en el panel, Finny sigue
+                diciendo el viejo hasta que se le vuelva a mandar. */}
+            {botActivo && (
+              <button onClick={refrescarPlaybook} disabled={ocupado === 'playbook'}
+                title="Vuelve a mandarle a Finny tus planes y precios actuales"
+                className="cursor-pointer rounded-[9px] border border-line bg-white px-3 py-2 text-[12px] font-extrabold text-muted transition-colors hover:border-orange hover:text-orange disabled:opacity-50">
+                {ocupado === 'playbook' ? 'Actualizando…' : 'Actualizar sus precios'}
+              </button>
+            )}
+            <button onClick={cambiarBot} disabled={ocupado === 'bot'}
+              className={`cursor-pointer rounded-[9px] border-none px-4 py-2 text-[12px] font-extrabold disabled:opacity-50 ${
+                botActivo ? 'bg-line2 text-muted hover:bg-line' : 'bg-orange text-white hover:bg-orange-600'}`}>
+              {ocupado === 'bot' ? 'Un momento…' : botActivo ? 'Apagar' : 'Encender a Finny'}
+            </button>
+          </div>
         </div>
       )}
 
