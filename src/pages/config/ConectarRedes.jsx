@@ -64,17 +64,22 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
   const [ocupado, setOcupado] = useState('')
   const [pendientes, setPendientes] = useState({ tipo: null, cuentas: [] })
 
-  const cargar = useCallback(async () => {
-    if (!sedeId) return
+  const cargar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!sedeId) return []
     try {
       const r = await fetch(`/api/leadia?action=canales&op=listar&sedeId=${sedeId}`,
         { headers: await authHeader() })
       const out = await r.json()
       if (!r.ok) throw new Error(out.error || 'No se pudo leer los canales')
       setActivo(out.activo !== false)
-      setCanales(Array.isArray(out.canales) ? out.canales : [])
+      const lista = Array.isArray(out.canales) ? out.canales : []
+      setCanales(lista)
+      return lista
     } catch (e) {
-      toast.error(e.message)
+      // El sondeo de fondo no molesta con toasts: si falla una vuelta, se
+      // reintenta en la siguiente sin que el usuario vea nada.
+      if (!silencioso) toast.error(e.message)
+      return []
     } finally { setCargando(false) }
   }, [sedeId])
 
@@ -124,6 +129,9 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
       const y = window.screenY + (window.outerHeight - h) / 2
       const popup = window.open(out.url, 'oauth-red', `width=${w},height=${h},left=${x},top=${y}`)
       if (!popup) window.open(out.url, '_blank')
+      // No se espera al postMessage: si el navegador lo bloquea, o el usuario
+      // termina en otra pestaña, la pantalla se entera igual.
+      sondear(tipo)
     } catch (e) {
       toast.error(e.message)
     } finally { setOcupado('') }
@@ -165,6 +173,39 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
     window.addEventListener('message', alMensaje)
     return () => { vivo = false; window.removeEventListener('message', alMensaje) }
   }, [cargar, revisarPendientes, sedeId])
+
+  /**
+   * EL ESTADO TIENE QUE SER REACTIVO (2026-09-02, reportado por el owner).
+   *
+   * Conectó su WhatsApp de verdad —el motor lo registró— y la pantalla siguió
+   * diciendo "Sin conectar" hasta recargar a mano.
+   *
+   * La causa: el refresco colgaba del callback de FB.login, y el asistente de
+   * WhatsApp corre en SU PROPIA ventana; muchas veces termina sin devolverle el
+   * control al SDK, así que ese callback no llega nunca. Lo mismo con el OAuth
+   * de Instagram si el navegador bloquea el postMessage del popup.
+   *
+   * Ahora la pantalla no espera a que le avisen: mientras hay una conexión en
+   * curso se pregunta sola cada 3s si ya apareció el canal. En cuanto lo ve, se
+   * pinta y deja de preguntar. El aviso por postMessage sigue existiendo — llega
+   * antes cuando funciona — pero ya no es la única vía.
+   */
+  const sondear = useCallback((tipoEsperado) => {
+    let vueltas = 0
+    const id = setInterval(async () => {
+      vueltas += 1
+      const lista = await cargar({ silencioso: true })
+      const llego = lista.some((c) => c.tipo === tipoEsperado)
+      // 60 vueltas × 3s = 3 min, de sobra para un onboarding de WhatsApp.
+      if (llego || vueltas >= 60) {
+        clearInterval(id)
+        // No hace falta liberar el botón: al llegar el canal, la tarjeta pasa a
+        // mostrar la cuenta conectada y el bloque de conectar desaparece entero.
+        if (llego) toast.ok('¡Conectado! Finny ya puede atender por ahí.')
+      }
+    }, 3000)
+    return id
+  }, [cargar])
 
   async function cambiarActivo(canal) {
     setOcupado(canal.id)
@@ -318,7 +359,7 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
               {!cargando && !hayAlguno && (
                 <div className="mt-2.5">
                   {red.metodo === 'whatsapp'
-                    ? <ConectarWhatsApp sedeId={sedeId} alConectar={cargar} />
+                    ? <ConectarWhatsApp sedeId={sedeId} alConectar={cargar} alAbrir={() => sondear('whatsapp')} />
                     : (
                       <button
                         onClick={() => conectarOAuth(red.tipo)} disabled={!!ocupado}
@@ -359,7 +400,7 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
  *  3. Se captura el redirect_uri que genera el SDK.
  * Cada uno está comentado en su sitio.
  */
-function ConectarWhatsApp({ sedeId, alConectar }) {
+function ConectarWhatsApp({ sedeId, alConectar, alAbrir }) {
   const [estado, setEstado] = useState('listo')
   const [error, setError] = useState('')
   const [modo, setModo] = useState('coexistencia')
@@ -452,6 +493,10 @@ function ConectarWhatsApp({ sedeId, alConectar }) {
     // canjear el code — justo el bug que este componente dice tener resuelto.
     sesionES.current = {}
     redirectUriDialogo.current = ''
+    // El asistente de WhatsApp corre en su propia ventana y a menudo termina sin
+    // devolverle el control al SDK: sin esto el canal se conecta de verdad y la
+    // pantalla se queda diciendo "Sin conectar" hasta recargar a mano.
+    alAbrir?.()
 
     // (3) Capturar la URL del diálogo que abre el SDK para extraer su
     // redirect_uri (dinámico, apunta a xd_arbiter).
