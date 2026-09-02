@@ -258,7 +258,10 @@ export default function ConectarRedes({ sedeId, sedeNombre }) {
         </div>
       )}
 
-      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+      {/* items-start: sin esto el grid estira cada tarjeta a la altura de la más
+          alta (WhatsApp, que trae el bloque de opciones) y las otras quedan con
+          un hueco vacío enorme debajo del botón. */}
+      <div className="mt-3 grid items-start gap-2.5 sm:grid-cols-2">
         {REDES.map((red) => {
           const conectados = porTipo(red.tipo)
           const hayAlguno = conectados.length > 0
