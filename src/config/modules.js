@@ -24,6 +24,10 @@ export const MODULES = [
 
   { slug: 'clientes',    label: 'Clientes',         grupo: 'socios',    roles: null },
   { slug: 'crm',         label: 'CRM',              grupo: 'socios',    roles: ['admin', 'recepcion', 'comunicador'] },
+  // Las conversaciones de Finny. Vive junto al CRM porque es la misma gente y
+  // el mismo trabajo: atender al que pregunta. Solo el admin, que es quien
+  // contrata el add-on y a quien el motor autoriza por sede.
+  { slug: 'bandeja',     label: 'Conversaciones',   grupo: 'socios',    roles: ['admin'] },
   { slug: 'membresias',  label: 'Membresías',       grupo: 'socios',    roles: ['admin', 'recepcion'] },
   { slug: 'rutinas',     label: 'Rutinas y dietas', grupo: 'socios',    roles: ['admin', 'entrenador', 'nutricionista'] },
 

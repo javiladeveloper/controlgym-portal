@@ -33,6 +33,7 @@ export default async function handler(req, res) {
   if (action === 'link-pago') return linkPago(req, res)
   if (action === 'evento') return evento(req, res)
   if (action === 'canales') return canales(req, res)
+  if (action === 'bandeja') return bandeja(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -625,18 +626,18 @@ async function leadsFrios(req, res) {
 // interpolar el tipo en la URL del motor.
 const TIPOS_CANAL = ['whatsapp', 'instagram', 'messenger', 'tiktok']
 
+// Forma de un uuid. Se valida ANTES de tocar la BD: `sede.id` es uuid y un
+// valor malformado revienta en Postgres fuera del try, devolviendo un 500 crudo
+// donde correspondía un 400.
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function canales(req, res) {
   const user = await usuarioDesdeJwt(req)
   if (!user) return res.status(401).json({ error: 'No autenticado' })
 
   const sedeId = (req.query?.sedeId || req.body?.sedeId || '').toString()
   if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
-  // Se valida la forma ANTES de tocar la BD: `sede.id` es uuid y un valor
-  // malformado revienta en Postgres fuera del try, devolviendo un 500 crudo
-  // donde correspondía un 400.
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sedeId)) {
-    return res.status(400).json({ error: 'sedeId inválido' })
-  }
+  if (!ES_UUID.test(sedeId)) return res.status(400).json({ error: 'sedeId inválido' })
 
   const pool = db()
   const info = await adminYSede(pool, user, sedeId)
@@ -756,6 +757,116 @@ async function canales(req, res) {
       })
       if (!r.ok) return res.status(r.status).json({ error: 'No se pudo desconectar' })
       return res.status(200).json({ ok: true })
+    }
+
+    return res.status(400).json({ error: 'Operación no reconocida' })
+  } catch (e) {
+    return res.status(502).json({ error: 'No se pudo hablar con el motor: ' + e.message })
+  }
+}
+
+// ── BANDEJA: ver y responder las conversaciones de Finny ───────────────────
+//
+// POR QUÉ (2026-09-02).
+//
+// Finny quedó atendiendo el WhatsApp del gimnasio y el gym NO tenía dónde ver
+// esas conversaciones. Un bot que habla con tus clientes sin que puedas leer lo
+// que dice — ni meter mano cuando hace falta — es una caja negra: la primera
+// vez que un interesado pregunte algo raro, el dueño se entera cuando ya perdió
+// la venta.
+//
+// Mismo patrón de seguridad que el resto del proxy: ADMIN DE ESA SEDE y la api
+// key se descifra en el servidor (leadia_credenciales), nunca baja al navegador.
+async function bandeja(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+
+  const sedeId = (req.query?.sedeId || req.body?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+  if (!ES_UUID.test(sedeId)) return res.status(400).json({ error: 'sedeId inválido' })
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  const { rows } = await pool.query('select public.leadia_credenciales($1) as c', [sedeId])
+  const cred = rows[0].c
+  if (!cred?.encontrado) return res.status(200).json({ activo: false, items: [] })
+
+  const { base } = await configLeadia(pool)
+  const auth = { authorization: `Bearer ${cred.api_key}` }
+  const op = (req.query?.op || 'listar').toString()
+
+  try {
+    // ── Lista de conversaciones ──
+    if (op === 'listar') {
+      const q = new URLSearchParams({ limit: '30' })
+      const nivel = (req.query?.nivel || '').toString()
+      const estado = (req.query?.estado || '').toString()
+      const cursor = (req.query?.cursor || '').toString()
+      if (['frio', 'tibio', 'caliente'].includes(nivel)) q.set('nivel', nivel)
+      if (estado) q.set('estado', estado)
+      if (cursor) q.set('cursor', cursor)
+
+      const r = await fetch(`${base}/leads?${q}`, { headers: auth })
+      if (!r.ok) return res.status(200).json({ activo: true, items: [] })
+      const out = await r.json()
+      return res.status(200).json({ activo: true, ...out })
+    }
+
+    // ── Un hilo con todos sus mensajes ──
+    if (op === 'hilo') {
+      const id = (req.query?.id || '').toString()
+      if (!id) return res.status(400).json({ error: 'Falta la conversación' })
+      const r = await fetch(`${base}/leads/${encodeURIComponent(id)}`, { headers: auth })
+      if (r.status === 404) return res.status(404).json({ error: 'Conversación no encontrada' })
+      if (!r.ok) return res.status(502).json({ error: 'El motor no devolvió el hilo' })
+      return res.status(200).json(await r.json())
+    }
+
+    // ── De aquí abajo todo MODIFICA: solo POST ──
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+
+    // ── Responder a mano ──
+    // Por defecto PAUSA el bot de esa conversación: si una persona entró a
+    // hablar, que la IA no le pise la respuesta a mitad de frase.
+    if (op === 'responder') {
+      const sujeto = (req.body?.sujeto || '').toString()
+      const mensaje = (req.body?.mensaje || '').toString().trim()
+      if (!sujeto) return res.status(400).json({ error: 'Falta el contacto' })
+      if (!mensaje) return res.status(400).json({ error: 'El mensaje está vacío' })
+      const r = await fetch(`${base}/api/chat/humano`, {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sujeto,
+          mensaje,
+          // Quién contestó, para que el hilo no diga solo "humano". Sale del
+          // JWT de Supabase (user_metadata), no de nuestra tabla.
+          nombre: user.user_metadata?.full_name || user.user_metadata?.name || undefined,
+          // Explícito aunque sea el default del motor: que se lea en el código
+          // de qué lado está la decisión.
+          pausarBot: req.body?.pausarBot !== false,
+        }),
+      })
+      const cuerpo = await r.json().catch(() => ({}))
+      return res.status(r.status).json(cuerpo)
+    }
+
+    // ── Encender/pausar el bot en UNA conversación ──
+    if (op === 'bot') {
+      const sujeto = (req.body?.sujeto || '').toString()
+      if (!sujeto) return res.status(400).json({ error: 'Falta el contacto' })
+      if (typeof req.body?.pausado !== 'boolean') {
+        return res.status(400).json({ error: 'Falta indicar si se pausa' })
+      }
+      const r = await fetch(`${base}/api/chat/bot`, {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ sujeto, pausado: req.body.pausado }),
+      })
+      const cuerpo = await r.json().catch(() => ({}))
+      return res.status(r.status).json(cuerpo)
     }
 
     return res.status(400).json({ error: 'Operación no reconocida' })
