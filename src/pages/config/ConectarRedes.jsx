@@ -478,6 +478,20 @@ function ConectarWhatsApp({ sedeId, alConectar }) {
     // y cada intento añadiría una capa más encima de la anterior.
     setTimeout(restaurar, 30_000)
 
+    // EL BOTÓN NO PUEDE QUEDARSE MUERTO (2026-09-02).
+    //
+    // FB.login solo llama a su callback si META responde (el usuario autorizó o
+    // canceló DENTRO del diálogo). Si cierra la ventana con la X, o la deja
+    // abierta y se va, no llega nada: el botón se queda en "Abriendo Meta…"
+    // para siempre y hay que recargar la página para reintentar. Visto en vivo.
+    //
+    // Pasado el tiempo de un onboarding con calma, el botón se libera solo. Se
+    // usa el updater de estado para no pisar un 'conectando' en curso: ese ya
+    // tiene el code y su canje sigue aunque la ventana haya desaparecido.
+    setTimeout(() => {
+      setEstado((actual) => (actual === 'abriendo' ? 'listo' : actual))
+    }, 180_000)
+
     // OJO: el SDK de Facebook NO acepta un callback async ("Expression is of
     // type asyncfunction, not function"). El trabajo async va aparte.
     window.FB.login(
