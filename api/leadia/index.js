@@ -883,6 +883,33 @@ async function bandeja(req, res) {
     // ── De aquí abajo todo MODIFICA: solo POST ──
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
 
+    // ── Probar a Finny desde el panel ──
+    //
+    // El admin del gym escribe como si fuera un interesado y ve qué contesta,
+    // sin tener que sacar otro celular. Devuelve `accion`, que es lo que dice
+    // POR QUÉ el bot hizo lo que hizo (respondió, calló por ruido, escaló…) —
+    // sin eso, "no contesta" es indistinguible de "contestó y no llegó".
+    //
+    // Va por acá y no por `?action=chat` porque aquel exige ser SOCIO de la
+    // empresa (es el endpoint de la app del gimnasio); este exige ser ADMIN.
+    if (op === 'probar') {
+      const mensaje = (req.body?.mensaje || '').toString().trim()
+      if (!mensaje) return res.status(400).json({ error: 'Escribe un mensaje' })
+      const r = await fetch(`${base}/api/chat`, {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          // Sujeto propio y estable: la prueba no ensucia una conversación real
+          // ni crea un contacto nuevo en cada intento.
+          sujeto: `panel-prueba-${sedeId.slice(0, 8)}`,
+          mensaje,
+          nombre: 'Prueba desde el panel',
+        }),
+      })
+      const cuerpo = await r.json().catch(() => ({}))
+      return res.status(r.status).json(cuerpo)
+    }
+
     // ── Responder a mano ──
     // Por defecto PAUSA el bot de esa conversación: si una persona entró a
     // hablar, que la IA no le pise la respuesta a mitad de frase.
