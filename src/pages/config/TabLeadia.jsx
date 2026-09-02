@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui.jsx'
+import ConectarRedes from './ConectarRedes.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
 import { money } from '../../lib/uiHelpers.js'
@@ -112,6 +113,15 @@ export default function TabLeadia() {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Las redes por donde Finny atiende. Sin al menos una conectada el
+                bot existe pero no puede recibir un solo mensaje: hasta hoy el
+                panel prometía "atiende tu WhatsApp" sin dar dónde conectarlo. */}
+            {activo && (
+              <div className="mt-4 border-t border-line pt-4">
+                <ConectarRedes sedeId={s.sede_id} sedeNombre={s.sede_nombre} />
               </div>
             )}
           </Card>

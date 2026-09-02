@@ -32,6 +32,7 @@ export default async function handler(req, res) {
   if (action === 'ingresar-lead') return ingresarLead(req, res)
   if (action === 'link-pago') return linkPago(req, res)
   if (action === 'evento') return evento(req, res)
+  if (action === 'canales') return canales(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -598,5 +599,167 @@ async function leadsFrios(req, res) {
     return res.status(200).json({ activo: true, items: out.items || [] })
   } catch (e) {
     return res.status(200).json({ activo: true, items: [], error: e.message })
+  }
+}
+
+// ── CANALES: conectar las redes del gimnasio a Finny ────────────────────────
+//
+// POR QUÉ ESTE PROXY EXISTE (2026-09-02).
+//
+// Finny estaba construido y desplegado pero NO podía atender a nadie: el panel
+// hablaba de "un asistente que atiende tu WhatsApp 24/7" y no tenía un solo
+// botón para conectarlo. El motor (LeadAI) sí expone /canales completo — OAuth,
+// Embedded Signup de Meta, elección de cuenta — pero FitCore nunca construyó el
+// puente. Por eso la pestaña vivía detrás de LEADIA_VISIBLE=false.
+//
+// LA REGLA DE ORO: la api key del tenant NO baja al navegador. Vive cifrada en
+// sede_leadia y solo se descifra acá (leadia_credenciales), igual que en
+// `estado` y `guardar-flujo`. Un canal conectado es el buzón por donde entran
+// los clientes del gimnasio: con esa key en el front, cualquiera con la consola
+// abierta podría leer conversaciones o desconectar el número.
+//
+// Todas las sub-acciones exigen ser ADMIN DE ESA SEDE (adminYSede), no solo
+// estar logueado: conectar/desconectar un canal es una operación de dueño.
+
+// Las redes que el motor sabe conectar. Se valida contra esta lista antes de
+// interpolar el tipo en la URL del motor.
+const TIPOS_CANAL = ['whatsapp', 'instagram', 'messenger', 'tiktok']
+
+async function canales(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+
+  const sedeId = (req.query?.sedeId || req.body?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+  // Se valida la forma ANTES de tocar la BD: `sede.id` es uuid y un valor
+  // malformado revienta en Postgres fuera del try, devolviendo un 500 crudo
+  // donde correspondía un 400.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sedeId)) {
+    return res.status(400).json({ error: 'sedeId inválido' })
+  }
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  const { rows } = await pool.query('select public.leadia_credenciales($1) as c', [sedeId])
+  const cred = rows[0].c
+  // Sin add-on no hay tenant al que conectarle nada. 200 y no 400: el panel
+  // muestra "activa Finny primero", que es información, no un error del usuario.
+  if (!cred?.encontrado) return res.status(200).json({ activo: false, canales: [] })
+
+  const { base } = await configLeadia(pool)
+  const auth = { authorization: `Bearer ${cred.api_key}` }
+  const op = (req.query?.op || 'listar').toString()
+
+  try {
+    // ── Listar lo conectado ──
+    if (op === 'listar') {
+      const r = await fetch(`${base}/canales`, { headers: auth })
+      if (!r.ok) return res.status(200).json({ activo: true, canales: [] })
+      return res.status(200).json({ activo: true, canales: await r.json() })
+    }
+
+    // ── De qué origen viene el aviso del popup de OAuth ──
+    // El panel necesita saberlo para validar el postMessage: el mensaje lo emite
+    // la página de callback del motor, y sin este dato tendría que confiar en
+    // cualquiera. Se devuelve solo el ORIGEN (esquema+host), nunca la key.
+    if (op === 'origen') {
+      try {
+        return res.status(200).json({ origen: new URL(base).origin })
+      } catch {
+        return res.status(200).json({ origen: null })
+      }
+    }
+
+    // ── URL de autorización OAuth (Instagram/Messenger/TikTok) ──
+    if (op === 'oauth-url') {
+      const tipo = (req.query?.tipo || '').toString()
+      if (!TIPOS_CANAL.includes(tipo)) return res.status(400).json({ error: 'Red no válida' })
+      const r = await fetch(`${base}/canales/${tipo}/oauth/url`, { headers: auth })
+      if (!r.ok) return res.status(502).json({ error: 'El motor no devolvió la URL' })
+      return res.status(200).json(await r.json())
+    }
+
+    // ── Cuentas que autorizó y aún no eligió ──
+    // Meta devuelve TODAS las páginas que administra; con más de una el motor no
+    // guarda ninguna y las deja pendientes 10 minutos. Sin esta rama el usuario
+    // ve que "no pasó nada" tras autorizar (el hueco que hoy tiene el panel de
+    // Sania, según la exploración del 2026-09-02).
+    if (op === 'pendientes') {
+      const tipo = (req.query?.tipo || '').toString()
+      if (!TIPOS_CANAL.includes(tipo)) return res.status(400).json({ error: 'Red no válida' })
+      const r = await fetch(`${base}/canales/${tipo}/pendientes`, { headers: auth })
+      if (!r.ok) return res.status(200).json({ cuentas: [] })
+      return res.status(200).json(await r.json())
+    }
+
+    // ── De aquí abajo todo MODIFICA: solo POST ──
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+
+    // ── Conectar LA cuenta que eligió ──
+    if (op === 'elegir') {
+      const tipo = (req.body?.tipo || '').toString()
+      const cuentaExterna = (req.body?.cuentaExterna || '').toString()
+      if (!TIPOS_CANAL.includes(tipo)) return res.status(400).json({ error: 'Red no válida' })
+      if (!cuentaExterna) return res.status(400).json({ error: 'Falta la cuenta' })
+      const r = await fetch(`${base}/canales/${tipo}/elegir`, {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ cuentaExterna }),
+      })
+      // El 410 del motor ("se venció el tiempo para elegir") se pasa TAL CUAL:
+      // el panel lo distingue para decir "vuelve a conectar la red".
+      const cuerpo = await r.json().catch(() => ({}))
+      return res.status(r.status).json(cuerpo)
+    }
+
+    // ── WhatsApp por Embedded Signup ──
+    // El popup de Meta devuelve un `code`; el canje lo hace el MOTOR (es quien
+    // tiene el APP_SECRET). `redirectUri` viaja porque Meta exige al canjear el
+    // mismo valor que generó el SDK, y es dinámico — si no cuadra, error 100.
+    if (op === 'whatsapp-embedded') {
+      const { code, wabaId, phoneNumberId, redirectUri, featureType } = req.body || {}
+      if (!code) return res.status(400).json({ error: 'Falta el code de Meta' })
+      const r = await fetch(`${base}/canales/whatsapp/embedded-signup`, {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ code, wabaId, phoneNumberId, redirectUri, featureType }),
+      })
+      const cuerpo = await r.json().catch(() => ({}))
+      return res.status(r.status).json(cuerpo)
+    }
+
+    // ── Encender/apagar o renombrar ──
+    if (op === 'actualizar') {
+      const id = (req.body?.id || '').toString()
+      if (!id) return res.status(400).json({ error: 'Falta el canal' })
+      const cambios = {}
+      if (typeof req.body?.activo === 'boolean') cambios.activo = req.body.activo
+      if (typeof req.body?.nombre === 'string') cambios.nombre = req.body.nombre
+      if (!Object.keys(cambios).length) return res.status(400).json({ error: 'Nada que cambiar' })
+      const r = await fetch(`${base}/canales/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify(cambios),
+      })
+      const cuerpo = await r.json().catch(() => ({}))
+      return res.status(r.status).json(cuerpo)
+    }
+
+    // ── Desconectar ──
+    if (op === 'eliminar') {
+      const id = (req.body?.id || '').toString()
+      if (!id) return res.status(400).json({ error: 'Falta el canal' })
+      const r = await fetch(`${base}/canales/${encodeURIComponent(id)}`, {
+        method: 'DELETE', headers: auth,
+      })
+      if (!r.ok) return res.status(r.status).json({ error: 'No se pudo desconectar' })
+      return res.status(200).json({ ok: true })
+    }
+
+    return res.status(400).json({ error: 'Operación no reconocida' })
+  } catch (e) {
+    return res.status(502).json({ error: 'No se pudo hablar con el motor: ' + e.message })
   }
 }

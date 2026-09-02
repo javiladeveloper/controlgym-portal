@@ -20,7 +20,7 @@ const TODOS_TABS = [
   { key: 'plan', label: 'Mi plan 💳', Comp: TabPlan },
   { key: 'cobros', label: 'Cobros 💰', Comp: TabCobros },
   { key: 'facturacion', label: 'Facturación 🧾', Comp: TabFacturacion, modulo: 'facturacion', flag: FACTURACION_VISIBLE },
-  { key: 'leadia', label: 'IA Leadia 🤖', Comp: TabLeadia, flag: LEADIA_VISIBLE },
+  { key: 'leadia', label: 'Finny 🤖', Comp: TabLeadia, flag: LEADIA_VISIBLE },
   { key: 'croquis', label: 'Croquis 🗺️', Comp: TabCroquis, modulo: 'croquis' },
   { key: 'marca', label: 'Marca', Comp: TabMarca },
   { key: 'pagina', label: 'Página web', Comp: TabWeb },
