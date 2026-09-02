@@ -11,6 +11,9 @@ export const GRUPOS = [
   { key: 'general', label: 'General' },
   { key: 'socios', label: 'Socios' },
   { key: 'operacion', label: 'Operación' },
+  // Atender al que pregunta y traer al que se fue son el mismo trabajo, así que
+  // van juntos. Sigue el modelo del panel de LeadAI, que ya resolvió esto.
+  { key: 'marketing', label: 'Marketing' },
   { key: 'negocio', label: 'Negocio' },
   { key: 'config', label: 'Configuración' },
 ]
@@ -24,10 +27,6 @@ export const MODULES = [
 
   { slug: 'clientes',    label: 'Clientes',         grupo: 'socios',    roles: null },
   { slug: 'crm',         label: 'CRM',              grupo: 'socios',    roles: ['admin', 'recepcion', 'comunicador'] },
-  // Las conversaciones de Finny. Vive junto al CRM porque es la misma gente y
-  // el mismo trabajo: atender al que pregunta. Solo el admin, que es quien
-  // contrata el add-on y a quien el motor autoriza por sede.
-  { slug: 'bandeja',     label: 'Conversaciones',   grupo: 'socios',    roles: ['admin'] },
   { slug: 'membresias',  label: 'Membresías',       grupo: 'socios',    roles: ['admin', 'recepcion'] },
   { slug: 'rutinas',     label: 'Rutinas y dietas', grupo: 'socios',    roles: ['admin', 'entrenador', 'nutricionista'] },
 
@@ -36,6 +35,12 @@ export const MODULES = [
   { slug: 'ventas',      label: 'Ventas',           grupo: 'operacion', roles: ['admin', 'recepcion'], alwaysOn: true },
   { slug: 'kardex',      label: 'Kardex',           grupo: 'operacion', roles: ['admin', 'recepcion'] },
   { slug: 'maquinas',    label: 'Máquinas',         grupo: 'operacion', roles: ['admin', 'mantenimiento'] },
+
+  // Lo de Finny: leer lo que habla con los interesados, y escribirle a la base.
+  // Solo el admin — es quien contrata el add-on, a quien el motor autoriza por
+  // sede, y de cuya tarjeta sale el costo de los envíos.
+  { slug: 'bandeja',     label: 'Conversaciones',   grupo: 'marketing', roles: ['admin'] },
+  { slug: 'marketing',   label: 'Marketing',        grupo: 'marketing', roles: ['admin'] },
 
   { slug: 'promociones', label: 'Promociones',      grupo: 'negocio',   roles: ['admin', 'recepcion', 'comunicador'] }, // comunicador: consulta (qué ofrecer)
   { slug: 'finanzas',    label: 'Finanzas',         grupo: 'negocio',   roles: ['admin'] },

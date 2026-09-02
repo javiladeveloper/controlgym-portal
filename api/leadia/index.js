@@ -34,6 +34,8 @@ export default async function handler(req, res) {
   if (action === 'evento') return evento(req, res)
   if (action === 'canales') return canales(req, res)
   if (action === 'bandeja') return bandeja(req, res)
+  if (action === 'campanias') return campanias(req, res)
+  if (action === 'destinatarios') return campaniaDestinatarios(req, res)
   return res.status(400).json({ error: 'Acción no reconocida' })
 }
 
@@ -872,5 +874,209 @@ async function bandeja(req, res) {
     return res.status(400).json({ error: 'Operación no reconocida' })
   } catch (e) {
     return res.status(502).json({ error: 'No se pudo hablar con el motor: ' + e.message })
+  }
+}
+
+// ── CAMPAÑAS: escribirle a toda la base de una vez ─────────────────────────
+//
+// POR QUÉ (2026-09-02).
+//
+// El gimnasio ya tenía un botón "Campañas" DESHABILITADO desde julio, esperando
+// que el dueño decidiera "correo gratis vs WhatsApp API (~S/0.25/msj)". La
+// decisión resultó ser una falsa disyuntiva: el mensaje de WhatsApp **se lo
+// cobra Meta a la tarjeta del gimnasio**, no a FitCore. Ofrecerlo no nos cuesta
+// nada, y para un gym es la venta más barata que existe — escribirle al que ya
+// fue socio y dejó de venir.
+//
+// Mismo patrón de seguridad que `canales` y `bandeja`: ADMIN DE ESA SEDE, y la
+// api key del tenant se descifra en el servidor.
+//
+// OJO con el 402: el motor corta con `requiereMarketing` si el plan del tenant
+// no incluye marketing. Ese código se pasa TAL CUAL al panel para que muestre
+// "tu plan no incluye campañas" en vez de un error genérico.
+async function campanias(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+
+  const sedeId = (req.query?.sedeId || req.body?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+  if (!ES_UUID.test(sedeId)) return res.status(400).json({ error: 'sedeId inválido' })
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  const { rows } = await pool.query('select public.leadia_credenciales($1) as c', [sedeId])
+  const cred = rows[0].c
+  if (!cred?.encontrado) return res.status(200).json({ activo: false, items: [] })
+
+  const { base } = await configLeadia(pool)
+  const auth = { authorization: `Bearer ${cred.api_key}` }
+  const op = (req.query?.op || 'listar').toString()
+
+  // Reenvía al motor y devuelve su cuerpo y su código tal cual. Los 402
+  // (plan sin marketing, cupo excedido) y 409 (sin WhatsApp conectado) llevan
+  // información que el panel necesita para explicar qué hacer.
+  const pasar = async (ruta, init) => {
+    const r = await fetch(`${base}${ruta}`, init)
+    const cuerpo = await r.json().catch(() => ({}))
+    return res.status(r.status).json(cuerpo)
+  }
+
+  try {
+    // ── Lecturas ──
+    if (op === 'listar') {
+      const r = await fetch(`${base}/campanias`, { headers: auth })
+      if (!r.ok) return res.status(r.status).json(await r.json().catch(() => ({ items: [] })))
+      return res.status(200).json({ activo: true, ...(await r.json()) })
+    }
+
+    if (op === 'plantillas') {
+      return pasar('/campanias/plantillas', { headers: auth })
+    }
+
+    // Cupo del mes y si la WABA tiene tarjeta registrada en Meta. Van juntos
+    // porque el panel los muestra en la misma fila y sin ellos no puede decir
+    // ni cuántos envíos quedan ni por qué fallarían.
+    if (op === 'estado') {
+      const [cupoR, pagoR] = await Promise.all([
+        fetch(`${base}/campanias/cupo`, { headers: auth }),
+        fetch(`${base}/campanias/estado-pago`, { headers: auth }),
+      ])
+      const cupo = cupoR.ok ? await cupoR.json().catch(() => null) : null
+      const pago = pagoR.ok ? await pagoR.json().catch(() => null) : null
+      // Si el motor corta por plan, se dice: el panel muestra el candado.
+      if (cupoR.status === 402) {
+        return res.status(200).json({ activo: true, sinMarketing: true, cupo: null, pago: null })
+      }
+      return res.status(200).json({ activo: true, cupo, pago })
+    }
+
+    if (op === 'detalle') {
+      const id = (req.query?.id || '').toString()
+      if (!id) return res.status(400).json({ error: 'Falta la campaña' })
+      return pasar(`/campanias/${encodeURIComponent(id)}`, { headers: auth })
+    }
+
+    // ── De aquí abajo todo MODIFICA: solo POST ──
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+
+    // ── Crear plantilla (la aprueba Meta, no nosotros) ──
+    if (op === 'crear-plantilla') {
+      const { nombre, categoria, cuerpo, encabezado } = req.body || {}
+      if (!nombre || !cuerpo) return res.status(400).json({ error: 'Falta el nombre o el mensaje' })
+      if (!['MARKETING', 'UTILITY'].includes(categoria)) {
+        return res.status(400).json({ error: 'Tipo de plantilla no válido' })
+      }
+      return pasar('/campanias/plantillas', {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ nombre, categoria, cuerpo, idioma: 'es', encabezado }),
+      })
+    }
+
+    if (op === 'borrar-plantilla') {
+      const nombre = (req.body?.nombre || '').toString()
+      if (!nombre) return res.status(400).json({ error: 'Falta la plantilla' })
+      const r = await fetch(`${base}/campanias/plantillas/${encodeURIComponent(nombre)}`, {
+        method: 'DELETE', headers: auth,
+      })
+      if (r.status === 204) return res.status(200).json({ ok: true })
+      return res.status(r.status).json(await r.json().catch(() => ({ error: 'No se pudo borrar' })))
+    }
+
+    // ── Lanzar la campaña ──
+    if (op === 'crear') {
+      const { nombre, plantillaNombre, cuerpoVista, contactos, programadaPara, encabezado } = req.body || {}
+      if (!nombre || !plantillaNombre) {
+        return res.status(400).json({ error: 'Falta el nombre o la plantilla' })
+      }
+      if (!Array.isArray(contactos) || contactos.length === 0) {
+        return res.status(400).json({ error: 'No hay destinatarios' })
+      }
+      return pasar('/campanias', {
+        method: 'POST',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          nombre, plantillaNombre, cuerpoVista, contactos, encabezado,
+          plantillaIdioma: 'es',
+          ...(programadaPara ? { programadaPara } : {}),
+        }),
+      })
+    }
+
+    if (op === 'pausar' || op === 'reanudar') {
+      const id = (req.body?.id || '').toString()
+      if (!id) return res.status(400).json({ error: 'Falta la campaña' })
+      return pasar(`/campanias/${encodeURIComponent(id)}/${op}`, { method: 'POST', headers: auth })
+    }
+
+    return res.status(400).json({ error: 'Operación no reconocida' })
+  } catch (e) {
+    return res.status(502).json({ error: 'No se pudo hablar con el motor: ' + e.message })
+  }
+}
+
+// ── Destinatarios: los socios del gym, ya segmentados ──────────────────────
+//
+// La diferencia con LeadAI: allá se pegan teléfonos a mano en un textarea. Acá
+// el gimnasio YA tiene su base — y los segmentos que de verdad importan (el que
+// se le venció, el que está por vencer, el que se dio de baja) salen de la
+// misma tabla que usa el resto del panel. Pedirle al dueño que copie teléfonos
+// de una pantalla a otra sería absurdo.
+async function campaniaDestinatarios(req, res) {
+  const user = await usuarioDesdeJwt(req)
+  if (!user) return res.status(401).json({ error: 'No autenticado' })
+
+  const sedeId = (req.query?.sedeId || '').toString()
+  if (!sedeId) return res.status(400).json({ error: 'Falta sedeId' })
+  if (!ES_UUID.test(sedeId)) return res.status(400).json({ error: 'sedeId inválido' })
+
+  const segmento = (req.query?.segmento || '').toString()
+  const SEGMENTOS = ['vencidos', 'por_vencer', 'activos', 'de_baja']
+  if (!SEGMENTOS.includes(segmento)) return res.status(400).json({ error: 'Segmento no válido' })
+
+  const pool = db()
+  const info = await adminYSede(pool, user, sedeId)
+  if (!info) return res.status(403).json({ error: 'Solo el administrador de esa sede' })
+
+  // Un solo query por segmento, siempre acotado a la sede y con teléfono real:
+  // un contacto sin número no es un destinatario, es un envío que va a fallar
+  // y a gastar el cupo igual.
+  const COMUN = `
+    from public.socio s
+    where s.empresa_id = $1 and s.sede_id = $2 and s.deleted_at is null
+      and s.telefono is not null and length(trim(s.telefono)) >= 6`
+
+  const SQL = {
+    // Se le venció y no renovó: el que más rinde de todos.
+    vencidos: `select s.nombre, s.telefono ${COMUN}
+      and exists (select 1 from public.membresia m where m.socio_id = s.id and m.deleted_at is null)
+      and not exists (select 1 from public.membresia m2 where m2.socio_id = s.id
+                        and m2.deleted_at is null and m2.fecha_fin >= current_date)`,
+    // Le quedan 7 días o menos: atajarlo ANTES de que se caiga.
+    por_vencer: `select distinct s.nombre, s.telefono ${COMUN}
+      and exists (select 1 from public.membresia m where m.socio_id = s.id and m.deleted_at is null
+                    and m.fecha_fin between current_date and current_date + 7)`,
+    activos: `select distinct s.nombre, s.telefono ${COMUN}
+      and exists (select 1 from public.membresia m where m.socio_id = s.id and m.deleted_at is null
+                    and m.fecha_fin >= current_date)`,
+    // Nunca tuvo membresía: se registró y no llegó a comprar.
+    de_baja: `select s.nombre, s.telefono ${COMUN}
+      and not exists (select 1 from public.membresia m where m.socio_id = s.id and m.deleted_at is null)`,
+  }
+
+  try {
+    const { rows: dest } = await pool.query(
+      `${SQL[segmento]} order by 1 limit 500`,
+      [info.empresa_id, sedeId],
+    )
+    return res.status(200).json({
+      segmento,
+      total: dest.length,
+      contactos: dest.map((d) => ({ telefono: d.telefono, nombre: d.nombre })),
+    })
+  } catch (e) {
+    return res.status(400).json({ error: 'No se pudo armar la lista: ' + e.message })
   }
 }

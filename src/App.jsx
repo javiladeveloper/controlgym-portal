@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import Clientes from './pages/Clientes.jsx'
 import CRM from './pages/CRM.jsx'
 import Bandeja from './pages/Bandeja.jsx'
+import Marketing from './pages/Marketing.jsx'
 import Membresias from './pages/Membresias.jsx'
 import Rutinas from './pages/Rutinas.jsx'
 import Clases from './pages/Clases.jsx'
@@ -36,6 +37,7 @@ const PAGES = [
   ['clientes', Clientes],
   ['crm', CRM],
   ['bandeja', Bandeja],
+  ['marketing', Marketing],
   ['membresias', Membresias],
   ['rutinas', Rutinas],
   ['clases', Clases],
